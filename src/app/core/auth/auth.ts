@@ -26,6 +26,18 @@ export class Auth {
     return !!this.getToken();
   }
 
+  isManager(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.role === 'manager';
+    } catch {
+      return false;
+    }
+  }
+
   logout() {
     localStorage.removeItem(this.tokenKey);
     this.router.navigate(['/login']);

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth-guard';
+import { managerGuard } from './core/auth/manager-guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -17,5 +18,15 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadChildren: () => import('./features/product-management/product-management.routes').then(m => m.PRODUCT_ROUTES)
   },
+  {
+  path: 'review',
+  canActivate: [authGuard],
+  loadChildren: () => import('./features/review/review.routes').then(m => m.REVIEW_ROUTES)
+},
+{
+  path: 'settings',
+  canActivate: [authGuard, managerGuard],
+  loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+},
   { path: '**', redirectTo: 'login' }
 ];
