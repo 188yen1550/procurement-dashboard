@@ -1,0 +1,245 @@
+// 變數設定
+$primary-blue: #1c5286;
+$primary-hover: #153e66;
+$bg-dark-start: #0a2540;
+$bg-dark-end: #004b6e;
+$text-main: #2c3e50;
+$text-muted: #6c7a89;
+$border-color: #e2e8f0;
+$card-bg: #ffffff;
+$shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
+
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: $text-main;
+  background-color: #f8fafc;
+}
+
+// 主容器雙欄配置
+.login-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  // 左側：科技背景區
+  .brand-panel {
+    flex: 1;
+    position: relative;
+    background: linear-gradient(135deg, $bg-dark-start 0%, $bg-dark-end 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 30px 30px;
+      opacity: 0.6;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border: 2px solid rgba(0, 180, 216, 0.15);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 50px rgba(0, 180, 216, 0.1);
+    }
+
+    .brand-content {
+      position: relative;
+      z-index: 2;
+
+      .logo-icon {
+        width: 120px;
+        height: 120px;
+        color: #00b4d8;
+        filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+      }
+    }
+
+    @media (max-width: 900px) {
+      display: none;
+    }
+  }
+
+  // 右側：表單區
+  .form-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: #f4f6f9;
+    padding: 2rem;
+
+    @media (max-width: 900px) {
+      flex: none;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+.top-nav {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+
+  .nav-link {
+    color: $text-muted;
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: $primary-blue;
+    }
+  }
+
+  .lang-select {
+    color: $text-muted;
+    cursor: pointer;
+  }
+}
+
+.login-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.login-card {
+  background: $card-bg;
+  width: 100%;
+  max-width: 400px;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: $shadow-card;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+
+  .card-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    .logo-icon-small {
+      width: 48px;
+      height: 48px;
+      color: $primary-blue;
+      margin-bottom: 0.5rem;
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $text-main;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.875rem;
+      color: $text-muted;
+    }
+  }
+}
+
+.login-form {
+  .form-group {
+    margin-bottom: 1.25rem;
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .input-icon {
+        position: absolute;
+        left: 12px;
+        font-size: 0.9rem;
+        opacity: 0.5;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+        border: 1px solid $border-color;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background-color: #f8fafc;
+
+        &:focus {
+          border-color: $primary-blue;
+          background-color: #ffffff;
+          box-shadow: 0 0 0 3px rgba(28, 82, 134, 0.1);
+        }
+      }
+    }
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: $primary-blue;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 0.5rem;
+
+    &:hover {
+      background-color: $primary-hover;
+    }
+  }
+}
+
+.card-footer-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+
+  .footer-link {
+    font-size: 0.85rem;
+    color: $primary-blue;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.system-footer {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  color: $text-muted;
+  text-align: center;
+
+  a {
+    color: $text-muted;
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
