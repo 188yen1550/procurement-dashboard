@@ -19,14 +19,14 @@ export const routes: Routes = [
     loadChildren: () => import('./features/product-management/product-management.routes').then(m => m.PRODUCT_ROUTES)
   },
   {
-  path: 'review',
-  canActivate: [authGuard],
-  loadChildren: () => import('./features/review/review.routes').then(m => m.REVIEW_ROUTES)
-},
-{
-  path: 'settings',
-  canActivate: [authGuard, managerGuard],
-  loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
-},
+    path: 'review',
+    canActivate: [authGuard, managerGuard], // 加上 managerGuard，確保只有 MANAGER 可訪問選品審核
+    loadChildren: () => import('./features/review/review.routes').then(m => m.REVIEW_ROUTES)
+  },
+  {
+    path: 'settings',
+    canActivate: [authGuard, managerGuard], // 確保只有 MANAGER 可訪問設定
+    loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+  },
   { path: '**', redirectTo: 'login' }
 ];
