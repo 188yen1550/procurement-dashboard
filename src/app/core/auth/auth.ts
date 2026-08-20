@@ -1,45 +1,57 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { Observable, tap, BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
-export class Auth {
-  private tokenKey = 'access_token';
+export class AuthService {
+  // 絕對不碰 localStorage，全部用記憶體變數
+  private memoryToken: string | null = null;
+  private roleSubject = new BehaviorSubject<string | null>(null);
+  public role$ = this.roleSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  login(username: string, password: string) {
-    return this.http.post<{ token: string }>('/api/auth/login', { username, password });
+  login(username: string, password: string): Observable<any> {
+    return this.http.post<{ token: string; role?: string }>('/api/auth/login', { username, password }).pipe(
+      tap(res => {
+        if (res && res.token) {
+          this.memoryToken = res.token;
+        }
+        if (res && res.role) {
+          this.roleSubject.next(res.role);
+        }
+      })
+    );
   }
 
-  saveToken(token: string) {
-    localStorage.setItem(this.tokenKey, token);
+  getCurrentUser(): Observable<any> {
+    return this.http.get<any>('/api/auth/me').pipe(
+      tap(user => {
+        if (user && user.role) {
+          this.roleSubject.next(user.role);
+        }
+      })
+    );
+  }
+
+  getRole(): string | null {
+    return this.roleSubject.value;
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return this.memoryToken;
   }
 
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    return !!this.memoryToken;   // 只看token，不要用currentRole判斷
   }
 
-  isManager(): boolean {
-    const token = this.getToken();
-    if (!token) return false;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.role === 'manager';
-    } catch {
-      return false;
-    }
-  }
-
-  logout() {
-    localStorage.removeItem(this.tokenKey);
+  logout(): void {
+    this.memoryToken = null;
+    this.roleSubject.next(null);
     this.router.navigate(['/login']);
   }
 }
