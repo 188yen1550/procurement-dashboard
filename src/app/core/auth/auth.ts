@@ -37,6 +37,19 @@ export class AuthService {
     );
   }
 
+  // 供假登入測試/或後端直接回傳token時使用，手動塞入token並解析角色
+  saveToken(token: string): void {
+    this.memoryToken = token;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.role) {
+        this.roleSubject.next(payload.role);
+      }
+    } catch (e) {
+      console.error('Token解析失敗', e);
+    }
+  }
+
   getRole(): string | null {
     return this.roleSubject.value;
   }
@@ -46,7 +59,7 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!this.memoryToken;   // 只看token，不要用currentRole判斷
+    return !!this.memoryToken;
   }
 
   logout(): void {
