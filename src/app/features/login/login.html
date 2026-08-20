@@ -1,68 +1,55 @@
 <div class="login-container">
 
-  <!-- 左側：品牌與科技感背景區 -->
+  <!-- 左側:品牌與科技感背景區 -->
   <div class="brand-panel">
-    <div class="brand-overlay"></div>
     <div class="brand-content">
-      <div class="brand-logo">
-        <svg viewBox="0 0 100 100" class="logo-icon">
-          <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
-          <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
-          <path d="M40 70 L80 70 L60 90 L20 90 Z" fill="currentColor"/>
-        </svg>
-      </div>
+      <svg viewBox="0 0 100 100" class="logo-icon">
+        <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
+        <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
+        <path d="M40 70 L80 70 L60 90 L20 90 Z" fill="currentColor"/>
+      </svg>
     </div>
   </div>
 
-  <!-- 右側：表單與操作區 -->
+  <!-- 右側:表單與操作區 -->
   <div class="form-panel">
-
-    <!-- 頂部導覽連結 -->
-    <header class="top-nav">
-      <a href="#" class="nav-link">客服支援</a>
-      <a href="#" class="nav-link">聯絡我們</a>
-      <div class="lang-select">
-        <span>🌐 繁體中文</span>
-      </div>
-    </header>
 
     <!-- 主要登入卡片 -->
     <main class="login-card-wrapper">
       <div class="login-card">
 
         <div class="card-header">
-          <div class="card-logo">
-            <svg viewBox="0 0 100 100" class="logo-icon-small">
-              <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
-              <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
-            </svg>
-          </div>
+          <svg viewBox="0 0 100 100" class="logo-icon-small">
+            <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
+            <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
+          </svg>
           <h1 class="card-title">企業系統登入</h1>
           <p class="card-subtitle">歡迎使用企業決策系統</p>
         </div>
 
-        <form class="login-form" (ngSubmit)="onSubmit()">
+        <form class="login-form" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
           <div class="form-group">
             <div class="input-wrapper">
               <span class="input-icon">👤</span>
-              <input type="text" [(ngModel)]="username" name="username" placeholder="帳號 / 電子郵件" required autocomplete="username">
+              <input type="text" formControlName="username" placeholder="帳號 / 電子郵件" autocomplete="username">
             </div>
           </div>
 
           <div class="form-group">
             <div class="input-wrapper">
               <span class="input-icon">🔒</span>
-              <input type="password" [(ngModel)]="password" name="password" placeholder="密碼" required autocomplete="current-password">
+              <input type="password" formControlName="password" placeholder="密碼" autocomplete="current-password">
             </div>
           </div>
 
-          <button type="submit" class="btn-primary" [disabled]="isLoading">登入</button>
-        </form>
+          @if (errorMessage) {
+            <p class="error-message">{{ errorMessage }}</p>
+          }
 
-        <div class="card-footer-links">
-          <a href="#" class="footer-link">忘記密碼？</a>
-          <a href="#" class="footer-link">單一簽入 (SSO)</a>
-        </div>
+          <button type="submit" class="btn-primary" [disabled]="isLoading">
+            {{ isLoading ? '登入中...' : '登入' }}
+          </button>
+        </form>
 
       </div>
 

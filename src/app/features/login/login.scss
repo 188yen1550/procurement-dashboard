@@ -25,7 +25,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   width: 100%;
   height: 100%;
 
-  // 左側：科技背景區
+  // 左側:科技背景區
   .brand-panel {
     flex: 1;
     position: relative;
@@ -75,7 +75,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     }
   }
 
-  // 右側：表單區
+  // 右側:表單區
   .form-panel {
     flex: 1;
     display: flex;
@@ -89,29 +89,6 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
       width: 100%;
       height: 100%;
     }
-  }
-}
-
-.top-nav {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 1.5rem;
-  font-size: 0.875rem;
-
-  .nav-link {
-    color: $text-muted;
-    text-decoration: none;
-    transition: color 0.2s;
-
-    &:hover {
-      color: $primary-blue;
-    }
-  }
-
-  .lang-select {
-    color: $text-muted;
-    cursor: pointer;
   }
 }
 
@@ -208,25 +185,18 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     &:hover {
       background-color: $primary-hover;
     }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
 }
 
-.card-footer-links {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-
-  .footer-link {
-    font-size: 0.85rem;
-    color: $primary-blue;
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
+.error-message {
+  font-size: 0.85rem;
+  color: #d9534f;
+  margin: -0.5rem 0 0.75rem;
 }
 
 .system-footer {
