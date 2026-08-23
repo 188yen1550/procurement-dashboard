@@ -1,0 +1,18 @@
+<form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+  <div>
+    <label>品項名稱</label>
+    <input type="text" formControlName="name" />
+  </div>
+
+  <div>
+    <label>價格</label>
+    <input type="number" formControlName="price" />
+  </div>
+
+  @if (errorMessage) {
+    <p>{{ errorMessage }}</p>
+  }
+
+  <button type="submit" [disabled]="isSubmitting">新增</button>
+  <button type="button" (click)="onCancel()">取消</button>
+</form>

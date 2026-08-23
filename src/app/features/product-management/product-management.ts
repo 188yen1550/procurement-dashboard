@@ -7,6 +7,9 @@ export interface Product {
   name: string;
   price: number;
   status: string;
+  reviewStatus?: string;   // PENDING / APPROVED / REJECTED
+  itemStatus?: string;     // ACTIVE / ARCHIVED
+  candidateStatus?: string; // CANDIDATE / AI_SUGGESTED
 }
 
 @Component({
@@ -20,6 +23,13 @@ export class ProductManagement implements OnInit {
   products: Product[] = [];
   isLoading = false;
 
+  // 三欄位篩選條件
+  filters = {
+    reviewStatus: '',
+    itemStatus: '',
+    candidateStatus: ''
+  };
+
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
@@ -28,7 +38,13 @@ export class ProductManagement implements OnInit {
 
   loadProducts() {
     this.isLoading = true;
-    this.http.get<Product[]>('/api/products').subscribe({
+    // 把篩選條件組成query params
+    const params: any = {};
+    if (this.filters.reviewStatus) params.reviewStatus = this.filters.reviewStatus;
+    if (this.filters.itemStatus) params.itemStatus = this.filters.itemStatus;
+    if (this.filters.candidateStatus) params.candidateStatus = this.filters.candidateStatus;
+
+    this.http.get<Product[]>('/api/products', { params }).subscribe({
       next: (data) => {
         this.products = data;
         this.isLoading = false;
@@ -40,14 +56,21 @@ export class ProductManagement implements OnInit {
     });
   }
 
+  onFilterChange() {
+    this.loadProducts(); // 篩選條件一變就重新打API
+  }
+
+  resetFilters() {
+    this.filters = { reviewStatus: '', itemStatus: '', candidateStatus: '' };
+    this.loadProducts();
+  }
+
   deleteProduct(id: number) {
     this.http.delete(`/api/products/${id}`).subscribe({
       next: () => {
         this.products = this.products.filter(p => p.id !== id);
       },
-      error: (err) => {
-        console.error('刪除失敗', err);
-      }
+      error: (err) => console.error('刪除失敗', err)
     });
   }
 }
