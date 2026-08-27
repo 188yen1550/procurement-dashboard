@@ -1,0 +1,22 @@
+<div class="admin-layout">
+  <a class="skip-link" href="#main-content">跳到主要內容</a>
+
+  <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager" (closeRequested)="closeMenu()" />
+
+  @if (isMenuOpen()) {
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="關閉導覽選單"
+      (click)="closeMenu()"
+    ></button>
+  }
+
+  <div class="admin-main">
+    <app-header [roleLabel]="roleLabel" (menuToggle)="toggleMenu()" (logoutRequested)="logout()" />
+
+    <main id="main-content" class="page-content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,1 +1,19 @@
-<p>header works!</p>
+<header class="app-header">
+  <div class="header-leading">
+    <button type="button" class="menu-button" aria-label="開啟導覽選單" (click)="menuToggle.emit()">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </button>
+
+    <div>
+      <p class="eyebrow">AI 選品決策輔助系統</p>
+      <p class="system-note">AI 提供建議，最終核准由人工決定</p>
+    </div>
+  </div>
+
+  <div class="user-actions">
+    <span class="role-badge">{{ roleLabel }}</span>
+    <button type="button" class="logout-button" (click)="logoutRequested.emit()">登出</button>
+  </div>
+</header>

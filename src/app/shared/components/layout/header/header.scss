@@ -1,0 +1,117 @@
+:host {
+  position: sticky;
+  z-index: 800;
+  top: 0;
+  display: block;
+}
+
+.app-header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 2rem;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #e2e8f0;
+  backdrop-filter: blur(10px);
+}
+
+.header-leading,
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.eyebrow,
+.system-note {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #1f3348;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.system-note {
+  margin-top: 0.15rem;
+  color: #6c7a89;
+  font-size: 0.75rem;
+}
+
+.role-badge {
+  padding: 0.35rem 0.7rem;
+  color: #1c5286;
+  background: #eaf3fb;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.logout-button,
+.menu-button {
+  color: #32475b;
+  background: #fff;
+  border: 1px solid #d7e0e8;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.logout-button {
+  padding: 0.5rem 0.85rem;
+
+  &:hover {
+    color: #fff;
+    background: #1c5286;
+    border-color: #1c5286;
+  }
+}
+
+.menu-button {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 0.65rem;
+
+  span {
+    display: block;
+    height: 2px;
+    margin: 4px 0;
+    background: currentColor;
+  }
+}
+
+button:focus-visible {
+  outline: 3px solid rgba(28, 82, 134, 0.25);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .app-header {
+    min-height: 68px;
+    padding: 0.65rem 1rem;
+  }
+
+  .menu-button {
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .system-note {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .eyebrow {
+    max-width: 9rem;
+    font-size: 0.875rem;
+    line-height: 1.25;
+  }
+
+  .role-badge {
+    display: none;
+  }
+}

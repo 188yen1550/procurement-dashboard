@@ -1,13 +1,13 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from './auth'; // 請依實際專案路徑調整
+import { Auth } from './auth';
 
 export const managerGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
+  const authService = inject(Auth);
   const router = inject(Router);
 
   // 1. 檢查使用者是否已登入且角色為 MANAGER
-  if (authService.isLoggedIn() && authService.getRole() === 'MANAGER') {
+  if (authService.isLoggedIn() && authService.isManager()) {
     return true;
   }
 

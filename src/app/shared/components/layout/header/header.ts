@@ -1,20 +1,17 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { AuthService } from '../../../../core/auth/auth';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-header',
-  standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './header.html',
-  styleUrl: './header.scss'
+  styleUrl: './header.scss',
 })
-export class HeaderComponent {
-  constructor(public authService: AuthService, private router: Router) {}
+export class Header {
+  @Input() roleLabel = '操作人員';
 
-  onLogout() {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
+  @Output() readonly menuToggle = new EventEmitter<void>();
+  @Output() readonly logoutRequested = new EventEmitter<void>();
 }
+
+// 相容 master 新增的 LayoutComponent 命名，不改變目前 Header 行為。
+export { Header as HeaderComponent };

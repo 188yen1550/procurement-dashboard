@@ -1,70 +1,81 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap, BehaviorSubject } from 'rxjs';
+
+export type UserRole = 'PURCHASER' | 'MANAGER';
+export type MockUsername = 'purchaser' | 'manager';
+
+export interface MockUser {
+  username: MockUsername;
+  name: string;
+  role: UserRole;
+}
+
+interface MockAccount extends MockUser {
+  password: string;
+}
+
+const MOCK_ACCOUNTS: readonly MockAccount[] = [
+  {
+    username: 'purchaser',
+    password: 'demo123',
+    name: '操作測試人員',
+    role: 'PURCHASER',
+  },
+  {
+    username: 'manager',
+    password: 'demo123',
+    name: '管理測試人員',
+    role: 'MANAGER',
+  },
+];
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class AuthService {
-  // 絕對不碰 localStorage，全部用記憶體變數
-  private memoryToken: string | null = null;
-  private roleSubject = new BehaviorSubject<string | null>(null);
-  public role$ = this.roleSubject.asObservable();
+export class Auth {
+  private readonly currentUserState = signal<MockUser | null>(null);
 
-  constructor(private http: HttpClient, private router: Router) {}
+  readonly currentUser = this.currentUserState.asReadonly();
 
-  login(username: string, password: string): Observable<any> {
-    return this.http.post<{ token: string; role?: string }>('/api/auth/login', { username, password }).pipe(
-      tap(res => {
-        if (res && res.token) {
-          this.memoryToken = res.token;
-        }
-        if (res && res.role) {
-          this.roleSubject.next(res.role);
-        }
-      })
+  constructor(private readonly router: Router) {}
+
+  login(username: string, password: string): MockUser | null {
+    const account = MOCK_ACCOUNTS.find(
+      (item) => item.username === username.trim().toLowerCase() && item.password === password,
     );
-  }
 
-  getCurrentUser(): Observable<any> {
-    return this.http.get<any>('/api/auth/me').pipe(
-      tap(user => {
-        if (user && user.role) {
-          this.roleSubject.next(user.role);
-        }
-      })
-    );
-  }
-
-  // 供假登入測試/或後端直接回傳token時使用，手動塞入token並解析角色
-  saveToken(token: string): void {
-    this.memoryToken = token;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if (payload.role) {
-        this.roleSubject.next(payload.role);
-      }
-    } catch (e) {
-      console.error('Token解析失敗', e);
+    if (!account) {
+      return null;
     }
-  }
 
-  getRole(): string | null {
-    return this.roleSubject.value;
-  }
+    const user: MockUser = {
+      username: account.username,
+      name: account.name,
+      role: account.role,
+    };
 
-  getToken(): string | null {
-    return this.memoryToken;
+    this.currentUserState.set(user);
+    return user;
   }
 
   isLoggedIn(): boolean {
-    return !!this.memoryToken;
+    return this.currentUser() !== null;
+  }
+
+  isManager(): boolean {
+    return this.currentUser()?.role === 'MANAGER';
+  }
+
+  // API 整合層目前仍由其他成員開發；Mock Auth 不建立或保存正式 token。
+  getToken(): string | null {
+    return null;
   }
 
   logout(): void {
-    this.memoryToken = null;
-    this.roleSubject.next(null);
-    this.router.navigate(['/login']);
+    this.currentUserState.set(null);
+    void this.router.navigate(['/login']);
   }
 }
+
+// 暫時保留 master 既有程式使用的名稱，避免合併期間破壞攔截器引用。
+export { Auth as AuthService };

@@ -14,7 +14,7 @@ export interface ReviewItem {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './review.html',
-  styleUrl: './review.scss'
+  styleUrl: './review.scss',
 })
 export class ReviewComponent implements OnInit {
   pendingItems: ReviewItem[] = [];
@@ -37,7 +37,7 @@ export class ReviewComponent implements OnInit {
       error: (err) => {
         console.error('載入審核清單失敗', err);
         this.isLoading = false;
-      }
+      },
     });
   }
 
@@ -45,9 +45,9 @@ export class ReviewComponent implements OnInit {
   approve(id: number) {
     this.http.post(`/api/review/approve/${id}`, {}).subscribe({
       next: () => {
-        this.pendingItems = this.pendingItems.filter(item => item.id !== id);
+        this.pendingItems = this.pendingItems.filter((item) => item.id !== id);
       },
-      error: (err) => console.error('審核通過失敗', err)
+      error: (err) => console.error('審核通過失敗', err),
     });
   }
 
@@ -55,9 +55,12 @@ export class ReviewComponent implements OnInit {
   reject(id: number) {
     this.http.post(`/api/review/reject/${id}`, {}).subscribe({
       next: () => {
-        this.pendingItems = this.pendingItems.filter(item => item.id !== id);
+        this.pendingItems = this.pendingItems.filter((item) => item.id !== id);
       },
-      error: (err) => console.error('駁回失敗', err)
+      error: (err) => console.error('駁回失敗', err),
     });
   }
 }
+
+// 保留既有測試與其他前端引用使用的類別名稱。
+export { ReviewComponent as Review };

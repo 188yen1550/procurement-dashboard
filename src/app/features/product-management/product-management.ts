@@ -18,7 +18,7 @@ export interface Product {
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './product-management.html',
-  styleUrl: './product-management.scss'
+  styleUrl: './product-management.scss',
 })
 export class ProductManagement implements OnInit {
   products: Product[] = [];
@@ -58,7 +58,7 @@ export class ProductManagement implements OnInit {
       error: (err) => {
         console.error('載入品項失敗', err);
         this.isLoading = false;
-      }
+      },
     });
   }
 
@@ -74,9 +74,11 @@ export class ProductManagement implements OnInit {
   deleteProduct(id: number) {
     this.http.delete(`/api/products/${id}`).subscribe({
       next: () => {
-        this.products = this.products.filter(p => p.id !== id);
+        this.products = this.products.filter((p) => p.id !== id);
       },
-      error: (err) => console.error('刪除失敗', err)
+      error: (err) => {
+        console.error('刪除失敗', err);
+      },
     });
   }
 }

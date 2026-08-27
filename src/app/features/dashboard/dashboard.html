@@ -1,6 +1,243 @@
-   <div *ngFor="let item of aiRecommendations">
-     {{ item.rank }}. {{ item.name }} - {{ item.score }}分
-   </div>
-   <a routerLink="/products/new">測試：前往新增品項表單</a>
-  <br>
-   <a routerLink="/products">測試：前往品項列表</a>
+<div class="dashboard-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Dashboard</p>
+      <h1>選品決策儀表板</h1>
+      <p>整理候選資料與 AI 建議，所有核准結果仍由管理人員決定。</p>
+    </div>
+    <div class="data-time">
+      <span aria-hidden="true">●</span> Mock 資料更新：{{ data.generatedAt }}
+    </div>
+  </header>
+
+  <section class="state-preview" aria-labelledby="state-preview-title">
+    <div>
+      <strong id="state-preview-title">UI 狀態預覽</strong><span>純前端展示，不呼叫 API</span>
+    </div>
+    <div class="state-actions">
+      <button
+        type="button"
+        aria-label="切換至一般狀態"
+        [attr.aria-pressed]="uiState() === 'default'"
+        [class.active]="uiState() === 'default'"
+        (click)="setUiState('default')"
+      >
+        一般
+      </button>
+      <button
+        type="button"
+        aria-label="切換至鎖定狀態"
+        [attr.aria-pressed]="uiState() === 'locked'"
+        [class.active]="uiState() === 'locked'"
+        (click)="setUiState('locked')"
+      >
+        鎖定
+      </button>
+      <button
+        type="button"
+        aria-label="切換至載入狀態"
+        [attr.aria-pressed]="uiState() === 'loading'"
+        [class.active]="uiState() === 'loading'"
+        (click)="setUiState('loading')"
+      >
+        載入
+      </button>
+      <button
+        type="button"
+        aria-label="切換至例外狀態"
+        [attr.aria-pressed]="uiState() === 'edge'"
+        [class.active]="uiState() === 'edge'"
+        (click)="setUiState('edge')"
+      >
+        例外
+      </button>
+    </div>
+  </section>
+
+  @if (uiState() === 'loading') {
+    <div class="loading-status" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>正在整理統計與 AI 評分結果…
+    </div>
+    <section class="stats-grid" aria-label="統計資料載入中">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="skeleton-card"><span></span><strong></strong><small></small></div>
+      }
+    </section>
+    <div class="content-grid">
+      <section class="panel skeleton-panel" aria-label="推薦清單載入中">
+        <span></span><span></span><span></span><span></span>
+      </section>
+      <section class="panel skeleton-panel short" aria-label="風險資料載入中">
+        <span></span><span></span><span></span>
+      </section>
+    </div>
+  } @else {
+    @if (uiState() === 'locked') {
+      <div class="notice locked-notice" role="status">
+        <strong>已審核資料鎖定示範</strong> 已通過選品審核的核心條件為唯讀，相關操作按鈕已停用。
+      </div>
+    }
+
+    @if (uiState() === 'edge') {
+      <div class="notice error-notice" role="alert">
+        <div>
+          <strong>部分資料無法更新</strong>模擬 409
+          Conflict：此品項已由另一位管理人員完成審核，請重新載入最新狀態。
+        </div>
+        <button type="button" (click)="retry()">重新載入</button>
+      </div>
+      <section class="incomplete-card" aria-labelledby="incomplete-title">
+        <div class="completeness" aria-label="資料完整度 48%">48%</div>
+        <div>
+          <span class="warning-badge">資料待補</span>
+          <h2 id="incomplete-title">{{ incompleteRecommendation.name }}</h2>
+          <p>{{ incompleteRecommendation.aiReason }}</p>
+        </div>
+        <button type="button" (click)="openConflictDialog()">模擬審核衝突</button>
+      </section>
+    }
+
+    <section class="stats-grid" aria-label="選品統計">
+      <article class="stat-card total">
+        <span>候選商品總數</span><strong>{{ data.statistics.totalProducts }}</strong
+        ><small>目前正式候選池</small>
+      </article>
+      <article class="stat-card pending">
+        <span>待人工審核</span><strong>{{ data.statistics.pendingReviews }}</strong
+        ><small>需要管理人員決策</small>
+      </article>
+      <article class="stat-card approved">
+        <span>通過選品審核</span><strong>{{ data.statistics.approvedProducts }}</strong
+        ><small>不代表已上架或已銷售</small>
+      </article>
+      <article class="stat-card rejected">
+        <span>未通過</span><strong>{{ data.statistics.rejectedProducts }}</strong
+        ><small>可修改後重新送審</small>
+      </article>
+    </section>
+
+    <div class="content-grid">
+      <section class="panel recommendations-panel" aria-labelledby="recommendations-title">
+        <header class="panel-header">
+          <div>
+            <p class="eyebrow">Final Score Ranking</p>
+            <h2 id="recommendations-title">AI 推薦 Top 10</h2>
+          </div>
+          <span class="helper-text">AI 推薦不代表自動核准</span>
+        </header>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>商品與推薦理由</th>
+                <th>完整度</th>
+                <th>最終分數</th>
+                <th>審核狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of recommendations(); track item.id) {
+                <tr [class.locked-row]="item.reviewStatus === 'APPROVED'">
+                  <td>
+                    <span class="rank">{{ item.rank }}</span>
+                  </td>
+                  <td class="product-cell">
+                    <strong>{{ item.name }}</strong
+                    ><span>{{ item.category }}</span>
+                    <p>{{ item.aiReason }}</p>
+                    @if (item.submissionCount > 1) {
+                      <span class="resubmission"
+                        >曾被拒絕 · 第 {{ item.submissionCount }} 次送審</span
+                      >
+                      <small>{{ item.previousRejectionSummary }}</small>
+                    }
+                  </td>
+                  <td>
+                    <span [class.incomplete]="item.completeness < 60"
+                      >{{ item.completeness }}%</span
+                    >
+                  </td>
+                  <td>
+                    <strong class="score">{{ item.finalScore }}</strong>
+                  </td>
+                  <td>
+                    <span class="status" [attr.data-status]="item.reviewStatus">{{
+                      statusLabel(item.reviewStatus)
+                    }}</span>
+                  </td>
+                  <td>
+                    @if (item.reviewStatus === 'APPROVED') {
+                      <button
+                        type="button"
+                        class="table-action"
+                        disabled
+                        title="已審核通過，核心資料鎖定"
+                      >
+                        已鎖定
+                      </button>
+                    } @else {
+                      <button type="button" class="table-action">查看評估</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="side-column">
+        <section class="panel conversion-panel" aria-labelledby="conversion-title">
+          <div class="conversion-ring" [style.--rate]="data.statistics.conversionRate + '%'">
+            <strong>{{ data.statistics.conversionRate }}%</strong><span>核准率</span>
+          </div>
+          <div>
+            <p class="eyebrow">Conversion</p>
+            <h2 id="conversion-title">選品轉換率</h2>
+            <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
+          </div>
+        </section>
+        <section class="panel risk-panel" aria-labelledby="risk-title">
+          <header class="panel-header">
+            <div>
+              <p class="eyebrow">Risk Alerts</p>
+              <h2 id="risk-title">高風險提示</h2>
+            </div>
+            <span class="risk-count">{{ data.riskAlerts.length }}</span>
+          </header>
+          <div class="risk-list">
+            @for (risk of data.riskAlerts; track risk.id) {
+              <article class="risk-item" [attr.data-level]="risk.level">
+                <div>
+                  <strong>{{ risk.productName }}</strong
+                  ><span>{{ risk.level === 'HIGH' ? '高風險' : '需留意' }}</span>
+                </div>
+                <p>{{ risk.message }}</p>
+                <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
+              </article>
+            }
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
+
+  @if (conflictDialogOpen()) {
+    <div class="dialog-backdrop" role="presentation">
+      <section
+        class="alert-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="conflict-title"
+      >
+        <span class="dialog-icon" aria-hidden="true">!</span>
+        <h2 id="conflict-title">審核狀態已變更</h2>
+        <p>此商品已被其他管理人員完成審核（409 Conflict）。請關閉視窗並重新載入最新資料。</p>
+        <button type="button" (click)="closeConflictDialog()">我知道了</button>
+      </section>
+    </div>
+  }
+</div>
+

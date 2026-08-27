@@ -1,44 +1,52 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { AuthService } from '../../core/auth/auth';
-import { RouterLink } from '@angular/router';
-
+import { Component, computed, signal } from '@angular/core';
+import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
+import { DashboardRecommendation, DashboardUiState, ReviewStatus } from './dashboard.models';
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
-  imports: [CommonModule,RouterLink],
+  imports: [],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.scss'
+  styleUrl: './dashboard.scss',
 })
-export class DashboardComponent {
+export class Dashboard {
+  readonly data = DASHBOARD_MOCK_DATA;
+  readonly incompleteRecommendation = INCOMPLETE_RECOMMENDATION;
+  readonly uiState = signal<DashboardUiState>('default');
+  readonly conflictDialogOpen = signal(false);
 
-  // 1. 統計卡片資料 (例如：總品項數、待審核數...)
-  statsData = {
-    totalProducts: 1250,
-    pendingReview: 8,
-    activeAlerts: 3
-  };
+  readonly recommendations = computed<readonly DashboardRecommendation[]>(() => {
+    if (this.uiState() !== 'locked') return this.data.recommendations;
 
-  // 2. AI 推薦 Top 10 假資料
-  aiRecommendations = [
-    { rank: 1, name: '精選商品 A', score: 95 },
-    { rank: 2, name: '精選商品 B', score: 92 },
-    { rank: 3, name: '精選商品 C', score: 89 }
-    // 可以依需求補到 10 筆
-  ];
+    return this.data.recommendations.map((item) => ({
+      ...item,
+      reviewStatus: 'APPROVED' as const,
+    }));
+  });
 
-  // 3. 高風險示警假資料
-  riskAlerts = [
-    { id: 1, message: '品項 X 庫存偏低，建議即時補貨', level: 'high' },
-    { id: 2, message: '品項 Y 近期退貨率異常升高', level: 'medium' }
-  ];
+  public setUiState(state: DashboardUiState): void {
+    this.uiState.set(state);
+    this.conflictDialogOpen.set(false);
+  }
 
-  // 4. 選品轉換率資料
-  conversionData = {
-    rate: 15.8,
-    trend: '+2.4%' // 相比上週
-  };
+  public openConflictDialog(): void {
+    this.conflictDialogOpen.set(true);
+  }
 
-  constructor(public authService: AuthService) {}
+  public closeConflictDialog(): void {
+    this.conflictDialogOpen.set(false);
+  }
+
+  public retry(): void {
+    this.uiState.set('loading');
+    setTimeout(() => this.uiState.set('default'), 700);
+  }
+
+  public statusLabel(status: ReviewStatus): string {
+    const labels: Record<ReviewStatus, string> = {
+      PENDING: '未審核',
+      APPROVED: '已通過選品審核',
+      REJECTED: '未通過',
+    };
+    return labels[status];
+  }
 }

@@ -1,63 +1,115 @@
-// 變數設定
+// ========================================
+// 1. 登入頁色彩與樣式變數
+// ========================================
+
+// 主要品牌色
 $primary-blue: #1c5286;
+
+// 按鈕滑鼠移入時的顏色
 $primary-hover: #153e66;
+
+// 左側品牌區漸層背景色
 $bg-dark-start: #0a2540;
 $bg-dark-end: #004b6e;
+
+// 文字顏色
 $text-main: #2c3e50;
 $text-muted: #6c7a89;
+
+// 輸入框與卡片邊框
 $border-color: #e2e8f0;
+
+// 錯誤狀態顏色
+$error-color: #c62828;
+
+// 卡片背景與陰影
 $card-bg: #ffffff;
 $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
+// ========================================
+// 2. 登入頁元件根節點
+// ========================================
+
 :host {
   display: block;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  width: 100%;
+
+  // 使用 dvh，避免手機瀏覽器網址列造成 100vh 高度錯誤
+  min-height: 100dvh;
+
+  // 防止內容超出手機螢幕左右範圍
+  overflow-x: hidden;
+
+  // 小螢幕或橫向模式時允許上下捲動
+  overflow-y: auto;
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
   color: $text-main;
   background-color: #f8fafc;
 }
 
-// 主容器雙欄配置
+// ========================================
+// 3. 登入頁主容器
+// ========================================
+
 .login-container {
   display: flex;
   width: 100%;
-  height: 100%;
+  min-height: 100dvh;
 
-  // 左側:科技背景區
+  // ======================================
+  // 3-1. 左側品牌視覺區
+  // ======================================
+
   .brand-panel {
-    flex: 1;
     position: relative;
-    background: linear-gradient(135deg, $bg-dark-start 0%, $bg-dark-end 100%);
+
+    // 左右兩區各占一半空間
+    flex: 1;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     overflow: hidden;
 
+    background: linear-gradient(135deg, $bg-dark-start 0%, $bg-dark-end 100%);
+
+    // 背景點狀科技紋理
     &::before {
       content: '';
       position: absolute;
+
       width: 200%;
       height: 200%;
+
       background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+
       background-size: 30px 30px;
       opacity: 0.6;
     }
 
+    // 背景大型圓形裝飾
     &::after {
       content: '';
       position: absolute;
-      width: 600px;
-      height: 600px;
-      border: 2px solid rgba(0, 180, 216, 0.15);
-      border-radius: 50%;
+
       top: 50%;
       left: 50%;
+
+      width: 600px;
+      height: 600px;
+
+      border: 2px solid rgba(0, 180, 216, 0.15);
+      border-radius: 50%;
+
       transform: translate(-50%, -50%);
       box-shadow: 0 0 50px rgba(0, 180, 216, 0.1);
     }
 
+    // 品牌 Logo 容器
     .brand-content {
       position: relative;
       z-index: 2;
@@ -65,127 +117,256 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
       .logo-icon {
         width: 120px;
         height: 120px;
+
         color: #00b4d8;
+
         filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
       }
     }
 
+    // 平板與手機版隱藏左側品牌區
     @media (max-width: 900px) {
       display: none;
     }
   }
 
-  // 右側:表單區
+  // ======================================
+  // 3-2. 右側登入表單區
+  // ======================================
+
   .form-panel {
     flex: 1;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background-color: #f4f6f9;
+
+    min-width: 0;
     padding: 2rem;
 
+    background-color: #f4f6f9;
+
+    // 平板與手機版改成單欄滿版
     @media (max-width: 900px) {
       flex: none;
+
       width: 100%;
-      height: 100%;
+      min-height: 100dvh;
+      padding: 1rem;
     }
   }
 }
+
+// ========================================
+// 4. 登入卡片與頁尾的置中容器
+// ========================================
 
 .login-card-wrapper {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
+
+  width: 100%;
 }
 
+// ========================================
+// 5. 登入卡片
+// ========================================
+
 .login-card {
-  background: $card-bg;
   width: 100%;
   max-width: 400px;
   padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: $shadow-card;
+
+  background-color: $card-bg;
+
   border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+
+  box-shadow: $shadow-card;
+
+  // 手機版縮小卡片內距，避免內容過於擁擠或超寬
+  @media (max-width: 480px) {
+    padding: 1.5rem;
+  }
+
+  // ======================================
+  // 5-1. 卡片標題區
+  // ======================================
 
   .card-header {
-    text-align: center;
     margin-bottom: 2rem;
+    text-align: center;
 
+    // 卡片上方小型 Logo
     .logo-icon-small {
       width: 48px;
       height: 48px;
-      color: $primary-blue;
       margin-bottom: 0.5rem;
+
+      color: $primary-blue;
     }
 
+    // 登入頁主標題
     .card-title {
+      margin: 0 0 0.25rem;
+
+      color: $text-main;
+
       font-size: 1.5rem;
       font-weight: 700;
-      color: $text-main;
-      margin-bottom: 0.25rem;
     }
 
+    // 登入頁副標題
     .card-subtitle {
-      font-size: 0.875rem;
+      margin: 0;
+
       color: $text-muted;
+
+      font-size: 0.875rem;
     }
   }
 }
 
+// ========================================
+// 6. 登入表單
+// ========================================
+
 .login-form {
+  width: 100%;
+
+  // ======================================
+  // 6-1. 單一表單欄位
+  // ======================================
+
   .form-group {
     margin-bottom: 1.25rem;
 
+    // 輸入欄位標籤
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+
+      color: $text-main;
+
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    // 輸入框和圖示的定位容器
     .input-wrapper {
       position: relative;
+
       display: flex;
       align-items: center;
 
+      // 帳號、密碼的裝飾圖示
       .input-icon {
         position: absolute;
+        z-index: 1;
         left: 12px;
+
         font-size: 0.9rem;
+
+        // 圖示只是裝飾，因此降低視覺強度
         opacity: 0.5;
+
+        // 避免圖示擋住輸入框點擊
+        pointer-events: none;
       }
 
+      // 帳號與密碼輸入框
       input {
         width: 100%;
+        min-width: 0;
+
+        // 左側留出圖示空間
         padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-        border: 1px solid $border-color;
-        border-radius: 6px;
-        font-size: 0.95rem;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
+
+        color: $text-main;
         background-color: #f8fafc;
 
+        border: 1px solid $border-color;
+        border-radius: 6px;
+        outline: none;
+
+        font: inherit;
+        font-size: 0.95rem;
+
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s,
+          background-color 0.2s;
+
+        // Placeholder 提示文字
+        &::placeholder {
+          color: $text-muted;
+          opacity: 0.85;
+        }
+
+        // 輸入框取得焦點
         &:focus {
-          border-color: $primary-blue;
           background-color: #ffffff;
+          border-color: $primary-blue;
+
           box-shadow: 0 0 0 3px rgba(28, 82, 134, 0.1);
+        }
+
+        // 已碰觸且驗證失敗的輸入框
+        &.ng-invalid.ng-touched {
+          border-color: $error-color;
+        }
+
+        // 錯誤欄位取得焦點時使用紅色提示
+        &.ng-invalid.ng-touched:focus {
+          border-color: $error-color;
+
+          box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.12);
         }
       }
     }
   }
 
+  // ======================================
+  // 6-2. 登入按鈕
+  // ======================================
+
   .btn-primary {
     width: 100%;
+    margin-top: 0.5rem;
     padding: 0.8rem;
-    background-color: $primary-blue;
+
     color: #ffffff;
+    background-color: $primary-blue;
+
     border: none;
     border-radius: 6px;
+
+    font: inherit;
     font-size: 1rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 0.5rem;
 
-    &:hover {
+    cursor: pointer;
+
+    transition:
+      background-color 0.2s,
+      box-shadow 0.2s,
+      opacity 0.2s;
+
+    // 滑鼠移入按鈕
+    &:not(:disabled):hover {
       background-color: $primary-hover;
     }
 
+    // 鍵盤操作時顯示清楚的焦點框
+    &:focus-visible {
+      outline: 3px solid rgba(28, 82, 134, 0.3);
+      outline-offset: 2px;
+    }
+
+    // 登入處理中禁止重複操作
     &:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -193,23 +374,165 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   }
 }
 
-.error-message {
-  font-size: 0.85rem;
-  color: #d9534f;
-  margin: -0.5rem 0 0.75rem;
+// ========================================
+// 7. 原型測試帳號快速帶入區
+// 正式串接登入 API 後可整段移除。
+// ========================================
+
+.demo-accounts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: #f1f7fc;
+  border: 1px dashed #b9cee0;
+  border-radius: 0.5rem;
+
+  p,
+  span {
+    margin: 0;
+  }
+
+  p {
+    color: $text-main;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  span {
+    display: block;
+    margin-top: 0.2rem;
+    color: $text-muted;
+    font-size: 0.7rem;
+  }
 }
+
+.demo-account-actions {
+  display: flex;
+  gap: 0.4rem;
+
+  button {
+    padding: 0.4rem 0.55rem;
+    color: $primary-blue;
+    background: #fff;
+    border: 1px solid #b9cee0;
+    border-radius: 0.4rem;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover {
+      color: #fff;
+      background: $primary-blue;
+      border-color: $primary-blue;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(28, 82, 134, 0.25);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ========================================
+// 8. 欄位驗證錯誤訊息
+// ========================================
+
+.field-error {
+  margin: 0.375rem 0 0;
+
+  color: $error-color;
+
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+// ========================================
+// 9. 登入 API 或帳密錯誤訊息
+// ========================================
+
+.error-message {
+  margin: -0.5rem 0 0.75rem;
+
+  color: $error-color;
+
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+// ========================================
+// 10. 登入頁底部資訊
+// ========================================
 
 .system-footer {
   margin-top: 2rem;
-  font-size: 0.75rem;
+
   color: $text-muted;
+
+  font-size: 0.75rem;
+  line-height: 1.5;
   text-align: center;
 
+  // 隱私權政策連結
   a {
     color: $text-muted;
     text-decoration: none;
+
     &:hover {
       text-decoration: underline;
     }
+
+    // 鍵盤操作的焦點提示
+    &:focus-visible {
+      outline: 2px solid $primary-blue;
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+  }
+}
+
+// ========================================
+// 11. 矮螢幕與手機橫向模式
+// ========================================
+
+@media (max-height: 650px) {
+  .login-card-wrapper {
+    // 高度不足時不要強制完全垂直置中
+    justify-content: flex-start;
+    padding-top: 1rem;
+  }
+
+  .login-card {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .login-card .card-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .system-footer {
+    margin-top: 1.25rem;
+  }
+
+  .demo-accounts {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+// ========================================
+// 12. 減少動態效果設定
+// 使用者若在作業系統開啟「減少動畫」，
+// 移除不必要的過場效果。
+// ========================================
+
+@media (prefers-reduced-motion: reduce) {
+  .login-form input,
+  .login-form .btn-primary {
+    transition: none;
   }
 }

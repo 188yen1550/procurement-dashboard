@@ -1,1 +1,56 @@
-<p>sidebar works!</p>
+<aside class="sidebar" [class.is-open]="isOpen" aria-label="主要導覽">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">◆</span>
+    <div>
+      <strong>選品決策</strong>
+      <span>Procurement AI</span>
+    </div>
+
+    <button
+      type="button"
+      class="close-button"
+      aria-label="關閉導覽選單"
+      (click)="closeRequested.emit()"
+    >
+      ×
+    </button>
+  </div>
+
+  <nav class="navigation" aria-label="後台功能">
+    <p class="nav-label">工作區</p>
+
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="closeRequested.emit()"
+    >
+      <span class="nav-icon" aria-hidden="true">▦</span>
+      儀表板
+    </a>
+
+    <a routerLink="/products" routerLinkActive="active" (click)="closeRequested.emit()">
+      <span class="nav-icon" aria-hidden="true">▤</span>
+      品項管理
+    </a>
+
+    @if (isManager) {
+      <a routerLink="/review" routerLinkActive="active" (click)="closeRequested.emit()">
+        <span class="nav-icon" aria-hidden="true">✓</span>
+        選品審核
+      </a>
+
+      <p class="nav-label nav-label-spaced">管理</p>
+
+      <a routerLink="/settings" routerLinkActive="active" (click)="closeRequested.emit()">
+        <span class="nav-icon" aria-hidden="true">⚙</span>
+        系統設定
+      </a>
+    }
+  </nav>
+
+  <div class="sidebar-footer">
+    <span class="status-dot" aria-hidden="true"></span>
+    系統原型模式
+  </div>
+</aside>

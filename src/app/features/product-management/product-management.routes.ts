@@ -10,3 +10,4 @@ export const PRODUCT_ROUTES: Routes = [
   { path: ':id/edit', component: ProductEdit },   // 加這行，注意順序要在 :id 前面！
   { path: ':id', component: ProductDetail },
 ];
+
