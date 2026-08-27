@@ -13,3 +13,6 @@ export class Sidebar {
 
   @Output() readonly closeRequested = new EventEmitter<void>();
 }
+
+// 相容 master 新增的 LayoutComponent 命名，不改變目前 Sidebar 行為。
+export { Sidebar as SidebarComponent };

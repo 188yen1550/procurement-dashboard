@@ -66,8 +66,16 @@ export class Auth {
     return this.currentUser()?.role === 'MANAGER';
   }
 
+  // API 整合層目前仍由其他成員開發；Mock Auth 不建立或保存正式 token。
+  getToken(): string | null {
+    return null;
+  }
+
   logout(): void {
     this.currentUserState.set(null);
     void this.router.navigate(['/login']);
   }
 }
+
+// 暫時保留 master 既有程式使用的名稱，避免合併期間破壞攔截器引用。
+export { Auth as AuthService };

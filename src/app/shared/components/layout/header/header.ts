@@ -12,3 +12,6 @@ export class Header {
   @Output() readonly menuToggle = new EventEmitter<void>();
   @Output() readonly logoutRequested = new EventEmitter<void>();
 }
+
+// 相容 master 新增的 LayoutComponent 命名，不改變目前 Header 行為。
+export { Header as HeaderComponent };
