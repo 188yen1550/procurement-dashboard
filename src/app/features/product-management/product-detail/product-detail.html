@@ -1,0 +1,17 @@
+@if (isLoading) {
+  <p>載入中...</p>
+}
+@if (errorMessage) {
+  <p>{{ errorMessage }}</p>
+}
+@if (product) {
+  <h2>{{ product.name }}</h2>
+  <p>{{ product.description }}</p>
+  <p>供應商：{{ product.supplierName }}</p>
+
+  @if (isLowCompleteness) {
+    <p>⚠️ 資料待補（目前完整度 {{ product.completenessPercent }}%）</p>
+  }
+
+  <a [routerLink]="['/products', product.id, 'edit']">編輯</a>
+}

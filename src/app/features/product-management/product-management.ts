@@ -1,21 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 
 export interface Product {
   id?: number;
   name: string;
   price: number;
   status: string;
-  reviewStatus?: string;   // PENDING / APPROVED / REJECTED
-  itemStatus?: string;     // ACTIVE / ARCHIVED
-  candidateStatus?: string; // CANDIDATE / AI_SUGGESTED
+  reviewStatus?: string;
+  itemStatus?: string;
+  candidateStatus?: string;
 }
 
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './product-management.html',
   styleUrl: './product-management.scss'
 })
@@ -23,7 +24,6 @@ export class ProductManagement implements OnInit {
   products: Product[] = [];
   isLoading = false;
 
-  // 三欄位篩選條件
   filters = {
     reviewStatus: '',
     itemStatus: '',
@@ -33,12 +33,18 @@ export class ProductManagement implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
-    this.loadProducts();
+    // this.loadProducts();  // 後端好了之後，改回這行
+
+    // ↓↓↓ 暫時測試用假資料，後端確認好之後刪掉這段 ↓↓↓
+    this.products = [
+      { id: 1, name: '測試商品A', price: 100, status: 'ACTIVE', reviewStatus: 'PENDING' },
+      { id: 2, name: '測試商品B', price: 200, status: 'ACTIVE', reviewStatus: 'APPROVED' },
+      { id: 3, name: '測試商品C', price: 300, status: 'ACTIVE', reviewStatus: 'REJECTED' },
+    ];
   }
 
   loadProducts() {
     this.isLoading = true;
-    // 把篩選條件組成query params
     const params: any = {};
     if (this.filters.reviewStatus) params.reviewStatus = this.filters.reviewStatus;
     if (this.filters.itemStatus) params.itemStatus = this.filters.itemStatus;
@@ -57,7 +63,7 @@ export class ProductManagement implements OnInit {
   }
 
   onFilterChange() {
-    this.loadProducts(); // 篩選條件一變就重新打API
+    this.loadProducts();
   }
 
   resetFilters() {
