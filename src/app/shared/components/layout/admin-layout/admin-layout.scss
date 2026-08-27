@@ -1,0 +1,68 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #243447;
+  background: #f4f7fb;
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100dvh;
+}
+
+.admin-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  margin-left: 264px;
+}
+
+.page-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+  outline: none;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 1200;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  background: #153e66;
+  border-radius: 0.5rem;
+  transform: translateY(-160%);
+
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .admin-main {
+    margin-left: 0;
+  }
+
+  .page-content {
+    padding: 1rem;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    z-index: 900;
+    inset: 0;
+    display: block;
+    padding: 0;
+    background: rgba(15, 35, 55, 0.5);
+    border: 0;
+  }
+}

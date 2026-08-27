@@ -1,64 +1,172 @@
+<!-- 登入頁主要容器 -->
 <div class="login-container">
-
-  <!-- 左側:品牌與科技感背景區 -->
-  <div class="brand-panel">
+  <!-- =====================================
+       左側：品牌與科技背景區
+       手機版會透過 CSS 隱藏
+       ===================================== -->
+  <div class="brand-panel" aria-hidden="true">
     <div class="brand-content">
-      <svg viewBox="0 0 100 100" class="logo-icon">
-        <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
-        <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
-        <path d="M40 70 L80 70 L60 90 L20 90 Z" fill="currentColor"/>
+      <!-- 品牌 Logo，目前使用 SVG 圖形 -->
+      <svg viewBox="0 0 100 100" class="logo-icon" focusable="false">
+        <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor" />
+        <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor" />
+        <path d="M40 70 L80 70 L60 90 L20 90 Z" fill="currentColor" />
       </svg>
     </div>
   </div>
 
-  <!-- 右側:表單與操作區 -->
+  <!-- =====================================
+       右側：登入表單與操作區
+       ===================================== -->
   <div class="form-panel">
-
-    <!-- 主要登入卡片 -->
+    <!-- 登入頁主要內容 -->
     <main class="login-card-wrapper">
-      <div class="login-card">
-
-        <div class="card-header">
-          <svg viewBox="0 0 100 100" class="logo-icon-small">
-            <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor"/>
-            <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor"/>
+      <section class="login-card" aria-labelledby="login-title">
+        <!-- 登入卡片標題區 -->
+        <header class="card-header">
+          <!-- 小型品牌 Logo，純裝飾用途 -->
+          <svg viewBox="0 0 100 100" class="logo-icon-small" aria-hidden="true" focusable="false">
+            <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor" />
+            <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor" />
           </svg>
-          <h1 class="card-title">企業系統登入</h1>
+
+          <!-- 頁面主標題 -->
+          <h1 id="login-title" class="card-title">企業系統登入</h1>
+
+          <!-- 頁面說明 -->
           <p class="card-subtitle">歡迎使用企業決策系統</p>
-        </div>
+        </header>
 
-        <form class="login-form" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-          <div class="form-group">
-            <div class="input-wrapper">
-              <span class="input-icon">👤</span>
-              <input type="text" formControlName="username" placeholder="帳號 / 電子郵件" autocomplete="username">
-            </div>
+        <!-- 原型階段提供兩種角色快速登入，串接後端後移除此區塊。 -->
+        <section class="demo-accounts" aria-labelledby="demo-accounts-title">
+          <div>
+            <p id="demo-accounts-title">原型測試角色</p>
+            <span>共用密碼：demo123</span>
           </div>
 
+          <div class="demo-account-actions">
+            <button type="button" (click)="useMockAccount('purchaser')">操作人員</button>
+            <button type="button" (click)="useMockAccount('manager')">管理人員</button>
+          </div>
+        </section>
+
+        <!-- =================================
+             登入表單
+             novalidate：關閉瀏覽器原生提示，
+             統一使用 Angular 顯示驗證訊息
+             ================================= -->
+        <form class="login-form" [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+          <!-- ===============================
+               帳號欄位
+               =============================== -->
           <div class="form-group">
+            <label for="username"> 帳號或電子郵件 </label>
+
             <div class="input-wrapper">
-              <span class="input-icon">🔒</span>
-              <input type="password" formControlName="password" placeholder="密碼" autocomplete="current-password">
+              <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
+              <span class="input-icon" aria-hidden="true"> 👤 </span>
+
+              <input
+                id="username"
+                type="text"
+                formControlName="username"
+                placeholder="請輸入帳號或電子郵件"
+                autocomplete="username"
+                [attr.aria-invalid]="
+                  loginForm.controls.username.invalid && loginForm.controls.username.touched
+                "
+                [attr.aria-describedby]="
+                  loginForm.controls.username.invalid && loginForm.controls.username.touched
+                    ? 'username-error'
+                    : null
+                "
+              />
             </div>
+
+            <!--
+              使用者碰過帳號欄位，且沒有輸入資料時，
+              才顯示必填錯誤。
+            -->
+            @if (
+              loginForm.controls.username.touched &&
+              loginForm.controls.username.hasError('required')
+            ) {
+              <p id="username-error" class="field-error" role="alert">請輸入帳號或電子郵件</p>
+            }
           </div>
 
+          <!-- ===============================
+               密碼欄位
+               =============================== -->
+          <div class="form-group">
+            <label for="password"> 密碼 </label>
+
+            <div class="input-wrapper">
+              <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
+              <span class="input-icon" aria-hidden="true"> 🔒 </span>
+
+              <input
+                id="password"
+                type="password"
+                formControlName="password"
+                placeholder="請輸入密碼"
+                autocomplete="current-password"
+                [attr.aria-invalid]="
+                  loginForm.controls.password.invalid && loginForm.controls.password.touched
+                "
+                [attr.aria-describedby]="
+                  loginForm.controls.password.invalid && loginForm.controls.password.touched
+                    ? 'password-error'
+                    : null
+                "
+              />
+            </div>
+
+            <!--
+              使用者碰過密碼欄位，且沒有輸入資料時，
+              才顯示必填錯誤。
+            -->
+            @if (
+              loginForm.controls.password.touched &&
+              loginForm.controls.password.hasError('required')
+            ) {
+              <p id="password-error" class="field-error" role="alert">請輸入密碼</p>
+            }
+          </div>
+
+          <!-- ===============================
+               登入失敗訊息
+               未來後端回傳帳密錯誤時顯示
+               =============================== -->
           @if (errorMessage) {
-            <p class="error-message">{{ errorMessage }}</p>
+            <p class="error-message" role="alert" aria-live="polite">
+              {{ errorMessage }}
+            </p>
           }
 
-          <button type="submit" class="btn-primary" [disabled]="isLoading">
+          <!-- ===============================
+               登入按鈕
+               登入處理中禁止重複送出
+               =============================== -->
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="isLoading"
+            [attr.aria-busy]="isLoading"
+          >
             {{ isLoading ? '登入中...' : '登入' }}
           </button>
         </form>
+      </section>
 
-      </div>
-
-      <!-- 頁尾宣告 -->
+      <!-- =====================================
+           頁尾資訊
+           隱私權頁面完成後替換 href
+           ===================================== -->
       <footer class="system-footer">
-        Global Connect Corp. © 2026 | <a href="#">隱私權政策</a>
+        Global Connect Corp. © 2026 |
+        <a href="#"> 隱私權政策 </a>
       </footer>
     </main>
-
   </div>
-
 </div>

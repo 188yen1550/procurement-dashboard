@@ -1,0 +1,161 @@
+:host {
+  position: fixed;
+  z-index: 1000;
+  inset: 0 auto 0 0;
+  width: 264px;
+}
+
+.sidebar {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  color: #d8e6f2;
+  background: linear-gradient(180deg, #0a2540 0%, #103c5a 100%);
+  box-shadow: 8px 0 24px rgba(10, 37, 64, 0.12);
+}
+
+.brand {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    color: #fff;
+    font-size: 1rem;
+  }
+
+  div > span {
+    margin-top: 0.1rem;
+    color: #91abc0;
+    font-size: 0.7rem;
+  }
+}
+
+.brand-mark {
+  color: #00b4d8;
+  font-size: 1.6rem;
+}
+
+.close-button {
+  display: none;
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  font-size: 1.75rem;
+  cursor: pointer;
+}
+
+.navigation {
+  flex: 1;
+  padding: 1rem 0.75rem;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+    padding: 0.75rem 0.9rem;
+    color: #c6d7e5;
+    border-radius: 0.6rem;
+    text-decoration: none;
+    transition:
+      color 0.2s,
+      background-color 0.2s;
+
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.active {
+      color: #fff;
+      background: #1c5286;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(0, 180, 216, 0.45);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.nav-label {
+  margin: 0 0 0.5rem;
+  padding: 0 0.9rem;
+  color: #7894aa;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nav-label-spaced {
+  margin-top: 1.5rem;
+}
+
+.nav-icon {
+  display: inline-grid;
+  width: 1.4rem;
+  place-items: center;
+  font-size: 1rem;
+}
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 1rem 1rem;
+  padding: 0.75rem;
+  color: #91abc0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.6rem;
+  font-size: 0.75rem;
+}
+
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #2dd4bf;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.12);
+}
+
+@media (max-width: 900px) {
+  :host {
+    pointer-events: none;
+  }
+
+  .sidebar {
+    max-width: 300px;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+
+    &.is-open {
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+  }
+
+  .close-button {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .navigation a {
+    transition: none;
+  }
+}

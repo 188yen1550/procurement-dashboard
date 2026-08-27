@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-header',
@@ -6,4 +6,9 @@ import { Component } from '@angular/core';
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })
-export class Header {}
+export class Header {
+  @Input() roleLabel = '操作人員';
+
+  @Output() readonly menuToggle = new EventEmitter<void>();
+  @Output() readonly logoutRequested = new EventEmitter<void>();
+}

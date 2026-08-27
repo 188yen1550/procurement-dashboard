@@ -1,45 +1,73 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+export type UserRole = 'PURCHASER' | 'MANAGER';
+export type MockUsername = 'purchaser' | 'manager';
+
+export interface MockUser {
+  username: MockUsername;
+  name: string;
+  role: UserRole;
+}
+
+interface MockAccount extends MockUser {
+  password: string;
+}
+
+const MOCK_ACCOUNTS: readonly MockAccount[] = [
+  {
+    username: 'purchaser',
+    password: 'demo123',
+    name: '操作測試人員',
+    role: 'PURCHASER',
+  },
+  {
+    username: 'manager',
+    password: 'demo123',
+    name: '管理測試人員',
+    role: 'MANAGER',
+  },
+];
+
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class Auth {
-  private tokenKey = 'access_token';
+  private readonly currentUserState = signal<MockUser | null>(null);
 
-  constructor(private http: HttpClient, private router: Router) {}
+  readonly currentUser = this.currentUserState.asReadonly();
 
-  login(username: string, password: string) {
-    return this.http.post<{ token: string }>('/api/auth/login', { username, password });
-  }
+  constructor(private readonly router: Router) {}
 
-  saveToken(token: string) {
-    localStorage.setItem(this.tokenKey, token);
-  }
+  login(username: string, password: string): MockUser | null {
+    const account = MOCK_ACCOUNTS.find(
+      (item) => item.username === username.trim().toLowerCase() && item.password === password,
+    );
 
-  getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    if (!account) {
+      return null;
+    }
+
+    const user: MockUser = {
+      username: account.username,
+      name: account.name,
+      role: account.role,
+    };
+
+    this.currentUserState.set(user);
+    return user;
   }
 
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    return this.currentUser() !== null;
   }
 
   isManager(): boolean {
-    const token = this.getToken();
-    if (!token) return false;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.role === 'manager';
-    } catch {
-      return false;
-    }
+    return this.currentUser()?.role === 'MANAGER';
   }
 
-  logout() {
-    localStorage.removeItem(this.tokenKey);
-    this.router.navigate(['/login']);
+  logout(): void {
+    this.currentUserState.set(null);
+    void this.router.navigate(['/login']);
   }
 }
