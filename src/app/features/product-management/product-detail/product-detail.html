@@ -14,4 +14,60 @@
   }
 
   <a [routerLink]="['/products', product.id, 'edit']">編輯</a>
+
+  @if (canResubmit) {
+    <button (click)="resubmit()">重新送審</button>
+  }
+  @if (canArchive) {
+    <button (click)="archive()">封存</button>
+  }
+  @if (canRestore) {
+    <button (click)="restore()">復用</button>
+  }
+  @if (canPromote) {
+    <button (click)="promote()">加入候選</button>
+  }
+  @if (canDelete) {
+    <button (click)="deleteProduct()">刪除</button>
+  }
+}
+
+@if (isLoadingEvaluation) {
+  <p>評估分數載入中...</p>
+}
+
+@if (evaluation) {
+  <hr>
+  <h3>評估分數 <span>({{ dataSourceLabel }})</span></h3>
+
+  <p>評估模式：{{ evaluation.evaluationModeName }}</p>
+
+  <ul>
+    <li>商業條件：{{ evaluation.businessScore }}</li>
+    <li>核心客群匹配度：{{ evaluation.audienceScore }}</li>
+    <li>歷史銷售：{{ evaluation.historicalScore }}</li>
+    <li>預估購買：{{ evaluation.purchaseScore }}</li>
+    <li>市場趨勢：{{ evaluation.trendScore }}</li>
+    <li>預測人氣：{{ evaluation.forecastScore }}</li>
+  </ul>
+
+  <p>基礎分數：{{ evaluation.totalScore }}</p>
+
+  @if (evaluation.festivalBoost > 0) {
+    <p>節慶加成：+{{ evaluation.festivalBoost }}</p>
+  }
+
+  <p><strong>最終分數：{{ evaluation.finalScore }}</strong></p>
+
+  @if (isEvaluationLowCompleteness) {
+    <p>⚠️ 資料完整度僅 {{ evaluation.dataCompleteness }}%，未達60%門檻</p>
+  }
+}
+
+@if (festivalBoost?.matchedCampaign) {
+  <hr>
+  <h3>節慶加成明細</h3>
+  <p>命中檔期：{{ festivalBoost!.matchedCampaign!.campaignName }}</p>
+  <p>命中標籤：{{ festivalBoost!.matchedCampaign!.matchedTags.join('、') }}</p>
+  <p>加成分數：+{{ festivalBoost!.festivalBoost }}</p>
 }
