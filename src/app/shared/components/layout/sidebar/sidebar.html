@@ -29,9 +29,23 @@
       儀表板
     </a>
 
-    <a routerLink="/products" routerLinkActive="active" (click)="closeRequested.emit()">
+    <a
+      routerLink="/products"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="closeRequested.emit()"
+    >
       <span class="nav-icon" aria-hidden="true">▤</span>
       品項管理
+    </a>
+
+    <a
+      routerLink="/products/ai-suggestions"
+      routerLinkActive="active"
+      (click)="closeRequested.emit()"
+    >
+      <span class="nav-icon" aria-hidden="true">✦</span>
+      AI 建議清單
     </a>
 
     @if (isManager) {

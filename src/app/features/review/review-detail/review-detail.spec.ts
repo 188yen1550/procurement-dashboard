@@ -1,22 +1,8 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { ReviewDetail } from './review-detail';
-
-describe('ReviewDetail', () => {
-  let component: ReviewDetail;
-  let fixture: ComponentFixture<ReviewDetail>;
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ReviewDetail],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(ReviewDetail);
-    component = fixture.componentInstance;
-    await fixture.whenStable();
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
+import{ComponentFixture,TestBed}from'@angular/core/testing';import{provideRouter}from'@angular/router';import{ReviewDetail}from'./review-detail';
+describe('ReviewDetail',()=>{let fixture:ComponentFixture<ReviewDetail>;let component:ReviewDetail;beforeEach(async()=>{await TestBed.configureTestingModule({imports:[ReviewDetail],providers:[provideRouter([])]}).compileComponents();fixture=TestBed.createComponent(ReviewDetail);component=fixture.componentInstance;fixture.detectChanges();});
+it('creates with product snapshot and AI disclaimer',()=>{expect(component).toBeTruthy();expect(fixture.nativeElement.textContent).toContain('商品與評估快照');expect(fixture.nativeElement.textContent).toContain('AI 不會自動核准');});
+it('requires a decision',()=>{component.comment.set('測試留言');component.submit();expect(component.submitted()).toBe(false);expect(component.statusMessage()).toContain('請選擇核准結果');});
+it('requires a note for other risk',()=>{component.toggleRisk('其他');component.decision.set('REJECTED');component.comment.set('測試');component.submit();expect(component.statusMessage()).toContain('必須填寫備註');});
+it('submits a complete decision locally',()=>{component.toggleRisk('實際供貨風險');component.decision.set('APPROVED');component.comment.set('確認供貨後通過');component.submit();fixture.detectChanges();expect(component.submitted()).toBe(true);expect(fixture.nativeElement.textContent).toContain('不代表已銷售');});
+it('shows and closes simulated 409 conflict',()=>{component.simulateConflict();fixture.detectChanges();expect(fixture.nativeElement.textContent).toContain('409 Conflict');component.closeConflict();expect(component.conflictOpen()).toBe(false);});
+it('renders disabled loading and error states',()=>{component.setState('disabled');fixture.detectChanges();expect(fixture.nativeElement.querySelector('fieldset').disabled).toBe(true);component.setState('loading');fixture.detectChanges();expect(fixture.nativeElement.textContent).toContain('正在載入審核快照');component.setState('error');fixture.detectChanges();expect(fixture.nativeElement.textContent).toContain('無法載入審核資料');});});

@@ -1,1 +1,536 @@
-<p>settings works!</p>
+<main class="settings-page" aria-labelledby="settings-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Management Settings</p>
+      <h1 id="settings-title">系統設定</h1>
+      <p>管理評估模式、人工風險、核心客群、商品類型、節慶檔期與帳號。</p>
+    </div>
+    <span>僅管理角色</span>
+  </header>
+  <section class="state-bar">
+    <div><strong>UI 狀態</strong><span>managerGuard 持續保護此路由</span></div>
+    <div role="group" aria-label="切換設定頁狀態">
+      @for (state of stateOptions; track state) {
+        <button
+          type="button"
+          [class.active]="pageState() === state"
+          [attr.aria-pressed]="pageState() === state"
+          (click)="setState(state)"
+        >
+          {{ state }}
+        </button>
+      }
+    </div>
+  </section>
+  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  <nav class="tabs" aria-label="設定分類">
+    <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">
+      評估模式</button
+    ><button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
+      人工風險</button
+    ><button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">
+      核心客群</button
+    ><button
+      type="button"
+      [class.active]="activeTab() === 'productTypes'"
+      (click)="setTab('productTypes')"
+    >
+      商品類型</button
+    ><button
+      type="button"
+      [class.active]="activeTab() === 'campaigns'"
+      (click)="setTab('campaigns')"
+    >
+      節慶檔期</button
+    ><button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">
+      帳號管理
+    </button>
+  </nav>
+  @if (pageState() === 'error') {
+    <section class="empty error" role="alert">
+      <h2>無法載入設定</h2>
+      <p>這是本地錯誤模擬，不會呼叫後端。</p>
+      <button type="button" (click)="retry()">重試</button>
+    </section>
+  } @else if (pageState() === 'loading') {
+    <section class="skeleton" role="status">
+      正在載入設定…
+      @for (line of [1, 2, 3, 4, 5]; track line) {
+        <span></span>
+      }
+    </section>
+  } @else if (activeTab() === 'audience') {
+    @if (pageState() === 'disabled') {
+      <section class="notice">
+        <div>
+          <strong>🔒 目前為唯讀預覽</strong
+          ><span>權限不足或更新中時所有欄位停用，原因不只以顏色呈現。</span>
+        </div>
+      </section>
+    }
+    @if (saved()) {
+      <section class="success" role="status">
+        <div><strong>儲存成功</strong><span>已更新本地 Mock 核心客群。</span></div>
+      </section>
+    }
+    <form class="panel" [formGroup]="form" (ngSubmit)="saveAudience()" novalidate>
+      <header>
+        <div>
+          <p class="eyebrow">Audience Profile</p>
+          <h2>核心客群設定</h2>
+          <p>作為品項客群匹配度的計算依據。</p>
+        </div>
+        <span>Version 1 · 使用中</span>
+      </header>
+      <div class="form-grid">
+        <label class="wide"
+          >客群名稱 <em>*</em
+          ><input formControlName="name" [attr.aria-invalid]="fieldInvalid('name')" />
+          @if (fieldInvalid('name')) {
+            <small role="alert">請輸入 100 字內的名稱。</small>
+          }
+        </label>
+        <label
+          >最低年齡 <em>*</em
+          ><input type="number" min="18" max="99" formControlName="ageMin" /></label
+        ><label
+          >最高年齡 <em>*</em><input type="number" min="18" max="99" formControlName="ageMax" />
+          @if (ageRangeInvalid()) {
+            <small role="alert">最高年齡不得小於最低年齡。</small>
+          }
+        </label>
+        <label
+          >價格敏感度 <em>*</em
+          ><select formControlName="priceSensitivity">
+            <option value="LOW">低－更重視品質</option>
+            <option value="MEDIUM">中－價格與品質平衡</option>
+            <option value="HIGH">高－優先考量折扣</option>
+          </select></label
+        >
+        <label class="wide"
+          >消費偏好描述 <em>*</em
+          ><textarea rows="4" formControlName="preferenceDescription"></textarea>
+          @if (fieldInvalid('preferenceDescription')) {
+            <small role="alert">請輸入消費偏好。</small>
+          }
+        </label>
+        <label class="wide"
+          >匹配關鍵字 <em>*</em><input formControlName="keywords" placeholder="使用逗號分隔" /><span
+            class="helper"
+            >例：家庭、親子、實用、團購優惠</span
+          ></label
+        >
+      </div>
+      <footer>
+        <p>儲存後只更新當前元件狀態，不會寫入資料庫。</p>
+        <button type="submit" [disabled]="pageState() === 'disabled'">儲存客群設定</button>
+      </footer>
+    </form>
+  } @else if (activeTab() === 'risks') {
+    <section class="management-head">
+      <div>
+        <h2>人工風險選項</h2>
+        <p>審核時可複選；alert_keywords 用於引導 AI 風險提示。</p>
+      </div>
+      <button type="button" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
+        ＋ 新增風險選項
+      </button>
+    </section>
+    <section class="data-table">
+      <table>
+        <thead>
+          <tr>
+            <th>選項名稱</th>
+            <th>AI 風險關鍵字</th>
+            <th>狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of riskOptions(); track item.name) {
+            <tr>
+              <td>
+                <strong>{{ item.name }}</strong>
+              </td>
+              <td>{{ item.keywords }}</td>
+              <td>{{ item.active ? '啟用' : '停用' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else if (activeTab() === 'productTypes') {
+    <section class="management-head">
+      <div>
+        <h2>商品類型設定</h2>
+        <p>系統預設與自訂類型；已被品項使用時不可刪除。</p>
+      </div>
+      <button
+        type="button"
+        (click)="openModal('productType')"
+        [disabled]="pageState() === 'disabled'"
+      >
+        ＋ 新增自訂類型
+      </button>
+    </section>
+    <section class="data-table">
+      <table>
+        <thead>
+          <tr>
+            <th>類型名稱</th>
+            <th>來源</th>
+            <th>使用品項</th>
+            <th>狀態／操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of productTypes(); track item.name) {
+            <tr>
+              <td>
+                <strong>{{ item.name }}</strong>
+              </td>
+              <td>{{ item.system ? '系統預設' : '自訂' }}</td>
+              <td>{{ item.used }}</td>
+              <td>
+                {{ item.active ? '啟用' : '已停用' }}
+                <button
+                  type="button"
+                  (click)="disableProductType(item.name)"
+                  [disabled]="!item.active"
+                >
+                  停用
+                </button>
+                <button type="button" (click)="removeProductType(item.name)">刪除</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else if (activeTab() === 'campaigns') {
+    <section class="management-head">
+      <div>
+        <h2>節慶檔期管理</h2>
+        <p>自動判斷狀態；編輯與手動切換狀態為獨立操作。</p>
+      </div>
+      <button type="button" (click)="openModal('campaign')" [disabled]="pageState() === 'disabled'">
+        ＋ 新增檔期
+      </button>
+    </section>
+    <section class="data-table">
+      <table>
+        <thead>
+          <tr>
+            <th>檔期</th>
+            <th>分類</th>
+            <th>起訖日期</th>
+            <th>狀態</th>
+            <th>手動覆蓋</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of campaigns(); track item.name) {
+            <tr>
+              <td>
+                <strong>{{ item.name }}</strong>
+              </td>
+              <td>{{ item.category }}</td>
+              <td>{{ item.range }}</td>
+              <td>
+                <span class="status-pill" [attr.data-status]="item.status">{{ item.status }}</span>
+              </td>
+              <td>{{ item.override ? '是' : '否' }}</td>
+              <td>
+                <button type="button" (click)="editCampaign(item.name)">編輯</button>
+                <button type="button" (click)="openModal('campaignStatus', item.name)">
+                  手動切換狀態
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+    <p class="scope-note">命中標籤以「標籤＋命中等級（核心／一般／弱）」逐列管理。</p>
+  } @else if (activeTab() === 'accounts') {
+    <section class="management-head">
+      <div>
+        <h2>帳號管理</h2>
+        <p>帳號由管理人員建立，只能停用、不能刪除。</p>
+      </div>
+      <button type="button" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
+        ＋ 新增帳號
+      </button>
+    </section>
+    <section class="data-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>姓名</th>
+            <th>角色</th>
+            <th>狀態</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of accounts(); track item.username) {
+            <tr>
+              <td>
+                <strong>{{ item.username }}</strong>
+              </td>
+              <td>{{ item.name }}</td>
+              <td>{{ item.role === 'MANAGER' ? '管理' : '操作' }}</td>
+              <td>{{ item.active ? '啟用' : '已停用' }}</td>
+              <td>
+                <button
+                  type="button"
+                  (click)="disableAccount(item.username)"
+                  [disabled]="pageState() === 'disabled' || !item.active"
+                >
+                  {{ item.active ? '停用帳號' : '已停用' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else {
+    <section class="mode-intro">
+      <div>
+        <p class="eyebrow">Fixed Weight</p>
+        <h2>三套固定評估模式</h2>
+        <p>可切換生效模式，但不能自由修改權重數字。</p>
+      </div>
+      <span>🔒 權重唯讀</span>
+    </section>
+    <div class="mode-grid">
+      @for (mode of modes; track mode.code) {
+        <article [class.active]="activeMode() === mode.code">
+          <header>
+            <div>
+              <span>{{ mode.code }}</span>
+              <h3>{{ mode.name }}</h3>
+            </div>
+            <input
+              type="radio"
+              name="mode"
+              [value]="mode.code"
+              [checked]="activeMode() === mode.code"
+              [disabled]="pageState() === 'disabled'"
+              [attr.aria-label]="'切換至' + mode.name"
+              (change)="selectMode(mode.code)"
+            />
+          </header>
+          <p>{{ mode.description }}</p>
+          <dl>
+            <div>
+              <dt>商業條件</dt>
+              <dd>{{ mode.weights.business }}%</dd>
+            </div>
+            <div>
+              <dt>客群匹配</dt>
+              <dd>{{ mode.weights.audience }}%</dd>
+            </div>
+            <div>
+              <dt>歷史銷售</dt>
+              <dd>{{ mode.weights.history }}%</dd>
+            </div>
+            <div>
+              <dt>預測人氣</dt>
+              <dd>{{ mode.weights.forecast }}%</dd>
+            </div>
+          </dl>
+          @if (activeMode() === mode.code) {
+            <strong class="current">目前生效</strong>
+          }
+        </article>
+      }
+    </div>
+  }
+  @if (modal()) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <form
+        class="settings-modal"
+        (click)="$event.stopPropagation()"
+        (ngSubmit)="modal() === 'campaignStatus' ? applyCampaignStatus() : saveModal()"
+      >
+        <header>
+          <h2>
+            {{
+              modal() === 'risk'
+                ? '新增人工風險'
+                : modal() === 'productType'
+                  ? '新增商品類型'
+                  : modal() === 'campaign'
+                    ? '新增／編輯節慶檔期'
+                    : modal() === 'campaignStatus'
+                      ? '手動切換檔期狀態'
+                      : '新增帳號'
+            }}
+          </h2>
+          <button type="button" (click)="closeModal()" aria-label="關閉">×</button>
+        </header>
+        @if (modal() === 'risk') {
+          <label
+            >選項名稱
+            <input
+              required
+              [ngModel]="draftName()"
+              (ngModelChange)="draftName.set($event)"
+              name="riskName" /></label
+          ><label
+            >alert_keywords
+            <textarea
+              required
+              [ngModel]="draftKeywords()"
+              (ngModelChange)="draftKeywords.set($event)"
+              name="keywords"
+            ></textarea>
+          </label>
+        }
+        @if (modal() === 'productType') {
+          <label
+            >類型名稱
+            <input
+              required
+              [ngModel]="draftName()"
+              (ngModelChange)="draftName.set($event)"
+              name="typeName"
+          /></label>
+        }
+        @if (modal() === 'account') {
+          <label
+            >Username
+            <input
+              required
+              [ngModel]="draftUsername()"
+              (ngModelChange)="draftUsername.set($event)"
+              name="username" /></label
+          ><label
+            >姓名
+            <input
+              required
+              [ngModel]="draftName()"
+              (ngModelChange)="draftName.set($event)"
+              name="accountName" /></label
+          ><label
+            >角色
+            <select [ngModel]="draftRole()" (ngModelChange)="draftRole.set($event)" name="role">
+              <option value="PURCHASER">操作</option>
+              <option value="MANAGER">管理</option>
+            </select></label
+          ><label
+            >初始密碼
+            <input
+              type="password"
+              required
+              [ngModel]="draftPassword()"
+              (ngModelChange)="draftPassword.set($event)"
+              name="password"
+          /></label>
+        }
+        @if (modal() === 'campaign') {
+          <label
+            >檔期名稱
+            <input
+              required
+              [ngModel]="draftName()"
+              (ngModelChange)="draftName.set($event)"
+              name="campaignName" /></label
+          ><label
+            >分類
+            <select
+              [ngModel]="draftCategory()"
+              (ngModelChange)="draftCategory.set($event)"
+              name="category"
+            >
+              <option value="FESTIVAL">節慶</option>
+              <option value="SEASON">季節</option>
+            </select></label
+          >
+          <div class="modal-grid">
+            <label
+              >開始日期
+              <input
+                type="date"
+                required
+                [ngModel]="draftStart()"
+                (ngModelChange)="draftStart.set($event)"
+                name="start" /></label
+            ><label
+              >結束日期
+              <input
+                type="date"
+                required
+                [ngModel]="draftEnd()"
+                (ngModelChange)="draftEnd.set($event)"
+                name="end"
+            /></label>
+          </div>
+          <label
+            >備戰天數
+            <input
+              type="number"
+              min="0"
+              [ngModel]="draftLeadDays()"
+              (ngModelChange)="draftLeadDays.set(+$event)"
+              name="leadDays"
+          /></label>
+          <fieldset>
+            <legend>命中標籤與等級</legend>
+            @for (row of draftTags(); track $index) {
+              <div class="tag-row">
+                <input
+                  placeholder="標籤"
+                  [ngModel]="row.tag"
+                  (ngModelChange)="row.tag = $event"
+                  [name]="'tag' + $index"
+                /><select
+                  [ngModel]="row.tier"
+                  (ngModelChange)="row.tier = $event"
+                  [name]="'tier' + $index"
+                >
+                  <option value="CORE">核心</option>
+                  <option value="NORMAL">一般</option>
+                  <option value="WEAK">弱</option></select
+                ><button
+                  type="button"
+                  (click)="removeTagRow($index)"
+                  [disabled]="draftTags().length === 1"
+                >
+                  刪除
+                </button>
+              </div>
+            }
+            <button type="button" (click)="addTagRow()">＋ 增列</button>
+          </fieldset>
+        }
+        @if (modal() === 'campaignStatus') {
+          <p>
+            檔期：<strong>{{ selectedCampaign() }}</strong>
+          </p>
+          <label
+            >目標狀態
+            <select
+              [ngModel]="draftStatus()"
+              (ngModelChange)="draftStatus.set($event)"
+              name="status"
+            >
+              <option>UPCOMING</option>
+              <option>PREPARING</option>
+              <option>ACTIVE</option>
+              <option>EXPIRED</option>
+            </select></label
+          >
+          <p>儲存後 is_manual_override 會設為 true。</p>
+        }
+        <footer>
+          <button type="button" (click)="closeModal()">取消</button
+          ><button type="submit">儲存 Mock</button>
+        </footer>
+      </form>
+    </div>
+  }
+</main>

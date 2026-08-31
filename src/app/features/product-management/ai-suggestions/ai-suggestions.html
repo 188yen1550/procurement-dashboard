@@ -1,0 +1,121 @@
+<main class="ai-page" aria-labelledby="ai-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">AI Discovery</p>
+      <h1 id="ai-title">AI 建議清單</h1>
+      <p>
+        AI_SUGGESTED 不是正式候選；必須由操作人員加入 CANDIDATE 後，才會進入評分、Top 10
+        與審核流程。
+      </p>
+    </div>
+    <a routerLink="/products">回到正式候選清單</a>
+  </header>
+  <section class="state-bar">
+    <div><strong>UI 狀態</strong><span>AI_SUGGESTED 與 CANDIDATE 單獨呈現</span></div>
+    <div role="group" aria-label="切換 AI 頁面狀態">
+      @for (state of stateOptions; track state) {
+        <button
+          type="button"
+          [class.active]="pageState() === state"
+          [attr.aria-pressed]="pageState() === state"
+          (click)="setState(state)"
+        >
+          {{ state }}
+        </button>
+      }
+    </div>
+  </section>
+  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  @if (pageState() === 'error') {
+    <section class="empty error" role="alert">
+      <h2>AI 建議資料載入失敗</h2>
+      <p>這是本地錯誤狀態，未呼叫 LLM 或後端。</p>
+      <button type="button" (click)="reset()">重試</button>
+    </section>
+  } @else if (pageState() === 'loading') {
+    <section class="skeleton" role="status">
+      正在載入 AI 建議…
+      @for (line of [1, 2, 3, 4]; track line) {
+        <span></span>
+      }
+    </section>
+  } @else {
+    @if (pageState() === 'disabled') {
+      <section class="notice">
+        <strong>🔒 加入候選操作目前已停用</strong
+        ><span>當批次產生中或權限不足時，可查看建議但不能變更候選狀態。</span>
+      </section>
+    }
+    <section class="toolbar">
+      <label for="ai-search">搜尋 AI 建議</label
+      ><input
+        id="ai-search"
+        type="search"
+        placeholder="商品或供應商"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+      /><button
+        type="button"
+        (click)="promoteSelected()"
+        [disabled]="pageState() === 'disabled' || !items().some((item) => item.selected)"
+      >
+        加入已選候選
+      </button>
+    </section>
+    @if (items().length === 0) {
+      <section class="empty">
+        <h2>目前沒有 AI 建議品項</h2>
+        <p>建議可能已全數加入候選，或 Demo 資料為空。</p>
+        <button type="button" (click)="reset()">恢復 Demo 資料</button>
+      </section>
+    } @else if (filtered().length === 0) {
+      <section class="empty">
+        <h2>找不到符合的 AI 建議</h2>
+        <button type="button" (click)="query.set('')">清除搜尋</button>
+      </section>
+    } @else {
+      <section class="suggestion-grid" aria-label="AI 建議品項">
+        @for (item of filtered(); track item.id) {
+          <article>
+            <header>
+              <label
+                ><input
+                  type="checkbox"
+                  [checked]="item.selected"
+                  [disabled]="pageState() === 'disabled'"
+                  [attr.aria-label]="'選取' + item.name"
+                  (change)="toggle(item.id)" /></label
+              ><span>AI_SUGGESTED</span>
+            </header>
+            <p class="category">{{ item.category }}</p>
+            <h2>{{ item.name }}</h2>
+            <p class="supplier">{{ item.supplier }}</p>
+            <div class="trend">
+              <strong>{{ item.trend }}</strong
+              ><span>{{ item.direction === 'UP' ? '↗ 連續上升' : '→ 穩定' }}</span>
+            </div>
+            <p class="reason">{{ item.reason }}</p>
+            <dl>
+              <div>
+                <dt>核心客群匹配</dt>
+                <dd>{{ item.audienceMatch }}%</dd>
+              </div>
+              <div>
+                <dt>風險提示</dt>
+                <dd>{{ item.risk }}</dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              (click)="promote(item.id)"
+              [disabled]="pageState() === 'disabled'"
+              [title]="pageState() === 'disabled' ? '當前為 Disabled 狀態' : ''"
+            >
+              加入 CANDIDATE 候選
+            </button>
+          </article>
+        }
+      </section>
+    }
+  }
+</main>

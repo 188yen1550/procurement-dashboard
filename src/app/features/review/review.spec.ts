@@ -1,22 +1,53 @@
+import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { provideRouter } from '@angular/router';
 import { Review } from './review';
-
 describe('Review', () => {
-  let component: Review;
   let fixture: ComponentFixture<Review>;
-
+  let component: Review;
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Review],
+      providers: [provideHttpClient(), provideRouter([])],
     }).compileComponents();
-
     fixture = TestBed.createComponent(Review);
     component = fixture.componentInstance;
-    await fixture.whenStable();
+    fixture.detectChanges();
   });
-
-  it('should create', () => {
+  it('creates with default pending and active filters', () => {
     expect(component).toBeTruthy();
+    expect(component.items().length).toBe(4);
+    expect(component.filtered().length).toBe(3);
+    expect(component.reviewFilter()).toBe('PENDING');
+    expect(component.itemFilter()).toBe('ACTIVE');
+    expect(fixture.nativeElement.textContent).toContain('通過選品審核 ≠ 已銷售');
+  });
+  it('filters by review and item status', () => {
+    component.reviewFilter.set('REJECTED');
+    component.itemFilter.set('ARCHIVED');
+    expect(component.filtered().map((item) => item.id)).toEqual([109]);
+  });
+  it('shows resubmission context', () => {
+    expect(fixture.nativeElement.textContent).toContain('第 2 次送審');
+  });
+  it('shows decision records', () => {
+    component.view.set('records');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('保留每次送審快照');
+    expect(fixture.nativeElement.textContent).toContain('節慶需求明確');
+  });
+  it('renders disabled loading empty and error states', () => {
+    component.setState('disabled');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('審核停用');
+    component.setState('loading');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('正在載入待審核');
+    component.setState('empty');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('目前沒有審核品項');
+    component.setState('error');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('載入失敗');
   });
 });
