@@ -163,7 +163,9 @@ export class Settings {
     this.draftTags.set([{ tag: '', tier: 'CORE' }]);
   }
   addTagRow(): void {
-    this.draftTags.update((rows) => [...rows, { tag: '', tier: 'NORMAL' }]);
+    // 後端 enum 是 CORE/GENERAL/WEAK（FestiveCampaignTagMatchTier），
+    // 不可寫成 NORMAL——GENERAL 帶有實際計分權重 0.6，字串必須逐字對應。
+    this.draftTags.update((rows) => [...rows, { tag: '', tier: 'GENERAL' }]);
   }
   removeTagRow(index: number): void {
     this.draftTags.update((rows) => rows.filter((_, i) => i !== index));

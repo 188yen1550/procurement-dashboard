@@ -5,9 +5,14 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
 
+// supplyStability／priceCompetitiveness 是後端 0–5 分制（ScoringService 內部
+// 直接 ×20 換算成 0–100 分數，不是這裡先前寫的 0–100 輸入尺度）。
+// estimatedPurchaseRate 表單維持 0–100（%）給使用者輸入比較直覺，
+// 送出前由 toEstimatedPurchaseRateDecimal() 換算成後端要的 0–1 小數，
+// 見 ProductService/ScoringService：estimated_purchase_rate × 100 = 購買分數。
 const EDIT_DATA: Record<string, Record<string, string | number>> = {
-  '101': { name: '中秋炭烤海陸組合禮盒', supplierName: '潮港鮮物有限公司', productType: '食品／生鮮', pricingType: 'RESALE', description: '適合中秋團購的海陸烤肉組合。', campaignTags: 'bbq, gift', costPrice: 820, salePrice: 1190, marketPrice: 1490, moq: 50, supplyStability: 92, priceCompetitiveness: 88, targetCustomer: '25–45 歲家庭與公司團購', estimatedPurchaseRate: 76 },
-  '103': { name: '無香低敏濃縮洗衣紙補充組', supplierName: '淨好生活實業', productType: '日用品', pricingType: 'RESALE', description: '低敏無香洗衣紙。', campaignTags: 'family, daily', costPrice: 180, salePrice: 299, marketPrice: 359, moq: 100, supplyStability: 64, priceCompetitiveness: 72, targetCustomer: '重視成分與收納便利的家庭', estimatedPurchaseRate: 58 },
+  '101': { name: '中秋炭烤海陸組合禮盒', supplierName: '潮港鮮物有限公司', productType: '食品／生鮮', pricingType: 'RESALE', description: '適合中秋團購的海陸烤肉組合。', campaignTags: 'bbq, gift', costPrice: 820, salePrice: 1190, marketPrice: 1490, moq: 50, supplyStability: 4.6, priceCompetitiveness: 4.4, targetCustomer: '25–45 歲家庭與公司團購', estimatedPurchaseRate: 76 },
+  '103': { name: '無香低敏濃縮洗衣紙補充組', supplierName: '淨好生活實業', productType: '日用品', pricingType: 'RESALE', description: '低敏無香洗衣紙。', campaignTags: 'family, daily', costPrice: 180, salePrice: 299, marketPrice: 359, moq: 100, supplyStability: 3.2, priceCompetitiveness: 3.6, targetCustomer: '重視成分與收納便利的家庭', estimatedPurchaseRate: 58 },
 };
 
 @Component({
@@ -42,11 +47,26 @@ export class ProductForm {
     salePrice: [0, [Validators.min(0)]],
     marketPrice: [0, [Validators.min(0)]],
     moq: [1, [Validators.required, Validators.min(1)]],
-    supplyStability: [50, [Validators.required, Validators.min(0), Validators.max(100)]],
-    priceCompetitiveness: [50, [Validators.required, Validators.min(0), Validators.max(100)]],
+    // 後端 Product.supplyStability / priceCompetitiveness 是 0–5 分制
+    // （precision=5, scale=2），不是 0–100。
+    supplyStability: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
+    priceCompetitiveness: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
     targetCustomer: ['', Validators.required],
+    // 表單維持 0–100（%）輸入，實際送出時要換算成後端要的 0–1 小數
+    // （見 toEstimatedPurchaseRateDecimal()）。
     estimatedPurchaseRate: [50, [Validators.required, Validators.min(0), Validators.max(100)]],
   });
+
+  /**
+   * 後端 Product.estimatedPurchaseRate 是 0–1 小數（ScoringService.
+   * calculatePurchaseScore() 直接 ×100 當作購買分數）。表單為了輸入體驗
+   * 維持 0–100（%），呼叫 API 前務必用這個方法換算，不要直接送表單原始值
+   * ——送 76 過去會被當成 7600%，分數會被 clamp 死在滿分，且不會報錯，
+   * 是目前最容易被忽略的一個換算陷阱。
+   */
+  toEstimatedPurchaseRateDecimal(): number {
+    return Math.round(this.form.controls.estimatedPurchaseRate.value) / 100;
+  }
 
   isResale(): boolean { return this.form.controls.pricingType.value === 'RESALE'; }
 
