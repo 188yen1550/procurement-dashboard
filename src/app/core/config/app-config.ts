@@ -6,5 +6,5 @@
  * 後端可用之後改成 false 即可，元件與樣板不需要再改。
  */
 export const APP_CONFIG = {
-  useMockData: true,
+  useMockData: false,
 } as const;

@@ -60,6 +60,10 @@ export interface FestivalBoostData {
   finalScore?: number;
 }
 
+import { ApiEnvelope, PageEnvelope } from '../../core/api/api-envelope';
+
+export type { ApiEnvelope, PageEnvelope };
+
 export interface ProductListFilters {
   reviewStatus?: string;
   itemStatus?: string;
