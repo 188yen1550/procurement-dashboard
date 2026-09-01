@@ -1,3 +1,4 @@
+/** 檔案用途：驗證 Login 表單與 Mock 角色登入 UI；TestBed provider 不會連線真實 Auth API。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Login } from './login';

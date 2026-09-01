@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：呈現 AI_SUGGESTED 商品並提供人工加入 CANDIDATE 的本地 Mock 操作。
+ * 只有人工轉為 CANDIDATE 後才可進入評分、Top 10 與審核；AI 不會自行核准商品。
+ */
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';

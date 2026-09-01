@@ -1,4 +1,7 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * 檔案用途：全站樣式入口。
+ * 目前不放 feature-specific 規則，避免全域 selector 意外改變元件封裝後的視覺結果。
+ */
 *,
 *::before,
 *::after {

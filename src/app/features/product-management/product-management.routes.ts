@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：品項模組路由。
+ * `new`、`ai-suggestions` 等靜態路由必須排在 `:id` 前；表單路由套用離頁 Guard 防止未儲存內容遺失。
+ */
 import { Routes } from '@angular/router';
 import { ProductManagement } from './product-management';
 import { productFormCanDeactivate } from './product-form/product-form.guard';

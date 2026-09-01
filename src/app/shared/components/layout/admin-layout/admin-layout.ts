@@ -1,3 +1,4 @@
+/** 檔案用途：登入後的後台殼層，組合 Header、Sidebar、手機選單狀態與子路由內容。 */
 import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Auth } from '../../../../core/auth/auth';

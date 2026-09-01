@@ -1,3 +1,4 @@
+/** 檔案用途：驗證詳情頁 SNAPSHOT、60% 門檻、圖片替代、趨勢與封存／復用 Mock 規則。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ProductDetail } from './product-detail';
@@ -68,5 +69,16 @@ describe('ProductDetail', () => {
     component.setState('error');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('無法載入品項詳情');
+  });
+  it('renders the product image with useful alt text', () => {
+    const image = fixture.nativeElement.querySelector('.product-media img');
+    expect(image).toBeTruthy(); expect(image.alt).toContain(component.product()!.name);
+  });
+  it('shows fallback content when the product image fails', () => {
+    component.handleImageError(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.image-fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('Final Score');
+  });
+  it('shows an empty image state when imageUrl is absent', () => {
+    component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無商品圖片');
   });
 });

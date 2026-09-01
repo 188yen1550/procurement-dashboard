@@ -1,3 +1,4 @@
+/** 檔案用途：登入頁互動與角色原型切換；只寫入 Auth 的本地 Mock 狀態，不是正式 JWT 登入。 */
 import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';

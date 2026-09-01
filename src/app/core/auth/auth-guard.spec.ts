@@ -1,3 +1,4 @@
+/** 檔案用途：驗證 authGuard 的前端路由決策可在 Angular injection context 執行。 */
 import { TestBed } from '@angular/core/testing';
 import { CanActivateFn } from '@angular/router';
 

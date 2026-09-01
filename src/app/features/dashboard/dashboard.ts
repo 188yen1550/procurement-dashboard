@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：Dashboard 的本地 Mock 狀態、統計卡片、Top 10、風險與轉換率互動。
+ * AI 推薦只提供排序與理由，永遠不會在此元件自動把商品核准。
+ */
 import { Component, computed, signal } from '@angular/core';
 import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
 import { DashboardRecommendation, DashboardUiState, ReviewStatus } from './dashboard.models';

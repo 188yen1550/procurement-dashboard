@@ -1,3 +1,4 @@
+/** 檔案用途：限制管理畫面的前端導覽；選單／路由阻擋不能取代後端 MANAGER RBAC。 */
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { Auth } from './auth';

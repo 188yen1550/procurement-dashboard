@@ -1,3 +1,7 @@
+<!--
+  檔案用途：品項詳情模板。
+  主圖失敗不遮蔽其他資料；分數來源、價格洞察、AI 輔助及生命週期限制皆在相鄰區塊呈現。
+-->
 <main class="detail-page" aria-labelledby="detail-title">
   <header class="page-header">
     <div>
@@ -42,6 +46,7 @@
   } @else if (pageState() === 'loading') {
     <section class="skeleton" role="status">
       正在載入品項詳情…
+      <span class="image-skeleton" aria-hidden="true"></span>
       @for (line of [1, 2, 3, 4, 5, 6]; track line) {
         <span></span>
       }
@@ -69,6 +74,11 @@
         ><a [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
       </section>
     }
+    <section class="product-media panel" aria-labelledby="product-image-title">
+      <header><div><p class="eyebrow">Product Image</p><h2 id="product-image-title">商品主圖</h2></div><span>一般基本資料 · 可於編輯頁更換</span></header>
+      @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'" (error)="handleImageError()" /> }
+      @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><span aria-hidden="true">🖼️</span><div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong><p>{{ imageLoadFailed() ? '其他品項資訊仍可正常閱覽，可前往編輯頁重新選擇。' : '圖片為選填資料，不影響評分或審核。' }}</p></div></div> }
+    </section>
     <section class="summary panel">
       <div>
         <span class="status" [attr.data-status]="p.reviewStatus">{{

@@ -1,3 +1,4 @@
+/** 檔案用途：驗證 AI 建議搜尋、Empty 與人工加入候選流程；不觸發後端或真實 AI。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AiSuggestions } from './ai-suggestions';

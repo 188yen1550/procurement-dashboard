@@ -1,3 +1,4 @@
+/* 檔案用途：品項清單篩選、狀態徽章、可捲動表格、focus-visible 與手機單欄版面。 */
 :host { display:block; min-width:0; color:#243447; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; }
 .product-page { width:100%; min-width:0; }
 .page-header,.state-preview,.filter-heading,.list-header,.notice { display:flex; align-items:center; justify-content:space-between; gap:1rem; }

@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：管理人員的待審清單與決策紀錄本地 Mock 狀態。
+ * 預設範圍是 PENDING＋ACTIVE；核准只是選品決策，不代表上架、簽約、銷售或營收。
+ */
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';

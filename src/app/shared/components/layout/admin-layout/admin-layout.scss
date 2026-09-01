@@ -1,3 +1,4 @@
+/* 檔案用途：後台 Grid 殼層、主內容與手機版導覽；min-width:0 防止子頁撐出 viewport。 */
 :host {
   display: block;
   min-height: 100dvh;

@@ -1,3 +1,4 @@
+/** 檔案用途：驗證審核路由保留清單與動態詳情配置，不改變路由順序。 */
 import { Review } from './review';
 import { ReviewDetail } from './review-detail/review-detail';
 import { REVIEW_ROUTES } from './review.routes';

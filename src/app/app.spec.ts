@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：驗證 App 根元件可由 TestBed 建立。
+ * fixture 管理測試 DOM 與生命週期；本檔不宣稱覆蓋登入、路由或 API 整合流程。
+ */
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 

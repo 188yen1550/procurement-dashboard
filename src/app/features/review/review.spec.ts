@@ -1,3 +1,4 @@
+/** 檔案用途：驗證待審預設範圍、決策紀錄與 Loading／Empty／Error 本地狀態。 */
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';

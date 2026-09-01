@@ -1,3 +1,7 @@
+/*
+ * 檔案用途：Dashboard 卡片、Top 10 表格、狀態標籤、骨架、錯誤與響應式版面。
+ * 表格只在自身容器橫向捲動；focus-visible 保留鍵盤使用者的操作位置。
+ */
 :host {
   display: block;
 }

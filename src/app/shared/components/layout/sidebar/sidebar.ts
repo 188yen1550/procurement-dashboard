@@ -1,3 +1,4 @@
+/** 檔案用途：主要導覽；管理入口的前端可見性只改善體驗，不能視為後端授權。 */
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 

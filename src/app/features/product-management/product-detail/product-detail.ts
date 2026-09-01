@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：品項詳情的評分拆解、圖片、趨勢、AI、封存／復用與各種本地 UI 狀態。
+ * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
+ */
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -38,6 +42,7 @@ interface DetailProduct {
   aiReasons: string[];
   risks: string[];
   description: string;
+  imageUrl: string | null;
 }
 
 const APPROVED: DetailProduct = {
@@ -72,6 +77,7 @@ const APPROVED: DetailProduct = {
   aiReasons: ['中秋烤肉需求與 bbq 標籤相符', '團購價較市價低 20%', '近期搜尋熱度呈上升'],
   risks: ['MOQ 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
   description: '適合中秋家庭與企業團購的海陸烤肉組合。',
+  imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"%3E%3Crect width="800" height="600" fill="%23e8f2ed"/%3E%3Ccircle cx="400" cy="270" r="150" fill="%2339735c"/%3E%3Cpath d="M290 300h220l-35 125H325z" fill="%23fff"/%3E%3Ctext x="400" y="510" text-anchor="middle" font-family="sans-serif" font-size="38" fill="%23243447"%3EProduct Mock%3C/text%3E%3C/svg%3E',
 };
 const INCOMPLETE: DetailProduct = {
   ...APPROVED,
@@ -99,14 +105,16 @@ const INCOMPLETE: DetailProduct = {
   aiReasons: [],
   risks: [],
   description: '商品資料尚未補齊，目前僅供編輯與查看。',
+  imageUrl: null,
 };
 
 @Component({
   selector: 'app-product-detail',
   imports: [CommonModule, RouterLink],
   templateUrl: './product-detail.html',
-  styleUrl: './product-detail.scss',
+  styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
+/** 品項詳情頁元件；資料與同步操作均為本地 Mock，不會觸發真實趨勢或 AI API。 */
 export class ProductDetail {
   private readonly route = inject(ActivatedRoute);
   readonly stateOptions: readonly DetailState[] = [
@@ -122,6 +130,7 @@ export class ProductDetail {
   );
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
   readonly statusMessage = signal('');
+  readonly imageLoadFailed = signal(false);
   readonly incomplete = computed(() => (this.product()?.completeness ?? 0) < 60);
   readonly isLocked = computed(
     () => this.pageState() === 'locked' || this.product()?.itemStatus === 'ARCHIVED',
@@ -132,6 +141,7 @@ export class ProductDetail {
     if (state === 'empty') this.product.set(null);
     else if (!this.product()) this.product.set(APPROVED);
     this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.imageLoadFailed.set(false);
   }
   showIncomplete(): void {
     this.product.set(INCOMPLETE);
@@ -142,7 +152,9 @@ export class ProductDetail {
     this.product.set(APPROVED);
     this.pageState.set('default');
     this.statusMessage.set('已恢復完整 Demo 資料。');
+    this.imageLoadFailed.set(false);
   }
+  handleImageError(): void { this.imageLoadFailed.set(true); this.statusMessage.set('商品圖片載入失敗，已顯示替代內容。'); }
   syncTrend(): void {
     this.syncState.set('syncing');
     this.statusMessage.set('正在模擬同步趨勢資料。');
@@ -151,6 +163,10 @@ export class ProductDetail {
     this.syncState.set(success ? 'success' : 'error');
     this.statusMessage.set(success ? '趨勢資料已在本地更新。' : '趨勢同步失敗，可再次嘗試。');
   }
+  /**
+   * 模擬封存或復用：APPROVED／REJECTED 可封存，但只有 APPROVED 且已封存商品可復用。
+   * 只更新 product signal，無非同步 API 或需清理的資源。
+   */
   toggleArchive(): void {
     const p = this.product();
     if (

@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：管理人員審核詳情、人工風險、留言、APPROVED／REJECTED 決策與 409 衝突 Mock。
+ * 「其他」風險需備註；AI 只提供摘要，最終核准一定由人工選擇。
+ */
 import{Component,inject,signal}from'@angular/core';import{FormsModule}from'@angular/forms';import{ActivatedRoute,RouterLink}from'@angular/router';
 type DetailState='default'|'disabled'|'loading'|'error';type Decision=''|'APPROVED'|'REJECTED';
 @Component({selector:'app-review-detail',imports:[FormsModule,RouterLink],templateUrl:'./review-detail.html',styleUrl:'./review-detail.scss'})

@@ -1,9 +1,18 @@
+/**
+ * 檔案用途：新增／編輯品項表單、圖片本地預覽、欄位鎖定、重複送出與未儲存變更保護。
+ * NEW 顯示 PENDING_PRICING 且不要求價格；RESALE 要求成本／售價／市價。APPROVED 仍可改一般資料與圖片，但核心資料鎖定。
+ */
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
+type ImageState = 'empty' | 'loading' | 'ready' | 'error';
+interface ImageInfo { name: string; type: string; size: number; }
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
 const EDIT_DATA: Record<string, Record<string, string | number>> = {
   '101': { name: '中秋炭烤海陸組合禮盒', supplierName: '潮港鮮物有限公司', productType: '食品／生鮮', pricingType: 'RESALE', description: '適合中秋團購的海陸烤肉組合。', campaignTags: 'bbq, gift', costPrice: 820, salePrice: 1190, marketPrice: 1490, moq: 50, supplyStability: 92, priceCompetitiveness: 88, targetCustomer: '25–45 歲家庭與公司團購', estimatedPurchaseRate: 76 },
@@ -14,8 +23,9 @@ const EDIT_DATA: Record<string, Record<string, string | number>> = {
   selector: 'app-product-form',
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './product-form.html',
-  styleUrl: './product-form.scss',
+  styleUrls: ['./product-form.scss', './product-image.scss'],
 })
+/** 品項表單頁元件；所有儲存與圖片預覽皆為本地 Mock，不呼叫圖片或商品 API。 */
 export class ProductForm {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
@@ -26,10 +36,18 @@ export class ProductForm {
   readonly isRejected = this.productId === '103';
   readonly pageState = signal<FormPageState>('default');
   readonly saved = signal(false);
+  readonly isSubmitting = signal(false);
+  readonly submitCount = signal(0);
   readonly leaveDialogOpen = signal(false);
   readonly statusMessage = signal('');
   readonly stateOptions: readonly FormPageState[] = ['default', 'locked', 'loading', 'error'];
   readonly productTypes = ['食品／生鮮', '日用品', '3C／家電', '生活雜貨', '美妝保養', '服飾配件', '寢具家用', '精品禮盒', '其他'];
+  readonly imageState = signal<ImageState>('empty');
+  readonly imagePreviewUrl = signal<string | null>(null);
+  readonly imageInfo = signal<ImageInfo | null>(null);
+  readonly imageError = signal('');
+  readonly imageDirty = signal(false);
+  readonly maxImageSizeLabel = '5 MB';
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
@@ -62,7 +80,12 @@ export class ProductForm {
     this.statusMessage.set(`已切換為 ${state} 狀態。`);
   }
 
+  /**
+   * 驗證並模擬儲存表單；`resubmit` 用於 REJECTED 商品的重新送審文案。
+   * 方法會更新 saved、isSubmitting、submitCount 與狀態訊息，500ms 後解除送出鎖；不呼叫後端。
+   */
   submit(resubmit = false): void {
+    if (this.isSubmitting()) { this.statusMessage.set('正在儲存，請勿重複送出。'); return; }
     if (this.form.invalid) { this.form.markAllAsTouched(); this.statusMessage.set('請先修正表單中的錯誤。'); return; }
     if (this.isResale() && (!this.form.controls.costPrice.value || !this.form.controls.salePrice.value || !this.form.controls.marketPrice.value)) {
       this.form.controls.costPrice.setErrors({ required: true });
@@ -70,22 +93,68 @@ export class ProductForm {
       this.form.controls.marketPrice.setErrors({ required: true });
       this.statusMessage.set('再販售品項必須完整填寫三種價格。'); return;
     }
-    this.saved.set(true); this.form.markAsPristine();
+    this.isSubmitting.set(true); this.submitCount.update((count) => count + 1);
+    this.saved.set(true); this.form.markAsPristine(); this.imageDirty.set(false);
     this.statusMessage.set(resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。');
+    window.setTimeout(() => this.isSubmitting.set(false), 500);
   }
 
-  requestCancel(): void {
-    if (this.form.dirty && !this.saved()) this.leaveDialogOpen.set(true); else void this.router.navigate(['/products']);
+  /**
+   * 驗證使用者選取的 JPG／PNG／WebP 與 5 MB 上限，並以 FileReader 建立本地 data URL 預覽。
+   * 成功或失敗都更新圖片 signal；讀取為非同步事件，不需持久化或外部資源清理。
+   */
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.saved.set(false); this.imageError.set('');
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!SUPPORTED_IMAGE_TYPES.has(file.type) || !SUPPORTED_IMAGE_EXTENSIONS.has(extension)) {
+      this.setImageError('不支援的圖片格式，請選擇 JPG、PNG 或 WebP。'); return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      this.setImageError('圖片檔案超過 5 MB 上限，請縮小後再試。'); return;
+    }
+    this.imageState.set('loading');
+    this.imageInfo.set({ name: file.name, type: file.type, size: file.size });
+    this.imageDirty.set(true);
+    const reader = this.createFileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') { this.setImageError('圖片讀取失敗，請重新選擇檔案。'); return; }
+      this.imagePreviewUrl.set(reader.result); this.imageState.set('ready');
+      this.statusMessage.set('圖片已在瀏覽器本地建立預覽，尚未儲存。');
+    };
+    reader.onerror = () => this.setImageError('圖片讀取失敗，請重新選擇檔案。');
+    reader.readAsDataURL(file);
   }
-  discardAndLeave(): void { this.form.markAsPristine(); this.leaveDialogOpen.set(false); void this.router.navigate(['/products']); }
+  /** 移除目前本地圖片並標記未儲存變更；只更新 signal，不刪除伺服器檔案。 */
+  removeImage(): void {
+    this.imagePreviewUrl.set(null); this.imageInfo.set(null); this.imageError.set('');
+    this.imageState.set('empty'); this.imageDirty.set(true); this.saved.set(false);
+    this.statusMessage.set('圖片已移除，尚未儲存。');
+  }
+  formatFileSize(bytes: number): string { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
+  createFileReader(): FileReader { return new FileReader(); }
+
+  requestCancel(): void {
+    if (this.hasUnsavedChanges()) this.leaveDialogOpen.set(true); else void this.router.navigate(['/products']);
+  }
+  discardAndLeave(): void { this.form.markAsPristine(); this.imageDirty.set(false); this.leaveDialogOpen.set(false); void this.router.navigate(['/products']); }
   closeLeaveDialog(): void { this.leaveDialogOpen.set(false); }
   retry(): void { this.pageState.set('default'); this.statusMessage.set('已恢復本地表單資料。'); }
   fieldInvalid(name: keyof typeof this.form.controls): boolean { const c = this.form.controls[name]; return c.invalid && (c.touched || c.dirty); }
   marginRate(): number | null { const cost = this.form.controls.costPrice.value; const sale = this.form.controls.salePrice.value; return sale > 0 && cost >= 0 ? Math.round(((sale - cost) / sale) * 1000) / 10 : null; }
-  canLeave(): boolean { return this.form.pristine || this.saved() || window.confirm('尚有未儲存的變更，確定要離開嗎？'); }
+  canLeave(): boolean { return !this.hasUnsavedChanges() || window.confirm('尚有未儲存的變更，確定要離開嗎？'); }
 
   @HostListener('window:beforeunload', ['$event'])
-  preventAccidentalLeave(event: BeforeUnloadEvent): void { if (this.form.dirty && !this.saved()) event.preventDefault(); }
+  preventAccidentalLeave(event: BeforeUnloadEvent): void { if (this.hasUnsavedChanges()) event.preventDefault(); }
+
+  private hasUnsavedChanges(): boolean { return !this.saved() && (this.form.dirty || this.imageDirty()); }
+  private setImageError(message: string): void {
+    this.imagePreviewUrl.set(null); this.imageInfo.set(null); this.imageState.set('error');
+    this.imageError.set(message); this.imageDirty.set(false); this.statusMessage.set(message);
+  }
 
   private lockCoreFields(): void {
     const names: (keyof typeof this.form.controls)[] = ['productType','pricingType','campaignTags','costPrice','salePrice','marketPrice','moq','supplyStability','priceCompetitiveness','targetCustomer','estimatedPurchaseRate'];

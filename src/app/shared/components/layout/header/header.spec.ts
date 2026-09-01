@@ -1,3 +1,4 @@
+/** 檔案用途：驗證 Header 可建立與輸出導覽事件；不涉及真實身分 API。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Header } from './header';

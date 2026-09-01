@@ -1,3 +1,4 @@
+/** 檔案用途：驗證審核表單必填、其他風險備註、提交、衝突與狀態畫面；均為本地 Mock。 */
 import{ComponentFixture,TestBed}from'@angular/core/testing';import{provideRouter}from'@angular/router';import{ReviewDetail}from'./review-detail';
 describe('ReviewDetail',()=>{let fixture:ComponentFixture<ReviewDetail>;let component:ReviewDetail;beforeEach(async()=>{await TestBed.configureTestingModule({imports:[ReviewDetail],providers:[provideRouter([])]}).compileComponents();fixture=TestBed.createComponent(ReviewDetail);component=fixture.componentInstance;fixture.detectChanges();});
 it('creates with product snapshot and AI disclaimer',()=>{expect(component).toBeTruthy();expect(fixture.nativeElement.textContent).toContain('商品與評估快照');expect(fixture.nativeElement.textContent).toContain('AI 不會自動核准');});

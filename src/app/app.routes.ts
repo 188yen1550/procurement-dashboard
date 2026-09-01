@@ -1,7 +1,12 @@
+/**
+ * 檔案用途：定義應用程式頂層路由、登入保護及管理角色的前端顯示範圍。
+ * Guard 只改善前端導覽體驗，不能取代後端 RBAC；功能模組採 lazy loading 降低首屏負擔。
+ */
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth-guard';
 import { managerGuard } from './core/auth/manager-guard';
 
+/** 靜態登入路由先宣告、受保護殼層居中、wildcard 最後兜底，順序不可任意調換。 */
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   {

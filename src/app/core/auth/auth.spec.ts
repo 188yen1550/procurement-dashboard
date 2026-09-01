@@ -1,3 +1,4 @@
+/** 檔案用途：驗證 Auth 的本地登入、角色與登出狀態；不代表正式 JWT／Cookie 整合測試。 */
 import { TestBed } from '@angular/core/testing';
 
 import { Auth } from './auth';

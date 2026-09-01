@@ -1,3 +1,4 @@
+<!-- 檔案用途：審核詳情；表單 fieldset、錯誤 alert、成功狀態及 aria-modal 衝突視窗支援決策流程。 -->
 <main class="detail" aria-labelledby="title"><header class="page-header"><div><a routerLink="/review">← 返回待審核清單</a><p class="eyebrow">Review Detail</p><h1 id="title">{{product.name}}</h1><p>審閱商品資料、評分與 AI 輔助分析後，由管理人員做最終決策。</p></div><button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button></header>
 <section class="scope"><strong>人工核准是必要終點</strong><span>「通過選品審核」不代表已上架、已銷售、已簽約或已產生營收。</span></section>
 <section class="state-bar"><div><strong>UI 狀態</strong><span>僅管理角色可操作</span></div><div>@for(state of stateOptions;track state){<button type="button" [class.active]="pageState()===state" (click)="setState(state)">{{state}}</button>}</div></section><p class="sr-only" aria-live="polite">{{statusMessage()}}</p>

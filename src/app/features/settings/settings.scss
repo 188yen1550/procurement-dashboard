@@ -1,3 +1,7 @@
+/*
+ * 檔案用途：設定分頁、唯讀模式卡、表格、狀態、Modal、focus-visible 與手機捲動版面。
+ * Modal 的尺寸與 overflow 確保 375px 手機仍能看到關閉與操作按鈕。
+ */
 :host {
   display: block;
   min-width: 0;

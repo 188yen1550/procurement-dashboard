@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：提供 Dashboard 的固定本地 Mock 資料與特殊情境。
+ * 內容包含低完整度、重新送審、高風險與 Top 10 範例，不呼叫 API 且不得視為即時營運數據。
+ */
 import { DashboardMockData, DashboardRecommendation } from './dashboard.models';
 
 export const DASHBOARD_MOCK_DATA: DashboardMockData = {

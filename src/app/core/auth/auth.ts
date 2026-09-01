@@ -1,3 +1,4 @@
+/** 檔案用途：管理目前登入者、角色與 Mock 登入狀態；此服務不是正式 JWT 驗證或後端授權。 */
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 

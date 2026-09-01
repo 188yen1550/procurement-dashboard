@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：Dashboard 畫面模型。
+ * PENDING 是未審核、APPROVED 僅代表選品審核通過、REJECTED 是未通過；APPROVED 不等於已銷售。
+ */
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type DashboardUiState = 'default' | 'locked' | 'loading' | 'edge';
 export type RiskLevel = 'HIGH' | 'MEDIUM';

@@ -1,3 +1,4 @@
+/** 檔案用途：驗證固定模式、9 類商品、條件式刪除、檔期入口與帳號停用等設定 Mock 規則。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Settings } from './settings';
 describe('Settings', () => {

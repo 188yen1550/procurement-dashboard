@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：正式候選 CANDIDATE 商品主清單、篩選及本地生命週期操作。
+ * AI_SUGGESTED 不在主清單顯示；低於 60% 不評分，刪除只允許未審核且無正式紀錄者。
+ */
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';

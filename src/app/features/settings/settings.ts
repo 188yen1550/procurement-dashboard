@@ -1,3 +1,7 @@
+/**
+ * 檔案用途：管理頁的三套固定評估模式、人工風險、核心客群、9 類商品、檔期與帳號 Mock。
+ * 帳號只能停用；使用中的商品類型不可刪除；檔期編輯與手動狀態切換是不同入口。
+ */
 import { Component, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
