@@ -1,15 +1,57 @@
 /** 檔案用途：驗證詳情頁 SNAPSHOT、60% 門檻、圖片替代、趨勢與封存／復用 Mock 規則。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { ProductApiService } from '../product-api';
 import { ProductDetail } from './product-detail';
 
 describe('ProductDetail', () => {
   let fixture: ComponentFixture<ProductDetail>;
   let component: ProductDetail;
+  const api = {
+    getProduct: vi.fn(() => of({
+      id: 101,
+      name: '中秋炭烤海陸組合禮盒',
+      description: '適合中秋家庭與企業團購的海陸烤肉組合。',
+      imageUrl: 'data:image/png;base64,mock',
+      supplierName: '潮港鮮物有限公司',
+      pricingType: 'RESALE' as const,
+      costPrice: 820,
+      salePrice: 1190,
+      completenessPercent: 96,
+      reviewStatus: 'APPROVED',
+      itemStatus: 'ACTIVE',
+      candidateStatus: 'CANDIDATE',
+      submissionCount: 1,
+    })),
+    getEvaluation: vi.fn(() => of({
+      dataSource: 'SNAPSHOT' as const,
+      evaluationModeName: '均衡模式 · Version 1',
+      businessScore: 88,
+      audienceScore: 91,
+      historicalScore: 84,
+      purchaseScore: 86,
+      trendScore: 90,
+      forecastScore: 88,
+      totalScore: 88.2,
+      dataCompleteness: 96,
+      festivalBoost: 4.2,
+      finalScore: 92.4,
+    })),
+    getFestivalBoost: vi.fn(() => of({
+      dataSource: 'SNAPSHOT' as const,
+      matchedCampaign: { campaignId: 1, campaignName: '中秋節', matchedTags: ['bbq', 'gift'] },
+      festivalBoost: 4.2,
+      finalScore: 92.4,
+    })),
+    archive: vi.fn(() => of({})),
+    restore: vi.fn(() => of({})),
+  };
   beforeEach(async () => {
+    vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), { provide: ProductApiService, useValue: api }],
     }).compileComponents();
     fixture = TestBed.createComponent(ProductDetail);
     component = fixture.componentInstance;
@@ -53,11 +95,14 @@ describe('ProductDetail', () => {
     expect(component.syncState()).toBe('error');
     expect(fixture.nativeElement.textContent).toContain('同步失敗');
   });
-  it('simulates archive and restore locally', () => {
+  it('uses the master API service to archive and restore in formal mode', () => {
     component.toggleArchive();
-    expect(component.product()?.itemStatus).toBe('ARCHIVED');
+    expect(api.archive).toHaveBeenCalledWith(101);
+    component.product.update((product) =>
+      product ? { ...product, itemStatus: 'ARCHIVED' } : product,
+    );
     component.toggleArchive();
-    expect(component.product()?.itemStatus).toBe('ACTIVE');
+    expect(api.restore).toHaveBeenCalledWith(101);
   });
   it('renders loading empty and error recovery states', () => {
     component.setState('loading');

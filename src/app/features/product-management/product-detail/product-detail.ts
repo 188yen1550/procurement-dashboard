@@ -3,47 +3,19 @@
  * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
  */
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-
-type DetailState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
-type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-type ItemStatus = 'ACTIVE' | 'ARCHIVED';
-
-interface DetailProduct {
-  id: number;
-  name: string;
-  category: string;
-  pricingType: 'NEW' | 'RESALE';
-  supplier: string;
-  reviewStatus: ReviewStatus;
-  itemStatus: ItemStatus;
-  completeness: number;
-  baseScore: number | null;
-  festivalBoost: number;
-  finalScore: number | null;
-  campaign: string | null;
-  matchedTags: string[];
-  costPrice: number | null;
-  salePrice: number | null;
-  marketPrice: number | null;
-  moq: number;
-  supplyStability: number;
-  priceCompetitiveness: number;
-  audienceScore: number;
-  audience: string;
-  historicalScore: number;
-  historicalNote: string;
-  purchaseScore: number;
-  trendScore: number;
-  trendDirection: 'UP' | 'STABLE' | 'DOWN';
-  lastSyncedAt: string;
-  aiSummary: string | null;
-  aiReasons: string[];
-  risks: string[];
-  description: string;
-  imageUrl: string | null;
-}
+import { catchError, forkJoin, of, switchMap } from 'rxjs';
+import { APP_CONFIG } from '../../../core/config/app-config';
+import { ProductApiService } from '../product-api';
+import {
+  DetailProduct,
+  DetailState,
+  ItemStatus,
+  ReviewStatus,
+  toDetailProduct,
+} from './product-detail.model';
 
 const APPROVED: DetailProduct = {
   id: 101,
@@ -53,6 +25,10 @@ const APPROVED: DetailProduct = {
   supplier: '潮港鮮物有限公司',
   reviewStatus: 'APPROVED',
   itemStatus: 'ACTIVE',
+  candidateStatus: 'CANDIDATE',
+  submissionCount: 1,
+  dataSource: 'SNAPSHOT',
+  evaluationModeName: '均衡模式 · Version 1',
   completeness: 96,
   baseScore: 88.2,
   festivalBoost: 4.2,
@@ -87,6 +63,8 @@ const INCOMPLETE: DetailProduct = {
   pricingType: 'NEW',
   supplier: '簡居創意工坊',
   reviewStatus: 'PENDING',
+  submissionCount: 0,
+  dataSource: 'LIVE',
   completeness: 48,
   baseScore: null,
   festivalBoost: 0,
@@ -114,9 +92,13 @@ const INCOMPLETE: DetailProduct = {
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
-/** 品項詳情頁元件；資料與同步操作均為本地 Mock，不會觸發真實趨勢或 AI API。 */
-export class ProductDetail {
+/** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
+export class ProductDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(ProductApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
+  readonly useMockData = APP_CONFIG.useMockData;
   readonly stateOptions: readonly DetailState[] = [
     'default',
     'locked',
@@ -125,9 +107,7 @@ export class ProductDetail {
     'error',
   ];
   readonly pageState = signal<DetailState>('default');
-  readonly product = signal<DetailProduct | null>(
-    this.route.snapshot.paramMap.get('id') === '104' ? INCOMPLETE : APPROVED,
-  );
+  readonly product = signal<DetailProduct | null>(null);
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
   readonly statusMessage = signal('');
   readonly imageLoadFailed = signal(false);
@@ -135,6 +115,45 @@ export class ProductDetail {
   readonly isLocked = computed(
     () => this.pageState() === 'locked' || this.product()?.itemStatus === 'ARCHIVED',
   );
+
+  ngOnInit(): void {
+    this.reload();
+  }
+
+  /** Mock 模式沿用本地資料；真實模式呼叫三支 API 並組成同一個 View Model。 */
+  reload(): void {
+    if (this.useMockData) {
+      this.product.set(this.productId === '104' ? INCOMPLETE : APPROVED);
+      this.pageState.set('default');
+      return;
+    }
+    this.pageState.set('loading');
+    this.api
+      .getProduct(this.productId)
+      .pipe(
+        switchMap((product) =>
+          forkJoin({
+            product: of(product),
+            // 評估與節慶加成屬於可選區塊：單獨失敗時降級，不讓整頁變成 error。
+            evaluation: this.api.getEvaluation(this.productId).pipe(catchError(() => of(null))),
+            festival: this.api.getFestivalBoost(this.productId).pipe(catchError(() => of(null))),
+          }),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: ({ product, evaluation, festival }) => {
+          this.product.set(toDetailProduct(product, evaluation, festival));
+          this.pageState.set('default');
+          if (!evaluation) this.statusMessage.set('評估分數載入失敗，其餘資料仍可檢視。');
+        },
+        error: () => {
+          this.product.set(null);
+          this.pageState.set('error');
+          this.statusMessage.set('品項詳情載入失敗，請稍後重試。');
+        },
+      });
+  }
 
   setState(state: DetailState): void {
     this.pageState.set(state);
@@ -149,12 +168,19 @@ export class ProductDetail {
     this.statusMessage.set('已切換為資料待補範例。');
   }
   restoreDemo(): void {
+    if (!this.useMockData) {
+      this.reload();
+      return;
+    }
     this.product.set(APPROVED);
     this.pageState.set('default');
     this.statusMessage.set('已恢復完整 Demo 資料。');
     this.imageLoadFailed.set(false);
   }
-  handleImageError(): void { this.imageLoadFailed.set(true); this.statusMessage.set('商品圖片載入失敗，已顯示替代內容。'); }
+  handleImageError(): void {
+    this.imageLoadFailed.set(true);
+    this.statusMessage.set('商品圖片載入失敗，已顯示替代內容。');
+  }
   syncTrend(): void {
     this.syncState.set('syncing');
     this.statusMessage.set('正在模擬同步趨勢資料。');
@@ -175,8 +201,21 @@ export class ProductDetail {
       (p.itemStatus === 'ARCHIVED' && p.reviewStatus !== 'APPROVED')
     )
       return;
-    this.product.set({ ...p, itemStatus: p.itemStatus === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE' });
-    this.statusMessage.set(p.itemStatus === 'ACTIVE' ? '已在本地模擬封存。' : '已在本地模擬復用。');
+    if (this.useMockData) {
+      this.product.set({ ...p, itemStatus: p.itemStatus === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE' });
+      this.statusMessage.set(
+        p.itemStatus === 'ACTIVE' ? '已在本地模擬封存。' : '已在本地模擬復用。',
+      );
+      return;
+    }
+    const request = p.itemStatus === 'ACTIVE' ? this.api.archive(p.id) : this.api.restore(p.id);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.reload(),
+      error: (err: { status?: number }) =>
+        this.statusMessage.set(
+          err.status === 409 ? '狀態已被他人變更，請重新整理後再試。' : '操作失敗，請稍後再試。',
+        ),
+    });
   }
   discountRate(p: DetailProduct): number | null {
     return p.marketPrice && p.salePrice

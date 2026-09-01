@@ -37,19 +37,19 @@ export class Login {
     this.isLoading = true;
     this.errorMessage = '';
 
-    // 純前端原型：延遲只用來展示登入中的 UI 狀態，不會呼叫任何 API。
-    setTimeout(() => {
-      const { username, password } = this.loginForm.getRawValue();
-      const user = this.auth.login(username ?? '', password ?? '');
-
-      if (!user) {
-        this.errorMessage = '測試帳號或密碼錯誤';
+    const { username, password } = this.loginForm.getRawValue();
+    this.auth.login(username ?? '', password ?? '').subscribe({
+      next: () => {
         this.isLoading = false;
-        return;
-      }
-
-      this.isLoading = false;
-      void this.router.navigate(['/dashboard']);
-    }, 500);
+        void this.router.navigate(['/dashboard']);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.isLoading = false;
+        // 後端 401 時 ApiResponse.message 會是「帳號或密碼錯誤」或
+        // 「帳號已被停用」兩種不同文案（見 GlobalExceptionHandler），
+        // 直接顯示後端訊息，不要自己收斂成單一句籠統文字。
+        this.errorMessage = err?.error?.message ?? '登入失敗，請稍後再試';
+      },
+    });
   }
 }

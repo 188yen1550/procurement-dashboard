@@ -118,7 +118,7 @@
         <span>Final Score</span><strong>{{ p.finalScore ?? '—' }}</strong
         ><small
           >dataSource:
-          {{ p.reviewStatus === 'APPROVED' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small
+          {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small
         >
       </article>
     </section>
@@ -128,7 +128,7 @@
           <p class="eyebrow">Evaluation Mode</p>
           <h2>目前評估模式</h2>
         </div>
-        <span>均衡模式 · Version 1</span>
+        <span>{{ p.evaluationModeName }}</span>
       </header>
       <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預估購買／市場趨勢 25%</p>
       <small>參考項目：毛利、MOQ、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>

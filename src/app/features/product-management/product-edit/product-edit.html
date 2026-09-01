@@ -1,0 +1,59 @@
+@if (isLoading) {
+  <p>載入中...</p>
+}
+
+@if (errorMessage) {
+  <p>{{ errorMessage }}</p>
+}
+
+<form [formGroup]="editForm" (ngSubmit)="onSubmit()">
+
+  <div>
+    <label>品項名稱</label>
+    <input type="text" formControlName="name" />
+  </div>
+
+  <div>
+    <label>描述</label>
+    <textarea formControlName="description"></textarea>
+  </div>
+
+  <div>
+    <label>圖片網址</label>
+    <input type="text" formControlName="imageUrl" />
+  </div>
+
+  <div>
+    <label>供應商</label>
+    <input type="text" formControlName="supplierName" />
+  </div>
+
+  @if (isCoreLocked) {
+    <p>⚠️ 已審核通過的商品，核心資料無法編輯</p>
+  }
+
+  <div [formGroup]="coreForm">
+    <div>
+      <label>商品類型ID</label>
+      <input type="number" formControlName="productTypeId" />
+    </div>
+    <div>
+      <label>定價類型</label>
+      <select formControlName="pricingType">
+        <option value="NEW">新品</option>
+        <option value="RESALE">再販售</option>
+      </select>
+    </div>
+    <div>
+      <label>成本價</label>
+      <input type="number" formControlName="costPrice" />
+    </div>
+    <div>
+      <label>售價</label>
+      <input type="number" formControlName="salePrice" />
+    </div>
+    <!-- 其他核心欄位依此類推 -->
+  </div>
+
+  <button type="submit">儲存</button>
+</form>

@@ -33,9 +33,9 @@
         @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div> }
         @else { <div class="pending-pricing wide"><strong>待訂價 PENDING_PRICING</strong><span>新品此階段不要求成本價與售價。</span></div> }
         <label>MOQ 最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
-        <label>供應穩定性（0–100）<input type="number" min="0" max="100" formControlName="supplyStability" /></label>
-        <label>價格競爭力（0–100）<input type="number" min="0" max="100" formControlName="priceCompetitiveness" /></label>
-        <label>預估購買率（0–100）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
+        <label>供應穩定性（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="supplyStability" /></label>
+        <label>價格競爭力（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="priceCompetitiveness" /></label>
+        <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
         <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer"></textarea>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入目標客群描述。</small> }</label>
       </div></section>
       <footer><p>此頁只儲存於當前前端狀態，重新整理後會還原。</p><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
