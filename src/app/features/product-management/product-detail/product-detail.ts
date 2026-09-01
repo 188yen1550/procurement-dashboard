@@ -8,7 +8,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { APP_CONFIG } from '../../../core/config/app-config';
-import { ProductApiService } from '../product-api';
+import { toApiError } from '../../../core/api/api-error';
+import { REVIEW_STATUS_LABEL } from '../../../core/domain/labels';
+import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import { ProductApiService } from '../api/product-api.service';
 import {
   DetailProduct,
   DetailState,
@@ -96,6 +99,7 @@ const INCOMPLETE: DetailProduct = {
 export class ProductDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
+  private readonly productTypes = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly useMockData = APP_CONFIG.useMockData;
@@ -137,13 +141,16 @@ export class ProductDetail implements OnInit {
             // 評估與節慶加成屬於可選區塊：單獨失敗時降級，不讓整頁變成 error。
             evaluation: this.api.getEvaluation(this.productId).pipe(catchError(() => of(null))),
             festival: this.api.getFestivalBoost(this.productId).pipe(catchError(() => of(null))),
+            // 商品類型名稱：ProductResponse 只有 productTypeId，
+            // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
+            typeName: this.productTypes.getName(product.productTypeId),
           }),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival }) => {
-          this.product.set(toDetailProduct(product, evaluation, festival));
+        next: ({ product, evaluation, festival, typeName }) => {
+          this.product.set(toDetailProduct(product, evaluation, festival, typeName));
           this.pageState.set('default');
           if (!evaluation) this.statusMessage.set('評估分數載入失敗，其餘資料仍可檢視。');
         },
@@ -211,10 +218,16 @@ export class ProductDetail implements OnInit {
     const request = p.itemStatus === 'ACTIVE' ? this.api.archive(p.id) : this.api.restore(p.id);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.reload(),
-      error: (err: { status?: number }) =>
+      error: (err: unknown) => {
+        const error = toApiError(err);
         this.statusMessage.set(
-          err.status === 409 ? '狀態已被他人變更，請重新整理後再試。' : '操作失敗，請稍後再試。',
-        ),
+          error.status === 409
+            ? '狀態已被他人變更，請重新整理後再試。'
+            : error.message,
+        );
+        // 409 代表畫面上的狀態已經過期，重新載入讓按鈕回到真實條件。
+        if (error.status === 409) this.reload();
+      },
     });
   }
   discountRate(p: DetailProduct): number | null {
@@ -228,6 +241,9 @@ export class ProductDetail implements OnInit {
       : null;
   }
   reviewLabel(s: ReviewStatus): string {
-    return { PENDING: '未審核', APPROVED: '已通過選品審核', REJECTED: '未通過' }[s];
+    // 改讀 core/domain/labels.ts：原本的行內物件字面量沒有索引簽章，
+    // strict 模式下以 ReviewStatus 索引會被判為隱含 any（TS7053）。
+    // 集中管理也讓全站文案一致——先前三個頁面各寫一份，文案已經對不上。
+    return REVIEW_STATUS_LABEL[s];
   }
 }

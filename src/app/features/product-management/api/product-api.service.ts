@@ -1,0 +1,327 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
+import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
+import { buildParams } from '../../../core/api/http-params';
+import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
+import { ReviewRecordResponsePayload } from '../../review/api/review-api.contract';
+import { ReviewRecordModel, toReviewRecordModel } from '../../review/api/review.mapper';
+import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import {
+  AiAnalysisResponsePayload,
+  EvaluationResponsePayload,
+  FestivalBoostResponsePayload,
+  PRODUCT_API,
+  ProductCreateRequestPayload,
+  ProductListQuery,
+  ProductResponsePayload,
+  ProductUpdateRequestPayload,
+  TrendSnapshotPayload,
+} from './product-api.contract';
+import {
+  AiAnalysisModel,
+  ProductDetailModel,
+  ProductFormModel,
+  ProductListItem,
+  TrendModel,
+  toAiAnalysisModel,
+  toProductDetailModel,
+  toProductFormModel,
+  toProductListItem,
+  toTrendModel,
+} from './product.mapper';
+
+/**
+ * 品項相關 API 的唯一呼叫入口。元件不直接使用 HttpClient。
+ *
+ * 方法順序對齊後端 Controller，方便 review 時逐支對照：
+ * ProductController → ScoringController → TrendController → AiSelectionController。
+ *
+ * ## 錯誤處理的分工
+ * 這一層**不 catchError**（詳情頁的可選區塊除外，見 getDetail()）。
+ * 呼叫端需要區分 409（狀態被別人改了）與 400（欄位錯誤）與 403（權限不足），
+ * 這裡若統一吞掉，上層就只剩「失敗了」三個字可用。
+ * 錯誤轉換請在元件用 core/api/api-error.ts 的 toApiError()。
+ */
+@Injectable({ providedIn: 'root' })
+export class ProductApiService {
+  private readonly http = inject(HttpClient);
+  private readonly productTypes = inject(ProductTypeLookupService);
+
+  // ----- ProductController -----
+
+  /**
+   * 1. GET /api/products：品項主清單。
+   *
+   * candidateStatus 不帶時後端預設 CANDIDATE，所以主清單通常不用送。
+   * 這裡會順帶把 productTypeId 對照成中文名稱：ProductResponse 只有編號，
+   * 對照表由 ProductTypeLookupService 快取（shareReplay），
+   * 不會每次查清單就多打一次 settings API。
+   */
+  list(query: ProductListQuery = {}): Observable<PagedResult<ProductListItem>> {
+    return this.listWithTypeNames(PRODUCT_API.list, query);
+  }
+
+  /**
+   * 2. GET /api/products/ai-suggested：AI 建議清單。
+   *
+   * ⚠️ 後端這支**只吃 Pageable，不吃任何篩選參數**
+   * （ProductController.searchAiSuggested 的簽名只有 Pageable），
+   * 送 keyword／reviewStatus 過去不會有作用也不會報錯，會靜默被忽略。
+   * 所以參數型別刻意收窄成只有分頁，避免呼叫端誤以為可以篩選。
+   */
+  listAiSuggested(
+    query: { page?: number; size?: number; sort?: string } = {},
+  ): Observable<PagedResult<ProductListItem>> {
+    return this.listWithTypeNames(PRODUCT_API.aiSuggested, query);
+  }
+
+  /** 3. GET /api/products/{id}：商品核心資料（原始 payload）。 */
+  getProduct(id: number | string): Observable<ProductResponsePayload> {
+    return this.http
+      .get<ApiEnvelope<ProductResponsePayload>>(PRODUCT_API.detail(id))
+      .pipe(unwrapData());
+  }
+
+  /** 4. 編輯表單用的 View Model。同一支 API，只是換成表單要的形狀。 */
+  getProductForm(id: number | string): Observable<ProductFormModel> {
+    return this.getProduct(id).pipe(map(toProductFormModel));
+  }
+
+  /**
+   * 5. POST /api/products：手動新增品項，後端直接建為 CANDIDATE。
+   *
+   * ⚠️ 後端不檢查商品名稱重複，防止使用者手滑送兩次是前端責任——
+   * 送出後立即 disable 按鈕，成功前不要恢復。
+   */
+  create(body: ProductCreateRequestPayload): Observable<ProductResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<ProductResponsePayload>>(PRODUCT_API.create, body)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 6. PUT /api/products/{id}：整份覆蓋更新。
+   *
+   * ⚠️ 沒送的欄位會變成 null，一定要先 GET 再改再整份送回。
+   * ⚠️ APPROVED 商品異動選品核心資料會收到 409，呼叫端要單獨處理這個狀態碼，
+   *    顯示「已核准商品的核心資料不可修改」而不是通用錯誤。
+   */
+  update(
+    id: number | string,
+    body: ProductUpdateRequestPayload,
+  ): Observable<ProductResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<ProductResponsePayload>>(PRODUCT_API.detail(id), body)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 7. DELETE /api/products/{id}
+   * 前置條件：reviewStatus === 'PENDING' 且 submissionCount === 0。
+   */
+  remove(id: number | string): Observable<void> {
+    return this.http
+      .delete<ApiEnvelope<null>>(PRODUCT_API.detail(id))
+      .pipe(map(() => undefined));
+  }
+
+  /**
+   * 8. POST /api/products/{id}/resubmit
+   * 前置條件：REJECTED **且** ACTIVE。已封存的要先復用。
+   */
+  resubmit(id: number | string): Observable<ProductResponsePayload> {
+    return this.postAction(PRODUCT_API.resubmit(id));
+  }
+
+  /**
+   * 9. POST /api/products/{id}/archive
+   * 前置條件：ACTIVE **且** (APPROVED 或 REJECTED)。PENDING 不能封存。
+   *
+   * ⚠️ 不是 PATCH /api/products/{id}/item-status——後端沒有那支端點。
+   */
+  archive(id: number | string): Observable<ProductResponsePayload> {
+    return this.postAction(PRODUCT_API.archive(id));
+  }
+
+  /**
+   * 10. POST /api/products/{id}/restore
+   * 前置條件：ARCHIVED **且** (APPROVED 或 REJECTED)。
+   * ⚠️ REJECTED 也可以復用，不是只有 APPROVED。
+   */
+  restore(id: number | string): Observable<ProductResponsePayload> {
+    return this.postAction(PRODUCT_API.restore(id));
+  }
+
+  /** 11. POST /api/products/{id}/promote-to-candidate：AI_SUGGESTED → CANDIDATE。 */
+  promoteToCandidate(id: number | string): Observable<ProductResponsePayload> {
+    return this.postAction(PRODUCT_API.promote(id));
+  }
+
+  /**
+   * 12. POST /api/products/{id}/image：上傳／替換商品圖片。
+   *
+   * ⚠️ 這支不是 JSON 而是 multipart/form-data，欄位名固定 file。
+   * ⚠️ **不要自己設 Content-Type header**——瀏覽器需要自行產生含 boundary 的
+   *    multipart/form-data; boundary=----xxx，手動設定會讓後端解不出檔案。
+   * ⚠️ 限制 jpg／jpeg／png／webp、單檔 5MB，超過會收到 400。
+   * ⚠️ 重複上傳會取代舊圖，舊網址變成 404，畫面要用新的 imageUrl 覆蓋。
+   */
+  uploadImage(id: number | string, file: File): Observable<ProductResponsePayload> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http
+      .post<ApiEnvelope<ProductResponsePayload>>(PRODUCT_API.image(id), formData)
+      .pipe(unwrapData());
+  }
+
+  // ----- ScoringController -----
+
+  /** 13. GET /api/products/{id}/evaluation：六大分項與 Base/Final Score。 */
+  getEvaluation(id: number | string): Observable<EvaluationResponsePayload> {
+    return this.http
+      .get<ApiEnvelope<EvaluationResponsePayload>>(PRODUCT_API.evaluation(id))
+      .pipe(unwrapData());
+  }
+
+  /** 14. GET /api/products/{id}/festival-boost：命中檔期明細。matchedCampaign 可為 null。 */
+  getFestivalBoost(id: number | string): Observable<FestivalBoostResponsePayload> {
+    return this.http
+      .get<ApiEnvelope<FestivalBoostResponsePayload>>(PRODUCT_API.festivalBoost(id))
+      .pipe(unwrapData());
+  }
+
+  // ----- TrendController -----
+
+  /**
+   * 15. POST /api/products/{id}/trend/sync：手動同步趨勢資料。
+   *
+   * ⚠️ 這支會呼叫外部資料源，**絕對不要在頁面載入時自動觸發**
+   * （企劃書第八節：不要在一般頁面載入時無條件觸發大量 crawler request）。
+   * 只綁在使用者明確點擊的「同步」按鈕上。
+   */
+  syncTrend(id: number | string): Observable<TrendModel> {
+    return this.http
+      .post<ApiEnvelope<TrendSnapshotPayload>>(PRODUCT_API.trendSync(id), {})
+      .pipe(unwrapData(), map(toTrendModel));
+  }
+
+  // ----- AiSelectionController -----
+
+  /**
+   * 16. GET /api/products/{id}/ai-analysis：純讀取已快取的分析。
+   *
+   * ⚠️ 無快取時回 200 + 全 null 物件，不是 404。
+   * toAiAnalysisModel() 會把它轉成 hasAnalysis: false，
+   * 呼叫端據此顯示「尚無 AI 分析，點擊生成」的 Empty 狀態。
+   * ⚠️ GET 不觸發 LLM 生成，不會產生費用。
+   */
+  getAiAnalysis(id: number | string): Observable<AiAnalysisModel> {
+    return this.http
+      .get<ApiEnvelope<AiAnalysisResponsePayload>>(PRODUCT_API.aiAnalysis(id))
+      .pipe(unwrapData(), map(toAiAnalysisModel));
+  }
+
+  /**
+   * 17. POST /api/products/{id}/ai-analysis/generate：觸發生成新分析。
+   *
+   * ⚠️ **這支會產生 LLM API 費用**，且後端有配額限制。
+   * 前端必須：二次確認對話框 + 送出後 disable 按鈕直到回應，
+   * 不要讓使用者連點。失敗時後端回 502（LlmAnalysisException），
+   * 用 isLlmFailure() 判斷後讓 AI 區塊單獨降級，不要讓整頁變 error。
+   */
+  generateAiAnalysis(id: number | string): Observable<AiAnalysisModel> {
+    return this.http
+      .post<ApiEnvelope<AiAnalysisResponsePayload>>(PRODUCT_API.aiAnalysisGenerate(id), {})
+      .pipe(unwrapData(), map(toAiAnalysisModel));
+  }
+
+  // ----- ReviewController（審核歷史，操作層也可看）-----
+
+  /**
+   * 18. GET /api/products/{id}/reviews：單一商品的歷次審核紀錄。
+   *
+   * ⚠️ 這支回的是 **List 不是 Page**（ReviewController 的簽名是 List），
+   * 跟 /api/reviews/decision-records 不同，不要用 unwrapPage()。
+   * ⚠️ 這是唯一「操作層也能呼叫」的審核相關 API，可以放在品項詳情頁。
+   */
+  getReviewHistory(id: number | string): Observable<ReviewRecordModel[]> {
+    return this.http
+      .get<ApiEnvelope<ReviewRecordResponsePayload[]>>(PRODUCT_API.reviewHistory(id))
+      .pipe(unwrapData(), map((records) => records.map((r) => toReviewRecordModel(r))));
+  }
+
+  // ----- 組合查詢 -----
+
+  /**
+   * 19. 詳情頁的一次性載入：基本資料 + 評估 + 節慶加成。
+   *
+   * 設計取捨：
+   * - 基本資料失敗 → 整個 Observable error，頁面顯示 error 狀態（沒有商品就沒有頁面）
+   * - 評估／節慶失敗 → catchError 降級成 null，頁面照常渲染其餘區塊
+   *
+   * 為什麼先 getProduct 再 forkJoin 而不是三支一起 forkJoin：
+   * forkJoin 任一支 error 就全部 error，商品不存在時三支都會打出去、
+   * 浪費兩個必然失敗的請求，也拿不到「是哪一支失敗」的資訊。
+   *
+   * AI 分析與審核歷史刻意**不**放進來：那兩塊是使用者展開才需要的，
+   * 一併載入等於每次進詳情頁都多兩個請求。
+   */
+  getDetail(id: number | string): Observable<ProductDetailModel> {
+    return this.getProduct(id).pipe(
+      switchMap((product) =>
+        forkJoin({
+          product: of(product),
+          evaluation: this.getEvaluation(id).pipe(catchError(() => of(null))),
+          festival: this.getFestivalBoost(id).pipe(catchError(() => of(null))),
+          typeName: this.productTypes.getName(product.productTypeId),
+        }),
+      ),
+      map(({ product, evaluation, festival, typeName }) =>
+        toProductDetailModel(product, evaluation, festival, typeName),
+      ),
+    );
+  }
+
+  // ----- private -----
+
+  /** 四支狀態轉換端點形狀相同，抽出來避免四份幾乎一樣的程式碼。 */
+  private postAction(url: string): Observable<ProductResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<ProductResponsePayload>>(url, {})
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 清單查詢共用流程：拆兩層殼 + 對照商品類型名稱。
+   *
+   * 商品類型對照表整份取回後在記憶體 join，不是每筆打一次 API——
+   * 類型只有個位數筆、且 ProductTypeLookupService 有 shareReplay 快取。
+   */
+  private listWithTypeNames(
+    url: string,
+    query: object,
+  ): Observable<PagedResult<ProductListItem>> {
+    return forkJoin({
+      page: this.http
+        .get<ApiEnvelope<PageEnvelope<ProductResponsePayload>>>(url, {
+          params: buildParams(query),
+        })
+        .pipe(unwrapPage((payload: ProductResponsePayload) => payload)),
+      nameById: this.productTypes.getNameMap(),
+    }).pipe(
+      map(({ page, nameById }) => ({
+        ...page,
+        items: page.items.map((payload) =>
+          toProductListItem(
+            payload,
+            payload.productTypeId === null
+              ? undefined
+              : nameById.get(payload.productTypeId),
+          ),
+        ),
+      })),
+    );
+  }
+}

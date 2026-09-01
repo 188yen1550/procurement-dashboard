@@ -33,7 +33,7 @@
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
       <h2>審核清單載入失敗</h2>
-      <button type="button" (click)="resetMock()">重試</button>
+      <button type="button" (click)="retry()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {
     <section class="skeleton" role="status">
@@ -86,27 +86,25 @@
             <div>
               <span class="category">{{ item.category }}</span>
               <h2>{{ item.name }}</h2>
-              <p>由 {{ item.submittedBy }} 送審 · {{ item.submittedAt | date: 'MM/dd HH:mm' }}</p>
+              <!-- submittedBy 恆為 null：ProductResponse 只有 createdBy 編號，
+                   後端沒有 id 轉姓名的端點。null 時不顯示「由 null 送審」。 -->
+              <p>
+                @if (item.submittedBy) {
+                  由 {{ item.submittedBy }} 送審 ·
+                }
+                {{ item.submittedAt | date: 'MM/dd HH:mm' }}
+              </p>
               @if (item.submissionCount > 1) {
                 <strong class="resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
               }
             </div>
             <div class="meta">
-              <span>完整度 {{ item.completeness }}%</span
-              ><span>{{
-                item.status === 'PENDING'
-                  ? '未審核'
-                  : item.status === 'APPROVED'
-                    ? '已通過'
-                    : '未通過'
-              }}</span
+              <span>完整度 {{ item.completeness !== null ? item.completeness + '%' : '—' }}</span
+              ><span>{{ reviewStatusLabel(item.status) }}</span
               ><span>{{ item.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
             </div>
-            @if (
-              pageState() === 'disabled' ||
-              item.status !== 'PENDING' ||
-              item.itemStatus !== 'ACTIVE'
-            ) {
+            <!-- 條件收在元件的 canReview()，與後端進入審核頁的前置條件一致 -->
+            @if (!canReview(item)) {
               <button type="button" disabled title="僅未審核且使用中品項可審核">審核停用</button>
             } @else {
               <a [routerLink]="['/review', item.id]">開始審核</a>
@@ -135,7 +133,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (record of records; track record.id) {
+            @for (record of records(); track record.id) {
               <tr>
                 <td>{{ record.name }}</td>
                 <td>第 {{ record.round }} 次</td>
@@ -144,9 +142,9 @@
                     record.result === 'APPROVED' ? '通過' : '未通過'
                   }}</span>
                 </td>
-                <td>{{ record.score }}</td>
-                <td>{{ record.reviewer }}</td>
-                <td>{{ record.date }}</td>
+                <td>{{ record.score ?? '—' }}</td>
+                <td>{{ record.reviewer ?? '—' }}</td>
+                <td>{{ record.date | date: 'yyyy/MM/dd' }}</td>
                 <td>{{ record.comment }}</td>
               </tr>
             }

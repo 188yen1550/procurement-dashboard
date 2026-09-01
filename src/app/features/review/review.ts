@@ -1,80 +1,137 @@
 /**
- * 檔案用途：管理人員的待審清單與決策紀錄本地 Mock 狀態。
+ * 檔案用途：管理人員的待審清單與決策紀錄。
  * 預設範圍是 PENDING＋ACTIVE；核准只是選品決策，不代表上架、簽約、銷售或營收。
+ *
+ * ## 這次改寫做了什麼
+ *
+ * 舊碼的 loadPendingItems() 是一支打不通的死碼——註解已經正確指出
+ * ProductResponse 湊不齊 ReviewItem 的欄位，但方法還留著且會 404。
+ * 現在改為真的接上 ReviewApiService，並且對「後端沒有的欄位」誠實處理。
+ *
+ * ## ⚠️ 三個後端拿不到的欄位，處理方式
+ *
+ * | 舊 ReviewItem 欄位 | 後端狀況                                    | 這次的處理            |
+ * |--------------------|---------------------------------------------|-----------------------|
+ * | category           | 只有 productTypeId                          | 對照設定 API 取得名稱 |
+ * | finalScore         | 在 /evaluation，清單端點沒有                | null，畫面顯示「—」   |
+ * | completeness       | 同上                                        | null，畫面顯示「—」   |
+ * | riskLevel          | **後端完全沒有這個概念**                    | 已移除                |
+ *
+ * riskLevel 直接刪掉而不是填假值：那是舊原型自行發明的欄位，
+ * 系統的風險是審核時由主管勾選 risk_options，不是商品的屬性。
+ * 留著它會讓人以為後端有風險分級，是錯誤的心智模型。
+ *
+ * 分數與完整度**不逐筆呼叫 /evaluation** 補齊——待審清單 20 筆就是
+ * 20 個額外請求。要顯示分數請後端在清單端點併帶。
+ *
+ * ## ⚠️ submittedBy 這次已接上真實資料，不再是死欄位
+ *
+ * 後端補了 ProductResponse.createdByName（ProductService／ReviewService
+ * 批次查 app_users 後填入），現在直接讀 PendingReviewItem.createdByName，
+ * 不再需要「恆為 null」的特殊處理。找不到對應帳號時後端回 fallback 字串，
+ * 前端不再需要另外判斷 null。
  */
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { toApiError } from '../../core/api/api-error';
+import { APP_CONFIG } from '../../core/config/app-config';
+import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
+import { REVIEW_DECISION_LABEL, REVIEW_STATUS_LABEL } from '../../core/domain/labels';
+import { PendingReviewItem } from './api/review.mapper';
+import { ReviewApiService } from './api/review-api.service';
+
+/** 待審清單的顯示模型。可為 null 的欄位代表後端目前提供不了。 */
 export interface ReviewItem {
   id: number;
   name: string;
+  /** 後端已批次查好；找不到對應帳號時為 fallback 字串，不會是 null。 */
   submittedBy: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  itemStatus: 'ACTIVE' | 'ARCHIVED';
+  status: ReviewStatus;
+  itemStatus: ItemStatus;
+  /** 由 productTypeId 對照設定 API 得來。 */
   category: string;
+  /** ⚠️ 恆為 null：分數在 /evaluation，清單端點沒有。 */
   finalScore: number | null;
-  completeness: number;
+  /** ⚠️ 恆為 null，理由同上。 */
+  completeness: number | null;
   submissionCount: number;
-  submittedAt: string;
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  /** ⚠️ 實際是 updatedAt。ProductResponse 沒有「送審時間」這個欄位。 */
+  submittedAt: string | null;
 }
+
+/** 決策紀錄表格的顯示模型。 */
+export interface DecisionRecordRow {
+  id: number;
+  name: string;
+  round: number;
+  result: 'APPROVED' | 'REJECTED';
+  /** ⚠️ 恆為 null：ReviewRecordResponse 只有 reviewerId，無姓名。 */
+  reviewer: string | null;
+  score: number | null;
+  date: string | null;
+  comment: string;
+}
+
 type ReviewState = 'default' | 'disabled' | 'loading' | 'empty' | 'error';
+
+function mock(
+  id: number,
+  name: string,
+  submittedBy: string,
+  status: ReviewStatus,
+  itemStatus: ItemStatus,
+  category: string,
+  finalScore: number,
+  completeness: number,
+  submissionCount: number,
+  submittedAt: string,
+): ReviewItem {
+  return {
+    id,
+    name,
+    submittedBy,
+    status,
+    itemStatus,
+    category,
+    finalScore,
+    completeness,
+    submissionCount,
+    submittedAt,
+  };
+}
+
 const MOCK: readonly ReviewItem[] = [
-  {
-    id: 102,
-    name: '輕量智慧溫控電熱杯',
-    submittedBy: '林小美',
-    status: 'PENDING',
-    itemStatus: 'ACTIVE',
-    category: '3C／家電',
-    finalScore: 81.6,
-    completeness: 78,
-    submissionCount: 1,
-    submittedAt: '2026-08-31T09:10:00+08:00',
-    riskLevel: 'MEDIUM',
-  },
-  {
-    id: 103,
-    name: '無香低敏濃縮洗衣紙補充組',
-    submittedBy: '陳家豪',
-    status: 'PENDING',
-    itemStatus: 'ACTIVE',
-    category: '日用品',
-    finalScore: 76.1,
-    completeness: 88,
-    submissionCount: 2,
-    submittedAt: '2026-08-30T15:25:00+08:00',
-    riskLevel: 'HIGH',
-  },
-  {
-    id: 108,
-    name: '年節養生堅果禮盒',
-    submittedBy: '林小美',
-    status: 'PENDING',
-    itemStatus: 'ACTIVE',
-    category: '精品禮盒',
-    finalScore: 84.3,
-    completeness: 94,
-    submissionCount: 1,
-    submittedAt: '2026-08-29T11:40:00+08:00',
-    riskLevel: 'LOW',
-  },
-  {
-    id: 109,
-    name: '已封存測試品項',
-    submittedBy: '陳家豪',
-    status: 'REJECTED',
-    itemStatus: 'ARCHIVED',
-    category: '其他',
-    finalScore: 62,
-    completeness: 82,
-    submissionCount: 1,
-    submittedAt: '2026-08-20T10:00:00+08:00',
-    riskLevel: 'LOW',
-  },
+  mock(102, '輕量智慧溫控電熱杯', '林小美', 'PENDING', 'ACTIVE', '3C／家電', 81.6, 78, 1, '2026-08-31T09:10:00+08:00'),
+  mock(103, '無香低敏濃縮洗衣紙補充組', '陳家豪', 'PENDING', 'ACTIVE', '日用品', 76.1, 88, 2, '2026-08-30T15:25:00+08:00'),
+  mock(108, '年節養生堅果禮盒', '林小美', 'PENDING', 'ACTIVE', '精品禮盒', 84.3, 94, 1, '2026-08-29T11:40:00+08:00'),
+  mock(109, '已封存測試品項', '陳家豪', 'REJECTED', 'ARCHIVED', '其他', 62, 82, 1, '2026-08-20T10:00:00+08:00'),
 ];
+
+const MOCK_RECORDS: readonly DecisionRecordRow[] = [
+  { id: 501, name: '中秋炭烤海陸組合禮盒', round: 1, result: 'APPROVED', reviewer: '管理員 王主任', score: 92.4, date: '2026/08/28', comment: '節慶需求明確，確認冷鏈排程後通過。' },
+  { id: 502, name: '可機洗抗菌涼感被', round: 1, result: 'REJECTED', reviewer: '管理員 李經理', score: 69.5, date: '2026/08/24', comment: '供應穩定性不足，請補充備援方案。' },
+];
+
+/** PendingReviewItem（後端）→ ReviewItem（畫面）。 */
+function toReviewItem(item: PendingReviewItem): ReviewItem {
+  return {
+    id: item.id,
+    name: item.name,
+    // 後端已批次查好 createdByName，不再需要「恆為 null」的特殊處理。
+    submittedBy: item.createdByName,
+    status: item.reviewStatus,
+    itemStatus: item.itemStatus,
+    category: item.productTypeName,
+    finalScore: item.finalScore,
+    completeness: item.dataCompleteness,
+    submissionCount: item.submissionCount,
+    submittedAt: item.updatedAt,
+  };
+}
+
 @Component({
   selector: 'app-review',
   standalone: true,
@@ -83,112 +140,168 @@ const MOCK: readonly ReviewItem[] = [
   styleUrl: './review.scss',
 })
 export class ReviewComponent implements OnInit {
-  private readonly http = inject(HttpClient);
-  readonly stateOptions: readonly ReviewState[] = [
-    'default',
-    'disabled',
-    'loading',
-    'empty',
-    'error',
-  ];
+  private readonly api = inject(ReviewApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  readonly useMockData = APP_CONFIG.useMockData;
+
+  readonly stateOptions: readonly ReviewState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
   readonly pageState = signal<ReviewState>('default');
   readonly items = signal<ReviewItem[]>([]);
+  readonly records = signal<DecisionRecordRow[]>([]);
   readonly query = signal('');
-  readonly reviewFilter = signal<'ALL' | ReviewItem['status']>('PENDING');
-  readonly itemFilter = signal<'ALL' | ReviewItem['itemStatus']>('ACTIVE');
+  readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
+  readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');
   readonly view = signal<'pending' | 'records'>('pending');
   readonly statusMessage = signal('');
-  pendingItems: ReviewItem[] = [];
+  readonly totalElements = signal(0);
+
   isLoading = false;
+
+  /**
+   * ⚠️ 真實模式下 GET /api/reviews/pending **已經是 PENDING + ACTIVE**，
+   * 後端寫死了條件、不吃篩選參數。前端這裡再濾一次對真實資料是無害的，
+   * 但要知道：切換成 ALL 也不會出現已審核的商品，因為後端根本沒回。
+   * 篩選器在真實模式下只對關鍵字有實際作用。
+   */
   readonly filtered = computed(() => {
-    const q = this.query().trim().toLowerCase();
+    const keyword = this.query().trim().toLocaleLowerCase('zh-Hant');
     return this.items().filter(
-      (i) =>
-        (!q || i.name.toLowerCase().includes(q) || i.submittedBy.toLowerCase().includes(q)) &&
-        (this.reviewFilter() === 'ALL' || i.status === this.reviewFilter()) &&
-        (this.itemFilter() === 'ALL' || i.itemStatus === this.itemFilter()),
+      (item) =>
+        (!keyword ||
+          item.name.toLocaleLowerCase('zh-Hant').includes(keyword) ||
+          (item.submittedBy ?? '').toLocaleLowerCase('zh-Hant').includes(keyword)) &&
+        (this.reviewFilter() === 'ALL' || item.status === this.reviewFilter()) &&
+        (this.itemFilter() === 'ALL' || item.itemStatus === this.itemFilter()),
     );
   });
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  // ----- 載入 -----
+
+  load(): void {
+    if (this.useMockData) {
+      this.resetMock();
+      return;
+    }
+    this.loadPendingItems();
+    this.loadDecisionRecords();
+  }
+
+  /**
+   * GET /api/reviews/pending [僅管理]
+   *
+   * ⚠️ 403 要與 401 分開處理：403 代表已登入但角色不是 MANAGER，
+   * 導回登入頁沒有意義（重登也不會變成 MANAGER）。Route Guard 應該先擋掉，
+   * 但後端這道才是真正有效的防線，所以這裡仍要正確顯示。
+   */
+  loadPendingItems(): void {
+    this.isLoading = true;
+    this.pageState.set('loading');
+
+    this.api
+      .listPending({ page: 0, size: 20, sort: 'updatedAt,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.items.set(result.items.map(toReviewItem));
+          this.totalElements.set(result.totalElements);
+          this.isLoading = false;
+          this.pageState.set(result.items.length === 0 ? 'empty' : 'default');
+        },
+        error: (err) => {
+          this.isLoading = false;
+          const error = toApiError(err);
+          this.pageState.set(error.status === 403 ? 'disabled' : 'error');
+          this.statusMessage.set(
+            error.status === 403 ? '您的角色沒有選品審核權限。' : error.message,
+          );
+        },
+      });
+  }
+
+  /** GET /api/reviews/decision-records [僅管理]。失敗只讓紀錄分頁降級，不影響待審清單。 */
+  loadDecisionRecords(): void {
+    this.api
+      .listDecisionRecords({ page: 0, size: 20, sort: 'reviewedAt,desc' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.records.set(
+            result.items.map((record) => ({
+              id: record.id,
+              name: record.productName,
+              round: record.submissionCount ?? 1,
+              result: record.reviewStatus,
+              reviewer: record.reviewerName,
+              score: record.finalScore,
+              date: record.reviewedAt,
+              comment: record.reviewComment,
+            })),
+          );
+        },
+        error: () => this.records.set([]),
+      });
+  }
+
+  retry(): void {
+    if (this.useMockData) this.resetMock();
+    else this.load();
+  }
+
+  // ----- 篩選 -----
+
   clearFilters(): void {
     this.query.set('');
     this.reviewFilter.set('PENDING');
     this.itemFilter.set('ACTIVE');
     this.statusMessage.set('已恢復預設篩選：未審核＋使用中。');
   }
-  readonly records = [
-    {
-      id: 501,
-      name: '中秋炭烤海陸組合禮盒',
-      round: 1,
-      result: 'APPROVED',
-      reviewer: '管理員 王主任',
-      score: 92.4,
-      date: '2026/08/28',
-      comment: '節慶需求明確，確認冷鏈排程後通過。',
-    },
-    {
-      id: 502,
-      name: '可機洗抗菌涼感被',
-      round: 1,
-      result: 'REJECTED',
-      reviewer: '管理員 李經理',
-      score: 69.5,
-      date: '2026/08/24',
-      comment: '供應穩定性不足，請補充備援方案。',
-    },
-  ];
-  ngOnInit(): void {
-    this.resetMock();
-  }
-  setState(s: ReviewState): void {
-    this.pageState.set(s);
-    if (s === 'empty') {
+
+  // ----- UI 狀態切換器（demo 用，不呼叫 API）-----
+
+  setState(state: ReviewState): void {
+    this.pageState.set(state);
+    if (state === 'empty') {
       this.items.set([]);
-      this.pendingItems = [];
-    } else if (!this.items().length && s !== 'error') this.resetMock();
-    this.statusMessage.set(`已切換為 ${s} 狀態。`);
+    } else if (!this.items().length && state !== 'error') {
+      this.resetMock();
+      this.pageState.set(state);
+    }
+    this.statusMessage.set(`已切換為 ${state} 狀態。`);
   }
+
   resetMock(): void {
-    this.items.set(MOCK.map((i) => ({ ...i })));
-    this.pendingItems = [...this.items()];
+    this.items.set(MOCK.map((item) => ({ ...item })));
+    this.records.set(MOCK_RECORDS.map((record) => ({ ...record })));
+    this.totalElements.set(MOCK.length);
     this.pageState.set('default');
     this.statusMessage.set('已恢復待審核 Mock 清單。');
   }
-  /**
-   * 保留其他成員的 API 整合方法；原型初始化不會呼叫。
-   *
-   * ⚠️ 路徑已修正為後端實際的 `GET /api/reviews/pending`（原本寫成單數
-   * `/api/review/pending`，後端沒有這支，一定 404——已對照 ReviewController
-   * 原始碼確認）。
-   *
-   * ⚠️ 尚未完成、之後串接時務必處理：
-   * 1. 這支回應是分頁殼 `{ content, totalElements, totalPages, number, size }`
-   *    包在 `ApiResponse.data` 裡，回傳的是 `ProductResponse[]`（`data.content`），
-   *    不是這裡假設的 `ReviewItem[]` 扁平陣列，要先寫 mapper。
-   * 2. `ProductResponse` 沒有 `finalScore`／`completeness`（在
-   *    `GET /api/products/{id}/evaluation`）、沒有 `category`（只有
-   *    `productTypeId`，要對照 `GET /api/settings/product-types`）、沒有
-   *    `submittedBy`（只有 `createdBy` 使用者編號，無對應姓名 API）、
-   *    也完全沒有 `riskLevel` 這個欄位（後端不存在，是前端自行假設的）。
-   *    這幾個欄位目前無法從單一 API 湊齊，需要另外設計聚合方式，
-   *    不是把回傳型別改一改就能接上，先留言標記，不在這次一併動。
-   */
-  loadPendingItems(): void {
-    this.isLoading = true;
-    this.http.get('/api/reviews/pending').subscribe({
-      next: () => {
-        // TODO: 對照上方註解完成 ProductResponse → ReviewItem 的 mapper 後再啟用。
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-        this.pageState.set('error');
-      },
-    });
+
+  // ----- 顯示輔助 -----
+
+  decisionLabel(result: 'APPROVED' | 'REJECTED'): string {
+    return REVIEW_DECISION_LABEL[result];
   }
-  // approve()/reject() 已移除：後端沒有 /api/review/approve, /api/review/reject
-  // 這兩支端點。實際送審決策是統一的 `POST /api/reviews`（body 帶
-  // reviewStatus: 'APPROVED' | 'REJECTED'，見 ReviewSubmitRequest），
-  // 這個流程已經在 review-detail 頁面實作，不要在清單頁重新做一份。
+
+  /** 走 core/domain/labels.ts，與品項清單、詳情頁共用同一份文案。 */
+  reviewStatusLabel(status: ReviewStatus): string {
+    return REVIEW_STATUS_LABEL[status];
+  }
+
+  /** 只有未審核且使用中的品項可以進入審核頁；與後端的前置條件一致。 */
+  canReview(item: ReviewItem): boolean {
+    return (
+      this.pageState() !== 'disabled' && item.status === 'PENDING' && item.itemStatus === 'ACTIVE'
+    );
+  }
+
+  // approve()/reject() 不在這裡：後端沒有 /api/review/approve 或 /reject，
+  // 決策是統一的 POST /api/reviews（body 帶 reviewStatus），
+  // 且必須先跑 validateReviewForm() 的三條規則，流程在 review-detail 頁。
 }
+
 export { ReviewComponent as Review };

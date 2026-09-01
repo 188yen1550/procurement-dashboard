@@ -84,8 +84,10 @@ describe('ProductManagement', () => {
   it('deletes only eligible products locally', () => {
     const eligible = component.products().find((item) => item.id === 102)!;
     const locked = component.products().find((item) => item.id === 101)!;
-    expect(component.canDelete(eligible)).toBe(true);
-    expect(component.canDelete(locked)).toBe(false);
+    // 刪除條件已從元件方法改為 mapper 計算好的 actions.canDelete，
+    // 讓清單、詳情、編輯三頁共用同一份規則，不再各判一次。
+    expect(eligible.actions.canDelete).toBe(true);
+    expect(locked.actions.canDelete).toBe(false);
     component.requestDelete(eligible);
     component.confirmDelete();
     expect(component.products().some((item) => item.id === 102)).toBe(false);

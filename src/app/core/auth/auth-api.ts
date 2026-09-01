@@ -3,43 +3,69 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiEnvelope } from '../api/api-envelope';
-import { AUTH_API, CurrentUser, LoginRequestBody } from './auth.contract';
+import { unwrapData } from '../api/unwrap';
+import { AUTH_API, CurrentUser, LoginRequestPayload } from './auth.contract';
 
 /**
  * 登入相關 API 的唯一呼叫入口。
  *
- * withCredentials: true 是這支能不能用的關鍵：後端用 httpOnly Cookie 存
- * token（AuthController.login() 設定 Set-Cookie: access_token），不是
- * 回應 Body 帶 token 讓前端存進 localStorage 再手動加 header。沒有這個
- * 設定，瀏覽器不會保存、也不會送出這個 Cookie，登入後呼叫其他 API會
- * 全部變成 401——即使登入本身看起來成功。
+ * ## Cookie 模式的三個關鍵前提（缺一個就會全部 401）
  *
- * 開發環境注意：後端目前沒有設定 CORS，且 Cookie 是 SameSite=Strict，
- * Angular dev server 與後端不同 port 直接視為不同來源，瀏覽器會擋下這個
- * Cookie。本機開發請透過 proxy.conf.json 讓 Angular dev server 代理
- * /api 請求到後端，讓瀏覽器視角下永遠是同一個來源，不要改後端 CORS
- * 設定來繞過（那是正式環境的事，不要為了本機開發混進正式安全設定）。
+ * 1. **withCredentials: true**
+ *    後端 AuthController.login() 以 Set-Cookie 下發 access_token，
+ *    不是回應 Body 帶 token。沒有這個設定，瀏覽器不會保存也不會送出 Cookie，
+ *    登入本身看起來會成功，但之後每一支 API 都是 401。
+ *    這件事由 withCredentialsInterceptor 全域處理，這裡不重複設定。
+ *
+ * 2. **必須走 proxy.conf.json**
+ *    SecurityConfig.java 沒有任何 CORS 設定，且 Cookie 是 SameSite=Strict。
+ *    Angular dev server（4200）與後端（8080）在瀏覽器眼中是不同來源，
+ *    Cookie 會被擋掉。本機開發一律透過 proxy 把 /api 導到後端，
+ *    讓瀏覽器視角下永遠同源。不要為了本機方便去改後端 CORS。
+ *
+ * 3. **cookie.secure 要設 false**
+ *    application.properties 的 cookie.secure 預設 true（安全預設），
+ *    但 true 時瀏覽器只在 HTTPS 帶 Cookie。本機跑 http://localhost
+ *    需要在後端環境設 COOKIE_SECURE=false，否則同樣全部 401。
+ *    這是後端環境設定，前端改不了，遇到時要找後端同事處理。
  */
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
   private readonly http = inject(HttpClient);
 
-  login(body: LoginRequestBody): Observable<CurrentUser> {
+  /**
+   * POST /api/auth/login
+   *
+   * 401 有兩種不同語意（見 GlobalExceptionHandler）：
+   * InvalidCredentialsException（帳密錯誤）與 AccountDisabledException（帳號已停用）。
+   * 兩者狀態碼相同、message 不同，這裡刻意不 catchError，
+   * 讓登入畫面自己從 ApiError.message 讀出正確文案，
+   * 不要在這層收斂成單一句「登入失敗」——使用者會不知道該找誰處理。
+   */
+  login(payload: LoginRequestPayload): Observable<CurrentUser> {
     return this.http
-      .post<ApiEnvelope<CurrentUser>>(AUTH_API.login, body, { withCredentials: true })
-      .pipe(map((res) => res.data));
+      .post<ApiEnvelope<CurrentUser>>(AUTH_API.login, payload)
+      .pipe(unwrapData());
   }
 
-  /** 用來在頁面重新整理後確認瀏覽器仍持有有效的 Cookie session。 */
+  /**
+   * GET /api/auth/me
+   *
+   * 用途：頁面重新整理後確認瀏覽器是否仍持有有效 Cookie session。
+   * 記憶體裡的使用者狀態會被重整清空，但 Cookie 可能還在，
+   * 不能只看本地 state 是 null 就判定沒登入。
+   * 401 是正常結果（真的沒登入），不是錯誤，由 Auth 服務降級成 null。
+   */
   me(): Observable<CurrentUser> {
     return this.http
-      .get<ApiEnvelope<CurrentUser>>(AUTH_API.me, { withCredentials: true })
-      .pipe(map((res) => res.data));
+      .get<ApiEnvelope<CurrentUser>>(AUTH_API.me)
+      .pipe(unwrapData());
   }
 
+  /** POST /api/auth/logout。後端回 data: null，這裡不回傳內容。 */
   logout(): Observable<void> {
     return this.http
-      .post<ApiEnvelope<null>>(AUTH_API.logout, {}, { withCredentials: true })
+      .post<ApiEnvelope<null>>(AUTH_API.logout, {})
       .pipe(map(() => undefined));
   }
 }

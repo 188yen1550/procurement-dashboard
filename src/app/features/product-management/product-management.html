@@ -198,7 +198,7 @@
                     }
                   </td>
                   <td>
-                    <strong>{{ product.productType }}</strong
+                    <strong>{{ product.productTypeName }}</strong
                     ><span class="pricing-badge" [attr.data-type]="product.pricingType">{{
                       pricingTypeLabel(product.pricingType)
                     }}</span>
@@ -207,7 +207,13 @@
                     {{ product.supplierName }}
                   </td>
                   <td>
-                    @if (product.dataCompleteness < 60) {
+                    <!-- ⚠️ 一定要先判斷 hasScore()。dataCompleteness 目前恆為 null
+                         （後端清單端點不含此欄位），而 JS 裡 null < 60 是 true，
+                         直接比較會讓每一列都誤報「資料待補」。 -->
+                    @if (!hasScore(product)) {
+                      <span class="score unavailable">—</span
+                      ><small class="score-note">清單未提供分數</small>
+                    } @else if (isIncomplete(product)) {
                       <span class="score unavailable">—</span
                       ><small class="score-note">待補齊後評分</small>
                     } @else {
@@ -215,13 +221,13 @@
                     }
                   </td>
                   <td>
-                    <div
-                      class="completeness-cell"
-                      [class.incomplete]="product.dataCompleteness < 60"
-                    >
+                    @if (!hasScore(product)) {
+                      <span class="unavailable">—</span>
+                    } @else {
+                    <div class="completeness-cell" [class.incomplete]="isIncomplete(product)">
                       <div>
                         <strong>{{ product.dataCompleteness }}%</strong
-                        ><span>{{ product.dataCompleteness < 60 ? '資料待補' : '資料完整' }}</span>
+                        ><span>{{ isIncomplete(product) ? '資料待補' : '資料完整' }}</span>
                       </div>
                       <div
                         class="progress-track"
@@ -233,10 +239,11 @@
                       >
                         <span [style.width.%]="product.dataCompleteness"></span>
                       </div>
-                      @if (product.dataCompleteness < 60) {
+                      @if (isIncomplete(product)) {
                         <small>不進入評估計分與 AI 推薦</small>
                       }
                     </div>
+                    }
                   </td>
                   <td>
                     <div class="status-stack">
@@ -255,7 +262,8 @@
                   </td>
                   <td>
                     <div class="action-group">
-                      @if (product.reviewStatus === 'REJECTED') {
+                      <!-- REJECTED 且必須 ACTIVE：已封存的要先復用，後端會以 409 擋下 -->
+                      @if (product.actions.canResubmit) {
                         <a
                           class="text-action resubmit"
                           [routerLink]="['/products', product.id, 'edit']"
@@ -279,14 +287,14 @@
                       <button
                         type="button"
                         class="text-action danger"
-                        [disabled]="!canDelete(product)"
+                        [disabled]="!product.actions.canDelete"
                         [title]="
-                          canDelete(product)
+                          product.actions.canDelete
                             ? '從本地 Mock 清單刪除'
                             : deleteDisabledReason(product)
                         "
                         [attr.aria-label]="
-                          canDelete(product)
+                          product.actions.canDelete
                             ? '刪除' + product.name
                             : '無法刪除' + product.name + '：' + deleteDisabledReason(product)
                         "
@@ -294,7 +302,7 @@
                       >
                         刪除
                       </button>
-                      @if (!canDelete(product)) {
+                      @if (!product.actions.canDelete) {
                         <small class="disabled-reason">{{ deleteDisabledReason(product) }}</small>
                       }
                     </div>

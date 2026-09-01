@@ -2,7 +2,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { ProductApiService } from '../product-api';
+import { ProductApiService } from '../api/product-api.service';
 import { ProductDetail } from './product-detail';
 
 describe('ProductDetail', () => {

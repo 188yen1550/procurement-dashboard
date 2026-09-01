@@ -1,0 +1,177 @@
+/**
+ * 檔案用途：驗證審核表單的三條前端驗證規則與快照欄位轉換。
+ *
+ * 這三條規則後端**刻意不驗證**（ReviewSubmitRequest 的註解說明
+ * 「通過且無風險」是合法結果），完全由前端把關。
+ * 審核是本系統 human-in-the-loop 的核心，這裡出錯等於決策紀錄失去可追蹤性，
+ * 所以值得測。
+ */
+import { RiskOptionResponsePayload } from '../../settings/api/settings-api.contract';
+import { ReviewRecordResponsePayload } from './review-api.contract';
+import {
+  OTHER_RISK_OPTION_NAME,
+  ReviewFormModel,
+  toReviewRecordModel,
+  toReviewSubmitPayload,
+  validateReviewForm,
+} from './review.mapper';
+
+const RISK_OPTIONS: RiskOptionResponsePayload[] = [
+  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
+  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
+  { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true },
+];
+
+function makeForm(overrides: Partial<ReviewFormModel> = {}): ReviewFormModel {
+  return {
+    productId: 102,
+    decision: 'APPROVED',
+    selectedRiskOptionIds: [],
+    reviewComment: '節慶需求明確，確認冷鏈排程後通過。',
+    otherNote: '',
+    ...overrides,
+  };
+}
+
+describe('validateReviewForm', () => {
+  it('完整填寫時通過', () => {
+    expect(validateReviewForm(makeForm(), RISK_OPTIONS).valid).toBe(true);
+  });
+
+  it('未選擇審核結果時不通過', () => {
+    const result = validateReviewForm(makeForm({ decision: '' }), RISK_OPTIONS);
+
+    // AI 只提供建議，最終核准一定要由人明確選擇，不能有預設值。
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('審核結果');
+  });
+
+  it('勾選「其他」卻未填備註時不通過', () => {
+    const result = validateReviewForm(
+      makeForm({ selectedRiskOptionIds: [9], otherNote: '   ' }),
+      RISK_OPTIONS,
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('其他');
+  });
+
+  it('勾選「其他」且已填備註時通過', () => {
+    const result = validateReviewForm(
+      makeForm({ selectedRiskOptionIds: [9], otherNote: '需確認冷鏈倉儲容量' }),
+      RISK_OPTIONS,
+    );
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('未填審核留言時不通過', () => {
+    const result = validateReviewForm(makeForm({ reviewComment: '  ' }), RISK_OPTIONS);
+
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('留言');
+  });
+
+  it('通過且未勾選任何風險是合法的', () => {
+    const result = validateReviewForm(
+      makeForm({ selectedRiskOptionIds: [] }),
+      RISK_OPTIONS,
+    );
+
+    // 後端刻意允許這種情況，前端不要多加一條「至少勾一個」的限制。
+    expect(result.valid).toBe(true);
+  });
+});
+
+describe('toReviewSubmitPayload', () => {
+  it('未勾選風險時送空陣列而非 null', () => {
+    const payload = toReviewSubmitPayload(makeForm());
+
+    expect(payload.riskOptionIds).toEqual([]);
+  });
+
+  it('把「其他」的補充說明併入 reviewComment', () => {
+    const payload = toReviewSubmitPayload(
+      makeForm({ selectedRiskOptionIds: [9], otherNote: '需確認冷鏈倉儲容量' }),
+    );
+
+    // 後端沒有獨立欄位存 otherNote，不併入就會遺失使用者填的內容。
+    expect(payload.reviewComment).toContain('需確認冷鏈倉儲容量');
+    expect(payload.reviewComment).toContain('【其他風險說明】');
+  });
+
+  it('沒有補充說明時不加上多餘標記', () => {
+    const payload = toReviewSubmitPayload(makeForm());
+
+    expect(payload.reviewComment).not.toContain('【其他風險說明】');
+  });
+
+  it('未選擇結果時拋錯，避免送出一定會被 400 的請求', () => {
+    expect(() => toReviewSubmitPayload(makeForm({ decision: '' }))).toThrow();
+  });
+});
+
+describe('toReviewRecordModel', () => {
+  function makeRecord(): ReviewRecordResponsePayload {
+    return {
+      id: 501,
+      productId: 101,
+      productName: '中秋炭烤海陸組合禮盒',
+      reviewerId: 2,
+      submissionCount: 1,
+      reviewStatus: 'APPROVED',
+      reviewedAt: '2026-08-28T14:30:00',
+      evaluationModeId: 1,
+      evaluationModeName: '均衡模式',
+      evaluationModeVersion: 1,
+      businessScore: 88,
+      audienceScore: 91,
+      historicalScore: 84,
+      purchaseScore: 86,
+      trendScore: 90,
+      forecastScore: 87,
+      totalScore: 88.2,
+      festivalBoostSnapshot: 4.2,
+      matchedCampaignSnapshot: null,
+      finalScoreSnapshot: 92.4,
+      dataCompleteness: 96,
+      weightSnapshot: null,
+      productSnapshot: null,
+      aiSummarySnapshot: null,
+      trendSnapshot: null,
+      reviewComment: '節慶需求明確。',
+      riskOptionIds: [1, 2],
+      createdAt: '2026-08-28T14:30:01',
+      updatedAt: '2026-08-28T14:30:01',
+    };
+  }
+
+  it('把 Snapshot 後綴的分數欄位統一成一般命名', () => {
+    const model = toReviewRecordModel(makeRecord());
+
+    // 後端只有這兩個欄位帶 Snapshot 後綴，其餘分數也是快照卻沒有後綴。
+    // 統一命名後，「這些都是快照」由畫面文案說明，不靠欄位名暗示。
+    expect(model.festivalBoost).toBe(4.2);
+    expect(model.finalScore).toBe(92.4);
+  });
+
+  it('未提供對照表時 riskOptionNames 為空，但 ids 仍保留', () => {
+    const model = toReviewRecordModel(makeRecord());
+
+    expect(model.riskOptionIds).toEqual([1, 2]);
+    expect(model.riskOptionNames).toEqual([]);
+  });
+
+  it('提供對照結果時填入風險名稱', () => {
+    const model = toReviewRecordModel(makeRecord(), ['實際供貨風險', '商品品質與客訴風險']);
+
+    expect(model.riskOptionNames).toEqual(['實際供貨風險', '商品品質與客訴風險']);
+  });
+
+  it('reviewerName 一律為 null：後端沒有 id 轉姓名的端點', () => {
+    const model = toReviewRecordModel(makeRecord());
+
+    // 這是已知缺口，不要在前端寫死對照表假裝有這個資料。
+    expect(model.reviewerName).toBeNull();
+  });
+});

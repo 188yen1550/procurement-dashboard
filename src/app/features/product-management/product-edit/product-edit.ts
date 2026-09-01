@@ -1,246 +1,314 @@
-import { Component, OnInit, inject } from '@angular/core';
+/**
+ * 檔案用途：品項編輯頁。一般基本資料永遠可編輯，選品核心資料在 APPROVED 時鎖定；
+ * 同時提供刪除／封存／復用三個生命週期操作與評估分數區塊。
+ *
+ * ## 這次改寫修掉的四個問題
+ *
+ * 1. **封存／復用打到不存在的端點**
+ *    舊碼是 `PATCH /api/products/{id}/item-status`，後端沒有這支，必定 404。
+ *    正確是 `POST /api/products/{id}/archive` 與 `.../restore`。
+ *
+ * 2. **canDelete 永遠是 false**
+ *    舊碼判斷 `reviewStatus === 'DRAFT'`，但系統的 ReviewStatus 只有
+ *    PENDING／APPROVED／REJECTED，沒有 DRAFT。刪除按鈕在真實資料下不會出現。
+ *
+ * 3. **自訂的 ProductEvaluation 介面與後端對不上**
+ *    舊碼的 marketPotentialScore／costCompetitivenessScore／isFrozenSnapshot
+ *    後端 EvaluationResponse 完全沒有。已改用 contract 的型別，
+ *    isFrozenSnapshot 對應到真實的 `dataSource === 'SNAPSHOT'`。
+ *
+ * 4. **大量 any 與缺少拆殼**
+ *    `http.get<any>` 讓整頁沒有型別保護，且沒拆 ApiResponse 外殼，
+ *    實際拿到的是 { success, message, data } 而不是商品本身。
+ *
+ * ## 保留
+ * editForm / coreForm 兩組表單的切分維持不變——那個設計是對的，
+ * APPROVED 只鎖核心那一組，基本資料仍可編輯。
+ */
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-
-// 1. 定義 Day 10 評估分數的資料結構型別
-export interface ProductEvaluation {
-  totalScore: number;
-  marketPotentialScore: number;
-  costCompetitivenessScore: number;
-  supplyStabilityScore: number;
-  isFrozenSnapshot: boolean; // APPROVED 時為凍結快照
-  evaluatedAt: string;
-}
+import { toApiError } from '../../../core/api/api-error';
+import { ItemStatus, PricingType, ReviewStatus } from '../../../core/domain/enums';
+import { DATA_SOURCE_LABEL, joinCampaignTags, splitCampaignTags } from '../../../core/domain/labels';
+import { ProductApiService } from '../api/product-api.service';
+import { EvaluationResponsePayload } from '../api/product-api.contract';
+import { ProductActionAvailability } from '../api/product.mapper';
 
 @Component({
   selector: 'app-product-edit',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './product-edit.html',
-  styleUrl: './product-edit.scss'
+  styleUrl: './product-edit.scss',
 })
 export class ProductEdit implements OnInit {
-  private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(ProductApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   productId!: string;
-  reviewStatus = '';
-  itemStatus = '';         // 品項狀態 ('ACTIVE' 或 'ARCHIVED')
-  submissionCount = 0;     // 送審次數
+  reviewStatus: ReviewStatus = 'PENDING';
+  itemStatus: ItemStatus = 'ACTIVE';
+  submissionCount = 0;
   isLoading = false;
+  isSaving = false;
   errorMessage = '';
+  successMessage = '';
 
-  // Day 10：評估分數區塊相關狀態
-  evaluationData: ProductEvaluation | null = null;
+  /** 由 mapper 統一算出的按鈕啟用條件，元件不再自己判斷狀態組合。 */
+  actions: ProductActionAvailability = {
+    canResubmit: false,
+    canArchive: false,
+    canRestore: false,
+    canPromote: false,
+    canDelete: false,
+    isCoreLocked: false,
+  };
+
+  evaluationData: EvaluationResponsePayload | null = null;
   isEvaluationLoading = false;
   evaluationErrorMessage = '';
 
-  // 一般基本資料 — 永遠可編輯
-  editForm = this.fb.group({
+  /** 一般基本資料 — 永遠可編輯。 */
+  readonly editForm = this.fb.nonNullable.group({
     name: ['', Validators.required],
     description: [''],
     imageUrl: [''],
     supplierName: [''],
   });
 
-  // 選品核心資料 — 依review_status動態鎖定
-  coreForm = this.fb.group({
+  /**
+   * 選品核心資料 — APPROVED 時鎖定。
+   *
+   * ⚠️ supplyStability / priceCompetitiveness 型別改成 number：
+   * 後端是 BigDecimal(0–5 評分)，舊碼宣告成 string 會讓送出的值被
+   * Jackson 拒絕或轉成非預期數字。
+   *
+   * ⚠️ estimatedPurchaseRate 是 0–1 的小數（0.8 代表 80%），不是百分比。
+   * 表單存後端格式，顯示層才 ×100，避免來回轉換出錯。
+   *
+   * ⚠️ marketPrice 只有 RESALE 能填，NEW 送出會被後端 400 擋下。
+   */
+  readonly coreForm = this.fb.nonNullable.group({
     productTypeId: [null as number | null, Validators.required],
-    pricingType: ['' as 'NEW' | 'RESALE' | '', Validators.required],
-    costPrice: [0],
-    salePrice: [0],
+    pricingType: ['' as PricingType | '', Validators.required],
+    costPrice: [null as number | null],
+    salePrice: [null as number | null],
+    marketPrice: [null as number | null],
     campaignTags: [''],
-    moq: [0],
-    supplyStability: [''],
-    priceCompetitiveness: [''],
+    moq: [null as number | null],
+    supplyStability: [null as number | null],
+    priceCompetitiveness: [null as number | null],
     targetCustomerDescription: [''],
-    estimatedPurchaseRate: [0],
+    estimatedPurchaseRate: [null as number | null],
   });
 
   ngOnInit(): void {
     this.productId = this.route.snapshot.paramMap.get('id')!;
-    // ↓↓↓ 暫時測試用，之後改回這支 ↓↓↓
-    this.reviewStatus = 'APPROVED';
-    this.itemStatus = 'ACTIVE';
-    this.submissionCount = 1;
-
-    this.editForm.patchValue({
-      name: '測試商品1',
-      description: '測試描述',
-      imageUrl: '',
-      supplierName: '測試供應商',
-    });
-
-    this.coreForm.patchValue({
-      productTypeId: 1,
-      pricingType: 'NEW',
-      costPrice: 100,
-      salePrice: 200,
-    });
-
-    this.coreForm.disable();  // 因為reviewStatus是APPROVED，應該要鎖定
-
-    // 正式串接時解除註解
-    // this.loadProduct();
-    // this.loadProductEvaluation();
+    this.loadProduct();
+    this.loadProductEvaluation();
   }
 
-  loadProduct() {
+  // ----- 載入 -----
+
+  loadProduct(): void {
     this.isLoading = true;
-    this.http.get<any>(`/api/products/${this.productId}`).subscribe({
-      next: (data) => {
-        this.reviewStatus = data.reviewStatus;
-        this.itemStatus = data.itemStatus;
-        this.submissionCount = data.submissionCount;
+    this.errorMessage = '';
 
-        this.editForm.patchValue({
-          name: data.name,
-          description: data.description,
-          imageUrl: data.imageUrl,
-          supplierName: data.supplierName,
-        });
+    this.api
+      .getProductForm(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (model) => {
+          this.reviewStatus = model.reviewStatus;
+          this.itemStatus = model.itemStatus;
+          this.submissionCount = model.submissionCount;
+          this.actions = model.actions;
 
-        this.coreForm.patchValue({
-          productTypeId: data.productTypeId,
-          pricingType: data.pricingType,
-          costPrice: data.costPrice,
-          salePrice: data.salePrice,
-          campaignTags: data.campaignTags,
-          moq: data.moq,
-          supplyStability: data.supplyStability,
-          priceCompetitiveness: data.priceCompetitiveness,
-          targetCustomerDescription: data.targetCustomerDescription,
-          estimatedPurchaseRate: data.estimatedPurchaseRate,
-        });
+          this.editForm.patchValue(model.base);
+          this.coreForm.patchValue({
+            ...model.core,
+            // 表單以逗號字串呈現，送出前再拆回陣列。
+            campaignTags: joinCampaignTags(model.core.campaignTags),
+          });
 
-        // 核心：只有 APPROVED 狀態才鎖定核心資料
-        if (this.reviewStatus === 'APPROVED') {
-          this.coreForm.disable();
-        } else {
-          this.coreForm.enable();
-        }
+          // 只有 APPROVED 鎖核心資料；基本資料那組永遠保持可編輯。
+          if (model.actions.isCoreLocked) this.coreForm.disable();
+          else this.coreForm.enable();
 
-        this.isLoading = false;
-      },
-      error: (err) => {
-        this.errorMessage = '載入品項資料失敗';
-        this.isLoading = false;
-        console.error(err);
-      }
-    });
+          this.isLoading = false;
+        },
+        error: (err) => {
+          this.errorMessage = toApiError(err).message;
+          this.isLoading = false;
+        },
+      });
   }
 
-  // Day 10：取得評估分數區塊資料
   loadProductEvaluation(): void {
     this.isEvaluationLoading = true;
-    this.http.get<ProductEvaluation>(`/api/products/${this.productId}/evaluation`).subscribe({
-      next: (data) => {
-        this.evaluationData = data;
-        this.isEvaluationLoading = false;
-      },
-      error: (err) => {
-        this.evaluationErrorMessage = '載入評估分數失敗';
-        this.isEvaluationLoading = false;
-        console.error(err);
-      }
-    });
+    this.evaluationErrorMessage = '';
+
+    this.api
+      .getEvaluation(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.evaluationData = data;
+          this.isEvaluationLoading = false;
+        },
+        error: (err) => {
+          // 分數區塊單獨降級：商品資料還在，沒有理由讓整頁不能編輯。
+          this.evaluationErrorMessage = toApiError(err).message;
+          this.isEvaluationLoading = false;
+        },
+      });
   }
+
+  // ----- 顯示輔助 -----
 
   get isCoreLocked(): boolean {
-    return this.reviewStatus === 'APPROVED';
+    return this.actions.isCoreLocked;
   }
 
-  // ==========================================
-  // D9 邏輯：按鈕顯示條件判斷
-  // ==========================================
-
-  get hasReviewResult(): boolean {
-    return this.reviewStatus === 'APPROVED' || this.reviewStatus === 'REJECTED';
+  /**
+   * 分數是否為審核當下的凍結快照。
+   * ⚠️ 讀後端的 dataSource，不要用 reviewStatus 自行反推——
+   * 雙軌規則封裝在後端 ScoringService，前端反推會在規則調整時失準。
+   */
+  get isFrozenSnapshot(): boolean {
+    return this.evaluationData?.dataSource === 'SNAPSHOT';
   }
 
-  get canDelete(): boolean {
-    return this.reviewStatus === 'DRAFT' && this.submissionCount === 0;
+  get dataSourceLabel(): string {
+    return this.evaluationData ? DATA_SOURCE_LABEL[this.evaluationData.dataSource] : '';
   }
 
-  get canArchive(): boolean {
-    return this.itemStatus === 'ACTIVE' && this.hasReviewResult;
-  }
-
-  get canRestore(): boolean {
-    return this.itemStatus === 'ARCHIVED' && this.hasReviewResult;
+  /** RESALE 才顯示市售價格欄位；NEW 填了會被後端 400 擋下。 */
+  get showMarketPrice(): boolean {
+    return this.coreForm.getRawValue().pricingType === 'RESALE';
   }
 
   get showActionMessage(): boolean {
-    return !this.canDelete && !this.canArchive && !this.canRestore;
+    return !this.actions.canDelete && !this.actions.canArchive && !this.actions.canRestore;
   }
 
-  // ==========================================
-  // D9 邏輯：按鈕觸發的 API 動作
-  // ==========================================
+  // ----- 生命週期操作 -----
 
   onDelete(): void {
-    if (!confirm('確定要刪除這個品項嗎？')) {
-      return;
-    }
+    if (!this.actions.canDelete) return;
+    if (!confirm('確定要刪除這個品項嗎？此操作無法復原。')) return;
 
-    this.http.delete(`/api/products/${this.productId}`).subscribe({
-      next: () => {
-        this.router.navigate(['/products']);
-      },
-      error: (err) => {
-        this.errorMessage = '刪除失敗';
-        console.error(err);
-      }
-    });
+    this.api
+      .remove(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.router.navigate(['/products']),
+        error: (err) => this.handleActionError(err, '刪除'),
+      });
   }
 
+  /** ⚠️ POST /archive，不是 PATCH /item-status（後端沒有那支端點）。 */
   onArchive(): void {
-    this.http.patch(`/api/products/${this.productId}/item-status`, { itemStatus: 'ARCHIVED' }).subscribe({
-      next: (res: any) => {
-        this.itemStatus = res.itemStatus || 'ARCHIVED';
-      },
-      error: (err) => {
-        this.errorMessage = '封存失敗';
-        console.error(err);
-      }
-    });
+    if (!this.actions.canArchive) return;
+
+    this.api
+      .archive(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.successMessage = '已封存此品項。';
+          this.loadProduct();
+        },
+        error: (err) => this.handleActionError(err, '封存'),
+      });
   }
 
   onRestore(): void {
-    this.http.patch(`/api/products/${this.productId}/item-status`, { itemStatus: 'ACTIVE' }).subscribe({
-      next: (res: any) => {
-        this.itemStatus = res.itemStatus || 'ACTIVE';
-      },
-      error: (err) => {
-        this.errorMessage = '復用失敗';
-        console.error(err);
-      }
-    });
+    if (!this.actions.canRestore) return;
+
+    this.api
+      .restore(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.successMessage = '已復用此品項。';
+          this.loadProduct();
+        },
+        error: (err) => this.handleActionError(err, '復用'),
+      });
   }
+
+  // ----- 送出 -----
 
   onSubmit(): void {
     if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
       return;
     }
+    if (!this.isCoreLocked && this.coreForm.invalid) {
+      this.coreForm.markAllAsTouched();
+      return;
+    }
 
-    const payload = {
-      ...this.editForm.value,
-      ...this.coreForm.getRawValue(),
-    };
+    const base = this.editForm.getRawValue();
+    // getRawValue() 而非 value：coreForm 在 APPROVED 時是 disabled，
+    // value 會回空物件，導致整份覆蓋時把核心欄位全部清成 null。
+    const core = this.coreForm.getRawValue();
+    const isResale = core.pricingType === 'RESALE';
 
-    this.http.put(`/api/products/${this.productId}`, payload).subscribe({
-      next: () => {
-        this.router.navigate(['/products', this.productId]);
-      },
-      error: (err) => {
-        this.errorMessage = '更新失敗，請稍後再試';
-        console.error(err);
-      }
-    });
+    this.isSaving = true;
+    this.errorMessage = '';
+
+    this.api
+      .update(this.productId, {
+        name: base.name.trim(),
+        description: base.description.trim() || null,
+        imageUrl: base.imageUrl.trim() || null,
+        supplierName: base.supplierName.trim() || null,
+        productTypeId: core.productTypeId!,
+        pricingType: core.pricingType as PricingType,
+        costPrice: core.costPrice,
+        salePrice: core.salePrice,
+        // NEW 商品一律送 null，避免撞上後端的 400 驗證。
+        marketPrice: isResale ? core.marketPrice : null,
+        // ⚠️ 一律半形逗號：ScoringService.splitTags() 只吃 split(",")，
+        // 全形頓號會讓節慶比對整組失效且不會報錯。
+        campaignTags: joinCampaignTags(splitCampaignTags(core.campaignTags)) || null,
+        moq: core.moq,
+        supplyStability: core.supplyStability,
+        priceCompetitiveness: core.priceCompetitiveness,
+        targetCustomerDescription: core.targetCustomerDescription.trim() || null,
+        estimatedPurchaseRate: core.estimatedPurchaseRate,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.isSaving = false;
+          this.router.navigate(['/products', this.productId]);
+        },
+        error: (err) => {
+          this.isSaving = false;
+          const error = toApiError(err);
+          // 409 專屬訊息：後端在 APPROVED 商品異動核心資料時回這個狀態碼。
+          // 顯示通用錯誤會讓使用者不知道是哪些欄位不能改。
+          this.errorMessage =
+            error.status === 409
+              ? `${error.message}（已核准商品僅能修改名稱、描述、圖片與供應商）`
+              : error.message;
+        },
+      });
+  }
+
+  private handleActionError(err: unknown, action: string): void {
+    const error = toApiError(err);
+    this.errorMessage = `${action}失敗：${error.message}`;
+    // 409 代表狀態已被他人變更，重新載入讓畫面回到真實狀態。
+    if (error.status === 409) this.loadProduct();
   }
 }
