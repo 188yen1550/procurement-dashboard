@@ -140,7 +140,9 @@ export function isDataIncomplete(completeness: number | null): boolean {
 export function splitCampaignTags(tags: string | null | undefined): string[] {
   if (!tags) return [];
   return tags
-    .split(',')
+    // 表單接受使用者常輸入的半形逗號、全形逗號與頓號；送出時再由
+    // joinCampaignTags() 統一組回後端唯一支援的半形逗號格式。
+    .split(/[,，、]+/)
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
 }

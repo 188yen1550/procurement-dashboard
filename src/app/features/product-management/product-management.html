@@ -14,6 +14,7 @@
     >
   </header>
 
+  @if (useMockData) {
   <section class="state-preview" aria-labelledby="state-title">
     <div>
       <strong id="state-title">UI 狀態預覽</strong
@@ -38,6 +39,7 @@
       }
     </div>
   </section>
+  }
   <!--
     ⚠️ 修正：原本只用 aria-live 的隱藏元素承載 statusMessage()，
     CSS 的 .sr-status 是視覺完全隱藏的樣式，代表刪除／重新送審等操作
@@ -175,7 +177,7 @@
           <button type="button" (click)="clearFilters()">清除篩選</button>
         </div>
       } @else {
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" aria-label="正式候選商品清單，可水平捲動">
           <table>
             <caption class="visually-hidden">
               正式候選商品清單
@@ -189,7 +191,7 @@
                 <th scope="col">資料完整度</th>
                 <th scope="col">審核／品項狀態</th>
                 <th scope="col">更新時間</th>
-                <th scope="col">操作</th>
+                <th scope="col" class="actions-column">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -262,7 +264,7 @@
                     </div>
                     }
                   </td>
-                  <td>
+                  <td class="status-column">
                     <div class="status-stack">
                       <span class="status" [attr.data-status]="product.reviewStatus"
                         ><i aria-hidden="true"></i
@@ -277,7 +279,7 @@
                     {{ product.updatedAt | date: 'yyyy/MM/dd'
                     }}<span>{{ product.updatedAt | date: 'HH:mm' }}</span>
                   </td>
-                  <td>
+                  <td class="actions-column">
                     <div class="action-group">
                       <!-- REJECTED 且必須 ACTIVE：已封存的要先復用，後端會以 409 擋下 -->
                       @if (product.actions.canResubmit) {

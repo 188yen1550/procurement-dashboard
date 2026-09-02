@@ -171,22 +171,22 @@
           </div>
           <span class="helper-text">AI 推薦不代表自動核准</span>
         </header>
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" aria-label="AI 推薦 Top 10，可水平捲動">
           <table>
             <thead>
               <tr>
-                <th>排名</th>
+                <th class="rank-column">排名</th>
                 <th>商品與推薦理由</th>
                 <th>完整度</th>
                 <th>最終分數</th>
-                <th>審核狀態</th>
-                <th>操作</th>
+                <th class="status-column">審核狀態</th>
+                <th class="actions-column">操作</th>
               </tr>
             </thead>
             <tbody>
               @for (item of recommendations(); track item.id) {
                 <tr [class.locked-row]="item.reviewStatus === 'APPROVED'">
-                  <td>
+                  <td class="rank-column">
                     <span class="rank">{{ item.rank }}</span>
                   </td>
                   <td class="product-cell">
@@ -215,12 +215,12 @@
                   <td>
                     <strong class="score">{{ item.finalScore }}</strong>
                   </td>
-                  <td>
+                  <td class="status-column">
                     <span class="status" [attr.data-status]="item.reviewStatus ?? 'UNKNOWN'">{{
                       statusLabel(item.reviewStatus)
                     }}</span>
                   </td>
-                  <td>
+                  <td class="actions-column">
                     @if (item.reviewStatus === 'APPROVED') {
                       <button
                         type="button"

@@ -45,7 +45,19 @@ export class AuthApiService {
   login(payload: LoginRequestPayload): Observable<CurrentUser> {
     return this.http
       .post<ApiEnvelope<CurrentUser>>(AUTH_API.login, payload)
-      .pipe(unwrapData());
+      .pipe(
+        unwrapData(),
+        map((user) => {
+          if (
+            !user ||
+            typeof user.username !== 'string' ||
+            typeof user.role !== 'string'
+          ) {
+            throw new Error('Invalid login response');
+          }
+          return user;
+        }),
+      );
   }
 
   /**

@@ -456,13 +456,19 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 // ========================================
 
 .error-message {
-  margin: -0.5rem 0 0.75rem;
-
-  color: $error-color;
+  margin: -0.25rem 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  color: #7a2927;
+  background: #fff0ef;
+  border: 1px solid #efc1be;
+  border-radius: 0.5rem;
 
   font-size: 0.85rem;
   line-height: 1.4;
 }
+
+.login-form input[readonly] { cursor: wait; opacity: 0.72; }
+.demo-account-actions button:disabled { cursor: not-allowed; opacity: 0.58; }
 
 // ========================================
 // 10. 登入頁底部資訊

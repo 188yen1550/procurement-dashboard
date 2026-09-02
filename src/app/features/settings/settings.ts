@@ -177,6 +177,8 @@ export class Settings implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
+  /** 目前產品價值有限，暫時隱藏入口；保留表單、型別與 Mock 邏輯供需求確認後恢復。 */
+  readonly audienceSettingsVisible = false;
   readonly stateOptions: readonly SettingsState[] = ['default', 'disabled', 'loading', 'error'];
   readonly activeTab = signal<SettingsTab>('modes');
   readonly pageState = signal<SettingsState>(this.useMockData ? 'default' : 'loading');
@@ -237,6 +239,11 @@ export class Settings implements OnInit {
   // ----- 分頁切換與延遲載入 -----
 
   setTab(tab: SettingsTab): void {
+    if (tab === 'audience' && !this.audienceSettingsVisible) {
+      this.activeTab.set('modes');
+      this.statusMessage.set('核心客群設定目前暫不開放。');
+      return;
+    }
     this.activeTab.set(tab);
     this.statusMessage.set('已切換設定分類。');
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);

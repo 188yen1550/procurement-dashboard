@@ -7,10 +7,11 @@
     <div>
       <p class="eyebrow">Management Settings</p>
       <h1 id="settings-title">系統設定</h1>
-      <p>管理評估模式、人工風險、核心客群、商品類型、節慶檔期與帳號。</p>
+      <p>管理評估模式、人工風險、商品類型、節慶檔期與帳號。</p>
     </div>
     <span>僅管理角色</span>
   </header>
+  @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態</strong><span>managerGuard 持續保護此路由</span></div>
     <div role="group" aria-label="切換設定頁狀態">
@@ -26,6 +27,7 @@
       }
     </div>
   </section>
+  }
   <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，新增／停用等操作的
        成功／失敗回饋一般使用者完全看不到。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
@@ -34,12 +36,15 @@
   }
   <nav class="tabs" aria-label="設定分類">
     <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">
-      評估模式</button
-    ><button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
-      人工風險</button
-    ><button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">
-      核心客群</button
-    ><button
+      評估模式
+    </button>
+    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
+      人工風險
+    </button>
+    @if (audienceSettingsVisible) {
+      <button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
+    }
+    <button
       type="button"
       [class.active]="activeTab() === 'productTypes'"
       (click)="setTab('productTypes')"
@@ -68,7 +73,7 @@
         <span></span>
       }
     </section>
-  } @else if (activeTab() === 'audience') {
+  } @else if (audienceSettingsVisible && activeTab() === 'audience') {
     @if (pageState() === 'disabled') {
       <section class="notice">
         <div>

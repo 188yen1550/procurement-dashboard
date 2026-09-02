@@ -32,13 +32,14 @@
           </svg>
 
           <!-- 頁面主標題 -->
-          <h1 id="login-title" class="card-title">企業系統登入</h1>
+          <h1 id="login-title" class="card-title">AI 選品決策輔助系統</h1>
 
           <!-- 頁面說明 -->
-          <p class="card-subtitle">歡迎使用企業決策系統</p>
+          <p class="card-subtitle">協助整理選品資料、評估風險與支援人工決策</p>
         </header>
 
         <!-- 原型階段提供兩種角色快速登入，串接後端後移除此區塊。 -->
+        @if (useMockData) {
         <section class="demo-accounts" aria-labelledby="demo-accounts-title">
           <div>
             <p id="demo-accounts-title">原型測試角色</p>
@@ -46,10 +47,11 @@
           </div>
 
           <div class="demo-account-actions">
-            <button type="button" (click)="useMockAccount('purchaser')">操作人員</button>
-            <button type="button" (click)="useMockAccount('manager')">管理人員</button>
+            <button type="button" [disabled]="isLoading()" (click)="useMockAccount('purchaser')">操作人員</button>
+            <button type="button" [disabled]="isLoading()" (click)="useMockAccount('manager')">管理人員</button>
           </div>
         </section>
+        }
 
         <!-- =================================
              登入表單
@@ -73,6 +75,7 @@
                 formControlName="username"
                 placeholder="請輸入帳號或電子郵件"
                 autocomplete="username"
+                [readOnly]="isLoading()"
                 [attr.aria-invalid]="
                   loginForm.controls.username.invalid && loginForm.controls.username.touched
                 "
@@ -112,6 +115,7 @@
                 formControlName="password"
                 placeholder="請輸入密碼"
                 autocomplete="current-password"
+                [readOnly]="isLoading()"
                 [attr.aria-invalid]="
                   loginForm.controls.password.invalid && loginForm.controls.password.touched
                 "
@@ -139,9 +143,9 @@
                登入失敗訊息
                未來後端回傳帳密錯誤時顯示
                =============================== -->
-          @if (errorMessage) {
-            <p class="error-message" role="alert" aria-live="polite">
-              {{ errorMessage }}
+          @if (errorMessage()) {
+            <p id="login-error" class="error-message" role="alert" aria-live="assertive">
+              {{ errorMessage() }}
             </p>
           }
 
@@ -152,10 +156,10 @@
           <button
             type="submit"
             class="btn-primary"
-            [disabled]="isLoading"
-            [attr.aria-busy]="isLoading"
+            [disabled]="isLoading()"
+            [attr.aria-busy]="isLoading()"
           >
-            {{ isLoading ? '登入中...' : '登入' }}
+            {{ isLoading() ? '登入中...' : '登入' }}
           </button>
         </form>
       </section>
@@ -164,10 +168,7 @@
            頁尾資訊
            隱私權頁面完成後替換 href
            ===================================== -->
-      <footer class="system-footer">
-        Global Connect Corp. © 2026 |
-        <a href="#"> 隱私權政策 </a>
-      </footer>
+      <footer class="system-footer">AI 選品決策輔助系統 © 2026</footer>
     </main>
   </div>
 </div>

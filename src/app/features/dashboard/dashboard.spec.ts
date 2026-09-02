@@ -1,12 +1,10 @@
 /**
  * 檔案用途：驗證 Dashboard Mock 狀態、推薦與錯誤畫面；assertion 不涉及真實 API。
  *
- * ⚠️ 這次接上真實 API 後才發現：useMockData 目前是 false（見 app-config.ts），
- * 代表 ngOnInit() 一定會呼叫 DashboardApiService.loadAll()，需要 HttpClient；
- * 樣板也新增了 [routerLink]，需要 Router。跟 product-management.spec.ts
- * 用同一套既有慣例（真實 HttpClient、不用 HttpClientTestingModule）——
- * 測試環境沒有伺服器，請求會失敗但不會拋出同步例外，元件自己的
- * error 分支會接住，不影響這裡的 assertion（皆針對 Mock 資料與本地狀態）。
+ * 正式執行設定目前使用真實 API，但這組測試專門驗證 Mock 畫面；因此會在
+ * 第一次 detectChanges（也就是 ngOnInit）之前明確切換元件模式，避免測試
+ * 意外送出 HTTP 請求，也避免測試結果依賴全域 APP_CONFIG。
+ * 元件仍會注入 HttpClient，樣板也使用 RouterLink，所以保留兩者的測試 provider。
  */
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -26,6 +24,8 @@ describe('Dashboard', () => {
 
     fixture = TestBed.createComponent(Dashboard);
     component = fixture.componentInstance;
+    (component as unknown as { useMockData: boolean }).useMockData = true;
+    fixture.detectChanges();
     await fixture.whenStable();
   });
 
@@ -57,5 +57,20 @@ describe('Dashboard', () => {
     ) as HTMLButtonElement;
 
     expect(selectedButton.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps a sticky action structure and the correct action type for every Top 10 row', () => {
+    const rows = fixture.nativeElement.querySelectorAll('.recommendations-panel tbody tr');
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.recommendations-panel tbody .actions-column',
+    );
+    expect(fixture.nativeElement.querySelector('thead .actions-column')).toBeTruthy();
+    expect(rows.length).toBe(10);
+    expect(actions.length).toBe(rows.length);
+    actions.forEach((cell: HTMLElement) => {
+      expect(cell.querySelector('a.table-action, button.table-action:disabled')).toBeTruthy();
+    });
+    expect(fixture.nativeElement.querySelector('a.table-action')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('button.table-action:disabled')).toBeTruthy();
   });
 });

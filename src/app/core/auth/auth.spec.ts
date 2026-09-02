@@ -57,4 +57,25 @@ describe('Auth', () => {
     await expect(result).rejects.toBeTruthy();
     expect(service.isLoggedIn()).toBe(false);
   });
+
+  it('should reject an invalid successful login response', async () => {
+    const result = firstValueFrom(service.login('manager', 'demo123'));
+    http.expectOne('/api/auth/login').flush({ data: null });
+
+    await expect(result).rejects.toThrow('Invalid login response');
+    expect(service.isLoggedIn()).toBe(false);
+  });
+
+  it('should preserve successful mock login without an HTTP request', async () => {
+    Object.defineProperty(service, 'useMockData', { value: true });
+    const user = await firstValueFrom(service.login('manager', 'demo123'));
+    expect(user.role).toBe('MANAGER');
+    expect(service.isLoggedIn()).toBe(true);
+  });
+
+  it('should preserve failed mock login without an HTTP request', async () => {
+    Object.defineProperty(service, 'useMockData', { value: true });
+    await expect(firstValueFrom(service.login('manager', 'wrong-password'))).rejects.toBeTruthy();
+    expect(service.isLoggedIn()).toBe(false);
+  });
 });

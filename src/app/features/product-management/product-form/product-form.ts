@@ -30,11 +30,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
-import { joinCampaignTags, splitCampaignTags } from '../../../core/domain/labels';
+import { joinCampaignTags } from '../../../core/domain/labels';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 
@@ -53,6 +53,13 @@ interface ProductTypeOption {
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+const MOCK_CAMPAIGN_TAGS = ['bbq', 'gift', 'family', 'daily', 'summer', 'winter'] as const;
+
+function nonBlank(control: AbstractControl): ValidationErrors | null {
+  return typeof control.value === 'string' && control.value.trim().length > 0
+    ? null
+    : { blank: true };
+}
 
 /** Mock 模式的固定分類清單，id 只是本地展示用的流水號，不對應真實資料庫。 */
 const MOCK_PRODUCT_TYPES: readonly ProductTypeOption[] = [
@@ -73,7 +80,7 @@ interface EditMockEntry {
   productTypeId: number;
   pricingType: 'NEW' | 'RESALE';
   description: string;
-  campaignTags: string;
+  campaignTags: string[];
   costPrice: number;
   salePrice: number;
   marketPrice: number;
@@ -96,7 +103,7 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
     productTypeId: 1,
     pricingType: 'RESALE',
     description: '適合中秋團購的海陸烤肉組合。',
-    campaignTags: 'bbq, gift',
+    campaignTags: ['bbq', 'gift'],
     costPrice: 820,
     salePrice: 1190,
     marketPrice: 1490,
@@ -113,7 +120,7 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
     productTypeId: 2,
     pricingType: 'RESALE',
     description: '低敏無香洗衣紙。',
-    campaignTags: 'family, daily',
+    campaignTags: ['family', 'daily'],
     costPrice: 180,
     salePrice: 299,
     marketPrice: 359,
@@ -155,6 +162,9 @@ export class ProductForm implements OnInit {
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
     this.useMockData ? MOCK_PRODUCT_TYPES : [],
   );
+  readonly campaignTagOptions = signal<readonly string[]>(
+    this.useMockData ? MOCK_CAMPAIGN_TAGS : [],
+  );
 
   /** 真實模式下由載入的商品決定；Mock 模式由 EDIT_DATA 決定。兩者最終都反映在這兩個 signal。 */
   readonly reviewStatus = signal<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
@@ -174,21 +184,21 @@ export class ProductForm implements OnInit {
   private selectedImageFile: File | null = null;
 
   readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    supplierName: ['', [Validators.required, Validators.maxLength(100)]],
+    name: ['', [Validators.required, nonBlank, Validators.maxLength(100)]],
+    supplierName: ['', [Validators.required, nonBlank, Validators.maxLength(100)]],
     productTypeId: [null as number | null, Validators.required],
     pricingType: ['NEW', Validators.required],
     description: ['', Validators.maxLength(500)],
-    campaignTags: ['', Validators.required],
-    costPrice: [0, [Validators.min(0)]],
-    salePrice: [0, [Validators.min(0)]],
-    marketPrice: [0, [Validators.min(0)]],
-    moq: [1, [Validators.required, Validators.min(1)]],
+    campaignTags: this.fb.nonNullable.control<string[]>([]),
+    costPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
+    salePrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
+    marketPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
+    moq: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
     // 後端 Product.supplyStability / priceCompetitiveness 是 0–5 分制
     // （precision=5, scale=2），不是 0–100。
     supplyStability: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
     priceCompetitiveness: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
-    targetCustomer: ['', Validators.required],
+    targetCustomer: ['', [Validators.required, nonBlank, Validators.maxLength(500)]],
     // 表單維持 0–100（%）輸入，實際送出時要換算成後端要的 0–1 小數
     // （見 toEstimatedPurchaseRateDecimal()）。
     estimatedPurchaseRate: [50, [Validators.required, Validators.min(0), Validators.max(100)]],
@@ -210,7 +220,10 @@ export class ProductForm implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.useMockData) this.loadProductTypes();
+    if (!this.useMockData) {
+      this.loadProductTypes();
+      this.loadCampaignTags();
+    }
 
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
 
@@ -238,7 +251,7 @@ export class ProductForm implements OnInit {
             productTypeId: model.core.productTypeId,
             pricingType: model.core.pricingType || 'NEW',
             description: model.base.description,
-            campaignTags: joinCampaignTags(model.core.campaignTags),
+            campaignTags: model.core.campaignTags,
             costPrice: model.core.costPrice ?? 0,
             salePrice: model.core.salePrice ?? 0,
             marketPrice: model.core.marketPrice ?? 0,
@@ -279,6 +292,26 @@ export class ProductForm implements OnInit {
         // 分類清單載入失敗不影響其餘表單，下拉維持空白，使用者仍可看到既有值（若編輯模式已回填 id）。
         error: () => this.productTypeOptions.set([]),
       });
+  }
+
+  private loadCampaignTags(): void {
+    this.settingsApi
+      .getFestiveCampaigns()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (campaigns) => {
+          const tags = campaigns.flatMap((campaign) => campaign.tags.map((tag) => tag.tag.trim()));
+          this.campaignTagOptions.set([...new Set(tags.filter(Boolean))].sort());
+        },
+        error: () => this.campaignTagOptions.set([]),
+      });
+  }
+
+  removeCampaignTag(tag: string): void {
+    this.form.controls.campaignTags.setValue(
+      this.form.controls.campaignTags.value.filter((selected) => selected !== tag),
+    );
+    this.form.controls.campaignTags.markAsDirty();
   }
 
   setState(state: FormPageState): void {
@@ -346,7 +379,7 @@ export class ProductForm implements OnInit {
       marketPrice: isResale ? raw.marketPrice : null,
       // ⚠️ 一律半形逗號：ScoringService.splitTags() 只吃 split(",")，
       // 全形頓號會讓節慶比對整組失效且不會報錯。
-      campaignTags: joinCampaignTags(splitCampaignTags(raw.campaignTags)) || null,
+      campaignTags: joinCampaignTags(raw.campaignTags) || null,
       moq: raw.moq,
       supplyStability: raw.supplyStability,
       priceCompetitiveness: raw.priceCompetitiveness,

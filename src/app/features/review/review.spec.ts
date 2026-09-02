@@ -13,6 +13,10 @@ describe('Review', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(Review);
     component = fixture.componentInstance;
+    // 本檔驗證的是元件內建的完整 Demo 資料與各種 Mock UI 狀態。
+    // 全域設定目前使用真實 API，因此必須在第一次 change detection（ngOnInit）前
+    // 明確切回 Mock 模式，避免測試誤送 HTTP 並只得到空清單。
+    Object.defineProperty(component, 'useMockData', { value: true });
     fixture.detectChanges();
   });
   it('creates with default pending and active filters', () => {

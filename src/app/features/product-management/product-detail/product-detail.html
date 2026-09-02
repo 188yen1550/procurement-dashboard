@@ -21,6 +21,7 @@
       </div>
     }
   </header>
+  @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態預覽</strong><span>本地 Mock 評估與趨勢資料</span></div>
     <div role="group" aria-label="切換詳情頁狀態">
@@ -36,6 +37,7 @@
       }
     </div>
   </section>
+  }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
@@ -315,7 +317,7 @@
               : ''
         "
       >
-        {{ p.itemStatus === 'ACTIVE' ? '模擬封存' : '模擬復用' }}
+        {{ p.itemStatus === 'ACTIVE' ? '封存品項' : '復用品項' }}
       </button>
     </section>
   }

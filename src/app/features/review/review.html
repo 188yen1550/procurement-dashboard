@@ -12,6 +12,7 @@
     <strong>通過選品審核 ≠ 已銷售</strong
     ><span>僅代表成為可執行團購銷售的候選品項，不代表已上架、已簽約或已產生營收。</span>
   </section>
+  @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態</strong><span>審核 Mock 不會送出 API</span></div>
     <div role="group" aria-label="切換審核清單狀態">
@@ -22,6 +23,7 @@
       }
     </div>
   </section>
+  }
   <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，一般使用者看不到
        任何操作結果的回饋，見 product-management.html 的說明。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
@@ -67,7 +69,7 @@
           <option value="ACTIVE">使用中</option>
           <option value="ARCHIVED">已封存</option>
         </select></label
-      ><button type="button" (click)="clearFilters()">恢復預設</button>
+      ><button type="button" class="secondary-action" (click)="clearFilters()">恢復預設</button>
     </section>
     @if (items().length === 0) {
       <section class="empty">

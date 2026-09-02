@@ -33,6 +33,16 @@ describe('ProductForm', () => {
   };
   const settingsApi = {
     getProductTypes: vi.fn(() => of(productTypes)),
+    getFestiveCampaigns: vi.fn(() =>
+      of([
+        {
+          tags: [
+            { tag: 'daily', matchTier: 'CORE' },
+            { tag: 'gift', matchTier: 'GENERAL' },
+          ],
+        },
+      ]),
+    ),
   };
 
   beforeEach(async () => {
@@ -76,7 +86,7 @@ describe('ProductForm', () => {
       supplierName: '測試供應商',
       productTypeId: 2,
       pricingType: 'RESALE',
-      campaignTags: 'daily',
+      campaignTags: ['daily'],
       targetCustomer: '家庭',
     });
     component.submit();
@@ -89,7 +99,7 @@ describe('ProductForm', () => {
       name: '測試商品',
       supplierName: '測試供應商',
       productTypeId: 2,
-      campaignTags: 'daily',
+      campaignTags: ['daily'],
       targetCustomer: '家庭',
     });
     component.submit();
@@ -105,7 +115,7 @@ describe('ProductForm', () => {
       name: '測試商品',
       supplierName: '測試供應商',
       productTypeId: 1,
-      campaignTags: 'daily',
+      campaignTags: ['daily'],
       targetCustomer: '家庭',
     });
     component.submit();
@@ -114,18 +124,34 @@ describe('ProductForm', () => {
     expect(payload.marketPrice).toBeNull();
   });
 
-  it('normalizes campaign tags to half-width commas before sending', () => {
+  it('sends multiple selected campaign tags as a comma-separated payload', () => {
     component.form.patchValue({
       name: '測試商品',
       supplierName: '測試供應商',
       productTypeId: 1,
-      campaignTags: 'bbq、 gift',
+      campaignTags: ['bbq', 'gift'],
       targetCustomer: '家庭',
     });
     component.submit();
     const payload = api.create.mock.calls[0][0] as { campaignTags: string | null };
     // ScoringService.splitTags() 只吃半形逗號，全形頓號會讓節慶比對整組失效。
     expect(payload.campaignTags).toBe('bbq,gift');
+  });
+
+  it('allows saving without campaign tags and supports removing a selection', () => {
+    component.form.patchValue({
+      name: '無檔期商品',
+      supplierName: '測試供應商',
+      productTypeId: 1,
+      campaignTags: ['daily', 'gift'],
+      targetCustomer: '家庭',
+    });
+    component.removeCampaignTag('daily');
+    expect(component.form.controls.campaignTags.value).toEqual(['gift']);
+    component.removeCampaignTag('gift');
+    component.submit();
+    const payload = api.create.mock.calls[0][0] as { campaignTags: string | null };
+    expect(payload.campaignTags).toBeNull();
   });
 
   it('opens an unsaved changes dialog for a dirty form', () => {
@@ -216,7 +242,7 @@ describe('ProductForm', () => {
       name: '測試商品',
       supplierName: '測試供應商',
       productTypeId: 1,
-      campaignTags: 'daily',
+      campaignTags: ['daily'],
       targetCustomer: '家庭',
     });
     component.submit();
@@ -261,7 +287,7 @@ describe('ProductForm', () => {
       name: '測試商品',
       supplierName: '測試供應商',
       productTypeId: 1,
-      campaignTags: 'daily',
+      campaignTags: ['daily'],
       targetCustomer: '家庭',
     });
     component.submit();

@@ -10,7 +10,7 @@
  * mock 資料裡的 availableRiskOptions：1=實際供貨風險、9=其他。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { ReviewApiService } from '../api/review-api.service';
 import { ReviewDetail } from './review-detail';
@@ -18,6 +18,7 @@ import { ReviewDetail } from './review-detail';
 describe('ReviewDetail', () => {
   let fixture: ComponentFixture<ReviewDetail>;
   let component: ReviewDetail;
+  let router: Router;
 
   const mockDetail = {
     productId: 102,
@@ -67,6 +68,8 @@ describe('ReviewDetail', () => {
       imports: [ReviewDetail],
       providers: [provideRouter([]), { provide: ReviewApiService, useValue: api }],
     }).compileComponents();
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture = TestBed.createComponent(ReviewDetail);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -82,7 +85,7 @@ describe('ReviewDetail', () => {
     component.comment.set('測試留言');
     component.submit();
     expect(component.submitted()).toBe(false);
-    expect(component.statusMessage()).toContain('請選擇核准結果');
+    expect(component.statusMessage()).toBe('請選擇審核結果（通過或不通過）。');
   });
 
   it('requires a note for other risk', () => {
@@ -110,6 +113,7 @@ describe('ReviewDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('409 Conflict');
     component.closeConflict();
     expect(component.conflictOpen()).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/review']);
   });
 
   it('renders disabled loading and error states', () => {
