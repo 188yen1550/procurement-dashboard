@@ -21,6 +21,8 @@ interface EvaluationMode {
   styleUrl: './settings.scss',
 })
 export class Settings {
+  /** 目前產品價值有限，暫時隱藏入口；保留表單、型別與 Mock 邏輯供需求確認後恢復。 */
+  readonly audienceSettingsVisible = false;
   readonly stateOptions: readonly SettingsState[] = ['default', 'disabled', 'loading', 'error'];
   readonly activeTab = signal<SettingsTab>('modes');
   readonly pageState = signal<SettingsState>('default');
@@ -118,6 +120,11 @@ export class Settings {
     keywords: ['家庭, 實用, 親子, 團購優惠', Validators.required],
   });
   setTab(tab: SettingsTab): void {
+    if (tab === 'audience' && !this.audienceSettingsVisible) {
+      this.activeTab.set('modes');
+      this.statusMessage.set('核心客群設定目前暫不開放。');
+      return;
+    }
     this.activeTab.set(tab);
     this.statusMessage.set('已切換設定分類。');
   }

@@ -27,7 +27,12 @@ export class AuthApiService {
   login(body: LoginRequestBody): Observable<CurrentUser> {
     return this.http
       .post<ApiEnvelope<CurrentUser>>(AUTH_API.login, body, { withCredentials: true })
-      .pipe(map((res) => res.data));
+      .pipe(map((res) => {
+        if (!res?.data || typeof res.data.username !== 'string' || typeof res.data.role !== 'string') {
+          throw new Error('Invalid login response');
+        }
+        return res.data;
+      }));
   }
 
   /** 用來在頁面重新整理後確認瀏覽器仍持有有效的 Cookie session。 */

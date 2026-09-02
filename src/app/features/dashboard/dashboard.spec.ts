@@ -46,4 +46,18 @@ describe('Dashboard', () => {
 
     expect(selectedButton.getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('keeps a sticky action structure for every Top 10 row', () => {
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('.recommendations-panel tbody tr');
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.recommendations-panel tbody .actions-column',
+    );
+    expect(fixture.nativeElement.querySelector('thead .actions-column')).toBeTruthy();
+    expect(rows.length).toBe(10);
+    expect(actions.length).toBe(rows.length);
+    actions.forEach((cell: HTMLElement) => {
+      expect(cell.querySelector('button.table-action')).toBeTruthy();
+    });
+  });
 });

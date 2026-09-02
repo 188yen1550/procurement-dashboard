@@ -95,6 +95,4 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
 .confirm-action { color:#fff; background:#1c5286; border-color:#1c5286; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @keyframes shimmer { to { background-position:-200% 0; } }
-@media(max-width:1100px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.clear-button{align-self:end}.search-field{grid-column:span 2}}
-@media(max-width:700px){.page-header,.state-preview,.filter-heading,.notice{align-items:stretch;flex-direction:column}.primary-action{width:100%}.state-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:1fr}.search-field{grid-column:auto}.clear-button{width:100%}.filter-heading>p{align-self:flex-start}.candidate-badge{display:none}.table-wrap{border-top:1px solid #edf1f4}.list-header{padding:.9rem}table{min-width:1050px}.product-page{max-width:100%;overflow:hidden}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}

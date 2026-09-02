@@ -1,0 +1,11 @@
+/** 固定操作欄與響應式卡片；拆檔避免主元件樣式超過 Angular component budget。 */
+.table-wrap:focus-visible { outline:3px solid rgba(28,82,134,.24); outline-offset:-3px; }
+.actions-column { position:sticky; right:0; width:190px; min-width:190px; background:#fff; border-left:1px solid #dce5eb; box-shadow:-9px 0 14px rgba(36,52,71,.08); }
+thead .actions-column { z-index:4; background:#f8fafc; }
+tbody .actions-column { z-index:2; }
+tr:hover .actions-column { background:#f7fafc; }
+.locked-row .actions-column { background:#fffdf7; }
+.archived-row .actions-column { background:#f7f8f9; }
+
+@media(max-width:1100px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.clear-button{align-self:end}.search-field{grid-column:span 2}}
+@media(max-width:700px){.page-header,.state-preview,.filter-heading,.notice{align-items:stretch;flex-direction:column}.primary-action{width:100%}.state-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:1fr}.search-field{grid-column:auto}.clear-button{width:100%}.filter-heading>p{align-self:flex-start}.candidate-badge{display:none}.table-wrap{overflow:visible;border-top:1px solid #edf1f4}.list-header{padding:.9rem}table,tbody{display:block;width:100%;min-width:0}thead{display:none}tbody{padding:.75rem}tbody tr{display:grid;gap:.7rem;margin-bottom:.75rem;padding:1rem;background:#fff;border:1px solid #dfe7ed;border-radius:.7rem;box-shadow:0 4px 14px rgba(29,54,78,.05)}tbody td{display:none;padding:0;border:0}tbody td.product-cell,tbody td.status-column,tbody td.actions-column{display:block}.actions-column{position:static;width:auto;min-width:0;padding-top:.7rem;background:transparent!important;border-top:1px solid #e5ebef;border-left:0;box-shadow:none}.action-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.text-action{text-align:center}.disabled-reason{grid-column:1/-1}.product-page{max-width:100%;overflow:hidden}}

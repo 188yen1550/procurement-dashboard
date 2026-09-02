@@ -14,28 +14,30 @@ describe('Settings', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('評估模式');
     expect(fixture.nativeElement.textContent).toContain('帳號管理');
+    expect(fixture.nativeElement.textContent).not.toContain('核心客群設定');
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.tabs button')).some((button: unknown) => (button as HTMLButtonElement).textContent?.includes('核心客群'))).toBe(false);
   });
   it('validates audience age range', () => {
-    component.setTab('audience');
     component.form.patchValue({ ageMin: 50, ageMax: 30 });
     component.saveAudience();
-    fixture.detectChanges();
     expect(component.saved()).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('最高年齡不得小於最低年齡');
+    expect(component.ageRangeInvalid()).toBe(true);
+    expect(component.statusMessage()).toContain('請修正客群設定欄位');
   });
   it('saves valid audience settings locally', () => {
-    component.setTab('audience');
     component.saveAudience();
-    fixture.detectChanges();
     expect(component.saved()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('儲存成功');
+    expect(component.statusMessage()).toContain('核心客群已儲存');
   });
   it('disables controls with an explanation', () => {
-    component.setTab('audience');
     component.setState('disabled');
-    fixture.detectChanges();
     expect(component.form.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('目前為唯讀預覽');
+    expect(component.statusMessage()).toContain('disabled');
+  });
+  it('prevents normal navigation from entering the hidden audience tab', () => {
+    component.setTab('audience');
+    expect(component.activeTab()).toBe('modes');
+    expect(component.statusMessage()).toContain('暫不開放');
   });
   it('shows risk, product type, campaign and account settings', () => {
     for (const tab of ['risks', 'productTypes', 'campaigns', 'accounts'] as const) {
