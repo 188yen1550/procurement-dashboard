@@ -18,7 +18,9 @@ import {
 export interface RecommendationItem {
   productId: number;
   productName: string;
+  productTypeId: number | null;
   finalScore: number | null;
+  dataCompleteness: number | null;
   submissionCount: number;
   /** true 時渲染「曾被拒絕」標籤區塊；false 時整個標籤不渲染。 */
   isReentry: boolean;
@@ -40,7 +42,9 @@ export function toRecommendationItem(
   return {
     productId: payload.productId,
     productName: payload.productName,
+    productTypeId: payload.productTypeId,
     finalScore: payload.finalScore,
+    dataCompleteness: payload.dataCompleteness,
     submissionCount: payload.submissionCount ?? 0,
     isReentry: reentryLabel !== '',
     reentryLabel,

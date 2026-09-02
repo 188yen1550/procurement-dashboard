@@ -1,20 +1,184 @@
-/** 檔案用途：驗證固定模式、9 類商品、條件式刪除、檔期入口與帳號停用等設定 Mock 規則。 */
+/**
+ * 檔案用途：驗證固定模式、9 類商品、條件式刪除、檔期入口與帳號停用等設定規則。
+ *
+ * ⚠️ 這次接上真實 API 後才發現：useMockData 目前是 false（見 app-config.ts），
+ * 代表每個分頁第一次切換過去都會呼叫對應的真實 API service。跟其他元件
+ * 用同一套策略：整個 mock 掉 SettingsApiService／UserApiService／兩個
+ * Lookup 服務，讓測試不依賴全域設定值，也不需要真的打網路。
+ *
+ * 「刪除使用中商品類型」這條規則在真實模式下改變了驗證方式：
+ * 後端 ProductTypeResponse 沒有「使用品項數」欄位，前端無從事先判斷，
+ * 一律送出 DELETE 請求，由後端的 409 擋下——測試也跟著改成驗證這個流程，
+ * 而不是驗證「前端本地判斷擋下」。
+ */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
+import { ProductTypeLookupService } from './api/product-type-lookup.service';
+import { RiskOptionLookupService } from './api/risk-option-lookup.service';
+import { SettingsApiService } from './api/settings-api.service';
+import { UserApiService } from '../user-management/api/user-api.service';
 import { Settings } from './settings';
+
+const MOCK_MODES = [
+  { id: 1, modeCode: 'BALANCED', modeName: '均衡模式', version: 1, description: '商業條件、客群、歷史與預測各佔四分之一。', isActive: true },
+  { id: 2, modeCode: 'VOLUME', modeName: '衝量模式', version: 1, description: '優先考量客群匹配與預測人氣。', isActive: false },
+  { id: 3, modeCode: 'PROFIT', modeName: '高利潤模式', version: 1, description: '提高商業條件權重，同時保留人氣預測。', isActive: false },
+];
+
+function makeWeights(modeCode: string) {
+  const table: Record<string, [number, number, number, number]> = {
+    BALANCED: [25, 25, 25, 25],
+    VOLUME: [15, 30, 15, 40],
+    PROFIT: [45, 15, 15, 25],
+  };
+  const [business, audience, history, forecast] = table[modeCode] ?? [25, 25, 25, 25];
+  return {
+    modeCode,
+    modeName: modeCode,
+    version: 1,
+    factors: [
+      { factorCode: 'BUSINESS', factorName: '商業條件', category: 'BUSINESS', weight: business },
+      { factorCode: 'AUDIENCE', factorName: '客群匹配', category: 'AUDIENCE', weight: audience },
+      { factorCode: 'HISTORY', factorName: '歷史銷售', category: 'HISTORY', weight: history },
+      { factorCode: 'FORECAST', factorName: '預測人氣', category: 'FORECAST', weight: forecast },
+    ],
+  };
+}
+
+const MOCK_RISK_OPTIONS = [
+  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
+  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
+];
+
+const MOCK_AUDIENCE_PROFILE = {
+  id: 1,
+  name: '核心家庭團購客群',
+  ageMin: 28,
+  ageMax: 45,
+  priceSensitivity: 'MEDIUM' as const,
+  preferenceDescription: '重視實用性、安全性與團購價格優勢。',
+  keywords: '家庭,實用,親子,團購優惠',
+};
+
+const MOCK_PRODUCT_TYPES = [
+  '食品／生鮮', '日用品', '3C／家電', '生活雜貨', '美妝保養', '服飾配件', '寢具家用', '精品禮盒', '其他',
+].map((name, index) => ({
+  id: index + 1,
+  name,
+  description: null,
+  isSystemDefault: true,
+  isActive: true,
+}));
+
+const MOCK_CAMPAIGNS = [
+  {
+    id: 1,
+    campaignCode: 'MOON2026',
+    campaignName: '中秋節',
+    category: 'FESTIVAL' as const,
+    startDate: '2026-08-15',
+    endDate: '2026-09-25',
+    preparationLeadDays: 30,
+    campaignStatus: 'ACTIVE' as const,
+    isManualOverride: false,
+    tags: [{ tag: 'bbq', matchTier: 'CORE' as const }],
+  },
+];
+
+const MOCK_ACCOUNTS = [
+  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER' as const, enabled: true, createdAt: null },
+  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER' as const, enabled: true, createdAt: null },
+  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER' as const, enabled: false, createdAt: null },
+];
+
 describe('Settings', () => {
   let fixture: ComponentFixture<Settings>;
   let component: Settings;
+
+  const settingsApi = {
+    getEvaluationModes: vi.fn(() => of(MOCK_MODES.map((m) => ({ ...m })))),
+    getEvaluationModeFactors: vi.fn((id: number) =>
+      of(makeWeights(MOCK_MODES.find((m) => m.id === id)?.modeCode ?? 'BALANCED')),
+    ),
+    getCurrentEvaluationMode: vi.fn(() => of({ ...MOCK_MODES[0] })),
+    switchEvaluationMode: vi.fn((id: number) =>
+      of({ ...MOCK_MODES.find((m) => m.id === id)! }),
+    ),
+    getRiskOptions: vi.fn(() => of(MOCK_RISK_OPTIONS.map((r) => ({ ...r })))),
+    createRiskOption: vi.fn((body: { name: string }) =>
+      of({ id: 99, name: body.name, description: null, isSystemDefault: false }),
+    ),
+    getAudienceProfile: vi.fn(() => of({ ...MOCK_AUDIENCE_PROFILE })),
+    updateAudienceProfile: vi.fn((body: unknown) => of({ ...MOCK_AUDIENCE_PROFILE, ...(body as object) })),
+    getProductTypes: vi.fn(() => of(MOCK_PRODUCT_TYPES.map((p) => ({ ...p })))),
+    createProductType: vi.fn((body: { name: string }) =>
+      of({ id: 100, name: body.name, description: null, isSystemDefault: false, isActive: true }),
+    ),
+    disableProductType: vi.fn((id: number) =>
+      of({ ...MOCK_PRODUCT_TYPES.find((p) => p.id === id)!, isActive: false }),
+    ),
+    deleteProductType: vi.fn(() => of(undefined)),
+    getFestiveCampaigns: vi.fn(() => of(MOCK_CAMPAIGNS.map((c) => ({ ...c })))),
+    updateFestiveCampaign: vi.fn((id: number, body: unknown) =>
+      of({ ...MOCK_CAMPAIGNS.find((c) => c.id === id)!, ...(body as object) }),
+    ),
+    switchFestiveCampaignStatus: vi.fn((id: number, body: { status: string }) =>
+      of({ ...MOCK_CAMPAIGNS.find((c) => c.id === id)!, campaignStatus: body.status, isManualOverride: true }),
+    ),
+  };
+
+  const userApi = {
+    list: vi.fn(() => of(MOCK_ACCOUNTS.map((a) => ({ ...a })))),
+    create: vi.fn((body: { username: string; name: string; role: 'PURCHASER' | 'MANAGER' }) =>
+      of({ id: 4, username: body.username, name: body.name, role: body.role, enabled: true, createdAt: null }),
+    ),
+    disable: vi.fn((id: number) =>
+      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: false }),
+    ),
+  };
+
+  const productTypeLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getName: vi.fn() };
+  const riskOptionLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getNames: vi.fn() };
+
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [Settings] }).compileComponents();
+    vi.clearAllMocks();
+    // 每個 mock 在 clearAllMocks 後要重新指定實作，否則下一個測試會拿到 undefined。
+    settingsApi.getEvaluationModes.mockReturnValue(of(MOCK_MODES.map((m) => ({ ...m }))));
+    settingsApi.getEvaluationModeFactors.mockImplementation((id: number) =>
+      of(makeWeights(MOCK_MODES.find((m) => m.id === id)?.modeCode ?? 'BALANCED')),
+    );
+    settingsApi.getCurrentEvaluationMode.mockReturnValue(of({ ...MOCK_MODES[0] }));
+    settingsApi.switchEvaluationMode.mockImplementation((id: number) =>
+      of({ ...MOCK_MODES.find((m) => m.id === id)! }),
+    );
+    settingsApi.getRiskOptions.mockReturnValue(of(MOCK_RISK_OPTIONS.map((r) => ({ ...r }))));
+    settingsApi.getAudienceProfile.mockReturnValue(of({ ...MOCK_AUDIENCE_PROFILE }));
+    settingsApi.getProductTypes.mockReturnValue(of(MOCK_PRODUCT_TYPES.map((p) => ({ ...p }))));
+    settingsApi.deleteProductType.mockReturnValue(of(undefined));
+    settingsApi.getFestiveCampaigns.mockReturnValue(of(MOCK_CAMPAIGNS.map((c) => ({ ...c }))));
+    userApi.list.mockReturnValue(of(MOCK_ACCOUNTS.map((a) => ({ ...a }))));
+
+    await TestBed.configureTestingModule({
+      imports: [Settings],
+      providers: [
+        { provide: SettingsApiService, useValue: settingsApi },
+        { provide: UserApiService, useValue: userApi },
+        { provide: ProductTypeLookupService, useValue: productTypeLookup },
+        { provide: RiskOptionLookupService, useValue: riskOptionLookup },
+      ],
+    }).compileComponents();
     fixture = TestBed.createComponent(Settings);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
+
   it('creates the complete management settings page', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('評估模式');
     expect(fixture.nativeElement.textContent).toContain('帳號管理');
   });
+
   it('validates audience age range', () => {
     component.setTab('audience');
     component.form.patchValue({ ageMin: 50, ageMax: 30 });
@@ -23,13 +187,16 @@ describe('Settings', () => {
     expect(component.saved()).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('最高年齡不得小於最低年齡');
   });
-  it('saves valid audience settings locally', () => {
+
+  it('saves valid audience settings via the API', () => {
     component.setTab('audience');
     component.saveAudience();
     fixture.detectChanges();
+    expect(settingsApi.updateAudienceProfile).toHaveBeenCalled();
     expect(component.saved()).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('儲存成功');
   });
+
   it('disables controls with an explanation', () => {
     component.setTab('audience');
     component.setState('disabled');
@@ -37,6 +204,7 @@ describe('Settings', () => {
     expect(component.form.disabled).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('目前為唯讀預覽');
   });
+
   it('shows risk, product type, campaign and account settings', () => {
     for (const tab of ['risks', 'productTypes', 'campaigns', 'accounts'] as const) {
       component.setTab(tab);
@@ -44,34 +212,63 @@ describe('Settings', () => {
       expect(fixture.nativeElement.querySelector('.data-table')).toBeTruthy();
     }
   });
+
   it('contains all nine default product types', () => {
+    component.setTab('productTypes');
     expect(component.productTypes().filter((item) => item.system).length).toBe(9);
   });
+
   it('creates a risk option through modal state', () => {
     component.openModal('risk');
     component.draftName.set('測試風險');
     component.draftKeywords.set('測試關鍵字');
     component.saveModal();
+    expect(settingsApi.createRiskOption).toHaveBeenCalledWith({
+      name: '測試風險',
+      alertKeywords: '測試關鍵字',
+    });
     expect(component.riskOptions().some((item) => item.name === '測試風險')).toBe(true);
   });
-  it('prevents deleting an in-use product type', () => {
+
+  it('lets the backend 409 decide whether a product type is in use', () => {
+    component.setTab('productTypes');
+    settingsApi.deleteProductType.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { success: false, message: '此類型已被商品使用', data: null },
+          }),
+      ),
+    );
+
+    // ⚠️ 後端 ProductTypeResponse 沒有「使用品項數」欄位，前端無從事先判斷，
+    // 一律送出刪除請求，由後端的 409 擋下——這是真實模式下唯一的判斷依據。
     component.removeProductType('食品／生鮮');
+
+    expect(settingsApi.deleteProductType).toHaveBeenCalled();
     expect(component.productTypes().some((item) => item.name === '食品／生鮮')).toBe(true);
     expect(component.statusMessage()).toContain('不可刪除');
   });
-  it('disables accounts and retains their records', () => {
+
+  it('disables accounts via the API and retains their records', () => {
+    component.setTab('accounts');
     component.disableAccount('buyer01');
+    expect(userApi.disable).toHaveBeenCalledWith(2);
     expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(false);
     expect(component.accounts().length).toBe(3);
   });
+
   it('shows fixed read-only weights and switches modes', () => {
     component.setTab('modes');
     component.selectMode('PROFIT');
     fixture.detectChanges();
+    expect(settingsApi.switchEvaluationMode).toHaveBeenCalledWith(3);
     expect(component.activeMode()).toBe('PROFIT');
     expect(fixture.nativeElement.textContent).toContain('高利潤模式');
     expect(fixture.nativeElement.textContent).toContain('權重唯讀');
   });
+
   it('renders loading and error recovery states', () => {
     component.setState('loading');
     fixture.detectChanges();

@@ -41,8 +41,18 @@ export interface DashboardStatisticsResponsePayload {
 export interface DashboardRecommendationResponsePayload {
   productId: number;
   productName: string;
+  /**
+   * ⚠️ 後端這次補上：product 物件本來就在記憶體裡，不需要額外查詢。
+   * 前端拿這個 id 對照 GET /api/settings/product-types 顯示分類名稱。
+   */
+  productTypeId: number | null;
   /** Final Score = Base + 節慶加成。 */
   finalScore: Decimal;
+  /**
+   * ⚠️ 後端這次補上：跟 finalScore 來自同一個已查出的 ProductEvaluation，
+   * 沒有額外查詢成本。找不到對應評估時仍可能是 null（該商品尚無評估紀錄）。
+   */
+  dataCompleteness: Decimal;
   submissionCount: number | null;
   /** 例「曾被拒絕．第2次送審」，可為 null。 */
   reentryLabel: string | null;

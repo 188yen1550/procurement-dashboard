@@ -1,6 +1,8 @@
 <!--
   檔案用途：Dashboard 模板。
-  統計、Top 10、風險、Loading／Error／Locked 狀態皆源自本地 Mock；核准文案刻意排除上架與營收語意。
+  Mock 模式：統計、Top 10、風險、Loading／Error／Locked 狀態展示皆源自本地 Mock，
+  核准文案刻意排除上架與營收語意。
+  真實模式：走 realLoadState，四支 API 任一失敗只影響對應卡片，不讓整頁空白。
 -->
 <div class="dashboard-page">
   <header class="page-header">
@@ -10,55 +12,64 @@
       <p>整理候選資料與 AI 建議，所有核准結果仍由管理人員決定。</p>
     </div>
     <div class="data-time">
-      <span aria-hidden="true">●</span> Mock 資料更新：{{ data.generatedAt }}
+      <span aria-hidden="true">●</span>
+      @if (useMockData) {
+        Mock 資料更新：{{ data().generatedAt }}
+      } @else {
+        資料更新：{{ data().generatedAt }}
+      }
     </div>
   </header>
 
-  <section class="state-preview" aria-labelledby="state-preview-title">
-    <div>
-      <strong id="state-preview-title">UI 狀態預覽</strong><span>純前端展示，不呼叫 API</span>
-    </div>
-    <div class="state-actions">
-      <button
-        type="button"
-        aria-label="切換至一般狀態"
-        [attr.aria-pressed]="uiState() === 'default'"
-        [class.active]="uiState() === 'default'"
-        (click)="setUiState('default')"
-      >
-        一般
-      </button>
-      <button
-        type="button"
-        aria-label="切換至鎖定狀態"
-        [attr.aria-pressed]="uiState() === 'locked'"
-        [class.active]="uiState() === 'locked'"
-        (click)="setUiState('locked')"
-      >
-        鎖定
-      </button>
-      <button
-        type="button"
-        aria-label="切換至載入狀態"
-        [attr.aria-pressed]="uiState() === 'loading'"
-        [class.active]="uiState() === 'loading'"
-        (click)="setUiState('loading')"
-      >
-        載入
-      </button>
-      <button
-        type="button"
-        aria-label="切換至例外狀態"
-        [attr.aria-pressed]="uiState() === 'edge'"
-        [class.active]="uiState() === 'edge'"
-        (click)="setUiState('edge')"
-      >
-        例外
-      </button>
-    </div>
-  </section>
+  <!-- UI 狀態預覽是給 PM／利害關係人展示畫面樣貌用的純前端示範，只在 Mock 模式顯示；
+       真實模式沒有意義去模擬假的鎖定／例外狀態，改用下方真正的載入/錯誤區塊。 -->
+  @if (useMockData) {
+    <section class="state-preview" aria-labelledby="state-preview-title">
+      <div>
+        <strong id="state-preview-title">UI 狀態預覽</strong><span>純前端展示，不呼叫 API</span>
+      </div>
+      <div class="state-actions">
+        <button
+          type="button"
+          aria-label="切換至一般狀態"
+          [attr.aria-pressed]="uiState() === 'default'"
+          [class.active]="uiState() === 'default'"
+          (click)="setUiState('default')"
+        >
+          一般
+        </button>
+        <button
+          type="button"
+          aria-label="切換至鎖定狀態"
+          [attr.aria-pressed]="uiState() === 'locked'"
+          [class.active]="uiState() === 'locked'"
+          (click)="setUiState('locked')"
+        >
+          鎖定
+        </button>
+        <button
+          type="button"
+          aria-label="切換至載入狀態"
+          [attr.aria-pressed]="uiState() === 'loading'"
+          [class.active]="uiState() === 'loading'"
+          (click)="setUiState('loading')"
+        >
+          載入
+        </button>
+        <button
+          type="button"
+          aria-label="切換至例外狀態"
+          [attr.aria-pressed]="uiState() === 'edge'"
+          [class.active]="uiState() === 'edge'"
+          (click)="setUiState('edge')"
+        >
+          例外
+        </button>
+      </div>
+    </section>
+  }
 
-  @if (uiState() === 'loading') {
+  @if (useMockData && uiState() === 'loading') {
     <div class="loading-status" role="status" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>正在整理統計與 AI 評分結果…
     </div>
@@ -75,14 +86,38 @@
         <span></span><span></span><span></span>
       </section>
     </div>
+  } @else if (!useMockData && realLoadState() === 'loading') {
+    <div class="loading-status" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>正在載入儀表板資料…
+    </div>
+    <section class="stats-grid" aria-label="統計資料載入中">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="skeleton-card"><span></span><strong></strong><small></small></div>
+      }
+    </section>
+    <div class="content-grid">
+      <section class="panel skeleton-panel" aria-label="推薦清單載入中">
+        <span></span><span></span><span></span><span></span>
+      </section>
+      <section class="panel skeleton-panel short" aria-label="風險資料載入中">
+        <span></span><span></span><span></span>
+      </section>
+    </div>
+  } @else if (!useMockData && realLoadState() === 'error') {
+    <div class="notice error-notice" role="alert">
+      <div>
+        <strong>儀表板載入失敗</strong>{{ errorMessage() }}
+      </div>
+      <button type="button" (click)="retry()">重新載入</button>
+    </div>
   } @else {
-    @if (uiState() === 'locked') {
+    @if (useMockData && uiState() === 'locked') {
       <div class="notice locked-notice" role="status">
         <strong>已審核資料鎖定示範</strong> 已通過選品審核的核心條件為唯讀，相關操作按鈕已停用。
       </div>
     }
 
-    @if (uiState() === 'edge') {
+    @if (useMockData && uiState() === 'edge') {
       <div class="notice error-notice" role="alert">
         <div>
           <strong>部分資料無法更新</strong>模擬 409
@@ -101,21 +136,28 @@
       </section>
     }
 
+    <!-- 真實模式下，若四支 API 有任一支失敗，仍顯示其餘已載入的資料，並在頂端提示。 -->
+    @if (!useMockData && errorMessage()) {
+      <div class="notice error-notice" role="alert">
+        <div>{{ errorMessage() }}</div>
+      </div>
+    }
+
     <section class="stats-grid" aria-label="選品統計">
       <article class="stat-card total">
-        <span>候選商品總數</span><strong>{{ data.statistics.totalProducts }}</strong
+        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong
         ><small>目前正式候選池</small>
       </article>
       <article class="stat-card pending">
-        <span>待人工審核</span><strong>{{ data.statistics.pendingReviews }}</strong
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong
         ><small>需要管理人員決策</small>
       </article>
       <article class="stat-card approved">
-        <span>通過選品審核</span><strong>{{ data.statistics.approvedProducts }}</strong
+        <span>通過選品審核</span><strong>{{ data().statistics.approvedProducts }}</strong
         ><small>不代表已上架或已銷售</small>
       </article>
       <article class="stat-card rejected">
-        <span>未通過</span><strong>{{ data.statistics.rejectedProducts }}</strong
+        <span>未通過</span><strong>{{ data().statistics.rejectedProducts }}</strong
         ><small>可修改後重新送審</small>
       </article>
     </section>
@@ -159,15 +201,22 @@
                     }
                   </td>
                   <td>
-                    <span [class.incomplete]="item.completeness < 60"
-                      >{{ item.completeness }}%</span
-                    >
+                    <!-- ⚠️ 一定要先判斷 hasCompleteness()。completeness 真實模式
+                         恆為 null，而 JS 裡 null < 60 是 true，直接比較會讓每一列
+                         都誤報「資料待補」。 -->
+                    @if (!hasCompleteness(item)) {
+                      <span class="unavailable">—</span>
+                    } @else {
+                      <span [class.incomplete]="item.completeness! < 60"
+                        >{{ item.completeness }}%</span
+                      >
+                    }
                   </td>
                   <td>
                     <strong class="score">{{ item.finalScore }}</strong>
                   </td>
                   <td>
-                    <span class="status" [attr.data-status]="item.reviewStatus">{{
+                    <span class="status" [attr.data-status]="item.reviewStatus ?? 'UNKNOWN'">{{
                       statusLabel(item.reviewStatus)
                     }}</span>
                   </td>
@@ -182,7 +231,7 @@
                         已鎖定
                       </button>
                     } @else {
-                      <button type="button" class="table-action">查看評估</button>
+                      <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
                     }
                   </td>
                 </tr>
@@ -194,13 +243,22 @@
 
       <aside class="side-column">
         <section class="panel conversion-panel" aria-labelledby="conversion-title">
-          <div class="conversion-ring" [style.--rate]="data.statistics.conversionRate + '%'">
-            <strong>{{ data.statistics.conversionRate }}%</strong><span>核准率</span>
-          </div>
+          @if (data().statistics.conversionRate === null) {
+            <div class="conversion-ring" [style.--rate]="'0%'">
+              <strong>—</strong><span>尚無資料</span>
+            </div>
+          } @else {
+            <div class="conversion-ring" [style.--rate]="data().statistics.conversionRate + '%'">
+              <strong>{{ data().statistics.conversionRate }}%</strong><span>核准率</span>
+            </div>
+          }
           <div>
             <p class="eyebrow">Conversion</p>
             <h2 id="conversion-title">選品轉換率</h2>
             <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
+            @if (data().statistics.conversionRate === null) {
+              <p class="hint">目前尚無商品送審過，因此無法計算轉換率。</p>
+            }
           </div>
         </section>
         <section class="panel risk-panel" aria-labelledby="risk-title">
@@ -209,18 +267,20 @@
               <p class="eyebrow">Risk Alerts</p>
               <h2 id="risk-title">高風險提示</h2>
             </div>
-            <span class="risk-count">{{ data.riskAlerts.length }}</span>
+            <span class="risk-count">{{ data().riskAlerts.length }}</span>
           </header>
           <div class="risk-list">
-            @for (risk of data.riskAlerts; track risk.id) {
-              <article class="risk-item" [attr.data-level]="risk.level">
+            @for (risk of data().riskAlerts; track risk.id) {
+              <article class="risk-item" [attr.data-level]="risk.level ?? 'UNKNOWN'">
                 <div>
                   <strong>{{ risk.productName }}</strong
-                  ><span>{{ risk.level === 'HIGH' ? '高風險' : '需留意' }}</span>
+                  ><span>{{ riskLevelLabel(risk.level) }}</span>
                 </div>
                 <p>{{ risk.message }}</p>
                 <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
               </article>
+            } @empty {
+              <p class="empty">目前沒有需要特別注意的商品。</p>
             }
           </div>
         </section>

@@ -93,10 +93,15 @@ export class SettingsApiService {
   /**
    * 5. GET /api/settings/risk-options [僅管理]
    *
-   * ⚠️ 這支回**全部**選項（含已停用），用途是設定頁的管理清單，
-   * 以及決策紀錄把 riskOptionIds 對照成名稱。
-   * 審核頁的勾選清單**不要用這支**——那份資料在
-   * GET /api/reviews/{productId} 的 availableRiskOptions，只含啟用中的。
+   * ⚠️ 更正（原註解寫錯）：實際比對後端 Repository 查詢後發現這支是
+   * `WHERE is_active = true`，**只回啟用中的選項，不含已停用的**。
+   * 這代表目前系統沒有任何端點能看到已停用的風險選項、也沒有「重新啟用」
+   * 的 API——停用後那筆資料實質上就從管理畫面消失了，是後端功能缺口，
+   * 需要跟後端討論是否要開一支管理用的完整清單端點。
+   *
+   * 決策紀錄把 riskOptionIds 對照成名稱時若剛好對到已停用的選項，
+   * 會查不到、顯示不出名稱——這是這個缺口的直接後果，見
+   * RiskOptionLookupService 的用途說明。
    */
   getRiskOptions(): Observable<RiskOptionResponsePayload[]> {
     return this.http

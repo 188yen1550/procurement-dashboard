@@ -1,18 +1,246 @@
 /**
- * 檔案用途：管理人員審核詳情、人工風險、留言、APPROVED／REJECTED 決策與 409 衝突 Mock。
+ * 檔案用途：管理人員審核詳情、人工風險、留言、APPROVED／REJECTED 決策。
  * 「其他」風險需備註；AI 只提供摘要，最終核准一定由人工選擇。
+ *
+ * ## 這次接上真實 API 做了什麼
+ *
+ * 1. Mock 模式完全保留——原本硬編碼的兩筆展示資料、UI 狀態切換器、
+ *    模擬 409 按鈕都不動，PM／利害關係人展示畫面用的到。
+ *
+ * 2. 真實模式呼叫 `ReviewApiService.getDetailWithTypeName()` 載入審核快照，
+ *    送出走 `ReviewApiService.submit()`。
+ *
+ * 3. ⚠️ 送出前一定先跑 `validateReviewForm()`——後端 `ReviewSubmitRequest`
+ *    對 riskOptionIds／reviewComment 刻意不加驗證（見 review.mapper.ts 的
+ *    說明：「通過且無風險」是合法結果），企劃書要求的三條規則
+ *    （必選結果、其他風險需備註、必填留言）完全由前端把關。
+ *
+ * 4. ⚠️ 409 是真的會發生的情況，不是模擬：後端用條件式 UPDATE
+ *    `WHERE review_status='PENDING'` 做併發控制，代表「你點進來審核時，
+ *    別人已經先審過了」。真實模式收到 409 時彈同一個衝突對話框，
+ *    導回待審清單，不要照原請求重試。
+ *
+ * 5. 風險勾選清單改讀 `availableRiskOptions`（只含目前啟用中的選項），
+ *    不是設定頁那份含已停用選項的清單——這兩份資料來源不同，
+ *    見 RiskOptionLookupService 的說明。
  */
-import{Component,inject,signal}from'@angular/core';import{FormsModule}from'@angular/forms';import{ActivatedRoute,RouterLink}from'@angular/router';
-type DetailState='default'|'disabled'|'loading'|'error';type Decision=''|'APPROVED'|'REJECTED';
-@Component({selector:'app-review-detail',imports:[FormsModule,RouterLink],templateUrl:'./review-detail.html',styleUrl:'./review-detail.scss'})
-export class ReviewDetail{
- private readonly route=inject(ActivatedRoute);readonly productId=this.route.snapshot.paramMap.get('id')??'102';readonly stateOptions:readonly DetailState[]=['default','disabled','loading','error'];readonly pageState=signal<DetailState>('default');readonly selectedRisks=signal<string[]>([]);readonly decision=signal<Decision>('');readonly comment=signal('');readonly otherNote=signal('');readonly submitted=signal(false);readonly conflictOpen=signal(false);readonly statusMessage=signal('');
- readonly product={name:this.productId==='103'?'無香低敏濃縮洗衣紙補充組':'輕量智慧溫控電熱杯',category:this.productId==='103'?'日用品':'3C／家電',pricingType:this.productId==='103'?'RESALE':'NEW',completeness:this.productId==='103'?88:78,baseScore:this.productId==='103'?72.8:78.4,festivalBoost:3.3,finalScore:this.productId==='103'?76.1:81.7,audience:84,trend:86,submissionCount:this.productId==='103'?2:1,aiSummary:'市場熱度與核心客群具中高度匹配，但仍需人工確認供貨穩定性與實際商業條件。',previousComment:'上次因備援供應方案不足而未通過，請確認本次補件。'};
- readonly riskOptions=['實際供貨風險','商品品質與客訴風險','市場不確定性與需求變動風險','其他'];
- setState(s:DetailState):void{this.pageState.set(s);this.statusMessage.set(`已切換為 ${s} 狀態。`);}
- toggleRisk(risk:string):void{this.selectedRisks.update(items=>items.includes(risk)?items.filter(i=>i!==risk):[...items,risk]);}
- submit():void{if(!this.decision()){this.statusMessage.set('請選擇核准結果。');return;}if(this.selectedRisks().includes('其他')&&!this.otherNote().trim()){this.statusMessage.set('選擇「其他」風險時必須填寫備註。');return;}if(!this.comment().trim()){this.statusMessage.set('請填寫本次審核留言與決策依據。');return;}this.submitted.set(true);this.statusMessage.set(`已在本地模擬${this.decision()==='APPROVED'?'通過':'不通過'}決策。`);}
- simulateConflict():void{this.conflictOpen.set(true);this.statusMessage.set('模擬 409 Conflict：此品項已由其他管理人員審核。');}
- closeConflict():void{this.conflictOpen.set(false);}
- retry():void{this.pageState.set('default');this.statusMessage.set('已恢復審核資料。');}
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { toApiError } from '../../../core/api/api-error';
+import { APP_CONFIG } from '../../../core/config/app-config';
+import { ReviewApiService } from '../api/review-api.service';
+import {
+  OTHER_RISK_OPTION_NAME,
+  ReviewDetailModel,
+  ReviewFormModel,
+  toReviewSubmitPayload,
+  validateReviewForm,
+} from '../api/review.mapper';
+
+type DetailState = 'default' | 'disabled' | 'loading' | 'error';
+type Decision = '' | 'APPROVED' | 'REJECTED';
+
+/** Mock 展示資料，維持原本兩筆固定內容，形狀對齊 ReviewDetailModel。 */
+function mockDetail(productId: string): ReviewDetailModel {
+  const isSecond = productId === '103';
+  return {
+    productId: Number(productId) || 102,
+    productName: isSecond ? '無香低敏濃縮洗衣紙補充組' : '輕量智慧溫控電熱杯',
+    productTypeId: null,
+    productTypeName: isSecond ? '日用品' : '3C／家電',
+    pricingType: isSecond ? 'RESALE' : 'NEW',
+    supplierName: '—',
+    campaignTags: [],
+    submissionCount: isSecond ? 2 : 1,
+    isResubmission: isSecond,
+    scores: {
+      businessScore: isSecond ? 74 : 79,
+      audienceScore: 84,
+      historicalScore: isSecond ? 70 : 76,
+      purchaseScore: isSecond ? 71 : 77,
+      trendScore: 86,
+      forecastScore: isSecond ? 73 : 80,
+      totalScore: isSecond ? 72.8 : 78.4,
+      festivalBoost: 3.3,
+      finalScore: isSecond ? 76.1 : 81.7,
+      dataCompleteness: isSecond ? 88 : 78,
+      evaluationModeName: '均衡模式',
+      evaluationModeVersion: 1,
+    },
+    matchedCampaign: null,
+    ai: {
+      hasAnalysis: true,
+      summary: '市場熱度與核心客群具中高度匹配，但仍需人工確認供貨穩定性與實際商業條件。',
+      recommendation: '建議通過',
+      reasons: '節慶標籤命中、客群契合度高，但供應穩定性評分偏低需留意。',
+    },
+    availableRiskOptions: [
+      { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
+      { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
+      { id: 3, name: '市場不確定性與需求變動風險', description: null, isSystemDefault: true },
+      { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true },
+    ],
+  };
+}
+
+const MOCK_PREVIOUS_COMMENT = '上次因備援供應方案不足而未通過，請確認本次補件。';
+
+@Component({
+  selector: 'app-review-detail',
+  imports: [FormsModule, RouterLink],
+  templateUrl: './review-detail.html',
+  styleUrl: './review-detail.scss',
+})
+export class ReviewDetail implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(ReviewApiService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly useMockData = APP_CONFIG.useMockData;
+  readonly productId = this.route.snapshot.paramMap.get('id') ?? '102';
+  readonly stateOptions: readonly DetailState[] = ['default', 'disabled', 'loading', 'error'];
+  readonly pageState = signal<DetailState>('default');
+
+  readonly product = signal<ReviewDetailModel | null>(null);
+  readonly errorMessage = signal('');
+
+  readonly selectedRiskIds = signal<number[]>([]);
+  readonly decision = signal<Decision>('');
+  readonly comment = signal('');
+  readonly otherNote = signal('');
+  readonly submitted = signal(false);
+  readonly isSubmitting = signal(false);
+  readonly conflictOpen = signal(false);
+  readonly statusMessage = signal('');
+
+  /** 「其他」風險是否已勾選；決定要不要顯示補充說明欄位。 */
+  readonly hasOtherSelected = computed(() => {
+    const other = this.product()?.availableRiskOptions.find(
+      (option) => option.name === OTHER_RISK_OPTION_NAME,
+    );
+    return other !== undefined && this.selectedRiskIds().includes(other.id);
+  });
+
+  /** 上次審核留言，僅 Mock 模式有固定示範文字；真實模式資料來源是決策紀錄，這裡先留空。 */
+  readonly previousComment = MOCK_PREVIOUS_COMMENT;
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  load(): void {
+    if (this.useMockData) {
+      this.product.set(mockDetail(this.productId));
+      this.pageState.set('default');
+      return;
+    }
+
+    this.pageState.set('loading');
+    this.api
+      .getDetailWithTypeName(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          this.product.set(detail);
+          this.pageState.set('default');
+        },
+        error: (err) => {
+          this.pageState.set('error');
+          this.errorMessage.set(toApiError(err).message);
+        },
+      });
+  }
+
+  retry(): void {
+    this.pageState.set('default');
+    this.statusMessage.set(this.useMockData ? '已恢復審核資料。' : '');
+    this.load();
+  }
+
+  // ----- UI 狀態切換器（Mock 模式展示用，不呼叫 API）-----
+
+  setState(state: DetailState): void {
+    this.pageState.set(state);
+    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+  }
+
+  simulateConflict(): void {
+    this.conflictOpen.set(true);
+    this.statusMessage.set('模擬 409 Conflict：此品項已由其他管理人員審核。');
+  }
+
+  closeConflict(): void {
+    this.conflictOpen.set(false);
+    if (!this.useMockData) {
+      // 真實模式的衝突是實際發生過的事，關閉後應該回到清單重新確認最新狀態，
+      // 而不是留在這頁對著一份已經過期的審核快照。
+      void this.router.navigate(['/review']);
+    }
+  }
+
+  // ----- 表單互動 -----
+
+  toggleRisk(id: number): void {
+    this.selectedRiskIds.update((items) =>
+      items.includes(id) ? items.filter((i) => i !== id) : [...items, id],
+    );
+  }
+
+  submit(): void {
+    const product = this.product();
+    if (!product) return;
+
+    const form: ReviewFormModel = {
+      productId: product.productId,
+      decision: this.decision(),
+      selectedRiskOptionIds: this.selectedRiskIds(),
+      reviewComment: this.comment(),
+      otherNote: this.otherNote(),
+    };
+
+    // 三條企劃書規則，後端刻意不驗證，全部由前端把關。
+    const validation = validateReviewForm(form, product.availableRiskOptions);
+    if (!validation.valid) {
+      this.statusMessage.set(validation.message ?? '請確認表單內容。');
+      return;
+    }
+
+    if (this.useMockData) {
+      this.submitted.set(true);
+      this.statusMessage.set(
+        `已在本地模擬${this.decision() === 'APPROVED' ? '通過' : '不通過'}決策。`,
+      );
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.statusMessage.set('');
+
+    this.api
+      .submit(toReviewSubmitPayload(form))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.isSubmitting.set(false);
+          this.submitted.set(true);
+        },
+        error: (err) => {
+          this.isSubmitting.set(false);
+          const error = toApiError(err);
+
+          if (error.status === 409) {
+            // 409：條件式 UPDATE 影響筆數為 0，代表別人已經先審過這筆。
+            // 這不是罕見例外，是多人同時看待審清單的正常情況。
+            this.conflictOpen.set(true);
+            this.statusMessage.set('此品項已由其他管理人員完成審核。');
+            return;
+          }
+
+          this.statusMessage.set(error.message);
+        },
+      });
+  }
 }

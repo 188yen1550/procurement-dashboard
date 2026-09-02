@@ -91,21 +91,34 @@
             <p class="category">{{ item.category }}</p>
             <h2>{{ item.name }}</h2>
             <p class="supplier">{{ item.supplier }}</p>
-            <div class="trend">
-              <strong>{{ item.trend }}</strong
-              ><span>{{ item.direction === 'UP' ? '↗ 連續上升' : '→ 穩定' }}</span>
-            </div>
-            <p class="reason">{{ item.reason }}</p>
-            <dl>
-              <div>
-                <dt>核心客群匹配</dt>
-                <dd>{{ item.audienceMatch }}%</dd>
+            <!-- ⚠️ trend/reason/audienceMatch/risk 真實模式恆為 null：
+                 後端 ai-suggested 端點與正式候選清單同一個 DTO，沒有這些欄位。
+                 有資料才顯示對應區塊，不要顯示假的趨勢箭頭或編造內容。 -->
+            @if (item.trend !== null) {
+              <div class="trend">
+                <strong>{{ item.trend }}</strong
+                ><span>{{ item.direction === 'UP' ? '↗ 連續上升' : '→ 穩定' }}</span>
               </div>
-              <div>
-                <dt>風險提示</dt>
-                <dd>{{ item.risk }}</dd>
-              </div>
-            </dl>
+            }
+            @if (item.reason) {
+              <p class="reason">{{ item.reason }}</p>
+            }
+            @if (item.audienceMatch !== null || item.risk) {
+              <dl>
+                @if (item.audienceMatch !== null) {
+                  <div>
+                    <dt>核心客群匹配</dt>
+                    <dd>{{ item.audienceMatch }}%</dd>
+                  </div>
+                }
+                @if (item.risk) {
+                  <div>
+                    <dt>風險提示</dt>
+                    <dd>{{ item.risk }}</dd>
+                  </div>
+                }
+              </dl>
+            }
             <button
               type="button"
               (click)="promote(item.id)"
