@@ -177,10 +177,25 @@ describe('Settings', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('評估模式');
     expect(fixture.nativeElement.textContent).toContain('帳號管理');
+    // 核心客群目前鎖住（component.audienceSettingsVisible = false），
+    // 分頁按鈕跟內容都不應該渲染出來，不是「顯示但disabled」。
+    expect(fixture.nativeElement.textContent).not.toContain('核心客群設定');
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('.tabs button')).some(
+        (button: unknown) => (button as HTMLButtonElement).textContent?.includes('核心客群'),
+      ),
+    ).toBe(false);
+  });
+
+  it('prevents normal navigation from entering the hidden audience tab', () => {
+    component.setTab('audience');
+    expect(component.activeTab()).toBe('modes');
+    expect(component.statusMessage()).toContain('暫不開放');
+    // 被攔下時不該連帶觸發真實模式的分頁載入（不打 GET /audience-profile）。
+    expect(settingsApi.getAudienceProfile).not.toHaveBeenCalled();
   });
 
   it('validates audience age range', () => {
-    component.setTab('audience');
     component.form.patchValue({ ageMin: 50, ageMax: 30 });
     component.saveAudience();
     fixture.detectChanges();
@@ -189,7 +204,6 @@ describe('Settings', () => {
   });
 
   it('saves valid audience settings via the API', () => {
-    component.setTab('audience');
     component.saveAudience();
     fixture.detectChanges();
     expect(settingsApi.updateAudienceProfile).toHaveBeenCalled();
@@ -198,11 +212,16 @@ describe('Settings', () => {
   });
 
   it('disables controls with an explanation', () => {
-    component.setTab('audience');
     component.setState('disabled');
     fixture.detectChanges();
     expect(component.form.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('目前為唯讀預覽');
+    // ⚠️ 原本斷言的「🔒 目前為唯讀預覽」文字只出現在核心客群分頁的
+    // disabled 分支（settings.html:81），該分頁現在鎖住不會渲染，
+    // 這裡改成驗證真正跨分頁共用的行為：狀態文字＋操作按鈕確實被鎖。
+    expect(component.statusMessage()).toContain('已切換為 disabled 狀態');
+    expect(
+      fixture.nativeElement.querySelector('button[disabled]') !== null,
+    ).toBe(true);
   });
 
   it('shows risk, product type, campaign and account settings', () => {

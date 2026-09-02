@@ -46,8 +46,8 @@
           </div>
 
           <div class="demo-account-actions">
-            <button type="button" (click)="useMockAccount('purchaser')">操作人員</button>
-            <button type="button" (click)="useMockAccount('manager')">管理人員</button>
+            <button type="button" [disabled]="isLoading()" (click)="useMockAccount('purchaser')">操作人員</button>
+            <button type="button" [disabled]="isLoading()" (click)="useMockAccount('manager')">管理人員</button>
           </div>
         </section>
 
@@ -73,6 +73,7 @@
                 formControlName="username"
                 placeholder="請輸入帳號或電子郵件"
                 autocomplete="username"
+                [readOnly]="isLoading()"
                 [attr.aria-invalid]="
                   loginForm.controls.username.invalid && loginForm.controls.username.touched
                 "
@@ -112,6 +113,7 @@
                 formControlName="password"
                 placeholder="請輸入密碼"
                 autocomplete="current-password"
+                [readOnly]="isLoading()"
                 [attr.aria-invalid]="
                   loginForm.controls.password.invalid && loginForm.controls.password.touched
                 "
@@ -139,9 +141,9 @@
                登入失敗訊息
                未來後端回傳帳密錯誤時顯示
                =============================== -->
-          @if (errorMessage) {
-            <p class="error-message" role="alert" aria-live="polite">
-              {{ errorMessage }}
+          @if (errorMessage()) {
+            <p id="login-error" class="error-message" role="alert" aria-live="assertive">
+              {{ errorMessage() }}
             </p>
           }
 
@@ -152,10 +154,10 @@
           <button
             type="submit"
             class="btn-primary"
-            [disabled]="isLoading"
-            [attr.aria-busy]="isLoading"
+            [disabled]="isLoading()"
+            [attr.aria-busy]="isLoading()"
           >
-            {{ isLoading ? '登入中...' : '登入' }}
+            {{ isLoading() ? '登入中...' : '登入' }}
           </button>
         </form>
       </section>

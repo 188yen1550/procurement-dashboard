@@ -73,6 +73,27 @@ describe('ProductManagement', () => {
     expect(fixture.nativeElement.textContent).toContain('非已上架或已銷售');
   });
 
+  it('keeps an accessible sticky action column for every product row', () => {
+    const header = fixture.nativeElement.querySelector('thead .actions-column');
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    const actionCells = fixture.nativeElement.querySelectorAll('tbody .actions-column');
+    expect(header).toBeTruthy();
+    expect(actionCells.length).toBe(rows.length);
+    actionCells.forEach((cell: HTMLElement) => {
+      expect(cell.querySelector('.action-group')).toBeTruthy();
+      expect(cell.querySelector('a, button')).toBeTruthy();
+    });
+  });
+
+  it('preserves action availability for pending, approved and rejected rows', () => {
+    const eligible = fixture.nativeElement.querySelector('button[aria-label^="刪除輕量智慧"]');
+    const approved = fixture.nativeElement.querySelector('button[aria-label^="無法刪除中秋"]');
+    const rejectedAction = fixture.nativeElement.querySelector('a.resubmit');
+    expect(eligible.disabled).toBe(false);
+    expect(approved.disabled).toBe(true);
+    expect(rejectedAction.textContent).toContain('編輯並重新送審');
+  });
+
   it('renders loading and error recovery states', () => {
     component.setPageState('loading'); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('正在載入品項資料');

@@ -45,7 +45,19 @@ export class AuthApiService {
   login(payload: LoginRequestPayload): Observable<CurrentUser> {
     return this.http
       .post<ApiEnvelope<CurrentUser>>(AUTH_API.login, payload)
-      .pipe(unwrapData());
+      .pipe(
+        unwrapData(),
+        map((user) => {
+          // 20260831分支加的防呆：後端回應形狀萬一跟型別對不上（例如串接
+          // 過程中欄位改名、或中介層吃掉了部分內容），寧可讓登入明確失敗，
+          // 也不要讓一個殘缺的 CurrentUser 流進 signal，導致後續 RBAC
+          // 判斷（isManager 等）用一個假的角色值默默算錯。
+          if (!user || typeof user.username !== 'string' || typeof user.role !== 'string') {
+            throw new Error('Invalid login response');
+          }
+          return user;
+        }),
+      );
   }
 
   /**

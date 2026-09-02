@@ -177,6 +177,13 @@ export class Settings implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
+  /**
+   * 核心客群設定目前鎖住，不開放操作／管理層進入編輯。
+   * 沿用 20260831 分支的既有決策，不是這次合併新增的規則——
+   * 之後若要重新開放，只需要把這裡改回 true，setTab() 跟樣板的分頁
+   * 按鈕不需要再動。
+   */
+  readonly audienceSettingsVisible = false;
   readonly stateOptions: readonly SettingsState[] = ['default', 'disabled', 'loading', 'error'];
   readonly activeTab = signal<SettingsTab>('modes');
   readonly pageState = signal<SettingsState>(this.useMockData ? 'default' : 'loading');
@@ -237,6 +244,10 @@ export class Settings implements OnInit {
   // ----- 分頁切換與延遲載入 -----
 
   setTab(tab: SettingsTab): void {
+    if (tab === 'audience' && !this.audienceSettingsVisible) {
+      this.statusMessage.set('核心客群設定目前暫不開放。');
+      return;
+    }
     this.activeTab.set(tab);
     this.statusMessage.set('已切換設定分類。');
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);

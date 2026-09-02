@@ -7,7 +7,7 @@
     <div>
       <p class="eyebrow">Management Settings</p>
       <h1 id="settings-title">系統設定</h1>
-      <p>管理評估模式、人工風險、核心客群、商品類型、節慶檔期與帳號。</p>
+      <p>管理評估模式、人工風險、商品類型、節慶檔期與帳號。</p>
     </div>
     <span>僅管理角色</span>
   </header>
@@ -34,12 +34,15 @@
   }
   <nav class="tabs" aria-label="設定分類">
     <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">
-      評估模式</button
-    ><button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
-      人工風險</button
-    ><button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">
-      核心客群</button
-    ><button
+      評估模式
+    </button>
+    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
+      人工風險
+    </button>
+    @if (audienceSettingsVisible) {
+      <button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
+    }
+    <button
       type="button"
       [class.active]="activeTab() === 'productTypes'"
       (click)="setTab('productTypes')"
@@ -68,7 +71,7 @@
         <span></span>
       }
     </section>
-  } @else if (activeTab() === 'audience') {
+  } @else if (audienceSettingsVisible && activeTab() === 'audience') {
     @if (pageState() === 'disabled') {
       <section class="notice">
         <div>

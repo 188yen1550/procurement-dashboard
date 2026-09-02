@@ -66,7 +66,7 @@ type RealLoadState = 'loading' | 'loaded' | 'error';
   selector: 'app-dashboard',
   imports: [RouterLink],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.scss',
+  styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
 export class Dashboard implements OnInit {
   private readonly api = inject(DashboardApiService);

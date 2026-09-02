@@ -100,7 +100,7 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './product-management.html',
-  styleUrl: './product-management.scss',
+  styleUrls: ['./product-management.scss', './product-management-actions.scss'],
 })
 export class ProductManagement implements OnInit {
   private readonly api = inject(ProductApiService);
