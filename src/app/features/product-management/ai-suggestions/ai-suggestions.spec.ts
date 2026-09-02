@@ -41,6 +41,8 @@ function makeAiSuggestedPayload(
     submissionCount: 0,
     createdBy: null,
     createdByName: null,
+    finalScore: null,
+    dataCompleteness: null,
     createdAt: null,
     updatedAt: null,
     updatedBy: null,

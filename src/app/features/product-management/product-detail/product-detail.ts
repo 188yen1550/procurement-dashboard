@@ -12,6 +12,7 @@ import { toApiError } from '../../../core/api/api-error';
 import { REVIEW_STATUS_LABEL } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
+import { AiAnalysisModel } from '../api/product.mapper';
 import {
   DetailProduct,
   DetailState,
@@ -19,6 +20,33 @@ import {
   ReviewStatus,
   toDetailProduct,
 } from './product-detail.model';
+
+/**
+ * 把 AiAnalysisModel 轉成 toDetailProduct() 要的 extras 形狀。
+ *
+ * ⚠️ hasAnalysis 為 false 代表後端回了全欄位 null 的物件（尚未生成過分析），
+ * 不是錯誤狀態；這裡統一轉成 aiSummary: null，畫面顯示「尚未產生」的空狀態，
+ * 不要顯示成載入失敗。
+ *
+ * ⚠️ 後端 reasons 是單一字串，不是陣列（跟舊版 Mock 資料的陣列形狀不同）。
+ * 依換行拆成陣列只是為了沿用既有的條列樣式，不是後端保證的格式——
+ * 若這段文字沒有換行，拆完就是單一元素的陣列，會顯示成一行，
+ * 這是合理的降級，不是錯誤。
+ */
+function toAiExtras(
+  analysis: AiAnalysisModel | null,
+): { aiSummary: string | null; aiReasons: string[] } {
+  if (!analysis || !analysis.hasAnalysis) {
+    return { aiSummary: null, aiReasons: [] };
+  }
+  return {
+    aiSummary: analysis.summary,
+    aiReasons: analysis.reasons
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0),
+  };
+}
 
 const APPROVED: DetailProduct = {
   id: 101,
@@ -115,6 +143,9 @@ export class ProductDetail implements OnInit {
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
   readonly statusMessage = signal('');
   readonly imageLoadFailed = signal(false);
+  /** 是否正在呼叫 generateAiAnalysis()；期間停用按鈕，避免重複觸發 LLM 費用。 */
+  readonly isGeneratingAi = signal(false);
+  readonly aiError = signal('');
   readonly incomplete = computed(() => (this.product()?.completeness ?? 0) < 60);
   readonly isLocked = computed(
     () => this.pageState() === 'locked' || this.product()?.itemStatus === 'ARCHIVED',
@@ -138,9 +169,13 @@ export class ProductDetail implements OnInit {
         switchMap((product) =>
           forkJoin({
             product: of(product),
-            // 評估與節慶加成屬於可選區塊：單獨失敗時降級，不讓整頁變成 error。
+            // 評估、節慶加成、AI 分析都屬於可選區塊：單獨失敗時降級，不讓整頁變成 error。
             evaluation: this.api.getEvaluation(this.productId).pipe(catchError(() => of(null))),
             festival: this.api.getFestivalBoost(this.productId).pipe(catchError(() => of(null))),
+            // ⚠️ 這支之前完全沒有被呼叫過，導致 AI 摘要／推薦原因區塊無論資料
+            // 完整度多高都只會顯示「尚未產生」的空狀態——不是資料完整度判斷，
+            // 是這裡漏了這支 API 呼叫。GET 不會觸發生成、不產生 LLM 費用。
+            aiAnalysis: this.api.getAiAnalysis(this.productId).pipe(catchError(() => of(null))),
             // 商品類型名稱：ProductResponse 只有 productTypeId，
             // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
             typeName: this.productTypes.getName(product.productTypeId),
@@ -149,8 +184,10 @@ export class ProductDetail implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival, typeName }) => {
-          this.product.set(toDetailProduct(product, evaluation, festival, typeName));
+        next: ({ product, evaluation, festival, aiAnalysis, typeName }) => {
+          this.product.set(
+            toDetailProduct(product, evaluation, festival, typeName, toAiExtras(aiAnalysis)),
+          );
           this.pageState.set('default');
           if (!evaluation) this.statusMessage.set('評估分數載入失敗，其餘資料仍可檢視。');
         },
@@ -158,6 +195,42 @@ export class ProductDetail implements OnInit {
           this.product.set(null);
           this.pageState.set('error');
           this.statusMessage.set('品項詳情載入失敗，請稍後重試。');
+        },
+      });
+  }
+
+  /**
+   * 觸發 POST /api/products/{id}/ai-analysis/generate。
+   *
+   * ⚠️ 這支會產生 LLM API 費用且有配額限制，因此：
+   * 1. 送出前二次確認，避免手滑觸發
+   * 2. 期間 disable 按鈕，不讓使用者連點
+   * 3. 502（LlmAnalysisException）視為這個區塊自己的錯誤，不影響其餘資料顯示
+   */
+  generateAiAnalysis(): void {
+    if (this.useMockData) {
+      this.statusMessage.set('Mock 模式不會真的呼叫 LLM，此按鈕僅在真實模式生效。');
+      return;
+    }
+    if (!window.confirm('產生 AI 分析會呼叫外部 LLM 服務並計入配額，確定要繼續嗎？')) return;
+
+    this.isGeneratingAi.set(true);
+    this.aiError.set('');
+
+    this.api
+      .generateAiAnalysis(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (analysis) => {
+          this.isGeneratingAi.set(false);
+          this.product.update((p) => (p ? { ...p, ...toAiExtras(analysis) } : p));
+        },
+        error: (err) => {
+          this.isGeneratingAi.set(false);
+          const error = toApiError(err);
+          this.aiError.set(
+            error.status === 502 ? 'AI 分析服務暫時無法使用，請稍後再試。' : error.message,
+          );
         },
       });
   }

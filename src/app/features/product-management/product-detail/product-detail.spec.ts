@@ -1,7 +1,15 @@
-/** 檔案用途：驗證詳情頁 SNAPSHOT、60% 門檻、圖片替代、趨勢與封存／復用 Mock 規則。 */
+/**
+ * 檔案用途：驗證詳情頁 SNAPSHOT、60% 門檻、圖片替代、趨勢、封存／復用與 AI 分析規則。
+ *
+ * ⚠️ 這次接上 AI 分析後才發現：這支 spec 一直沒有提供 ProductTypeLookupService，
+ * 而它內部會注入 SettingsApiService → 需要 HttpClient——之前只 mock 了
+ * ProductApiService，這條依賴鏈其實會在建構元件時直接拋 NullInjectorError，
+ * 只是 tsc/ngc 的型別檢查抓不到這種執行期 DI 錯誤。這次一併補上 mock。
+ */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductDetail } from './product-detail';
 
@@ -44,14 +52,38 @@ describe('ProductDetail', () => {
       festivalBoost: 4.2,
       finalScore: 92.4,
     })),
+    // 預設回「尚未生成」的空物件，符合後端真實行為（不是回錯誤，是全欄位 null）。
+    getAiAnalysis: vi.fn(() =>
+      of({ hasAnalysis: false, summary: '', recommendation: '', reasons: '', modelName: null, isMockData: false, generatedAt: null }),
+    ),
+    generateAiAnalysis: vi.fn(() =>
+      of({
+        hasAnalysis: true,
+        summary: '節慶標籤與當前檔期高度吻合。',
+        recommendation: '建議通過',
+        reasons: '中秋烤肉需求與 bbq 標籤相符\n團購價較市價低 20%',
+        modelName: 'gemini-3.6-flash',
+        isMockData: false,
+        generatedAt: '2026-09-02T10:00:00',
+      }),
+    ),
     archive: vi.fn(() => of({})),
     restore: vi.fn(() => of({})),
+  };
+  const productTypeLookup = {
+    getName: vi.fn(() => of('食品／生鮮')),
+    getNameMap: vi.fn(() => of(new Map([[1, '食品／生鮮']]))),
+    invalidate: vi.fn(),
   };
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
-      providers: [provideRouter([]), { provide: ProductApiService, useValue: api }],
+      providers: [
+        provideRouter([]),
+        { provide: ProductApiService, useValue: api },
+        { provide: ProductTypeLookupService, useValue: productTypeLookup },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(ProductDetail);
     component = fixture.componentInstance;
@@ -125,5 +157,31 @@ describe('ProductDetail', () => {
   });
   it('shows an empty image state when imageUrl is absent', () => {
     component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無商品圖片');
+  });
+  it('shows the correct empty state for AI analysis, not conflated with data completeness', () => {
+    // getAiAnalysis 預設 mock 回 hasAnalysis:false（尚未生成過），
+    // 文案不應暗示是資料不足造成的——這兩件事互不相干。
+    expect(component.product()?.aiSummary).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('尚未產生 AI 分析');
+    expect(fixture.nativeElement.textContent).not.toContain('資料不足，未產生 AI 分析');
+  });
+  it('generates AI analysis on demand and updates the summary without re-fetching the whole page', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.generateAiAnalysis();
+    // 這支測試沒有設定路由參數，route.snapshot.paramMap.get('id') 會是 null，
+    // 元件內 `?? ''` 之後 productId 實際上是空字串。
+    expect(api.generateAiAnalysis).toHaveBeenCalledWith('');
+    expect(component.isGeneratingAi()).toBe(false);
+    expect(component.product()?.aiSummary).toContain('節慶標籤與當前檔期高度吻合');
+    // reasons 是後端單一字串，依換行拆成陣列顯示。
+    expect(component.product()?.aiReasons).toEqual([
+      '中秋烤肉需求與 bbq 標籤相符',
+      '團購價較市價低 20%',
+    ]);
+  });
+  it('does not call the LLM when the user cancels the confirmation dialog', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    component.generateAiAnalysis();
+    expect(api.generateAiAnalysis).not.toHaveBeenCalled();
   });
 });

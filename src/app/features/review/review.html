@@ -22,7 +22,12 @@
       }
     </div>
   </section>
+  <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，一般使用者看不到
+       任何操作結果的回饋，見 product-management.html 的說明。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  @if (statusMessage()) {
+    <p class="scope-notice status-toast" role="status">{{ statusMessage() }}</p>
+  }
   <nav class="tabs">
     <button type="button" [class.active]="view() === 'pending'" (click)="view.set('pending')">
       待審核清單 <span>{{ items().length }}</span></button

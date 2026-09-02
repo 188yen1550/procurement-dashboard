@@ -25,6 +25,8 @@ function makeProduct(overrides: Partial<ProductResponsePayload> = {}): ProductRe
     imageUrl: '/images/products/101.jpg',
     supplierName: '潮港鮮物有限公司',
     createdByName: '陳小明',
+    finalScore: 92.4,
+    dataCompleteness: 96,
     costPrice: 820,
     salePrice: 1190,
     marketPrice: 1490,
@@ -150,12 +152,25 @@ describe('toProductListItem', () => {
     expect(item.campaignTags).toEqual([]);
   });
 
-  it('不捏造 finalScore：ProductResponse 本來就沒有分數', () => {
+  it('清單端點的分數直接透傳，不再是恆為 null 的佔位值', () => {
     const item = toProductListItem(makeProduct());
 
-    // 分數在 GET /api/products/{id}/evaluation，清單端點拿不到。
-    // 這裡若填了任何數字都是假的。
+    // 後端這次已在 GET /api/products 批次補上這兩個欄位（見 ProductService.
+    // resolveEvaluations()），不是逐筆呼叫 /evaluation，mapper 直接透傳即可。
+    expect(item.finalScore).toBe(92.4);
+    expect(item.dataCompleteness).toBe(96);
+    expect(item.hasScoreData).toBe(true);
+  });
+
+  it('該商品尚無評估紀錄時，分數為 null 但 hasScoreData 仍為 true', () => {
+    const item = toProductListItem(makeProduct({ finalScore: null, dataCompleteness: null }));
+
+    // ⚠️ 這裡的 null 代表「這筆商品真的還沒有分數」，不是「後端沒提供欄位」，
+    // 兩者語意不同：hasScoreData 只反映後者，不應該因為某一筆商品剛好
+    // 沒有評估紀錄就整體判定「後端沒提供分數」。
+    expect(item.finalScore).toBeNull();
     expect(item.dataCompleteness).toBeNull();
+    expect(item.hasScoreData).toBe(true);
   });
 
   it('supplierName 為 null 時填入 fallback，而非 undefined', () => {

@@ -62,11 +62,12 @@ export interface ProductListItem {
   createdByName: string;
   campaignTags: string[];
   /**
-   * ⚠️ 目前恆為 null。ProductResponse 不含分數（DTO 註解明說不越界裝其他網域資料），
-   * 分數在 GET /api/products/{id}/evaluation。
+   * ⚠️ 後端這次補上：批次查詢 product_evaluations 後填入（見 ProductService.
+   * resolveEvaluations()），不是逐筆呼叫 /evaluation。該商品若尚無評估紀錄，
+   * 仍可能是 null——不是「後端沒提供」，是「這筆商品真的還沒有分數」。
    */
   finalScore: number | null;
-  /** ⚠️ 目前恆為 null，理由同上。完整度也在 evaluation 端點。 */
+  /** ⚠️ 後端這次補上，理由同上，跟 finalScore 來自同一筆評估紀錄。 */
   dataCompleteness: number | null;
   /**
    * 分數與完整度是否有資料。
@@ -157,17 +158,14 @@ export function toProductListItem(
     supplierName: payload.supplierName ?? NOT_PROVIDED,
     createdByName: payload.createdByName ?? NOT_PROVIDED,
     campaignTags: splitCampaignTags(payload.campaignTags),
-    // ⚠️ ProductResponse 不含分數也不含資料完整度，清單頁拿不到 finalScore。
-    // 這裡不填假值也不逐筆打 /evaluation（那是 N+1：20 筆清單 = 20 個請求）。
-    //
-    // 後端若日後在清單端點併帶這兩個欄位，改動只有這三行：
-    //   finalScore: payload.finalScore,
-    //   dataCompleteness: payload.dataCompleteness,
-    //   hasScoreData: true,
-    // 樣板完全不用改。
-    finalScore: null,
-    dataCompleteness: null,
-    hasScoreData: false,
+    // 後端這次已在清單端點併帶這兩個欄位（批次查詢，不是逐筆呼叫 /evaluation）。
+    // hasScoreData 只代表「後端有沒有提供欄位」，不代表「分數是否為 null」——
+    // 一筆商品尚無評估紀錄時 finalScore/dataCompleteness 仍可能是 null，
+    // 這裡照樣設成 true，因為欄位本身已經由後端提供，樣板的 hasScoreData
+    // 判斷式不變，null 值自然會顯示成「—」。
+    finalScore: payload.finalScore,
+    dataCompleteness: payload.dataCompleteness,
+    hasScoreData: true,
     reviewStatus: payload.reviewStatus,
     itemStatus: payload.itemStatus,
     candidateStatus: payload.candidateStatus,

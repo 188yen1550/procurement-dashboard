@@ -264,7 +264,22 @@
             }
           </ul>
         } @else {
-          <div class="no-data">資料不足，未產生 AI 分析，不會虛構推薦內容。</div>
+          <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
+               文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
+          <div class="no-data">尚未產生 AI 分析，不會虛構推薦內容。</div>
+          @if (!useMockData) {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="isGeneratingAi()"
+              (click)="generateAiAnalysis()"
+            >
+              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '產生 AI 分析' }}
+            </button>
+            @if (aiError()) {
+              <p class="form-error" role="alert">{{ aiError() }}</p>
+            }
+          }
         }
       </section>
       <section class="panel risks">

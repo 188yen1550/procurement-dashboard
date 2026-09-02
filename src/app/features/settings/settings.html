@@ -26,7 +26,12 @@
       }
     </div>
   </section>
+  <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，新增／停用等操作的
+       成功／失敗回饋一般使用者完全看不到。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  @if (statusMessage()) {
+    <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  }
   <nav class="tabs" aria-label="設定分類">
     <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">
       評估模式</button

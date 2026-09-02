@@ -50,12 +50,13 @@ export const PRODUCT_API = {
  * GET /api/products（清單）與 GET /api/products/{id}（詳情）回傳同一個 DTO，
  * 清單不會少欄位，所以前端不需要為兩者分開定義型別。
  *
- * ⚠️ 這個 DTO **不含分數**。ProductResponse.java 類別註解明確寫著
- * 「只回傳 products 表本身的欄位，評估分數／趨勢／AI 屬於其他 Service 的職責」。
- * 清單頁若要顯示 finalScore，只能：
- *   (a) 請後端在清單端點併帶，或
- *   (b) 改成不顯示分數
- * **絕對不要**逐筆呼叫 /evaluation ——20 筆就是 20 個請求的 N+1。
+ * ⚠️ finalScore／dataCompleteness 是這個 DTO 唯一越界的兩個欄位。
+ * ProductResponse.java 類別註解說明「只回傳 products 表本身的欄位，
+ * 評估分數／趨勢／AI 屬於其他 Service 的職責」，但清單頁需要顯示分數，
+ * 後端改用跟 createdByName 一樣的批次查詢手法補上（見
+ * ProductService.resolveEvaluations()），不是逐筆呼叫 /evaluation，
+ * 也沒有在查詢裡新增 JOIN。該商品若尚無評估紀錄，兩個欄位皆為 null，
+ * 畫面顯示「—」，不要顯示成 0（0 分跟「還沒有分數」意義不同）。
  */
 export interface ProductResponsePayload {
   id: number;
@@ -93,6 +94,10 @@ export interface ProductResponsePayload {
    * 有這個欄位後，畫面應直接顯示它，不要再對 createdBy 做任何前端查詢或猜測。
    */
   createdByName: string | null;
+  /** ⚠️ 後端這次補上：該商品若尚無評估紀錄則為 null，不是 0。 */
+  finalScore: Decimal;
+  /** ⚠️ 後端這次補上，跟 finalScore 來自同一筆 ProductEvaluation，理由同上。 */
+  dataCompleteness: Decimal;
   createdAt: IsoDateTime | null;
   updatedAt: IsoDateTime | null;
   updatedBy: number | null;

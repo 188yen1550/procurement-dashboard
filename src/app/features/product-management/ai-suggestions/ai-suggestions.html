@@ -26,7 +26,12 @@
       }
     </div>
   </section>
+  <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，加入候選等操作的
+       成功／失敗回饋一般使用者完全看不到。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  @if (statusMessage()) {
+    <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  }
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
       <h2>AI 建議資料載入失敗</h2>
