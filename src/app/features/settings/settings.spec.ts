@@ -177,8 +177,22 @@ describe('Settings', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('評估模式');
     expect(fixture.nativeElement.textContent).toContain('帳號管理');
+    // 核心客群目前鎖住（component.audienceSettingsVisible = false），
+    // 分頁按鈕跟內容都不應該渲染出來，不是「顯示但disabled」。
     expect(fixture.nativeElement.textContent).not.toContain('核心客群設定');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.tabs button')).some((button: unknown) => (button as HTMLButtonElement).textContent?.includes('核心客群'))).toBe(false);
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('.tabs button')).some(
+        (button: unknown) => (button as HTMLButtonElement).textContent?.includes('核心客群'),
+      ),
+    ).toBe(false);
+  });
+
+  it('prevents normal navigation from entering the hidden audience tab', () => {
+    component.setTab('audience');
+    expect(component.activeTab()).toBe('modes');
+    expect(component.statusMessage()).toContain('暫不開放');
+    // 被攔下時不該連帶觸發真實模式的分頁載入（不打 GET /audience-profile）。
+    expect(settingsApi.getAudienceProfile).not.toHaveBeenCalled();
   });
 
   it('validates audience age range', () => {
@@ -190,7 +204,6 @@ describe('Settings', () => {
   });
   it('keeps the hidden audience settings logic connected to the API', () => {
     component.saveAudience();
-    fixture.detectChanges();
     expect(settingsApi.updateAudienceProfile).toHaveBeenCalled();
     expect(component.saved()).toBe(true);
     expect(component.statusMessage()).toContain('核心客群已儲存');
@@ -200,11 +213,6 @@ describe('Settings', () => {
     component.setState('disabled');
     expect(component.form.disabled).toBe(true);
     expect(component.statusMessage()).toContain('disabled');
-  });
-  it('prevents normal navigation from entering the hidden audience tab', () => {
-    component.setTab('audience');
-    expect(component.activeTab()).toBe('modes');
-    expect(component.statusMessage()).toContain('暫不開放');
   });
 
   it('shows risk, product type, campaign and account settings', () => {
