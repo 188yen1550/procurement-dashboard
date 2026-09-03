@@ -264,7 +264,7 @@ export class Settings implements OnInit {
       return;
     }
     this.activeTab.set(tab);
-    this.statusMessageState.show('已切換設定分類。');
+    // this.statusMessageState.show('已切換設定分類。');
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);
   }
 
