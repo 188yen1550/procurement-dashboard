@@ -121,11 +121,28 @@
             }
           </select>
         </div>
-        <div class="field">
+        <!-- <div class="field">
           <label for="candidate-filter">候選狀態</label>
           <select id="candidate-filter" disabled title="AI_SUGGESTED 請前往獨立 AI 建議清單查看">
             <option value="CANDIDATE">CANDIDATE 正式候選</option>
           </select>
+        </div> -->
+        <div class="field">
+          <label for="sort-select">排序</label
+          ><select
+            id="sort-select"
+            [ngModel]="sortOption()"
+            (ngModelChange)="updateSort($event)"
+            [disabled]="isLoading()"
+          >
+            <option value="updatedAt_desc">更新時間（新→ 舊）</option>
+            <option value="updatedAt_asc">更新時間（舊 → 新）</option>
+            <option value="finalScore_desc">最終分數（高 → 低）</option>
+            <option value="finalScore_asc">最終分數（低 → 高）</option>
+          </select>
+          @if (sortOption() === 'finalScore_desc' || sortOption() === 'finalScore_asc') {
+            <small class="sort-note">僅排序目前頁面已載入的品項，非全體排名</small>
+          }
         </div>
         <button
           type="button"
@@ -143,7 +160,7 @@
         <div>
           <h2 id="list-title">正式候選品項</h2>
           <p aria-live="polite">
-            顯示 <strong>{{ isLoading() ? '—' : filteredProducts().length }}</strong> 筆／共
+            顯示 <strong>{{ isLoading() ? '—' : sortedProducts().length }}</strong> 筆／共
             <strong>{{ candidateProducts().length }}</strong> 筆
           </p>
         </div>
@@ -195,14 +212,14 @@
               </tr>
             </thead>
             <tbody>
-              @for (product of filteredProducts(); track product.id) {
+              @for (product of sortedProducts(); track product.id) {
                 <tr
                   [class.locked-row]="product.reviewStatus === 'APPROVED'"
                   [class.archived-row]="product.itemStatus === 'ARCHIVED'"
                 >
                   <td class="product-cell">
                     <strong [title]="product.name">{{ product.name }}</strong
-                    ><span>#{{ product.id }} · 正式候選</span>
+                    ><span>#{{ product.id }}</span>
                     @if (product.reviewStatus === 'APPROVED') {
                       <small class="lock-note"
                         ><span aria-hidden="true">🔒</span> 核心選品資料已鎖定</small
@@ -350,7 +367,7 @@
         <h2 id="dialog-title">
           {{
             dialogMode() === 'delete'
-              ? '確認移除 Mock 品項？'
+              ? '確認刪除商品品項？'
               : dialogMode() === 'resubmit'
                 ? '模擬編輯並重新送審？'
                 : '功能範圍提示'
@@ -360,7 +377,7 @@
           {{
             dialogMode() === 'notice'
               ? statusMessage()
-              : '這項操作只會更新本地 Mock 資料，不會呼叫後端 API。'
+              : '該操作一旦確定就不可逆。'
           }}
         </p>
         <div class="dialog-actions">

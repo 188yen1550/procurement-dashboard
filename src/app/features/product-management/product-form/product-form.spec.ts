@@ -10,8 +10,8 @@
  * 舊測試裡所有 `productType: '日用品'` 都要改成對應的數字 id。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { NEVER, of } from 'rxjs';
+import { Router, provideRouter } from '@angular/router';
+import { NEVER, of, throwError } from 'rxjs';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 import { ProductForm } from './product-form';
@@ -78,6 +78,24 @@ describe('ProductForm', () => {
     expect(fixture.nativeElement.textContent).toContain('請輸入 100 字以內的商品名稱');
     // 表單驗證未過時，根本不該打 API。
     expect(api.create).not.toHaveBeenCalled();
+    // 所有無效欄位都要透過 dialog 列出，不能只顯示第一個錯誤。
+    const dialog = component.infoDialog();
+    expect(dialog).toBeTruthy();
+    expect(dialog?.variant).toBe('error');
+    expect(dialog?.messages).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('商品名稱'),
+        expect.stringContaining('供應商名稱'),
+        expect.stringContaining('目標客群描述'),
+      ]),
+    );
+    // ⚠️ 對應原本回報的 bug：驗證失敗不該再額外留一句籠統的
+    // statusMessage 在畫面上卡住，dialog 開著就是唯一的提醒，
+    // 不能兩層同時存在、也不能哪一層永遠不消失。
+    expect(component.statusMessage()).toBe('');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('表單有');
   });
 
   it('requires prices for RESALE products', () => {
@@ -92,9 +110,40 @@ describe('ProductForm', () => {
     component.submit();
     expect(component.form.controls.costPrice.hasError('required')).toBe(true);
     expect(api.create).not.toHaveBeenCalled();
+    const dialog = component.infoDialog();
+    expect(dialog?.messages).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('成本價'),
+        expect.stringContaining('預計售價'),
+        expect.stringContaining('市售價'),
+      ]),
+    );
   });
 
-  it('saves product data via the API', () => {
+  it('saves product data via the API and returns to the product list', () => {
+    component.form.patchValue({
+      name: '測試商品',
+      supplierName: '測試供應商',
+      productTypeId: 2,
+      campaignTags: ['daily'],
+      targetCustomer: '家庭',
+    });
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    component.submit();
+    fixture.detectChanges();
+    expect(api.create).toHaveBeenCalled();
+    expect(component.saved()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('儲存成功');
+    expect(fixture.nativeElement.textContent).toContain('已儲存品項資料');
+    // 新增商品（非編輯模式）成功後要自動返回品項管理主頁，不能只顯示連結等使用者點。
+    expect(navigateSpy).toHaveBeenCalledWith(['/products']);
+  });
+
+  it('shows an error dialog and stays on the page when saving fails', () => {
+    api.create.mockReturnValue(
+      throwError(() => ({ error: { message: '伺服器發生錯誤，請稍後再試' }, status: 500 })),
+    );
     component.form.patchValue({
       name: '測試商品',
       supplierName: '測試供應商',
@@ -104,10 +153,13 @@ describe('ProductForm', () => {
     });
     component.submit();
     fixture.detectChanges();
-    expect(api.create).toHaveBeenCalled();
-    expect(component.saved()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('儲存成功');
-    expect(fixture.nativeElement.textContent).toContain('已儲存品項資料');
+    expect(component.saved()).toBe(false);
+    const dialog = component.infoDialog();
+    expect(dialog?.title).toBe('儲存失敗');
+    expect(dialog?.messages[0]).toContain('伺服器發生錯誤');
+
+    component.closeInfoDialog();
+    expect(component.infoDialog()).toBeNull();
   });
 
   it('sends null marketPrice for NEW pricing, avoiding backend 400', () => {

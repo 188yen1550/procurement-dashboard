@@ -66,6 +66,8 @@ const APPROVED: DetailProduct = {
   finalScore: 92.4,
   campaign: '中秋節',
   matchedTags: ['bbq', 'gift'],
+  matchWeight: 1.0,
+  urgencyFactor: 0.84,
   costPrice: 820,
   salePrice: 1190,
   marketPrice: 1490,
@@ -318,5 +320,29 @@ export class ProductDetail implements OnInit {
     // strict 模式下以 ReviewStatus 索引會被判為隱含 any（TS7053）。
     // 集中管理也讓全站文案一致——先前三個頁面各寫一份，文案已經對不上。
     return REVIEW_STATUS_LABEL[s];
+  }
+
+  /**
+   * 節慶加成上限（分）。對照後端 ScoringService 的節慶加成公式：
+   * matchWeight × urgencyFactor × 5，「5」是固定的系統上限，
+   * 不是每個商品各自不同的數字，所以放常數不放進 DetailProduct。
+   */
+  readonly festivalBoostCap = 5;
+
+  /**
+   * matchWeight 只有三個離散值，對照 MatchedCampaignPayload 的註解：
+   * CORE=1.0／GENERAL=0.6／WEAK=0.3。轉成白話文字比直接顯示 0.6 這種
+   * 數字更容易懂「這代表命中程度高不高」，不需要使用者自己去查對照表。
+   */
+  matchWeightLabel(matchWeight: number | null): string {
+    if (matchWeight === null) return '—';
+    if (matchWeight >= 1) return '核心標籤命中';
+    if (matchWeight >= 0.6) return '一般標籤命中';
+    return '弱相關命中';
+  }
+
+  /** urgencyFactor 是連續值（越接近檔期越高），用百分比呈現比原始小數直覺。 */
+  urgencyPercent(urgencyFactor: number | null): number | null {
+    return urgencyFactor === null ? null : Math.round(urgencyFactor * 100);
   }
 }

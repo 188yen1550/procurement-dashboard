@@ -39,6 +39,7 @@ import { ProductApiService } from './api/product-api.service';
 import { ProductListItem, toProductActionAvailability } from './api/product.mapper';
 
 export type PageState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
+export type SortOption = 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
 
 /** 本地 Mock：欄位形狀與 ProductListItem 一致，切換模式時樣板不用改。 */
 function mockItem(
@@ -113,6 +114,22 @@ export class ProductManagement implements OnInit {
   readonly reviewFilter = signal<ReviewStatus | 'ALL'>('ALL');
   readonly itemFilter = signal<ItemStatus | 'ALL'>('ALL');
   readonly productTypeFilter = signal('ALL');
+  /**
+   * 排序。
+   *
+   * ⚠️ 「時間」跟「分數」不是同一種排序，不能用同一套機制處理：
+   * - updatedAt 是 Product 實體的真實欄位，交給後端 Pageable Sort
+   *   （ProductRepository.search() 直接用 JPA 排序），支援全部分頁。
+   * - finalScore／dataCompleteness 不是 Product 實體欄位，是
+   *   ProductService.searchProducts() 分頁查完後才另外批次查
+   *   ProductEvaluation 補上去的（resolveEvaluations()，避免 N+1）。
+   *   Spring Data 的 Pageable Sort 只能排序 JPA 查詢當下就有的欄位，
+   *   對這種查完才合併進來的欄位送 sort=finalScore 只會讓後端噴
+   *   PropertyReferenceException（400），不能假裝它跟時間排序一樣可靠。
+   *   這裡改成「當前頁面資料」的前端排序，不是全體品項的排序，
+   *   UI 上要清楚讓使用者知道這個差異，不要假裝是全域排序。
+   */
+  readonly sortOption = signal<SortOption>('updatedAt_desc');
   readonly dialogProduct = signal<ProductListItem | null>(null);
   readonly dialogMode = signal<'delete' | 'resubmit' | 'notice' | null>(null);
   readonly statusMessage = signal('');
@@ -169,6 +186,36 @@ export class ProductManagement implements OnInit {
   readonly isLoading = computed(() => this.pageState() === 'loading');
   readonly hasLoadError = computed(() => this.pageState() === 'error');
 
+  /**
+   * 分數排序只作用在目前這一頁已載入的資料，不是全體品項——見上方
+   * sortOption 的說明。時間排序已經由後端 Pageable Sort 排好，這裡不用
+   * 再排一次（真實模式再排一次也不會錯，只是白工；Mock 模式本來就要
+   * 靠這裡排，因為 Mock 資料沒有經過任何後端排序）。
+   */
+  readonly sortedProducts = computed(() => {
+    const list = this.filteredProducts();
+    const sort = this.sortOption();
+    if (sort === 'finalScore_desc' || sort === 'finalScore_asc') {
+      const direction = sort === 'finalScore_desc' ? -1 : 1;
+      return [...list].sort((a, b) => {
+        // 尚無分數的品項一律排到最後面，不管是遞增還遞減排序，
+        // 不要讓「沒有分數」跟「分數是 0」混在一起排序，語意不同。
+        if (a.finalScore === null && b.finalScore === null) return 0;
+        if (a.finalScore === null) return 1;
+        if (b.finalScore === null) return -1;
+        return (a.finalScore - b.finalScore) * direction;
+      });
+    }
+    if (sort === 'updatedAt_asc' && this.useMockData) {
+      return [...list].sort((a, b) => {
+        const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return at - bt;
+      });
+    }
+    return list;
+  });
+
   ngOnInit(): void {
     this.load();
   }
@@ -188,6 +235,11 @@ export class ProductManagement implements OnInit {
     // 若原樣送出去，Spring 轉 enum 會失敗並回 400。
     const reviewStatus = this.reviewFilter();
     const itemStatus = this.itemFilter();
+    // finalScore 排序不是合法的後端 sort 欄位（見 sortOption 說明），
+    // 這兩個選項一律退回後端預設的 updatedAt,desc，實際的分數排序
+    // 交給 sortedProducts() 在前端對目前頁面做。
+    const sort =
+      this.sortOption() === 'updatedAt_asc' ? 'updatedAt,asc' : 'updatedAt,desc';
 
     this.api
       .list({
@@ -196,7 +248,7 @@ export class ProductManagement implements OnInit {
         itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
         page: this.pageNumber(),
         size: this.pageSize(),
-        sort: 'updatedAt,desc',
+        sort,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -253,6 +305,19 @@ export class ProductManagement implements OnInit {
   updateProductTypeFilter(value: string): void {
     this.productTypeFilter.set(value);
     this.applyFilterChange();
+  }
+
+  /**
+   * 切換排序。「時間」兩個選項要重新跟後端要資料（改變的是伺服器端排序），
+   * 「分數」兩個選項不用重新載入——資料沒變，只是同一批資料換個順序看，
+   * sortedProducts() 這個 computed 會自動反映。
+   */
+  updateSort(value: string): void {
+    this.sortOption.set(value as SortOption);
+    if (value === 'updatedAt_desc' || value === 'updatedAt_asc') {
+      this.pageNumber.set(0);
+      if (!this.useMockData) this.load();
+    }
   }
 
   clearFilters(): void {

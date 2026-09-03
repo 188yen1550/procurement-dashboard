@@ -147,10 +147,34 @@
         <p>
           命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
         </p>
-        <div class="formula">
-          Match Weight 1.0 × Urgency Factor 0.84 × Boost Cap 5 =
-          <strong>{{ p.festivalBoost }} 分</strong>
-        </div>
+        <dl class="metrics boost-breakdown">
+          <div>
+            <dt>標籤命中程度</dt>
+            <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
+          </div>
+          <div>
+            <dt>檔期急迫程度</dt>
+            <dd>
+              {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
+            </dd>
+          </div>
+          <div class="boost-result">
+            <dt>本次節慶加成</dt>
+            <dd>+{{ p.festivalBoost }} 分</dd>
+          </div>
+        </dl>
+        <p class="boost-hint">
+          加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
+          離檔期開始越近，加成分數越高。
+        </p>
+        <details class="formula-detail">
+          <summary>查看詳細計算方式</summary>
+          <div class="formula">
+            標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
+            加成上限 {{ festivalBoostCap }} 分 =
+            <strong>{{ p.festivalBoost }} 分</strong>
+          </div>
+        </details>
       </section>
     }
     <div class="content-grid">

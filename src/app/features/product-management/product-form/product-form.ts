@@ -50,6 +50,24 @@ interface ProductTypeOption {
   name: string;
 }
 
+/** 送出驗證失敗時，用來把 FormControl 名稱轉成使用者看得懂的欄位標籤。 */
+const FIELD_LABELS: Record<string, string> = {
+  name: '商品名稱',
+  supplierName: '供應商名稱',
+  productTypeId: '商品實際分類',
+  pricingType: '訂價分流',
+  description: '商品說明',
+  campaignTags: '節慶標籤',
+  costPrice: '成本價',
+  salePrice: '預計售價',
+  marketPrice: '市售價',
+  moq: 'MOQ 最低訂購量',
+  supplyStability: '供應穩定性',
+  priceCompetitiveness: '價格競爭力',
+  targetCustomer: '目標客群描述',
+  estimatedPurchaseRate: '預估購買率',
+};
+
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -158,6 +176,20 @@ export class ProductForm implements OnInit {
   readonly leaveDialogOpen = signal(false);
   readonly statusMessage = signal('');
   readonly stateOptions: readonly FormPageState[] = ['default', 'locked', 'loading', 'error'];
+
+  /**
+   * 取代原本的 window.alert()。原生 alert() 樣式沒辦法客製、行動裝置上
+   * 常常被瀏覽器攔截或顯示成很陽春的系統對話框，跟站內其餘互動風格
+   * （dialog-backdrop／role=alertdialog，見下方 leaveDialogOpen 的既有做法）
+   * 完全不一致，所以改用同一套 dialog 元件呈現。
+   *
+   * messages 一律是陣列：只有一則就顯示一句話，多則就顯示成清單，
+   * 讓「所有錯誤都要列出」這個需求跟「單一句失敗訊息」共用同一套 UI，
+   * 不用為了訊息則數另外分兩套樣板。
+   */
+  readonly infoDialog = signal<{ variant: 'error' | 'success'; title: string; messages: string[] } | null>(
+    null,
+  );
 
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
     this.useMockData ? MOCK_PRODUCT_TYPES : [],
@@ -325,17 +357,22 @@ export class ProductForm implements OnInit {
    * 驗證並送出表單；`resubmit` 用於 REJECTED 商品的重新送審文案
    * （目前只影響顯示文字，後端重新送審是獨立的 POST /resubmit，
    * 不在這支表單頁觸發——這裡的送出一律是 create/update）。
+   *
+   * 驗證錯誤一律用 window.alert() 列出「所有」無效欄位，不是只顯示
+   * 第一個錯誤或一句籠統的「請修正表單」——使用者不該逐一送出、
+   * 逐一被打回才知道還有哪裡沒填對。
    */
   submit(resubmit = false): void {
+    // 按鈕已綁定 [disabled]="isSubmitting()"，正常點擊不會走到這裡；
+    // 保留 statusMessage 是為了防呆極端情況（例如程式化重複呼叫），
+    // 不用 alert()——高頻率跳出視窗式對話框反而干擾使用者，用 toast 就夠。
     if (this.isSubmitting()) {
       this.statusMessage.set('正在儲存，請勿重複送出。');
       return;
     }
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      this.statusMessage.set('請先修正表單中的錯誤。');
-      return;
-    }
+
+    // 再販售必填價格，先設 errors 再一起收進下面的錯誤清單，
+    // 不要跟表單本身的驗證錯誤分開顯示成兩套不一致的提示。
     if (
       this.isResale() &&
       (!this.form.controls.costPrice.value ||
@@ -345,7 +382,21 @@ export class ProductForm implements OnInit {
       this.form.controls.costPrice.setErrors({ required: true });
       this.form.controls.salePrice.setErrors({ required: true });
       this.form.controls.marketPrice.setErrors({ required: true });
-      this.statusMessage.set('再販售品項必須完整填寫三種價格。');
+    }
+
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      const errors = this.collectFormErrors();
+      // ⚠️ 不要在這裡再 set statusMessage：畫面上已經有兩層提醒了
+      // （下面即將開啟的 dialog，以及每個無效欄位旁邊 fieldInvalid() 顯示的
+      // 逐欄錯誤文字），第三層籠統的 toast 只會變成後續不管使用者怎麼操作
+      // 都不會消失的殘留訊息——這正是原本回報的 bug：使用者後來把欄位都
+      // 修正了，畫面上卻還留著一句「請先修正表單中的錯誤」，因為沒有任何
+      // 地方會把它清掉。
+      this.showErrorDialog(
+        `表單有 ${errors.length} 項欄位需要修正`,
+        errors,
+      );
       return;
     }
 
@@ -356,7 +407,12 @@ export class ProductForm implements OnInit {
       this.form.markAsPristine();
       this.imageDirty.set(false);
       this.statusMessage.set(resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。');
-      window.setTimeout(() => this.isSubmitting.set(false), 500);
+      window.setTimeout(() => {
+        this.isSubmitting.set(false);
+        // 新增商品（非編輯模式）完成後直接返回品項管理主頁，
+        // 不需要使用者再手動點擊「回到清單」連結。
+        if (!this.isEditMode) void this.router.navigate(['/products']);
+      }, 500);
       return;
     }
 
@@ -396,11 +452,11 @@ export class ProductForm implements OnInit {
       error: (err) => {
         this.isSubmitting.set(false);
         const error = toApiError(err);
-        this.statusMessage.set(
+        const message =
           error.status === 409
             ? `${error.message}（已核准商品僅能修改一般基本資料與圖片）`
-            : error.message,
-        );
+            : error.message;
+        this.showErrorDialog('儲存失敗', [message]);
       },
     });
   }
@@ -422,11 +478,17 @@ export class ProductForm implements OnInit {
       .subscribe({
         next: () => this.finishSubmit(resubmit),
         error: (err) => {
-          // 商品本身已經存過了，圖片上傳失敗不應該讓使用者以為整筆都沒存到。
+          // 商品本身已經存過了，圖片上傳失敗不應該讓使用者以為整筆都沒存到，
+          // 所以這裡不導頁——讓使用者留在頁面上知道還差圖片這一步。
           this.isSubmitting.set(false);
-          this.statusMessage.set(`品項已儲存，但圖片上傳失敗：${toApiError(err).message}`);
+          const message = `品項已儲存，但圖片上傳失敗：${toApiError(err).message}`;
           this.saved.set(true);
           this.form.markAsPristine();
+          // 這裡的 statusMessage 是給「已儲存」成功卡片副標題用的，
+          // 不是會卡住不消失的那個籠統 toast——saved() 每次送出都會重新
+          // 走一輪，下次儲存成功會被覆蓋成正常文案，不會有殘留問題。
+          this.statusMessage.set(message);
+          this.showErrorDialog('圖片上傳失敗', [message]);
         },
       });
   }
@@ -439,6 +501,10 @@ export class ProductForm implements OnInit {
     this.imageDirty.set(false);
     this.selectedImageFile = null;
     this.statusMessage.set(resubmit ? '已儲存並重新送審。' : '已儲存品項資料。');
+
+    // 新增商品完成後直接返回品項管理主頁；編輯模式維持原本停留在頁面上
+    // 顯示「儲存成功」的行為，讓使用者能確認剛剛改了什麼。
+    if (!this.isEditMode) void this.router.navigate(['/products']);
   }
 
   /**
@@ -505,6 +571,13 @@ export class ProductForm implements OnInit {
     return new FileReader();
   }
 
+  private showErrorDialog(title: string, messages: string[]): void {
+    this.infoDialog.set({ variant: 'error', title, messages });
+  }
+  closeInfoDialog(): void {
+    this.infoDialog.set(null);
+  }
+
   requestCancel(): void {
     if (this.hasUnsavedChanges()) this.leaveDialogOpen.set(true);
     else void this.router.navigate(['/products']);
@@ -526,6 +599,54 @@ export class ProductForm implements OnInit {
   fieldInvalid(name: keyof typeof this.form.controls): boolean {
     const c = this.form.controls[name];
     return c.invalid && (c.touched || c.dirty);
+  }
+
+  /**
+   * 把單一欄位的 ValidationErrors 轉成使用者看得懂的一句話。
+   * 對照的是這支表單目前實際會出現的錯誤種類（required／blank／maxlength／
+   * min／max／pattern），不是 Angular 全部內建驗證器的通用翻譯。
+   */
+  private describeControlError(name: string, errors: ValidationErrors): string {
+    const label = FIELD_LABELS[name] ?? name;
+    if (name === 'costPrice' || name === 'salePrice' || name === 'marketPrice') {
+      if (errors['required']) return `${label}：再販售品項此欄位必須大於 0`;
+    }
+    if (errors['required'] || errors['blank']) return `${label}：不可留空`;
+    if (errors['maxlength']) {
+      return `${label}：不可超過 ${errors['maxlength'].requiredLength} 字（目前 ${errors['maxlength'].actualLength} 字）`;
+    }
+    if (errors['min']) return `${label}：不可小於 ${errors['min'].min}`;
+    if (errors['max']) return `${label}：不可大於 ${errors['max'].max}`;
+    if (errors['pattern']) return `${label}：格式不正確，最多至小數點後兩位`;
+    return `${label}：請確認輸入內容是否正確`;
+  }
+
+  /** 收集目前表單所有無效欄位，依畫面上由上到下的欄位順序排列。 */
+  private collectFormErrors(): string[] {
+    const fieldOrder: (keyof typeof this.form.controls)[] = [
+      'name',
+      'supplierName',
+      'description',
+      'productTypeId',
+      'pricingType',
+      'campaignTags',
+      'costPrice',
+      'salePrice',
+      'marketPrice',
+      'moq',
+      'supplyStability',
+      'priceCompetitiveness',
+      'estimatedPurchaseRate',
+      'targetCustomer',
+    ];
+    const messages: string[] = [];
+    for (const name of fieldOrder) {
+      const control = this.form.controls[name];
+      if (control.invalid && control.errors) {
+        messages.push(this.describeControlError(name, control.errors));
+      }
+    }
+    return messages;
   }
   marginRate(): number | null {
     const cost = this.form.controls.costPrice.value;

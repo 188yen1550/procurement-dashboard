@@ -45,6 +45,13 @@ export interface DetailProduct {
   completeness: number;
   baseScore: number | null;
   festivalBoost: number;
+  /**
+   * ⚠️ 之前樣板把這兩個值寫死成 1.0／0.84，但後端 MatchedCampaignPayload
+   * 其實有真實資料（見 api/product-api.contract.ts）。這裡補上正確欄位，
+   * matchedCampaign 為 null（沒命中檔期）時兩者皆為 null。
+   */
+  matchWeight: number | null;
+  urgencyFactor: number | null;
   finalScore: number | null;
   campaign: string | null;
   matchedTags: string[];
@@ -118,6 +125,8 @@ export function toDetailProduct(
     finalScore: evaluation?.finalScore ?? null,
     campaign: festival?.matchedCampaign?.campaignName ?? null,
     matchedTags: festival?.matchedCampaign?.matchedTags ?? [],
+    matchWeight: festival?.matchedCampaign?.matchWeight ?? null,
+    urgencyFactor: festival?.matchedCampaign?.urgencyFactor ?? null,
     costPrice: product.costPrice,
     salePrice: product.salePrice,
     // ⚠️ 僅 RESALE 有值；NEW 商品後端會拒絕寫入市價。

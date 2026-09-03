@@ -43,4 +43,27 @@
     </form>
   }
   @if (leaveDialogOpen()) { <div class="dialog-backdrop"><section role="alertdialog" aria-modal="true" aria-labelledby="leave-title" class="dialog"><h2 id="leave-title">放棄未儲存的變更？</h2><p>離開後，目前輸入的本地資料將不會保留。</p><div><button type="button" (click)="closeLeaveDialog()">繼續編輯</button><button type="button" class="danger" (click)="discardAndLeave()">放棄並離開</button></div></section></div> }
+  @if (infoDialog(); as dialog) {
+    <div class="dialog-backdrop">
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="info-dialog-title"
+        class="dialog"
+        [class.is-error]="dialog.variant === 'error'"
+      >
+        <h2 id="info-dialog-title">{{ dialog.title }}</h2>
+        @if (dialog.messages.length > 1) {
+          <ol>
+            @for (message of dialog.messages; track message) {
+              <li>{{ message }}</li>
+            }
+          </ol>
+        } @else {
+          <p>{{ dialog.messages[0] }}</p>
+        }
+        <div><button type="button" class="primary" (click)="closeInfoDialog()">我知道了</button></div>
+      </section>
+    </div>
+  }
 </main>
