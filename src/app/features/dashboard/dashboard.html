@@ -209,7 +209,18 @@
                     <strong class="score">{{ item.finalScore }}</strong>
                   </td>
                   <td class="actions-column">
-                    <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
+                    @if (item.reviewStatus === 'APPROVED') {
+                      <button
+                        type="button"
+                        class="table-action"
+                        disabled
+                        title="已審核通過，核心資料鎖定"
+                      >
+                        已鎖定
+                      </button>
+                    } @else {
+                      <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
+                    }
                   </td>
                 </tr>
               }
