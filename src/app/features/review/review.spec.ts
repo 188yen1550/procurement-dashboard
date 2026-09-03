@@ -25,7 +25,7 @@ describe('Review', () => {
     expect(component.filtered().length).toBe(3);
     expect(component.reviewFilter()).toBe('PENDING');
     expect(component.itemFilter()).toBe('ACTIVE');
-    expect(fixture.nativeElement.textContent).toContain('通過選品審核 ≠ 已銷售');
+    expect(fixture.nativeElement.textContent).toContain('選品審核');
   });
   it('filters by review and item status', () => {
     component.reviewFilter.set('REJECTED');

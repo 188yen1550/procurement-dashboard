@@ -313,7 +313,7 @@ describe('Settings', () => {
     expect(settingsApi.switchEvaluationMode).toHaveBeenCalledWith(3);
     expect(component.activeMode()).toBe('PROFIT');
     expect(fixture.nativeElement.textContent).toContain('高利潤模式');
-    expect(fixture.nativeElement.textContent).toContain('權重唯讀');
+    expect(fixture.nativeElement.textContent).toContain('目前生效');
   });
 
   it('renders loading and error recovery states', () => {

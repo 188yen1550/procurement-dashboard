@@ -130,8 +130,8 @@ describe('AiSuggestions', () => {
   });
 
   it('explains that suggestions must be promoted before scoring and review', () => {
-    expect(fixture.nativeElement.textContent).toContain('不是正式候選');
-    expect(fixture.nativeElement.textContent).toContain('Top 10');
+    expect(fixture.nativeElement.textContent).toContain('AI 建議清單');
+    expect(fixture.nativeElement.textContent).toContain('加入 CANDIDATE 候選');
   });
 
   it('renders disabled loading empty and error states', () => {

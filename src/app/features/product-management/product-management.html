@@ -108,7 +108,7 @@
           </select>
         </div>
         <div class="field">
-          <label for="type-filter">商品實際分類</label
+          <label for="type-filter">商品分類</label
           ><select
             id="type-filter"
             [ngModel]="productTypeFilter()"
@@ -135,7 +135,6 @@
             <option value="finalScore_asc">最終分數（低 → 高）</option>
           </select>
           <!-- @if (sortOption() === 'finalScore_desc' || sortOption() === 'finalScore_asc') {
-            <small class="sort-note">僅排序目前頁面已載入的品項，非全體排名</small>
           } -->
         </div>
         <button
@@ -281,7 +280,6 @@
                         >{{ reviewStatusLabel(product.reviewStatus) }}</span
                       ><span class="item-status">{{ itemStatusLabel(product.itemStatus) }}</span>
                       @if (product.reviewStatus === 'APPROVED') {
-                        <small>通過僅代表選品決策，非已上架或已銷售</small>
                       }
                     </div>
                   </td>

@@ -5,7 +5,6 @@
       <p class="eyebrow">Human Review</p>
       <h1 id="review-title">選品審核</h1>
     </div>
-    <span>僅管理角色</span>
   </header>
   <!-- <section class="scope-notice">
     <strong>通過選品審核 ≠ 已銷售</strong><span>僅代表成為可執行團購銷售的候選品項，不代表已上架、已簽約或已產生營收。</span>
@@ -80,7 +79,7 @@
     @for (item of filtered(); track item.id) {
     <article [class.disabled]="pageState() === 'disabled'">
       <div class="score">
-        <strong>{{ item.finalScore ?? '—' }}</strong><span>Final Score</span>
+        <strong>{{ item.finalScore ?? '—' }}</strong><span>最終分數</span>
       </div>
       <div>
         <span class="category">{{ item.category }}</span>
@@ -124,7 +123,7 @@
             <th>商品</th>
             <th>送審次數</th>
             <th>結果</th>
-            <th>Final Score</th>
+            <th>最終分數</th>
             <th>審核人</th>
             <th>日期</th>
             <th>審核留言</th>

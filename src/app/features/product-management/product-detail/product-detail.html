@@ -114,15 +114,15 @@
     </section>
     <section class="score-grid" aria-label="評估分數">
       <article>
-        <span>Base Score</span><strong>{{ p.baseScore ?? '—' }}</strong
+        <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}</strong
         ><small>綜合加權分數</small>
       </article>
       <article>
-        <span>Festival Boost</span><strong>+{{ p.festivalBoost }}</strong
+        <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong
         ><small>{{ p.campaign ?? '未命中檔期' }}</small>
       </article>
       <article class="final">
-        <span>Final Score</span><strong>{{ p.finalScore ?? '—' }}</strong
+        <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong
         ><small
           >dataSource:
           {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small
@@ -144,7 +144,7 @@
       <section class="panel campaign">
         <header>
           <div>
-            <p class="eyebrow">Festival Boost</p>
+            <p class="eyebrow">節慶分數</p>
             <h2>節慶加成明細</h2>
           </div>
           <span>{{ p.campaign }}</span>
@@ -196,11 +196,11 @@
           </div>
           <div>
             <dt>供應穩定性</dt>
-            <dd>{{ p.supplyStability }}/100</dd>
+            <dd>{{ p.supplyStability }}/5</dd>
           </div>
           <div>
             <dt>價格競爭力</dt>
-            <dd>{{ p.priceCompetitiveness }}/100</dd>
+            <dd>{{ p.priceCompetitiveness }}/5</dd>
           </div>
         </dl>
       </section>
@@ -318,7 +318,7 @@
         } @else {
           <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
                文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
-          <div class="no-data">尚未產生 AI 分析，不會虛構推薦內容。</div>
+          <div class="no-data">尚未產生 AI 分析。</div>
           @if (!useMockData) {
             <button
               type="button"

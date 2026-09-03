@@ -28,11 +28,11 @@
         </div>
       </div></section>
       <section aria-labelledby="core-title" [class.is-core-locked]="isCoreLocked()"><header><span>02</span><div><h2 id="core-title">選品核心資料</h2><p>影響評分、排行與審核的條件。</p></div></header><div class="form-grid">
-        <label>商品實際分類 <em>*</em><select formControlName="productTypeId"><option [value]="null">請選擇</option>@for (type of productTypeOptions(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }</select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品實際分類。</small> }</label>
+        <label>商品分類 <em>*</em><select formControlName="productTypeId"><option [value]="null">請選擇</option>@for (type of productTypeOptions(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }</select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品分類。</small> }</label>
         <fieldset><legend>訂價分流 <em>*</em></legend><div class="choice-row"><label><input type="radio" formControlName="pricingType" value="NEW" /> 新品 NEW</label><label><input type="radio" formControlName="pricingType" value="RESALE" /> 再販售 RESALE</label></div><small>{{ isResale() ? '再販售需填寫價格與市價比較。' : '新品尚未定價，建立後標示為待訂價。' }}</small></fieldset>
         <label class="wide"
-          >節慶標籤（選填）
-          <div class="tag-toggle-group" role="group" aria-label="節慶標籤，可複選" aria-describedby="campaign-tags-help">
+          >節慶標籤（選填/可複選）
+          <div class="tag-toggle-group" role="group" aria-label="節慶標籤，可複選">
             @for (tag of campaignTagOptions(); track tag) {
               <button
                 type="button"
@@ -46,23 +46,16 @@
               </button>
             }
           </div>
-          <small id="campaign-tags-help">
-            {{
-              isCoreLocked()
-                ? '核心資料已鎖定，節慶標籤目前不可調整。'
-                : '點選即可加入，再點一次移除；可複選目前檔期使用的標籤，未選擇也能儲存。'
-            }}
-          </small>
         </label>
         @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div> }
-        @else { <div class="pending-pricing wide"><strong>待訂價 PENDING_PRICING</strong><span>新品此階段不要求成本價與售價。</span></div> }
+        @else { <div class="pending-pricing wide"><strong>待訂價</strong><span>新品此階段不要求成本價與售價。</span></div> }
         <label>MOQ 最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
         <label>供應穩定性（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="supplyStability" /></label>
         <label>價格競爭力（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="priceCompetitiveness" /></label>
         <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
-        <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer" aria-describedby="target-customer-help"></textarea><small id="target-customer-help">用於客群匹配、AI 摘要與人工審核參考；AI 不會因此自動核准商品。</small>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500 字以內的目標客群描述，不能只有空格。</small> }</label>
+        <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer"></textarea>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500 字以內的目標客群描述，不能只有空格。</small> }</label>
       </div></section>
-      <footer><p>此頁只儲存於當前前端狀態，重新整理後會還原。</p><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
+      <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
     </form>
   }
   <!-- 離頁確認、驗證錯誤、儲存成功／失敗全部改由 DialogService 統一呈現

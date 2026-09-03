@@ -73,7 +73,7 @@ describe('ProductForm', () => {
     expect(component).toBeTruthy();
     expect(component.isEditMode).toBe(false);
     expect(component.isResale()).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('待訂價 PENDING_PRICING');
+    expect(fixture.nativeElement.textContent).toContain('待訂價');
   });
 
   it('shows validation errors for an invalid submit', () => {

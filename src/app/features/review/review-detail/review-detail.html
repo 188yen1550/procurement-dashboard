@@ -9,21 +9,15 @@
       <a routerLink="/review">← 返回待審核清單</a>
       <p class="eyebrow">Review Detail</p>
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
-      <p>審閱商品資料、評分與 AI 輔助分析後，由管理人員做最終決策。</p>
     </div>
     @if (useMockData) {
       <button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
     }
   </header>
 
-  <section class="scope">
-    <strong>人工核准是必要終點</strong>
-    <span>「通過選品審核」不代表已上架、已銷售、已簽約或已產生營收。</span>
-  </section>
-
   @if (useMockData) {
     <section class="state-bar">
-      <div><strong>UI 狀態</strong><span>僅管理角色可操作</span></div>
+      <div><strong>UI 狀態</strong></div>
       <div>
         @for (state of stateOptions; track state) {
           <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
@@ -76,13 +70,13 @@
           <span>資料完整度</span><strong>{{ p.scores.dataCompleteness ?? '—' }}%</strong>
         </article>
         <article>
-          <span>Base Score</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
+          <span>基本分數</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
         </article>
         <article>
-          <span>Festival Boost</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
+          <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
         </article>
         <article class="final">
-          <span>Final Score</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
+          <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
         </article>
         <article><span>商業效益</span><strong>{{ p.scores.businessScore ?? '—' }}</strong></article>
         <article><span>客群契合</span><strong>{{ p.scores.audienceScore ?? '—' }}</strong></article>
@@ -120,7 +114,7 @@
           <p class="ai-reasons">{{ p.ai.reasons }}</p>
         }
       } @else {
-        <p class="empty">尚無 AI 分析，不會虛構推薦內容。</p>
+        <p class="empty">尚無 AI 分析。</p>
       }
     </section>
 

@@ -495,7 +495,7 @@ export class ProductManagement implements OnInit {
   }
 
   deleteDisabledReason(p: ProductListItem): string {
-    if (p.itemStatus === 'ARCHIVED') return '已封存品項已保留審核資料，不可刪除';
+    if (p.itemStatus === 'ARCHIVED') return '已封存，無法刪除';
     if (p.submissionCount > 0) return '已送審過，不可刪除';
     return '僅未審核且從未送審者可刪除';
   }

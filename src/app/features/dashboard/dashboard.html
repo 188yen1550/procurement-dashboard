@@ -9,7 +9,6 @@
     <div>
       <p class="eyebrow">Dashboard</p>
       <h1>選品決策儀表板</h1>
-      <p>整理候選資料與 AI 建議，所有核准結果仍由管理人員決定。</p>
     </div>
     <div class="data-time">
       <span aria-hidden="true">●</span>
@@ -145,20 +144,16 @@
 
     <section class="stats-grid" aria-label="選品統計">
       <article class="stat-card total">
-        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong
-        ><small>目前正式候選池</small>
+        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong>
       </article>
       <article class="stat-card pending">
-        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong
-        ><small>需要管理人員決策</small>
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
       </article>
       <article class="stat-card approved">
-        <span>通過選品審核</span><strong>{{ data().statistics.approvedProducts }}</strong
-        ><small>不代表已上架或已銷售</small>
+        <span>通過選品審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
       </article>
       <article class="stat-card rejected">
-        <span>未通過</span><strong>{{ data().statistics.rejectedProducts }}</strong
-        ><small>可修改後重新送審</small>
+        <span>未通過</span><strong>{{ data().statistics.rejectedProducts }}</strong>
       </article>
     </section>
 
@@ -166,10 +161,9 @@
       <section class="panel recommendations-panel" aria-labelledby="recommendations-title">
         <header class="panel-header">
           <div>
-            <p class="eyebrow">Final Score Ranking</p>
+            <p class="eyebrow">最終分數排行</p>
             <h2 id="recommendations-title">AI 推薦 Top 10</h2>
           </div>
-          <span class="helper-text">AI 推薦不代表自動核准</span>
         </header>
         <div class="table-wrap">
           <table>

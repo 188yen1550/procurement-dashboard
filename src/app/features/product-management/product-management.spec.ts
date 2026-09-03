@@ -74,7 +74,7 @@ describe('ProductManagement', () => {
     const disabledButtons = fixture.nativeElement.querySelectorAll('button:disabled');
     expect(disabledButtons.length).toBeGreaterThan(0);
     expect(fixture.nativeElement.textContent).toContain('核心選品資料已鎖定');
-    expect(fixture.nativeElement.textContent).toContain('非已上架或已銷售');
+    expect(fixture.nativeElement.textContent).toContain('已通過選品審核');
   });
 
   it('keeps an accessible sticky action column for every product row', () => {

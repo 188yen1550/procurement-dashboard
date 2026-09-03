@@ -8,7 +8,6 @@
       <p class="eyebrow">Management Settings</p>
       <h1 id="settings-title">系統設定</h1>
     </div>
-    <span>僅管理角色</span>
   </header>
   @if (useMockData) {
   <section class="state-bar">
@@ -146,7 +145,7 @@
     <section class="management-head">
       <div>
         <h2>人工風險選項</h2>
-        <p>審核時可複選；alert_keywords 用於引導 AI 風險提示。</p>
+        <p>審核時可複選；風險關鍵字用於引導 AI 風險提示。</p>
       </div>
       <button type="button" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
         ＋ 新增風險選項
@@ -325,9 +324,7 @@
       <div>
         <p class="eyebrow">Fixed Weight</p>
         <h2>三套固定評估模式</h2>
-        <p>可切換生效模式，但不能自由修改權重數字。</p>
       </div>
-      <span>🔒 權重唯讀</span>
     </section>
     <div class="mode-grid">
       @for (mode of modes(); track mode.code) {
@@ -411,7 +408,7 @@
               (ngModelChange)="draftName.set($event)"
               name="riskName" /></label
           ><label
-            >alert_keywords
+            >風險關鍵字
             <textarea
               required
               [ngModel]="draftKeywords()"
