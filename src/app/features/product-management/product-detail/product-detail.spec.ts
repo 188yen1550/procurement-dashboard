@@ -9,6 +9,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductDetail } from './product-detail';
@@ -16,6 +17,7 @@ import { ProductDetail } from './product-detail';
 describe('ProductDetail', () => {
   let fixture: ComponentFixture<ProductDetail>;
   let component: ProductDetail;
+  let dialog: DialogService;
   const api = {
     getProduct: vi.fn(() => of({
       id: 101,
@@ -97,6 +99,7 @@ describe('ProductDetail', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(ProductDetail);
     component = fixture.componentInstance;
+    dialog = TestBed.inject(DialogService);
     fixture.detectChanges();
   });
   it('renders a complete product evaluation', () => {
@@ -186,8 +189,11 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).not.toContain('資料不足，未產生 AI 分析');
   });
   it('generates AI analysis on demand and updates the summary without re-fetching the whole page', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     component.generateAiAnalysis();
+    // 改用 DialogService 呈現確認對話框，取代原生 window.confirm()；
+    // 模擬使用者按下「確定」。
+    expect(dialog.state()?.variant).toBe('confirm');
+    dialog.handleConfirm();
     // 這支測試沒有設定路由參數，route.snapshot.paramMap.get('id') 會是 null，
     // 元件內 `?? ''` 之後 productId 實際上是空字串。
     expect(api.generateAiAnalysis).toHaveBeenCalledWith('');
@@ -208,18 +214,18 @@ describe('ProductDetail', () => {
     expect(buttons.some((button) => button.textContent?.includes('重新產生 AI 分析'))).toBe(true);
   });
   it('allows regenerating AI analysis and warns that it will overwrite the existing result', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     component.generateAiAnalysis();
-    confirmSpy.mockClear();
+    dialog.handleConfirm();
+
     component.generateAiAnalysis();
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('會覆蓋目前的分析結果'),
-    );
+    expect(dialog.state()?.messages[0]).toContain('會覆蓋目前的分析結果');
+    dialog.handleConfirm();
+
     expect(api.generateAiAnalysis).toHaveBeenCalledTimes(2);
   });
   it('does not call the LLM when the user cancels the confirmation dialog', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     component.generateAiAnalysis();
+    dialog.handleCancel();
     expect(api.generateAiAnalysis).not.toHaveBeenCalled();
   });
 });

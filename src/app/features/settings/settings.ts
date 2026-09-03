@@ -27,6 +27,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { FestiveCategory, UserRole } from '../../core/domain/enums';
 import { joinCampaignTags, splitKeywords } from '../../core/domain/labels';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
@@ -190,6 +192,16 @@ export class Settings implements OnInit {
   readonly saved = signal(false);
   readonly statusMessage = signal('');
   readonly activeMode = signal('BALANCED');
+
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+    // 原地重新點擊「系統設定」連結時 ngOnInit() 不會再被觸發，要靠這裡才能
+    // 重新抓資料——直接呼叫 loadTab(activeTab())、不經過 setTab() 的
+    // loadedTabs 判斷，因為那個判斷本來是「同一個分頁只在第一次切換時載入
+    // 一次」的效能優化，這裡的情境是使用者主動要求重新整理，要強制重抓
+    // 目前所在的分頁，不能被「已經載入過」擋下來。Mock 模式不套用。
+    if (!this.useMockData) reloadOnRevisit(() => this.loadTab(this.activeTab()));
+  }
 
   readonly modes = signal<EvaluationModeVM[]>(this.useMockData ? [...MOCK_MODES] : []);
   readonly riskOptions = signal<RiskOptionVM[]>(this.useMockData ? [...MOCK_RISK_OPTIONS] : []);

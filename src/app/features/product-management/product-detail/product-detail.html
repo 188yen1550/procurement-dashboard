@@ -12,7 +12,12 @@
     </div>
     @if (product()) {
       <div class="header-actions">
-        <button type="button" (click)="showIncomplete()">資料待補範例</button>
+        <!-- ⚠️ 修正：這顆按鈕之前沒有依 useMockData 判斷，在真實模式下點下去
+             會直接用寫死的假資料蓋掉剛載入的真實商品，等於把畫面弄壞。
+             純粹是 Mock 展示用，真實串接 API 時不需要、也不該出現。 -->
+        @if (useMockData) {
+          <button type="button" (click)="showIncomplete()">資料待補範例</button>
+        }
         @if (isLocked()) {
           <button type="button" disabled title="已封存或目前為鎖定預覽">編輯品項</button>
         } @else {

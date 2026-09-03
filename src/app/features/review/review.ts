@@ -39,6 +39,8 @@ import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import { REVIEW_DECISION_LABEL, REVIEW_STATUS_LABEL } from '../../core/domain/labels';
+import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
 
@@ -153,6 +155,13 @@ export class ReviewComponent implements OnInit {
   readonly view = signal<'pending' | 'records'>('pending');
   readonly statusMessage = signal('');
   readonly totalElements = signal(0);
+
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+    // 原地重新點擊「選品審核」連結時 ngOnInit() 不會再被觸發，要靠這裡
+    // 才能重新抓最新待審清單。Mock 模式不套用，避免重置展示狀態。
+    if (!this.useMockData) reloadOnRevisit(() => this.load());
+  }
 
   isLoading = false;
 

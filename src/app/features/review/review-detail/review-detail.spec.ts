@@ -12,6 +12,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
 import { ReviewDetail } from './review-detail';
 
@@ -19,6 +20,7 @@ describe('ReviewDetail', () => {
   let fixture: ComponentFixture<ReviewDetail>;
   let component: ReviewDetail;
   let router: Router;
+  let dialog: DialogService;
 
   const mockDetail = {
     productId: 102,
@@ -69,6 +71,7 @@ describe('ReviewDetail', () => {
       providers: [provideRouter([]), { provide: ReviewApiService, useValue: api }],
     }).compileComponents();
     router = TestBed.inject(Router);
+    dialog = TestBed.inject(DialogService);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture = TestBed.createComponent(ReviewDetail);
     component = fixture.componentInstance;
@@ -85,7 +88,9 @@ describe('ReviewDetail', () => {
     component.comment.set('測試留言');
     component.submit();
     expect(component.submitted()).toBe(false);
-    expect(component.statusMessage()).toBe('請選擇審核結果（通過或不通過）。');
+    // 驗證錯誤改用 DialogService 呈現，不再是 statusMessage 的行內文字。
+    expect(dialog.state()?.variant).toBe('error');
+    expect(dialog.state()?.messages[0]).toBe('請選擇審核結果（通過或不通過）。');
   });
 
   it('requires a note for other risk', () => {
@@ -93,10 +98,10 @@ describe('ReviewDetail', () => {
     component.decision.set('REJECTED');
     component.comment.set('測試');
     component.submit();
-    expect(component.statusMessage()).toContain('必須填寫補充說明');
+    expect(dialog.state()?.messages[0]).toContain('必須填寫補充說明');
   });
 
-  it('submits a complete decision', () => {
+  it('submits a complete decision and returns to the review list only after closing the dialog', () => {
     component.toggleRisk(1); // 實際供貨風險
     component.decision.set('APPROVED');
     component.comment.set('確認供貨後通過');
@@ -104,7 +109,16 @@ describe('ReviewDetail', () => {
     fixture.detectChanges();
     expect(api.submit).toHaveBeenCalled();
     expect(component.submitted()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('不代表已銷售');
+    // 送出成功一律用 DialogService 呈現，跟 product-form.ts「儲存並重新送審」
+    // 同一套樣式與流程：dialog、按確定才導頁，不是送出當下就直接跳轉。
+    const state = dialog.state();
+    expect(state?.variant).toBe('success');
+    expect(state?.messages[0]).toContain('不代表已銷售');
+    expect(router.navigate).not.toHaveBeenCalled();
+
+    dialog.handleConfirm();
+    expect(dialog.state()).toBeNull();
+    expect(router.navigate).toHaveBeenCalledWith(['/review']);
   });
 
   it('shows and closes simulated 409 conflict', () => {

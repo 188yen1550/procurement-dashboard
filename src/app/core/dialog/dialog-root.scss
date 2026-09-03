@@ -1,0 +1,123 @@
+/**
+ * 檔案用途：全站唯一的 dialog 視覺樣式。
+ * 沿用 product-management.scss 既有的 .dialog-backdrop／.alert-dialog／
+ * .dialog-icon 慣例（間距、字級、陰影），只是換個命名空間跟名稱，
+ * 讓全站每一處確認／提示都長一樣，不要每頁各自一套配色跟間距。
+ */
+.app-dialog-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 35, 55, 0.58);
+}
+.app-dialog {
+  width: min(420px, 100%);
+  padding: 1.5rem;
+  text-align: center;
+  background: #fff;
+  border-radius: 0.8rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+}
+.app-dialog-icon {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin: 0 auto;
+  place-items: center;
+  color: #fff;
+  background: #1c5286;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+.app-dialog.variant-success .app-dialog-icon {
+  background: #21694f;
+}
+.app-dialog.variant-error .app-dialog-icon {
+  background: #a43d36;
+}
+.app-dialog.variant-confirm .app-dialog-icon {
+  background: #795a18;
+}
+.app-dialog h2 {
+  margin: 0.7rem 0 0;
+  font-size: 1rem;
+  color: #243447;
+}
+.app-dialog p {
+  margin: 0.5rem 0 0;
+  color: #637483;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+/* 多則訊息（例如表單驗證一次列出所有錯誤欄位）改用清單，左對齊比較好讀，
+   跟單句訊息的置中風格分開處理。 */
+.app-dialog ol {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+  color: #637483;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  text-align: left;
+}
+.app-dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+.app-dialog.variant-confirm .app-dialog-actions,
+.app-dialog ol ~ .app-dialog-actions {
+  justify-content: flex-end;
+}
+.app-dialog-confirm,
+.app-dialog-cancel {
+  padding: 0.55rem 1rem;
+  border-radius: 0.5rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.app-dialog-confirm {
+  color: #fff;
+  background: #1c5286;
+  border: 1px solid #1c5286;
+}
+.app-dialog.variant-success .app-dialog-confirm {
+  background: #21694f;
+  border-color: #21694f;
+}
+.app-dialog.variant-error .app-dialog-confirm {
+  background: #a43d36;
+  border-color: #a43d36;
+}
+.app-dialog-confirm:hover {
+  filter: brightness(1.08);
+}
+.app-dialog-confirm:focus-visible,
+.app-dialog-cancel:focus-visible {
+  outline: 3px solid rgba(28, 82, 134, 0.3);
+  outline-offset: 2px;
+}
+.app-dialog-cancel {
+  color: #455b6e;
+  background: #fff;
+  border: 1px solid #cbd9e3;
+}
+.app-dialog-cancel:hover {
+  background: #eef1f3;
+}
+@media (max-width: 460px) {
+  .app-dialog-actions {
+    flex-direction: column-reverse;
+  }
+  .app-dialog-confirm,
+  .app-dialog-cancel {
+    width: 100%;
+  }
+}

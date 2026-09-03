@@ -4,10 +4,11 @@
  */
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { DialogRoot } from './core/dialog/dialog-root';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, DialogRoot],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

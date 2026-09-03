@@ -29,6 +29,8 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
+import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
+import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductListItem } from '../api/product.mapper';
 
@@ -125,6 +127,13 @@ export class AiSuggestions implements OnInit {
   readonly query = signal('');
   readonly items = signal<Suggestion[]>(this.useMockData ? SUGGESTIONS.map((i) => ({ ...i })) : []);
   readonly statusMessage = signal('');
+
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+    // 原地重新點擊「AI 建議清單」連結時 ngOnInit() 不會再被觸發，要靠這裡
+    // 才能重新抓最新的 AI_SUGGESTED 清單。Mock 模式不套用。
+    if (!this.useMockData) reloadOnRevisit(() => this.load());
+  }
 
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();

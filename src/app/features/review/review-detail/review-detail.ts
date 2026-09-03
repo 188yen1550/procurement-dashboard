@@ -30,7 +30,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
+import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
 import {
   OTHER_RISK_OPTION_NAME,
   ReviewDetailModel,
@@ -98,6 +100,7 @@ export class ReviewDetail implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(DialogService);
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly productId = this.route.snapshot.paramMap.get('id') ?? '102';
@@ -115,6 +118,10 @@ export class ReviewDetail implements OnInit {
   readonly isSubmitting = signal(false);
   readonly conflictOpen = signal(false);
   readonly statusMessage = signal('');
+
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+  }
 
   /** 「其他」風險是否已勾選；決定要不要顯示補充說明欄位。 */
   readonly hasOtherSelected = computed(() => {
@@ -204,15 +211,14 @@ export class ReviewDetail implements OnInit {
     // 三條企劃書規則，後端刻意不驗證，全部由前端把關。
     const validation = validateReviewForm(form, product.availableRiskOptions);
     if (!validation.valid) {
-      this.statusMessage.set(validation.message ?? '請確認表單內容。');
+      this.dialog.notify('error', '請確認表單內容', [validation.message ?? '請確認表單內容。']).subscribe();
       return;
     }
 
     if (this.useMockData) {
+      const message = `已在本地模擬${this.decision() === 'APPROVED' ? '通過' : '不通過'}決策。`;
       this.submitted.set(true);
-      this.statusMessage.set(
-        `已在本地模擬${this.decision() === 'APPROVED' ? '通過' : '不通過'}決策。`,
-      );
+      this.showSubmittedDialog(message);
       return;
     }
 
@@ -226,6 +232,11 @@ export class ReviewDetail implements OnInit {
         next: () => {
           this.isSubmitting.set(false);
           this.submitted.set(true);
+          this.showSubmittedDialog(
+            this.decision() === 'APPROVED'
+              ? '已通過選品審核，但不代表已銷售。'
+              : '未通過，後續可修改品項後重新送審。',
+          );
         },
         error: (err) => {
           this.isSubmitting.set(false);
@@ -239,8 +250,20 @@ export class ReviewDetail implements OnInit {
             return;
           }
 
-          this.statusMessage.set(error.message);
+          this.dialog.notify('error', '送出失敗', [error.message]).subscribe();
         },
       });
+  }
+
+  /**
+   * 審核送出成功一律跳出 dialog 呈現，不再是內嵌卡片＋要手動點的連結
+   * ——跟 product-form.ts「儲存並重新送審」成功後的樣式與流程統一：
+   * 都是 dialog、都是使用者按下確定後才導頁離開，不是送出當下就直接跳轉。
+   */
+  private showSubmittedDialog(message: string): void {
+    const title = this.useMockData ? '審核決策已儲存於本地 Mock' : '審核決策已送出';
+    this.dialog.notify('success', title, [message]).subscribe(() => {
+      void this.router.navigate(['/review']);
+    });
   }
 }

@@ -35,8 +35,8 @@ export const USER_ROLE_LABEL: Record<UserRole, string> = {
 
 export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
   PENDING: '未審核',
-  APPROVED: '已通過選品審核',
-  REJECTED: '未通過',
+  APPROVED: '已通過審核',
+  REJECTED: '未通過審核',
 };
 
 export const ITEM_STATUS_LABEL: Record<ItemStatus, string> = {

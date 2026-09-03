@@ -1,0 +1,47 @@
+<!--
+  檔案用途：全站唯一的 dialog 呈現層，掛在 app.html 根層級。
+  內容完全由 DialogService.state() 決定，任何頁面都不需要（也不應該）
+  自己再刻一份 dialog 樣板。
+-->
+@if (dialog.state(); as state) {
+  <div class="app-dialog-backdrop" (click)="dialog.handleCancel()" role="presentation">
+    <section
+      class="app-dialog"
+      [class]="'variant-' + state.variant"
+      [attr.role]="state.variant === 'confirm' ? 'alertdialog' : 'alert'"
+      aria-modal="true"
+      aria-labelledby="app-dialog-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="app-dialog-icon" aria-hidden="true">{{
+        state.variant === 'success'
+          ? '✓'
+          : state.variant === 'error'
+            ? '!'
+            : state.variant === 'confirm'
+              ? '?'
+              : 'i'
+      }}</span>
+      <h2 id="app-dialog-title">{{ state.title }}</h2>
+      @if (state.messages.length > 1) {
+        <ol>
+          @for (message of state.messages; track message) {
+            <li>{{ message }}</li>
+          }
+        </ol>
+      } @else {
+        <p>{{ state.messages[0] }}</p>
+      }
+      <div class="app-dialog-actions">
+        @if (state.variant === 'confirm') {
+          <button type="button" class="app-dialog-cancel" (click)="dialog.handleCancel()">
+            {{ state.cancelLabel }}
+          </button>
+        }
+        <button type="button" class="app-dialog-confirm" (click)="dialog.handleConfirm()">
+          {{ state.confirmLabel }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

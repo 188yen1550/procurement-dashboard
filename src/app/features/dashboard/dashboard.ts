@@ -32,6 +32,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { toApiError } from '../../core/api/api-error';
+import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { DashboardApiService, DashboardData } from './api/dashboard-api.service';
 import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
@@ -101,6 +102,14 @@ export class Dashboard implements OnInit {
 
   ngOnInit(): void {
     if (!this.useMockData) this.load();
+  }
+
+  constructor() {
+    // 使用者原地重新點擊「儀表板」連結時，ngOnInit() 不會再被觸發
+    // （元件沒有被銷毀重建），要靠這裡才能重新抓最新數字。Mock 模式
+    // 沒有真正的資料來源可以重抓，不套用這個行為，避免每次點擊
+    // 都把使用者正在操作的展示狀態重置掉。
+    if (!this.useMockData) reloadOnRevisit(() => this.load());
   }
 
   /**

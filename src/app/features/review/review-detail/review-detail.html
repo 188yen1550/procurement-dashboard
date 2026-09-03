@@ -34,6 +34,9 @@
     </section>
   }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  @if (statusMessage()) {
+    <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  }
 
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
@@ -183,9 +186,6 @@
         ></textarea>
       </fieldset>
 
-      @if (statusMessage() && !submitted()) {
-        <p class="form-error" role="alert">{{ statusMessage() }}</p>
-      }
       <footer>
         <span>{{ useMockData ? '送出後將在本地產生一筆決策快照。' : '送出後將建立正式審核紀錄，無法覆蓋。' }}</span>
         <button type="submit" [disabled]="pageState() === 'disabled' || submitted() || isSubmitting()">
@@ -193,20 +193,8 @@
         </button>
       </footer>
     </form>
-
-    @if (submitted()) {
-      <section class="success" role="status">
-        <h2>{{ useMockData ? '審核決策已儲存於本地 Mock' : '審核決策已送出' }}</h2>
-        <p>
-          {{
-            decision() === 'APPROVED'
-              ? '已通過選品審核，但不代表已銷售。'
-              : '未通過，後續可修改品項後重新送審。'
-          }}
-        </p>
-        <a routerLink="/review">回到審核清單</a>
-      </section>
-    }
+    <!-- 驗證錯誤、送出成功都改由 DialogService 統一呈現（跟 product-form.ts
+         的「儲存並重新送審」同一套樣式與流程），不在這裡重複顯示第二層。 -->
   }
 
   @if (conflictOpen()) {

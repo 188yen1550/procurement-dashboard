@@ -12,6 +12,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 import { ProductForm } from './product-form';
@@ -19,6 +20,7 @@ import { ProductForm } from './product-form';
 describe('ProductForm', () => {
   let fixture: ComponentFixture<ProductForm>;
   let component: ProductForm;
+  let dialog: DialogService;
 
   const productTypes = [
     { id: 1, name: '食品／生鮮', description: null, isSystemDefault: true, isActive: true },
@@ -63,6 +65,7 @@ describe('ProductForm', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(ProductForm);
     component = fixture.componentInstance;
+    dialog = TestBed.inject(DialogService);
     fixture.detectChanges();
   });
 
@@ -70,7 +73,7 @@ describe('ProductForm', () => {
     expect(component).toBeTruthy();
     expect(component.isEditMode).toBe(false);
     expect(component.isResale()).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('待訂價');
+    expect(fixture.nativeElement.textContent).toContain('待訂價 PENDING_PRICING');
   });
 
   it('shows validation errors for an invalid submit', () => {
@@ -80,11 +83,11 @@ describe('ProductForm', () => {
     expect(fixture.nativeElement.textContent).toContain('請輸入 100 字以內的商品名稱');
     // 表單驗證未過時，根本不該打 API。
     expect(api.create).not.toHaveBeenCalled();
-    // 所有無效欄位都要透過 dialog 列出，不能只顯示第一個錯誤。
-    const dialog = component.infoDialog();
-    expect(dialog).toBeTruthy();
-    expect(dialog?.variant).toBe('error');
-    expect(dialog?.messages).toEqual(
+    // 所有無效欄位都要透過 DialogService 列出，不能只顯示第一個錯誤。
+    const state = dialog.state();
+    expect(state).toBeTruthy();
+    expect(state?.variant).toBe('error');
+    expect(state?.messages).toEqual(
       expect.arrayContaining([
         expect.stringContaining('商品名稱'),
         expect.stringContaining('供應商名稱'),
@@ -95,9 +98,7 @@ describe('ProductForm', () => {
     // statusMessage 在畫面上卡住，dialog 開著就是唯一的提醒，
     // 不能兩層同時存在、也不能哪一層永遠不消失。
     expect(component.statusMessage()).toBe('');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('表單有');
+    expect(state?.title).toContain('表單有');
   });
 
   it('requires prices for RESALE products', () => {
@@ -112,8 +113,7 @@ describe('ProductForm', () => {
     component.submit();
     expect(component.form.controls.costPrice.hasError('required')).toBe(true);
     expect(api.create).not.toHaveBeenCalled();
-    const dialog = component.infoDialog();
-    expect(dialog?.messages).toEqual(
+    expect(dialog.state()?.messages).toEqual(
       expect.arrayContaining([
         expect.stringContaining('成本價'),
         expect.stringContaining('預計售價'),
@@ -136,15 +136,15 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(api.create).toHaveBeenCalled();
     expect(component.saved()).toBe(true);
-    // 儲存成功一律用 dialog 呈現，不是內嵌卡片，且關閉前不導頁。
-    const dialog = component.infoDialog();
-    expect(dialog?.variant).toBe('success');
-    expect(dialog?.title).toBe('儲存成功');
-    expect(dialog?.messages[0]).toContain('已儲存品項資料');
+    // 儲存成功一律用 DialogService 呈現，且關閉前不導頁。
+    const state = dialog.state();
+    expect(state?.variant).toBe('success');
+    expect(state?.title).toBe('儲存成功');
+    expect(state?.messages[0]).toContain('已儲存品項資料');
     expect(navigateSpy).not.toHaveBeenCalled();
 
-    component.closeInfoDialog();
-    expect(component.infoDialog()).toBeNull();
+    dialog.handleConfirm();
+    expect(dialog.state()).toBeNull();
     expect(navigateSpy).toHaveBeenCalledWith(['/products']);
   });
 
@@ -163,7 +163,7 @@ describe('ProductForm', () => {
     expect(api.create).toHaveBeenCalled();
     expect(api.resubmit).toHaveBeenCalledWith(201);
     expect(component.saved()).toBe(true);
-    expect(component.infoDialog()?.messages[0]).toContain('已儲存並重新送審');
+    expect(dialog.state()?.messages[0]).toContain('已儲存並重新送審');
   });
 
   it('keeps the saved state and shows a dialog when resubmit itself fails after a successful save', () => {
@@ -181,9 +181,9 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     // 欄位已經存檔成功，不能因為送審這一步失敗就讓使用者以為整筆都沒存到。
     expect(component.saved()).toBe(true);
-    const dialog = component.infoDialog();
-    expect(dialog?.title).toBe('重新送審失敗');
-    expect(dialog?.messages[0]).toContain('此商品狀態已變更');
+    const state = dialog.state();
+    expect(state?.title).toBe('重新送審失敗');
+    expect(state?.messages[0]).toContain('此商品狀態已變更');
   });
 
   it('shows an error dialog and stays on the page when saving fails', () => {
@@ -200,12 +200,12 @@ describe('ProductForm', () => {
     component.submit();
     fixture.detectChanges();
     expect(component.saved()).toBe(false);
-    const dialog = component.infoDialog();
-    expect(dialog?.title).toBe('儲存失敗');
-    expect(dialog?.messages[0]).toContain('伺服器發生錯誤');
+    const state = dialog.state();
+    expect(state?.title).toBe('儲存失敗');
+    expect(state?.messages[0]).toContain('伺服器發生錯誤');
 
-    component.closeInfoDialog();
-    expect(component.infoDialog()).toBeNull();
+    dialog.handleConfirm();
+    expect(dialog.state()).toBeNull();
   });
 
   it('sends null marketPrice for NEW pricing, avoiding backend 400', () => {
@@ -256,16 +256,17 @@ describe('ProductForm', () => {
     component.form.controls.name.setValue('已修改');
     component.form.markAsDirty();
     component.requestCancel();
-    fixture.detectChanges();
-    expect(component.leaveDialogOpen()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('放棄未儲存的變更');
+    expect(dialog.state()?.variant).toBe('confirm');
+    expect(dialog.state()?.title).toContain('放棄未儲存的變更');
   });
 
   it('blocks route deactivation when unsaved changes are not confirmed', () => {
     component.form.markAsDirty();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    expect(component.canLeave()).toBe(false);
-    expect(confirmSpy).toHaveBeenCalled();
+    let result: boolean | undefined;
+    component.canLeave().subscribe((value) => (result = value));
+    expect(dialog.state()?.variant).toBe('confirm');
+    dialog.handleCancel();
+    expect(result).toBe(false);
   });
 
   it('renders loading and error states', () => {
@@ -364,8 +365,10 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('圖片讀取失敗');
     component.removeImage();
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-    expect(component.canLeave()).toBe(false);
+    let result: boolean | undefined;
+    component.canLeave().subscribe((value) => (result = value));
+    dialog.handleCancel();
+    expect(result).toBe(false);
   });
 
   it('keeps basic image editing available while core fields are locked', () => {
@@ -373,6 +376,20 @@ describe('ProductForm', () => {
     expect(component.form.controls.productTypeId.disabled).toBe(true);
     expect(component.form.controls.name.enabled).toBe(true);
     expect(fixture.nativeElement.querySelector('#product-image').disabled).toBe(false);
+  });
+
+  it('disables the campaign tag toggle buttons when core fields are locked', () => {
+    // ⚠️ 這是這次修正的重點：節慶標籤改成 <button> 群組後不是走
+    // formControlName 綁定，單純停用底層 FormControl（lockCoreFields()）
+    // 不會讓這些按鈕真的變成不可點擊——之前只鎖了資料，沒鎖住互動。
+    component.isApproved.set(true);
+    fixture.detectChanges();
+    expect(component.isCoreLocked()).toBe(true);
+    const tagButtons = Array.from(
+      fixture.nativeElement.querySelectorAll('.tag-toggle-group .tag-toggle'),
+    ) as HTMLButtonElement[];
+    expect(tagButtons.length).toBeGreaterThan(0);
+    expect(tagButtons.every((button) => button.disabled)).toBe(true);
   });
 
   it('blocks duplicate submissions while saving', () => {

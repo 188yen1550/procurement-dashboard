@@ -28,6 +28,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import {
   ITEM_STATUS_LABEL,
@@ -134,6 +136,14 @@ export class ProductManagement implements OnInit {
   readonly dialogMode = signal<'delete' | 'resubmit' | 'notice' | null>(null);
   readonly statusMessage = signal('');
   readonly stateOptions: readonly PageState[] = ['default', 'locked', 'loading', 'empty', 'error'];
+
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+    // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
+    // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
+    // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
+    if (!this.useMockData) reloadOnRevisit(() => this.load());
+  }
 
   /** 分頁狀態。後端 @PageableDefault(size = 20)，前端沿用同一個預設值。 */
   readonly pageNumber = signal(0);
@@ -464,7 +474,7 @@ export class ProductManagement implements OnInit {
   }
 
   deleteDisabledReason(p: ProductListItem): string {
-    if (p.itemStatus === 'ARCHIVED') return '已封存品項，不可刪除';
+    if (p.itemStatus === 'ARCHIVED') return '已封存品項已保留審核資料，不可刪除';
     if (p.submissionCount > 0) return '已送審過，不可刪除';
     return '僅未審核且從未送審者可刪除';
   }

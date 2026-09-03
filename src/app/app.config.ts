@@ -15,7 +15,7 @@
  */
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withRouterConfig } from '@angular/router';
 
 import { routes } from './app.routes';
 import { withCredentialsInterceptor } from './core/auth/with-credentials-interceptor';
@@ -24,7 +24,14 @@ import { withCredentialsInterceptor } from './core/auth/with-credentials-interce
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    // ⚠️ onSameUrlNavigation: 'reload'——Angular 預設對「導到目前所在的
+    // 同一個網址」完全沒有反應：不會觸發 NavigationEnd，元件也不會被
+    // 重建。使用者本來就在儀表板頁面、又點了一次側邊欄同一個連結，畫面
+    // 不會重新整理，數字看起來就像「更新不夠即時」。這裡開啟這個設定，
+    // 讓「原地重新點擊」也會真的觸發一次 NavigationEnd；各頁面再搭配
+    // core/router/reload-on-revisit.ts 監聽這個事件、重新呼叫自己的
+    // load()，兩者要一起用才會生效，只開這個設定本身不會自動重新抓資料。
+    provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
     // 目前只有一個攔截器，且它只設 withCredentials、不碰任何 header。
     // jsonContentTypeInterceptor 刻意不註冊——HttpClient 已會依 body 型別
     // 自動決定 Content-Type，多一層只是多一個會壞的地方。

@@ -9,6 +9,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { REVIEW_STATUS_LABEL } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
@@ -130,6 +131,7 @@ export class ProductDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
   private readonly productTypes = inject(ProductTypeLookupService);
+  private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly useMockData = APP_CONFIG.useMockData;
@@ -218,8 +220,17 @@ export class ProductDetail implements OnInit {
     const confirmMessage = hasExisting
       ? '重新產生會呼叫外部 LLM 服務並計入配額，且會覆蓋目前的分析結果，確定要繼續嗎？'
       : '產生 AI 分析會呼叫外部 LLM 服務並計入配額，確定要繼續嗎？';
-    if (!window.confirm(confirmMessage)) return;
 
+    this.dialog
+      .confirm('確認產生 AI 分析', [confirmMessage])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.runGenerateAiAnalysis();
+      });
+  }
+
+  private runGenerateAiAnalysis(): void {
     this.isGeneratingAi.set(true);
     this.aiError.set('');
 

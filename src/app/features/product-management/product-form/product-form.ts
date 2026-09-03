@@ -28,13 +28,16 @@
  *    「已核准商品僅能修改一般基本資料與圖片」，不是通用錯誤訊息。
  */
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Observable, of } from 'rxjs';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { joinCampaignTags } from '../../../core/domain/labels';
+import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 
@@ -163,6 +166,7 @@ export class ProductForm implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ProductApiService);
   private readonly settingsApi = inject(SettingsApiService);
+  private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
@@ -173,23 +177,12 @@ export class ProductForm implements OnInit {
   readonly saved = signal(false);
   readonly isSubmitting = signal(false);
   readonly submitCount = signal(0);
-  readonly leaveDialogOpen = signal(false);
   readonly statusMessage = signal('');
   readonly stateOptions: readonly FormPageState[] = ['default', 'locked', 'loading', 'error'];
 
-  /**
-   * 取代原本的 window.alert()。原生 alert() 樣式沒辦法客製、行動裝置上
-   * 常常被瀏覽器攔截或顯示成很陽春的系統對話框，跟站內其餘互動風格
-   * （dialog-backdrop／role=alertdialog，見下方 leaveDialogOpen 的既有做法）
-   * 完全不一致，所以改用同一套 dialog 元件呈現。
-   *
-   * messages 一律是陣列：只有一則就顯示一句話，多則就顯示成清單，
-   * 讓「所有錯誤都要列出」這個需求跟「單一句失敗訊息」共用同一套 UI，
-   * 不用為了訊息則數另外分兩套樣板。
-   */
-  readonly infoDialog = signal<
-    { variant: 'error' | 'success'; title: string; messages: string[]; navigateOnClose?: boolean } | null
-  >(null);
+  constructor() {
+    autoDismissStatusMessage(this.statusMessage);
+  }
 
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
     this.useMockData ? MOCK_PRODUCT_TYPES : [],
@@ -202,6 +195,14 @@ export class ProductForm implements OnInit {
   readonly reviewStatus = signal<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
   readonly isApproved = signal(false);
   readonly isRejected = signal(false);
+
+  /**
+   * 統一判斷「核心資料現在是不是鎖定的」，不要在樣板裡到處重複寫
+   * `isApproved() || pageState() === 'locked'`——這兩個是 lockCoreFields()
+   * 實際會被觸發的兩種情境（已核准商品、或 Mock 展示切成 locked 狀態），
+   * 語意上是同一件事，只是觸發來源不同。
+   */
+  readonly isCoreLocked = computed(() => this.isApproved() || this.pageState() === 'locked');
 
   /** 載入時的原始圖片網址；使用者沒有更換圖片時，更新要把這個值原封送回去，不能送空字串。 */
   readonly currentImageUrl = signal<string | null>(null);
@@ -346,6 +347,25 @@ export class ProductForm implements OnInit {
     this.form.controls.campaignTags.markAsDirty();
   }
 
+  isCampaignTagSelected(tag: string): boolean {
+    return this.form.controls.campaignTags.value.includes(tag);
+  }
+
+  /**
+   * ⚠️ 改用按鈕群取代 <select multiple>：原生多選下拉技術上支援複選，
+   * 但沒有按住 Ctrl/Cmd 直接點第二個選項會「取代」而不是「新增」選取，
+   * 使用者很容易誤以為只能選一個。改成點一下加入、再點一下移除的
+   * 標籤按鈕，不需要任何隱藏的鍵盤組合鍵。
+   */
+  toggleCampaignTag(tag: string): void {
+    if (this.isCampaignTagSelected(tag)) {
+      this.removeCampaignTag(tag);
+      return;
+    }
+    this.form.controls.campaignTags.setValue([...this.form.controls.campaignTags.value, tag]);
+    this.form.controls.campaignTags.markAsDirty();
+  }
+
   setState(state: FormPageState): void {
     this.pageState.set(state);
     if (state === 'locked') this.lockCoreFields();
@@ -387,16 +407,11 @@ export class ProductForm implements OnInit {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       const errors = this.collectFormErrors();
-      // ⚠️ 不要在這裡再 set statusMessage：畫面上已經有兩層提醒了
-      // （下面即將開啟的 dialog，以及每個無效欄位旁邊 fieldInvalid() 顯示的
-      // 逐欄錯誤文字），第三層籠統的 toast 只會變成後續不管使用者怎麼操作
-      // 都不會消失的殘留訊息——這正是原本回報的 bug：使用者後來把欄位都
-      // 修正了，畫面上卻還留著一句「請先修正表單中的錯誤」，因為沒有任何
-      // 地方會把它清掉。
-      this.showErrorDialog(
-        `表單有 ${errors.length} 項欄位需要修正`,
-        errors,
-      );
+      // ⚠️ 不要在這裡再 set statusMessage：dialog 本身已經是唯一提醒層，
+      // 加上每個無效欄位旁邊 fieldInvalid() 顯示的逐欄錯誤文字就足夠——
+      // 這正是原本回報的 bug：使用者後來把欄位都修正了，畫面上卻還留著
+      // 一句「請先修正表單中的錯誤」的殘留 toast，因為沒有任何地方會清掉它。
+      this.dialog.notify('error', `表單有 ${errors.length} 項欄位需要修正`, errors).subscribe();
       return;
     }
 
@@ -411,12 +426,9 @@ export class ProductForm implements OnInit {
         this.saved.set(true);
         this.statusMessage.set(message);
         // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；
-        // 使用者按下確定後才返回品項管理主頁，見 closeInfoDialog()。
-        this.infoDialog.set({
-          variant: 'success',
-          title: '儲存成功',
-          messages: [message],
-          navigateOnClose: true,
+        // 使用者按下確定後才返回品項管理主頁。
+        this.dialog.notify('success', '儲存成功', [message]).subscribe(() => {
+          void this.router.navigate(['/products']);
         });
       }, 500);
       return;
@@ -462,7 +474,7 @@ export class ProductForm implements OnInit {
           error.status === 409
             ? `${error.message}（已核准商品僅能修改一般基本資料與圖片）`
             : error.message;
-        this.showErrorDialog('儲存失敗', [message]);
+        this.dialog.notify('error', '儲存失敗', [message]).subscribe();
       },
     });
   }
@@ -494,7 +506,7 @@ export class ProductForm implements OnInit {
           // 不是會卡住不消失的那個籠統 toast——saved() 每次送出都會重新
           // 走一輪，下次儲存成功會被覆蓋成正常文案，不會有殘留問題。
           this.statusMessage.set(message);
-          this.showErrorDialog('圖片上傳失敗', [message]);
+          this.dialog.notify('error', '圖片上傳失敗', [message]).subscribe();
         },
       });
   }
@@ -515,7 +527,13 @@ export class ProductForm implements OnInit {
       .resubmit(productId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.finishSubmit(true),
+        // ⚠️ 之前這裡直接丟棄回應內容，只用「有沒有出錯」判斷成功與否。
+        // 回報過「重新送審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
+        // 都對照過確認沒有錯，但既然回應裡就有真正最新的 submissionCount，
+        // 直接秀在這次的成功訊息裡，讓使用者當下就能看到次數真的變了，
+        // 不用跳去別的頁面、也不用擔心那邊的畫面剛好沒重新整理才看起來
+        // 沒有變化。
+        next: (updated) => this.finishSubmit(true, updated.submissionCount),
         error: (err) => {
           // 欄位已經存檔成功，只是送審這一步失敗，不能讓使用者以為
           // 整個操作都沒發生——維持 saved=true，讓使用者知道要重新
@@ -525,29 +543,31 @@ export class ProductForm implements OnInit {
           this.saved.set(true);
           this.form.markAsPristine();
           this.statusMessage.set(message);
-          this.showErrorDialog('重新送審失敗', [message]);
+          this.dialog.notify('error', '重新送審失敗', [message]).subscribe();
         },
       });
   }
 
-  private finishSubmit(resubmit: boolean): void {
+  private finishSubmit(resubmit: boolean, newSubmissionCount?: number): void {
     this.isSubmitting.set(false);
     this.submitCount.update((count) => count + 1);
     this.saved.set(true);
     this.form.markAsPristine();
     this.imageDirty.set(false);
     this.selectedImageFile = null;
-    const message = resubmit ? '已儲存並重新送審。' : '已儲存品項資料。';
+    const message =
+      resubmit && newSubmissionCount != null
+        ? `已儲存並重新送審（第 ${newSubmissionCount} 次送審）。`
+        : resubmit
+          ? '已儲存並重新送審。'
+          : '已儲存品項資料。';
     this.statusMessage.set(message);
 
     // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；使用者按下確定後
-    // 才返回品項管理主頁（見 closeInfoDialog()），不是存檔當下就直接跳轉，
-    // 讓使用者能先看清楚儲存結果再離開。
-    this.infoDialog.set({
-      variant: 'success',
-      title: '儲存成功',
-      messages: [message],
-      navigateOnClose: true,
+    // 才返回品項管理主頁，不是存檔當下就直接跳轉，讓使用者能先看清楚
+    // 儲存結果再離開。
+    this.dialog.notify('success', '儲存成功', [message]).subscribe(() => {
+      void this.router.navigate(['/products']);
     });
   }
 
@@ -615,29 +635,19 @@ export class ProductForm implements OnInit {
     return new FileReader();
   }
 
-  private showErrorDialog(title: string, messages: string[]): void {
-    this.infoDialog.set({ variant: 'error', title, messages });
-  }
-  closeInfoDialog(): void {
-    // 儲存成功的 dialog 關閉時要順便返回品項管理主頁；錯誤 dialog
-    // 只是單純關閉，讓使用者留在頁面上修正問題，不用導頁。
-    const shouldNavigateBack = this.infoDialog()?.navigateOnClose === true;
-    this.infoDialog.set(null);
-    if (shouldNavigateBack) void this.router.navigate(['/products']);
-  }
-
   requestCancel(): void {
-    if (this.hasUnsavedChanges()) this.leaveDialogOpen.set(true);
-    else void this.router.navigate(['/products']);
-  }
-  discardAndLeave(): void {
-    this.form.markAsPristine();
-    this.imageDirty.set(false);
-    this.leaveDialogOpen.set(false);
-    void this.router.navigate(['/products']);
-  }
-  closeLeaveDialog(): void {
-    this.leaveDialogOpen.set(false);
+    if (!this.hasUnsavedChanges()) {
+      void this.router.navigate(['/products']);
+      return;
+    }
+    this.dialog
+      .confirm('放棄未儲存的變更？', ['離開後，目前輸入的本地資料將不會保留。'], '放棄並離開', '繼續編輯')
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.form.markAsPristine();
+        this.imageDirty.set(false);
+        void this.router.navigate(['/products']);
+      });
   }
   retry(): void {
     this.pageState.set('default');
@@ -701,8 +711,14 @@ export class ProductForm implements OnInit {
     const sale = this.form.controls.salePrice.value;
     return sale > 0 && cost >= 0 ? Math.round(((sale - cost) / sale) * 1000) / 10 : null;
   }
-  canLeave(): boolean {
-    return !this.hasUnsavedChanges() || window.confirm('尚有未儲存的變更，確定要離開嗎？');
+  /**
+   * 給 CanDeactivate guard 用（見 product-form.guard.ts）。改成回傳
+   * Observable<boolean>——Angular 的 CanDeactivateFn 本來就支援非同步結果，
+   * 不需要為了配合 window.confirm() 的同步限制犧牲掉自訂 dialog。
+   */
+  canLeave(): Observable<boolean> {
+    if (!this.hasUnsavedChanges()) return of(true);
+    return this.dialog.confirm('尚有未儲存的變更', ['確定要離開嗎？'], '離開', '留在頁面');
   }
 
   @HostListener('window:beforeunload', ['$event'])
