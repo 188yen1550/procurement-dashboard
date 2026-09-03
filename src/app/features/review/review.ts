@@ -39,7 +39,7 @@ import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import { REVIEW_DECISION_LABEL, REVIEW_STATUS_LABEL } from '../../core/domain/labels';
-import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
@@ -153,11 +153,12 @@ export class ReviewComponent implements OnInit {
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
   readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');
   readonly view = signal<'pending' | 'records'>('pending');
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
   readonly totalElements = signal(0);
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 原地重新點擊「選品審核」連結時 ngOnInit() 不會再被觸發，要靠這裡
     // 才能重新抓最新待審清單。Mock 模式不套用，避免重置展示狀態。
     if (!this.useMockData) reloadOnRevisit(() => this.load());
@@ -223,7 +224,7 @@ export class ReviewComponent implements OnInit {
           this.isLoading = false;
           const error = toApiError(err);
           this.pageState.set(error.status === 403 ? 'disabled' : 'error');
-          this.statusMessage.set(
+          this.statusMessageState.show(
             error.status === 403 ? '您的角色沒有選品審核權限。' : error.message,
           );
         },
@@ -265,7 +266,7 @@ export class ReviewComponent implements OnInit {
     this.query.set('');
     this.reviewFilter.set('PENDING');
     this.itemFilter.set('ACTIVE');
-    this.statusMessage.set('已恢復預設篩選：未審核＋使用中。');
+    this.statusMessageState.show('已恢復預設篩選：未審核＋使用中。');
   }
 
   // ----- UI 狀態切換器（demo 用，不呼叫 API）-----
@@ -278,7 +279,7 @@ export class ReviewComponent implements OnInit {
       this.resetMock();
       this.pageState.set(state);
     }
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
   }
 
   resetMock(): void {
@@ -286,7 +287,7 @@ export class ReviewComponent implements OnInit {
     this.records.set(MOCK_RECORDS.map((record) => ({ ...record })));
     this.totalElements.set(MOCK.length);
     this.pageState.set('default');
-    this.statusMessage.set('已恢復待審核 Mock 清單。');
+    this.statusMessageState.show('已恢復待審核 Mock 清單。');
   }
 
   // ----- 顯示輔助 -----

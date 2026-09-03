@@ -2,7 +2,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { ProductManagement } from './product-management';
+import { ProductApiService } from './api/product-api.service';
+import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 
 describe('ProductManagement', () => {
   let component: ProductManagement;
@@ -113,5 +116,70 @@ describe('ProductManagement', () => {
     component.requestDelete(eligible);
     component.confirmDelete();
     expect(component.products().some((item) => item.id === 102)).toBe(false);
+  });
+});
+
+/**
+ * ⚠️ 上面整份都是 Object.defineProperty 強制 useMockData=true 跑的，
+ * 從來沒有測過真實模式的 load()——這次修正「商品實際分類」篩選在真實
+ * 模式下完全沒有送給後端的 bug，剛好完全沒有測試覆蓋到，這裡補上。
+ */
+describe('ProductManagement (formal API mode)', () => {
+  let component: ProductManagement;
+  let fixture: ComponentFixture<ProductManagement>;
+  const api = {
+    list: vi.fn(),
+  };
+  const productTypeLookup = {
+    getNameMap: vi.fn(() =>
+      of(
+        new Map<number, string>([
+          [1, '食品／生鮮'],
+          [5, '美妝保養'],
+        ]),
+      ),
+    ),
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.list.mockReturnValue(
+      of({ items: [], totalElements: 0, totalPages: 0, pageNumber: 0, pageSize: 20 }),
+    );
+    await TestBed.configureTestingModule({
+      imports: [ProductManagement],
+      providers: [
+        provideRouter([]),
+        { provide: ProductApiService, useValue: api },
+        { provide: ProductTypeLookupService, useValue: productTypeLookup },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(ProductManagement);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('resolves the selected product type name to its id before calling the API', () => {
+    component.updateProductTypeFilter('美妝保養');
+    expect(productTypeLookup.getNameMap).toHaveBeenCalled();
+    expect(api.list).toHaveBeenCalledWith(
+      expect.objectContaining({ productTypeId: 5 }),
+    );
+  });
+
+  it('does not send productTypeId when the filter is ALL', () => {
+    component.updateProductTypeFilter('食品／生鮮');
+    component.updateProductTypeFilter('ALL');
+    const lastCall = api.list.mock.calls.at(-1)![0];
+    expect(lastCall.productTypeId).toBeUndefined();
+  });
+
+  it('shows an empty result instead of the unfiltered list when the product type has no matches', () => {
+    // 對應這次要修正的具體症狀：選了確實存在、但目前完全沒有商品符合的
+    // 分類，畫面應該顯示空結果，不能因為篩選失效而變成看起來跟沒篩選一樣。
+    component.updateProductTypeFilter('美妝保養');
+    fixture.detectChanges();
+    expect(component.pageState()).toBe('empty');
+    expect(component.products().length).toBe(0);
   });
 });

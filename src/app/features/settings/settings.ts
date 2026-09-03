@@ -27,7 +27,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
-import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { FestiveCategory, UserRole } from '../../core/domain/enums';
 import { joinCampaignTags, splitKeywords } from '../../core/domain/labels';
@@ -190,11 +190,14 @@ export class Settings implements OnInit {
   readonly activeTab = signal<SettingsTab>('modes');
   readonly pageState = signal<SettingsState>(this.useMockData ? 'default' : 'loading');
   readonly saved = signal(false);
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
   readonly activeMode = signal('BALANCED');
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 原本呼叫 autoDismissStatusMessage(this.statusMessage) 的地方拿掉了，
+    // 現在的自動消失邏輯已經內建在 createDismissibleMessage() 裡，
+    // 不需要另外註冊監看。
     // 原地重新點擊「系統設定」連結時 ngOnInit() 不會再被觸發，要靠這裡才能
     // 重新抓資料——直接呼叫 loadTab(activeTab())、不經過 setTab() 的
     // loadedTabs 判斷，因為那個判斷本來是「同一個分頁只在第一次切換時載入
@@ -257,11 +260,11 @@ export class Settings implements OnInit {
 
   setTab(tab: SettingsTab): void {
     if (tab === 'audience' && !this.audienceSettingsVisible) {
-      this.statusMessage.set('核心客群設定目前暫不開放。');
+      this.statusMessageState.show('核心客群設定目前暫不開放。');
       return;
     }
     this.activeTab.set(tab);
-    this.statusMessage.set('已切換設定分類。');
+    this.statusMessageState.show('已切換設定分類。');
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);
   }
 
@@ -296,7 +299,7 @@ export class Settings implements OnInit {
 
   private handleLoadError(err: unknown): void {
     this.pageState.set('error');
-    this.statusMessage.set(toApiError(err).message);
+    this.statusMessageState.show(toApiError(err).message);
   }
 
   // ----- 1. 評估模式 -----
@@ -369,7 +372,7 @@ export class Settings implements OnInit {
 
     if (this.useMockData) {
       this.activeMode.set(code);
-      this.statusMessage.set(`已在本地切換為 ${this.modes().find((m) => m.code === code)?.name}。`);
+      this.statusMessageState.show(`已在本地切換為 ${this.modes().find((m) => m.code === code)?.name}。`);
       return;
     }
 
@@ -382,11 +385,11 @@ export class Settings implements OnInit {
       .subscribe({
         next: (mode) => {
           this.activeMode.set(mode.modeCode);
-          this.statusMessage.set(
+          this.statusMessageState.show(
             `已切換為 ${mode.modeName}，所有未審核商品的即時分數將重新計算。`,
           );
         },
-        error: (err) => this.statusMessage.set(toApiError(err).message),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 
@@ -431,14 +434,14 @@ export class Settings implements OnInit {
   saveAudience(): void {
     if (this.form.invalid || this.ageRangeInvalid()) {
       this.form.markAllAsTouched();
-      this.statusMessage.set('請修正客群設定欄位。');
+      this.statusMessageState.show('請修正客群設定欄位。');
       return;
     }
 
     if (this.useMockData) {
       this.saved.set(true);
       this.form.markAsPristine();
-      this.statusMessage.set('核心客群已儲存至本地 Mock 狀態。');
+      this.statusMessageState.show('核心客群已儲存至本地 Mock 狀態。');
       return;
     }
 
@@ -461,11 +464,11 @@ export class Settings implements OnInit {
           this.isSaving.set(false);
           this.saved.set(true);
           this.form.markAsPristine();
-          this.statusMessage.set('核心客群已儲存。');
+          this.statusMessageState.show('核心客群已儲存。');
         },
         error: (err) => {
           this.isSaving.set(false);
-          this.statusMessage.set(toApiError(err).message);
+          this.statusMessageState.show(toApiError(err).message);
         },
       });
   }
@@ -499,7 +502,7 @@ export class Settings implements OnInit {
 
     if (this.useMockData) {
       if (item.used && item.used > 0) {
-        this.statusMessage.set('此類型已被品項使用，不可刪除，請改為停用。');
+        this.statusMessageState.show('此類型已被品項使用，不可刪除，請改為停用。');
         return;
       }
       this.productTypes.update((items) => items.filter((type) => type.name !== name));
@@ -514,11 +517,11 @@ export class Settings implements OnInit {
         next: () => {
           this.productTypes.update((items) => items.filter((type) => type.name !== name));
           this.productTypeLookup.invalidate();
-          this.statusMessage.set(`已刪除「${name}」。`);
+          this.statusMessageState.show(`已刪除「${name}」。`);
         },
         error: (err) => {
           const error = toApiError(err);
-          this.statusMessage.set(
+          this.statusMessageState.show(
             error.status === 409 ? '此類型已被品項使用，不可刪除，請改為停用。' : error.message,
           );
         },
@@ -553,9 +556,9 @@ export class Settings implements OnInit {
             items.map((type) => (type.name === name ? { ...type, active: false } : type)),
           );
           this.productTypeLookup.invalidate();
-          this.statusMessage.set(`已停用「${name}」。`);
+          this.statusMessageState.show(`已停用「${name}」。`);
         },
-        error: (err) => this.statusMessage.set(toApiError(err).message),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 
@@ -579,9 +582,9 @@ export class Settings implements OnInit {
             items.map((type) => (type.name === name ? { ...type, active: true } : type)),
           );
           this.productTypeLookup.invalidate();
-          this.statusMessage.set(`已復用「${name}」。`);
+          this.statusMessageState.show(`已復用「${name}」。`);
         },
-        error: (err) => this.statusMessage.set(toApiError(err).message),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 
@@ -645,7 +648,7 @@ export class Settings implements OnInit {
       this.accounts.update((items) =>
         items.map((item) => (item.username === username ? { ...item, active: false } : item)),
       );
-      this.statusMessage.set('已停用帳號；稽核關聯資料仍保留。');
+      this.statusMessageState.show('已停用帳號；稽核關聯資料仍保留。');
       return;
     }
 
@@ -662,13 +665,13 @@ export class Settings implements OnInit {
               account.username === username ? { ...account, active: false } : account,
             ),
           );
-          this.statusMessage.set('已停用帳號；稽核關聯資料仍保留。');
+          this.statusMessageState.show('已停用帳號；稽核關聯資料仍保留。');
         },
         error: (err) => {
           const error = toApiError(err);
           // ⚠️ 後端擋「不可停用自己的帳號」是 409，訊息要單獨顯示，
           // 不要讓使用者以為是網路問題重試。
-          this.statusMessage.set(error.message);
+          this.statusMessageState.show(error.message);
         },
       });
   }
@@ -678,7 +681,7 @@ export class Settings implements OnInit {
       this.accounts.update((items) =>
         items.map((item) => (item.username === username ? { ...item, active: true } : item)),
       );
-      this.statusMessage.set('已復用帳號。');
+      this.statusMessageState.show('已復用帳號。');
       return;
     }
 
@@ -695,9 +698,9 @@ export class Settings implements OnInit {
               account.username === username ? { ...account, active: true } : account,
             ),
           );
-          this.statusMessage.set('已復用帳號。');
+          this.statusMessageState.show('已復用帳號。');
         },
-        error: (err) => this.statusMessage.set(toApiError(err).message),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 
@@ -784,17 +787,17 @@ export class Settings implements OnInit {
         },
       ]);
     } else {
-      this.statusMessage.set('請完整填寫必填欄位。');
+      this.statusMessageState.show('請完整填寫必填欄位。');
       return;
     }
-    this.statusMessage.set('已儲存至本地 Mock 狀態。');
+    this.statusMessageState.show('已儲存至本地 Mock 狀態。');
     this.closeModal();
   }
 
   private saveModalReal(type: ReturnType<typeof this.modal>): void {
     if (type === 'risk') {
       if (!this.draftName().trim() || !this.draftKeywords().trim()) {
-        this.statusMessage.set('請完整填寫必填欄位。');
+        this.statusMessageState.show('請完整填寫必填欄位。');
         return;
       }
       this.api
@@ -804,17 +807,17 @@ export class Settings implements OnInit {
           next: (created) => {
             this.riskOptions.update((items) => [...items, toRiskOptionVM(created)]);
             this.riskOptionLookup.invalidate();
-            this.statusMessage.set('已新增風險選項，審核頁勾選清單即時生效。');
+            this.statusMessageState.show('已新增風險選項，審核頁勾選清單即時生效。');
             this.closeModal();
           },
-          error: (err) => this.statusMessage.set(toApiError(err).message),
+          error: (err) => this.statusMessageState.show(toApiError(err).message),
         });
       return;
     }
 
     if (type === 'productType') {
       if (!this.draftName().trim()) {
-        this.statusMessage.set('請輸入類型名稱。');
+        this.statusMessageState.show('請輸入類型名稱。');
         return;
       }
       this.api
@@ -827,17 +830,17 @@ export class Settings implements OnInit {
               { id: created.id, name: created.name, system: false, used: null, active: true },
             ]);
             this.productTypeLookup.invalidate();
-            this.statusMessage.set('已新增商品類型。');
+            this.statusMessageState.show('已新增商品類型。');
             this.closeModal();
           },
-          error: (err) => this.statusMessage.set(toApiError(err).message),
+          error: (err) => this.statusMessageState.show(toApiError(err).message),
         });
       return;
     }
 
     if (type === 'account') {
       if (!this.draftUsername().trim() || !this.draftName().trim() || this.draftPassword().trim().length < 8) {
-        this.statusMessage.set('請完整填寫必填欄位，密碼至少 8 碼。');
+        this.statusMessageState.show('請完整填寫必填欄位，密碼至少 8 碼。');
         return;
       }
       this.userApi
@@ -851,12 +854,12 @@ export class Settings implements OnInit {
         .subscribe({
           next: (created) => {
             this.accounts.update((items) => [...items, toAccountVM(created)]);
-            this.statusMessage.set('已新增帳號。');
+            this.statusMessageState.show('已新增帳號。');
             this.closeModal();
           },
           error: (err) => {
             // username 重複時後端回 400，直接顯示訊息，讓使用者知道要換一個帳號名。
-            this.statusMessage.set(toApiError(err).message);
+            this.statusMessageState.show(toApiError(err).message);
           },
         });
       return;
@@ -869,7 +872,7 @@ export class Settings implements OnInit {
         !this.draftEnd() ||
         !this.draftTags().some((row) => row.tag.trim())
       ) {
-        this.statusMessage.set('請完整填寫必填欄位，並至少輸入一個標籤。');
+        this.statusMessageState.show('請完整填寫必填欄位，並至少輸入一個標籤。');
         return;
       }
       const tags = this.draftTags()
@@ -894,13 +897,13 @@ export class Settings implements OnInit {
               this.campaigns.update((items) =>
                 items.map((item) => (item.id === existing.id ? toCampaignVM(updated) : item)),
               );
-              this.statusMessage.set('已更新檔期。');
+              this.statusMessageState.show('已更新檔期。');
               this.closeModal();
             },
-            error: (err) => this.statusMessage.set(toApiError(err).message),
+            error: (err) => this.statusMessageState.show(toApiError(err).message),
           });
       } else {
-        this.statusMessage.set(
+        this.statusMessageState.show(
           '新增檔期需要唯一的檔期代碼（campaignCode），此畫面尚未提供輸入欄位，' +
             '請洽開發團隊補上欄位後再新增，目前僅支援編輯既有檔期。',
         );
@@ -937,10 +940,10 @@ export class Settings implements OnInit {
           this.campaigns.update((items) =>
             items.map((item) => (item.id === updated.id ? toCampaignVM(updated) : item)),
           );
-          this.statusMessage.set('已手動切換檔期狀態。');
+          this.statusMessageState.show('已手動切換檔期狀態。');
           this.modal.set(null);
         },
-        error: (err) => this.statusMessage.set(toApiError(err).message),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 
@@ -950,14 +953,14 @@ export class Settings implements OnInit {
     this.pageState.set(state);
     if (state === 'disabled') this.form.disable();
     else this.form.enable();
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
   }
 
   retry(): void {
     this.pageState.set('default');
     this.form.enable();
     if (this.useMockData) {
-      this.statusMessage.set('設定資料已恢復。');
+      this.statusMessageState.show('設定資料已恢復。');
       return;
     }
     this.loadTab(this.activeTab());

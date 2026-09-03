@@ -37,7 +37,7 @@ import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { joinCampaignTags } from '../../../core/domain/labels';
-import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 
@@ -177,11 +177,12 @@ export class ProductForm implements OnInit {
   readonly saved = signal(false);
   readonly isSubmitting = signal(false);
   readonly submitCount = signal(0);
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
   readonly stateOptions: readonly FormPageState[] = ['default', 'locked', 'loading', 'error'];
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
   }
 
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
@@ -307,7 +308,7 @@ export class ProductForm implements OnInit {
         },
         error: (err) => {
           this.pageState.set('error');
-          this.statusMessage.set(toApiError(err).message);
+          this.statusMessageState.show(toApiError(err).message);
         },
       });
   }
@@ -370,7 +371,7 @@ export class ProductForm implements OnInit {
     this.pageState.set(state);
     if (state === 'locked') this.lockCoreFields();
     else if (!this.isApproved()) this.unlockCoreFields();
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
   }
 
   /**
@@ -387,7 +388,7 @@ export class ProductForm implements OnInit {
     // 保留 statusMessage 是為了防呆極端情況（例如程式化重複呼叫），
     // 不用 alert()——高頻率跳出視窗式對話框反而干擾使用者，用 toast 就夠。
     if (this.isSubmitting()) {
-      this.statusMessage.set('正在儲存，請勿重複送出。');
+      this.statusMessageState.show('正在儲存，請勿重複送出。');
       return;
     }
 
@@ -424,7 +425,7 @@ export class ProductForm implements OnInit {
       window.setTimeout(() => {
         this.isSubmitting.set(false);
         this.saved.set(true);
-        this.statusMessage.set(message);
+        this.statusMessageState.show(message);
         // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；
         // 使用者按下確定後才返回品項管理主頁。
         this.dialog.notify('success', '儲存成功', [message]).subscribe(() => {
@@ -435,7 +436,7 @@ export class ProductForm implements OnInit {
     }
 
     this.isSubmitting.set(true);
-    this.statusMessage.set('');
+    this.statusMessageState.show('');
 
     const raw = this.form.getRawValue();
     const isResale = raw.pricingType === 'RESALE';
@@ -505,7 +506,7 @@ export class ProductForm implements OnInit {
           // 這裡的 statusMessage 是給「已儲存」成功卡片副標題用的，
           // 不是會卡住不消失的那個籠統 toast——saved() 每次送出都會重新
           // 走一輪，下次儲存成功會被覆蓋成正常文案，不會有殘留問題。
-          this.statusMessage.set(message);
+          this.statusMessageState.show(message);
           this.dialog.notify('error', '圖片上傳失敗', [message]).subscribe();
         },
       });
@@ -542,7 +543,7 @@ export class ProductForm implements OnInit {
           const message = `品項資料已儲存，但重新送審失敗：${toApiError(err).message}`;
           this.saved.set(true);
           this.form.markAsPristine();
-          this.statusMessage.set(message);
+          this.statusMessageState.show(message);
           this.dialog.notify('error', '重新送審失敗', [message]).subscribe();
         },
       });
@@ -561,7 +562,7 @@ export class ProductForm implements OnInit {
         : resubmit
           ? '已儲存並重新送審。'
           : '已儲存品項資料。';
-    this.statusMessage.set(message);
+    this.statusMessageState.show(message);
 
     // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；使用者按下確定後
     // 才返回品項管理主頁，不是存檔當下就直接跳轉，讓使用者能先看清楚
@@ -603,7 +604,7 @@ export class ProductForm implements OnInit {
       }
       this.imagePreviewUrl.set(reader.result);
       this.imageState.set('ready');
-      this.statusMessage.set(
+      this.statusMessageState.show(
         this.useMockData
           ? '圖片已在瀏覽器本地建立預覽，尚未儲存。'
           : '圖片已建立預覽，儲存後才會真正上傳。',
@@ -623,7 +624,7 @@ export class ProductForm implements OnInit {
     this.saved.set(false);
     this.selectedImageFile = null;
     this.currentImageUrl.set(null);
-    this.statusMessage.set('圖片已移除，尚未儲存。');
+    this.statusMessageState.show('圖片已移除，尚未儲存。');
   }
 
   formatFileSize(bytes: number): string {
@@ -651,7 +652,7 @@ export class ProductForm implements OnInit {
   }
   retry(): void {
     this.pageState.set('default');
-    this.statusMessage.set(this.useMockData ? '已恢復本地表單資料。' : '');
+    this.statusMessageState.show(this.useMockData ? '已恢復本地表單資料。' : '');
     if (!this.useMockData) this.ngOnInit();
   }
   fieldInvalid(name: keyof typeof this.form.controls): boolean {
@@ -736,7 +737,7 @@ export class ProductForm implements OnInit {
     this.imageError.set(message);
     this.imageDirty.set(false);
     this.selectedImageFile = null;
-    this.statusMessage.set(message);
+    this.statusMessageState.show(message);
   }
 
   private lockCoreFields(): void {

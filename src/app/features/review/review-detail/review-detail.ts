@@ -32,7 +32,7 @@ import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
-import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import {
   OTHER_RISK_OPTION_NAME,
   ReviewDetailModel,
@@ -117,10 +117,11 @@ export class ReviewDetail implements OnInit {
   readonly submitted = signal(false);
   readonly isSubmitting = signal(false);
   readonly conflictOpen = signal(false);
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
   }
 
   /** 「其他」風險是否已勾選；決定要不要顯示補充說明欄位。 */
@@ -163,7 +164,7 @@ export class ReviewDetail implements OnInit {
 
   retry(): void {
     this.pageState.set('default');
-    this.statusMessage.set(this.useMockData ? '已恢復審核資料。' : '');
+    this.statusMessageState.show(this.useMockData ? '已恢復審核資料。' : '');
     this.load();
   }
 
@@ -171,12 +172,12 @@ export class ReviewDetail implements OnInit {
 
   setState(state: DetailState): void {
     this.pageState.set(state);
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
   }
 
   simulateConflict(): void {
     this.conflictOpen.set(true);
-    this.statusMessage.set('模擬 409 Conflict：此品項已由其他管理人員審核。');
+    this.statusMessageState.show('模擬 409 Conflict：此品項已由其他管理人員審核。');
   }
 
   closeConflict(): void {
@@ -223,7 +224,7 @@ export class ReviewDetail implements OnInit {
     }
 
     this.isSubmitting.set(true);
-    this.statusMessage.set('');
+    this.statusMessageState.show('');
 
     this.api
       .submit(toReviewSubmitPayload(form))
@@ -246,7 +247,7 @@ export class ReviewDetail implements OnInit {
             // 409：條件式 UPDATE 影響筆數為 0，代表別人已經先審過這筆。
             // 這不是罕見例外，是多人同時看待審清單的正常情況。
             this.conflictOpen.set(true);
-            this.statusMessage.set('此品項已由其他管理人員完成審核。');
+            this.statusMessageState.show('此品項已由其他管理人員完成審核。');
             return;
           }
 

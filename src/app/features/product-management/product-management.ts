@@ -28,7 +28,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
-import { autoDismissStatusMessage } from '../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import {
@@ -39,6 +39,7 @@ import {
 } from '../../core/domain/labels';
 import { ProductApiService } from './api/product-api.service';
 import { ProductListItem, toProductActionAvailability } from './api/product.mapper';
+import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 
 export type PageState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
 export type SortOption = 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
@@ -107,6 +108,7 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
 })
 export class ProductManagement implements OnInit {
   private readonly api = inject(ProductApiService);
+  private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
   readonly useMockData = APP_CONFIG.useMockData;
 
@@ -134,11 +136,12 @@ export class ProductManagement implements OnInit {
   readonly sortOption = signal<SortOption>('updatedAt_desc');
   readonly dialogProduct = signal<ProductListItem | null>(null);
   readonly dialogMode = signal<'delete' | 'resubmit' | 'notice' | null>(null);
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
   readonly stateOptions: readonly PageState[] = ['default', 'locked', 'loading', 'empty', 'error'];
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
     // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
@@ -251,33 +254,51 @@ export class ProductManagement implements OnInit {
     const sort =
       this.sortOption() === 'updatedAt_asc' ? 'updatedAt,asc' : 'updatedAt,desc';
 
-    this.api
-      .list({
-        keyword: this.searchTerm().trim() || undefined,
-        reviewStatus: reviewStatus === 'ALL' ? undefined : reviewStatus,
-        itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
-        page: this.pageNumber(),
-        size: this.pageSize(),
-        sort,
-      })
+    // ⚠️ 修正：「商品實際分類」篩選之前完全沒有送給後端，選了任何分類都
+    // 等同沒選——filteredProducts() 在真實模式下直接回傳 list（假設篩選
+    // 都交給後端做），但 load() 從來沒有把 productTypeFilter 塞進查詢參數，
+    // 導致這個篩選條件在真實模式下形同虛設。這裡的 select 選項存的是
+    // 分類「名稱」（畫面顯示用），後端要的是「id」，用 ProductTypeLookupService
+    // 的 id→name 對照表反查一次再送出。
+    const productTypeName = this.productTypeFilter();
+    this.productTypeLookup
+      .getNameMap()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.products.set(result.items);
-          this.totalElements.set(result.totalElements);
-          this.totalPages.set(result.totalPages);
-          this.pageState.set(result.items.length === 0 ? 'empty' : 'default');
-        },
-        error: (err) => {
-          this.pageState.set('error');
-          this.statusMessage.set(toApiError(err).message);
-        },
+      .subscribe((nameById) => {
+        const productTypeId =
+          productTypeName === 'ALL'
+            ? undefined
+            : [...nameById.entries()].find(([, name]) => name === productTypeName)?.[0];
+
+        this.api
+          .list({
+            keyword: this.searchTerm().trim() || undefined,
+            reviewStatus: reviewStatus === 'ALL' ? undefined : reviewStatus,
+            itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
+            productTypeId,
+            page: this.pageNumber(),
+            size: this.pageSize(),
+            sort,
+          })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result) => {
+              this.products.set(result.items);
+              this.totalElements.set(result.totalElements);
+              this.totalPages.set(result.totalPages);
+              this.pageState.set(result.items.length === 0 ? 'empty' : 'default');
+            },
+            error: (err) => {
+              this.pageState.set('error');
+              this.statusMessageState.show(toApiError(err).message);
+            },
+          });
       });
   }
 
   retryLoad(): void {
     this.load();
-    this.statusMessage.set(this.useMockData ? '已恢復本地 Mock 品項。' : '正在重新載入。');
+    this.statusMessageState.show(this.useMockData ? '已恢復本地 Mock 品項。' : '正在重新載入。');
   }
 
   goToPage(page: number): void {
@@ -335,7 +356,7 @@ export class ProductManagement implements OnInit {
     this.reviewFilter.set('ALL');
     this.itemFilter.set('ALL');
     this.productTypeFilter.set('ALL');
-    this.statusMessage.set('已清除所有搜尋與篩選條件。');
+    this.statusMessageState.show('已清除所有搜尋與篩選條件。');
     this.applyFilterChange();
   }
 
@@ -346,7 +367,7 @@ export class ProductManagement implements OnInit {
     this.closeDialog();
     if (state === 'empty') this.products.set([]);
     else if (state === 'default' || state === 'locked') this.resetMockData();
-    this.statusMessage.set(
+    this.statusMessageState.show(
       state === 'error' ? '已模擬資料載入失敗。' : `已切換為 ${state} 狀態。`,
     );
   }
@@ -356,7 +377,7 @@ export class ProductManagement implements OnInit {
   showFeatureNotice(product: ProductListItem | null, message: string): void {
     this.dialogProduct.set(product);
     this.dialogMode.set('notice');
-    this.statusMessage.set(message);
+    this.statusMessageState.show(message);
   }
 
   requestDelete(product: ProductListItem): void {
@@ -371,7 +392,7 @@ export class ProductManagement implements OnInit {
 
     if (this.useMockData) {
       this.products.update((items) => items.filter((item) => item.id !== target.id));
-      this.statusMessage.set(`已從本地 Mock 清單移除「${target.name}」，未呼叫 API。`);
+      this.statusMessageState.show(`已從本地 Mock 清單移除「${target.name}」，未呼叫 API。`);
       this.closeDialog();
       return;
     }
@@ -381,7 +402,7 @@ export class ProductManagement implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.statusMessage.set(`已刪除「${target.name}」。`);
+          this.statusMessageState.show(`已刪除「${target.name}」。`);
           this.closeDialog();
           this.load();
         },
@@ -415,7 +436,7 @@ export class ProductManagement implements OnInit {
             : item,
         ),
       );
-      this.statusMessage.set(`「${target.name}」已模擬重新送審，未呼叫 API。`);
+      this.statusMessageState.show(`「${target.name}」已模擬重新送審，未呼叫 API。`);
       this.closeDialog();
       return;
     }
@@ -425,7 +446,7 @@ export class ProductManagement implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.statusMessage.set(`「${target.name}」已重新送審。`);
+          this.statusMessageState.show(`「${target.name}」已重新送審。`);
           this.closeDialog();
           this.load();
         },
@@ -447,7 +468,7 @@ export class ProductManagement implements OnInit {
    */
   private handleActionError(err: unknown): void {
     const error = toApiError(err);
-    this.statusMessage.set(
+    this.statusMessageState.show(
       error.status === 409 ? `${error.message}（已重新載入最新狀態）` : error.message,
     );
     this.closeDialog();

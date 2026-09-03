@@ -2,7 +2,7 @@
 <div class="admin-layout">
   <a class="skip-link" href="#main-content">跳到主要內容</a>
 
-  <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager" (closeRequested)="closeMenu()" />
+  <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager()" (closeRequested)="closeMenu()" />
 
   @if (isMenuOpen()) {
     <button
@@ -14,7 +14,12 @@
   }
 
   <div class="admin-main">
-    <app-header [roleLabel]="roleLabel" (menuToggle)="toggleMenu()" (logoutRequested)="logout()" />
+    <app-header
+      [roleLabel]="roleLabel()"
+      [userName]="userName()"
+      (menuToggle)="toggleMenu()"
+      (logoutRequested)="logout()"
+    />
 
     <main id="main-content" class="page-content" tabindex="-1">
       <router-outlet />

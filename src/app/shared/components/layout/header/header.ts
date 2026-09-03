@@ -9,6 +9,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 })
 export class Header {
   @Input() roleLabel = '操作人員';
+  @Input() userName = '';
 
   @Output() readonly menuToggle = new EventEmitter<void>();
   @Output() readonly logoutRequested = new EventEmitter<void>();

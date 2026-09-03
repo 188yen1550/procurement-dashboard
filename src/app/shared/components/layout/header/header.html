@@ -8,11 +8,15 @@
     </button>
 
     <div>
-      <h2 class="eyebrow">AI 選品決策輔助系統</h2>
+      <p class="eyebrow">AI 選品決策輔助系統</p>
+      <p class="system-note">AI 提供建議，最終核准由人工決定</p>
     </div>
   </div>
 
   <div class="user-actions">
+    @if (userName) {
+      <span class="user-name">{{ userName }}</span>
+    }
     <span class="role-badge">{{ roleLabel }}</span>
     <button type="button" class="logout-button" (click)="logoutRequested.emit()">登出</button>
   </div>

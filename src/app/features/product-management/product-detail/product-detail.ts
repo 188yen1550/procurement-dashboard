@@ -9,6 +9,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
+import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { REVIEW_STATUS_LABEL } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
@@ -145,7 +146,8 @@ export class ProductDetail implements OnInit {
   readonly pageState = signal<DetailState>('default');
   readonly product = signal<DetailProduct | null>(null);
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
   readonly imageLoadFailed = signal(false);
   /** 是否正在呼叫 generateAiAnalysis()；期間停用按鈕，避免重複觸發 LLM 費用。 */
   readonly isGeneratingAi = signal(false);
@@ -193,12 +195,12 @@ export class ProductDetail implements OnInit {
             toDetailProduct(product, evaluation, festival, typeName, toAiExtras(aiAnalysis)),
           );
           this.pageState.set('default');
-          if (!evaluation) this.statusMessage.set('評估分數載入失敗，其餘資料仍可檢視。');
+          if (!evaluation) this.statusMessageState.show('評估分數載入失敗，其餘資料仍可檢視。');
         },
         error: () => {
           this.product.set(null);
           this.pageState.set('error');
-          this.statusMessage.set('品項詳情載入失敗，請稍後重試。');
+          this.statusMessageState.show('品項詳情載入失敗，請稍後重試。');
         },
       });
   }
@@ -213,7 +215,7 @@ export class ProductDetail implements OnInit {
    */
   generateAiAnalysis(): void {
     if (this.useMockData) {
-      this.statusMessage.set('Mock 模式不會真的呼叫 LLM，此按鈕僅在真實模式生效。');
+      this.statusMessageState.show('Mock 模式不會真的呼叫 LLM，此按鈕僅在真實模式生效。');
       return;
     }
     const hasExisting = !!this.product()?.aiSummary;
@@ -256,13 +258,13 @@ export class ProductDetail implements OnInit {
     this.pageState.set(state);
     if (state === 'empty') this.product.set(null);
     else if (!this.product()) this.product.set(APPROVED);
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
     this.imageLoadFailed.set(false);
   }
   showIncomplete(): void {
     this.product.set(INCOMPLETE);
     this.pageState.set('default');
-    this.statusMessage.set('已切換為資料待補範例。');
+    this.statusMessageState.show('已切換為資料待補範例。');
   }
   restoreDemo(): void {
     if (!this.useMockData) {
@@ -271,12 +273,12 @@ export class ProductDetail implements OnInit {
     }
     this.product.set(APPROVED);
     this.pageState.set('default');
-    this.statusMessage.set('已恢復完整 Demo 資料。');
+    this.statusMessageState.show('已恢復完整 Demo 資料。');
     this.imageLoadFailed.set(false);
   }
   handleImageError(): void {
     this.imageLoadFailed.set(true);
-    this.statusMessage.set('商品圖片載入失敗，已顯示替代內容。');
+    this.statusMessageState.show('商品圖片載入失敗，已顯示替代內容。');
   }
   /**
    * ⚠️ 修正：這支之前不管真實／Mock 模式都只是本地模擬（syncState 直接設
@@ -287,18 +289,18 @@ export class ProductDetail implements OnInit {
   syncTrend(): void {
     if (this.useMockData) {
       this.syncState.set('syncing');
-      this.statusMessage.set('正在模擬同步趨勢資料。');
+      this.statusMessageState.show('正在模擬同步趨勢資料。');
       return;
     }
     this.syncState.set('syncing');
-    this.statusMessage.set('正在同步趨勢資料，請稍候。');
+    this.statusMessageState.show('正在同步趨勢資料，請稍候。');
     this.api
       .syncTrend(this.productId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (trend) => {
           this.syncState.set('success');
-          this.statusMessage.set('趨勢資料已同步更新。');
+          this.statusMessageState.show('趨勢資料已同步更新。');
           this.product.update((p) =>
             p
               ? {
@@ -312,14 +314,14 @@ export class ProductDetail implements OnInit {
         },
         error: (err) => {
           this.syncState.set('error');
-          this.statusMessage.set(toApiError(err).message);
+          this.statusMessageState.show(toApiError(err).message);
         },
       });
   }
   /** 僅 Mock 模式使用：手動結束模擬的同步狀態。真實模式由 syncTrend() 的 subscribe 自行結束。 */
   completeSync(success: boolean): void {
     this.syncState.set(success ? 'success' : 'error');
-    this.statusMessage.set(success ? '趨勢資料已在本地更新。' : '趨勢同步失敗，可再次嘗試。');
+    this.statusMessageState.show(success ? '趨勢資料已在本地更新。' : '趨勢同步失敗，可再次嘗試。');
   }
   /**
    * 模擬封存或復用：APPROVED／REJECTED 可封存，但只有 APPROVED 且已封存商品可復用。
@@ -335,7 +337,7 @@ export class ProductDetail implements OnInit {
       return;
     if (this.useMockData) {
       this.product.set({ ...p, itemStatus: p.itemStatus === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE' });
-      this.statusMessage.set(
+      this.statusMessageState.show(
         p.itemStatus === 'ACTIVE' ? '已在本地模擬封存。' : '已在本地模擬復用。',
       );
       return;
@@ -345,7 +347,7 @@ export class ProductDetail implements OnInit {
       next: () => this.reload(),
       error: (err: unknown) => {
         const error = toApiError(err);
-        this.statusMessage.set(
+        this.statusMessageState.show(
           error.status === 409
             ? '狀態已被他人變更，請重新整理後再試。'
             : error.message,

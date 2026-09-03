@@ -172,16 +172,6 @@ export class Dashboard implements OnInit {
     setTimeout(() => this.uiState.set('default'), 700);
   }
 
-  public statusLabel(status: ReviewStatus | null): string {
-    if (status === null) return NOT_PROVIDED;
-    const labels: Record<ReviewStatus, string> = {
-      PENDING: '未審核',
-      APPROVED: '已通過選品審核',
-      REJECTED: '未通過',
-    };
-    return labels[status];
-  }
-
   /**
    * 完整度是否可顯示門檻判斷。
    * ⚠️ 一定要先判斷這個，樣板才能安全比較 `< 60`——

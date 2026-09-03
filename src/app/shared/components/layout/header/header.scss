@@ -42,6 +42,12 @@
   font-size: 0.75rem;
 }
 
+.user-name {
+  color: #243447;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .role-badge {
   padding: 0.35rem 0.7rem;
   color: #1c5286;
@@ -113,6 +119,10 @@ button:focus-visible {
   }
 
   .role-badge {
+    display: none;
+  }
+
+  .user-name {
     display: none;
   }
 }

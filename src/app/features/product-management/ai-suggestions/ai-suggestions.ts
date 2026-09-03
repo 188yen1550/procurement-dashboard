@@ -29,7 +29,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
-import { autoDismissStatusMessage } from '../../../core/ui/auto-dismiss';
+import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductListItem } from '../api/product.mapper';
@@ -126,10 +126,11 @@ export class AiSuggestions implements OnInit {
   readonly pageState = signal<AiState>('default');
   readonly query = signal('');
   readonly items = signal<Suggestion[]>(this.useMockData ? SUGGESTIONS.map((i) => ({ ...i })) : []);
-  readonly statusMessage = signal('');
+  private readonly statusMessageState = createDismissibleMessage();
+  readonly statusMessage = this.statusMessageState.signal;
 
   constructor() {
-    autoDismissStatusMessage(this.statusMessage);
+    // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 原地重新點擊「AI 建議清單」連結時 ngOnInit() 不會再被觸發，要靠這裡
     // 才能重新抓最新的 AI_SUGGESTED 清單。Mock 模式不套用。
     if (!this.useMockData) reloadOnRevisit(() => this.load());
@@ -158,7 +159,7 @@ export class AiSuggestions implements OnInit {
         },
         error: (err) => {
           this.pageState.set('error');
-          this.statusMessage.set(toApiError(err).message);
+          this.statusMessageState.show(toApiError(err).message);
         },
       });
   }
@@ -169,7 +170,7 @@ export class AiSuggestions implements OnInit {
     this.pageState.set(state);
     if (state === 'empty') this.items.set([]);
     else if (!this.items().length && state !== 'error' && this.useMockData) this.reset();
-    this.statusMessage.set(`已切換為 ${state} 狀態。`);
+    this.statusMessageState.show(`已切換為 ${state} 狀態。`);
   }
 
   /** Mock 模式恢復固定展示資料；真實模式重新呼叫 API。 */
@@ -178,7 +179,7 @@ export class AiSuggestions implements OnInit {
     if (this.useMockData) {
       this.items.set(SUGGESTIONS.map((i) => ({ ...i })));
       this.pageState.set('default');
-      this.statusMessage.set('已恢復 AI 建議 Mock 資料。');
+      this.statusMessageState.show('已恢復 AI 建議 Mock 資料。');
       return;
     }
     this.load();
@@ -201,7 +202,7 @@ export class AiSuggestions implements OnInit {
 
     if (this.useMockData) {
       this.items.update((items) => items.filter((i) => i.id !== id));
-      this.statusMessage.set(`「${item?.name}」已在本地加入 CANDIDATE 正式候選清單。`);
+      this.statusMessageState.show(`「${item?.name}」已在本地加入 CANDIDATE 正式候選清單。`);
       return;
     }
 
@@ -211,11 +212,11 @@ export class AiSuggestions implements OnInit {
       .subscribe({
         next: () => {
           this.items.update((items) => items.filter((i) => i.id !== id));
-          this.statusMessage.set(`「${item?.name}」已加入 CANDIDATE 正式候選清單。`);
+          this.statusMessageState.show(`「${item?.name}」已加入 CANDIDATE 正式候選清單。`);
         },
         error: (err) => {
           const error = toApiError(err);
-          this.statusMessage.set(
+          this.statusMessageState.show(
             error.status === 409
               ? `「${item?.name}」的狀態已被他人變更，正在重新整理清單。`
               : error.message,
@@ -235,7 +236,7 @@ export class AiSuggestions implements OnInit {
 
     if (this.useMockData) {
       this.items.update((items) => items.filter((i) => !i.selected));
-      this.statusMessage.set(`已在本地將 ${selected.length} 筆加入正式候選。`);
+      this.statusMessageState.show(`已在本地將 ${selected.length} 筆加入正式候選。`);
       return;
     }
 
@@ -255,7 +256,7 @@ export class AiSuggestions implements OnInit {
         const failedCount = selected.length - succeededIds.length;
 
         this.items.update((items) => items.filter((i) => !succeededIds.includes(i.id)));
-        this.statusMessage.set(
+        this.statusMessageState.show(
           failedCount > 0
             ? `已加入 ${succeededIds.length} 筆，${failedCount} 筆狀態已變更，請重新整理確認。`
             : `已加入 ${succeededIds.length} 筆正式候選。`,

@@ -9,6 +9,7 @@
     <div>
       <p class="eyebrow">Dashboard</p>
       <h1>選品決策儀表板</h1>
+      <p>整理候選資料與 AI 建議，所有核准結果仍由管理人員決定。</p>
     </div>
     <div class="data-time">
       <span aria-hidden="true">●</span>
@@ -168,6 +169,7 @@
             <p class="eyebrow">Final Score Ranking</p>
             <h2 id="recommendations-title">AI 推薦 Top 10</h2>
           </div>
+          <span class="helper-text">AI 推薦不代表自動核准</span>
         </header>
         <div class="table-wrap">
           <table>
@@ -177,13 +179,12 @@
                 <th>商品與推薦理由</th>
                 <th>完整度</th>
                 <th>最終分數</th>
-                <th>審核狀態</th>
                 <th class="actions-column">操作</th>
               </tr>
             </thead>
             <tbody>
               @for (item of recommendations(); track item.id) {
-                <tr [class.locked-row]="item.reviewStatus === 'APPROVED'">
+                <tr>
                   <td>
                     <span class="rank">{{ item.rank }}</span>
                   </td>
@@ -213,24 +214,8 @@
                   <td>
                     <strong class="score">{{ item.finalScore }}</strong>
                   </td>
-                  <td class="status-column">
-                    <span class="status" [attr.data-status]="item.reviewStatus ?? 'UNKNOWN'">{{
-                      statusLabel(item.reviewStatus)
-                    }}</span>
-                  </td>
                   <td class="actions-column">
-                    @if (item.reviewStatus === 'APPROVED') {
-                      <button
-                        type="button"
-                        class="table-action"
-                        disabled
-                        title="已審核通過，核心資料鎖定"
-                      >
-                        已鎖定
-                      </button>
-                    } @else {
-                      <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
-                    }
+                    <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
                   </td>
                 </tr>
               }

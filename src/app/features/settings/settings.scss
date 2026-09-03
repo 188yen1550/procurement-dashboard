@@ -413,6 +413,11 @@ textarea:focus-visible {
 .tag-row select {
   width: 120px;
 }
+/* 標籤列刪除／＋增列、modal 頁尾／關閉鈕之前完全沒有樣式，補齊。 */
+.tag-row button,.settings-modal fieldset>button{padding:.4rem .6rem;color:#455b6e;background:#fff;border:1px solid #cbd9e3;border-radius:.4rem;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer}
+.tag-row button:hover,.settings-modal fieldset>button:hover{background:#eef1f3}
+.tag-row button:disabled{opacity:.55;cursor:not-allowed}
+.settings-modal fieldset>button{margin:.5rem .8rem .8rem}
 .modal-grid label {
   flex: 1;
 }
@@ -420,8 +425,16 @@ textarea:focus-visible {
   justify-content: flex-end;
   margin-top: 1rem;
 }
+.settings-modal header button{display:grid;width:1.9rem;height:1.9rem;place-items:center;color:#455b6e;background:#f8fafc;border:1px solid #d4dee6;border-radius:50%;font-size:1rem;line-height:1;cursor:pointer}
+.settings-modal header button:hover{background:#eef1f3}
+.settings-modal footer button{padding:.55rem 1rem;border-radius:.5rem;font:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
+.settings-modal footer button[type=button]{color:#455b6e;background:#fff;border:1px solid #cbd9e3}
+.settings-modal footer button[type=button]:hover{background:#eef1f3}
+.settings-modal footer button[type=submit]:hover{filter:brightness(1.08)}
+.settings-modal footer button:disabled{opacity:.6;cursor:not-allowed}
 .management-head button,
-.data-table button {
+.data-table button,
+.settings-modal footer button[type=submit] {
   padding: 0.48rem 0.7rem;
   color: #fff;
   background: #1c5286;
@@ -574,3 +587,4 @@ textarea:focus-visible {
     width: 100%;
   }
 }
+
