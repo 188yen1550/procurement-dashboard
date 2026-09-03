@@ -187,9 +187,9 @@ export class ProductForm implements OnInit {
    * 讓「所有錯誤都要列出」這個需求跟「單一句失敗訊息」共用同一套 UI，
    * 不用為了訊息則數另外分兩套樣板。
    */
-  readonly infoDialog = signal<{ variant: 'error' | 'success'; title: string; messages: string[] } | null>(
-    null,
-  );
+  readonly infoDialog = signal<
+    { variant: 'error' | 'success'; title: string; messages: string[]; navigateOnClose?: boolean } | null
+  >(null);
 
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
     this.useMockData ? MOCK_PRODUCT_TYPES : [],
@@ -354,11 +354,11 @@ export class ProductForm implements OnInit {
   }
 
   /**
-   * 驗證並送出表單；`resubmit` 用於 REJECTED 商品的重新送審文案
-   * （目前只影響顯示文字，後端重新送審是獨立的 POST /resubmit，
-   * 不在這支表單頁觸發——這裡的送出一律是 create/update）。
+   * 驗證並送出表單；`resubmit` 為 true 時，儲存成功後會接著呼叫
+   * POST /api/products/{id}/resubmit 真的觸發重新送審（見
+   * maybeResubmitThenFinish()），不是只改顯示文字。
    *
-   * 驗證錯誤一律用 window.alert() 列出「所有」無效欄位，不是只顯示
+   * 驗證錯誤一律用 dialog 列出「所有」無效欄位，不是只顯示
    * 第一個錯誤或一句籠統的「請修正表單」——使用者不該逐一送出、
    * 逐一被打回才知道還有哪裡沒填對。
    */
@@ -403,15 +403,21 @@ export class ProductForm implements OnInit {
     if (this.useMockData) {
       this.isSubmitting.set(true);
       this.submitCount.update((count) => count + 1);
-      this.saved.set(true);
       this.form.markAsPristine();
       this.imageDirty.set(false);
-      this.statusMessage.set(resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。');
+      const message = resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。';
       window.setTimeout(() => {
         this.isSubmitting.set(false);
-        // 新增商品（非編輯模式）完成後直接返回品項管理主頁，
-        // 不需要使用者再手動點擊「回到清單」連結。
-        if (!this.isEditMode) void this.router.navigate(['/products']);
+        this.saved.set(true);
+        this.statusMessage.set(message);
+        // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；
+        // 使用者按下確定後才返回品項管理主頁，見 closeInfoDialog()。
+        this.infoDialog.set({
+          variant: 'success',
+          title: '儲存成功',
+          messages: [message],
+          navigateOnClose: true,
+        });
       }, 500);
       return;
     }
@@ -468,7 +474,7 @@ export class ProductForm implements OnInit {
    */
   private afterSaveSuccess(productId: number, resubmit: boolean): void {
     if (!this.selectedImageFile) {
-      this.finishSubmit(resubmit);
+      this.maybeResubmitThenFinish(productId, resubmit);
       return;
     }
 
@@ -476,7 +482,7 @@ export class ProductForm implements OnInit {
       .uploadImage(productId, this.selectedImageFile)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.finishSubmit(resubmit),
+        next: () => this.maybeResubmitThenFinish(productId, resubmit),
         error: (err) => {
           // 商品本身已經存過了，圖片上傳失敗不應該讓使用者以為整筆都沒存到，
           // 所以這裡不導頁——讓使用者留在頁面上知道還差圖片這一步。
@@ -493,6 +499,37 @@ export class ProductForm implements OnInit {
       });
   }
 
+  /**
+   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重新送審」按鈕的顯示文字，
+   * 從來沒有真的呼叫過 POST /api/products/{id}/resubmit——編輯 REJECTED
+   * 商品後點下去，欄位確實存了，但 reviewStatus 不會變回 PENDING，
+   * 因為改欄位（PUT）跟送審（POST /resubmit）是後端兩支獨立的操作，
+   * 不會因為改了欄位就自動觸發送審。這裡補上真正呼叫這支端點的步驟。
+   */
+  private maybeResubmitThenFinish(productId: number, resubmit: boolean): void {
+    if (!resubmit || this.useMockData) {
+      this.finishSubmit(resubmit);
+      return;
+    }
+    this.api
+      .resubmit(productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.finishSubmit(true),
+        error: (err) => {
+          // 欄位已經存檔成功，只是送審這一步失敗，不能讓使用者以為
+          // 整個操作都沒發生——維持 saved=true，讓使用者知道要重新
+          // 觸發送審，而不是重新輸入一次資料。
+          this.isSubmitting.set(false);
+          const message = `品項資料已儲存，但重新送審失敗：${toApiError(err).message}`;
+          this.saved.set(true);
+          this.form.markAsPristine();
+          this.statusMessage.set(message);
+          this.showErrorDialog('重新送審失敗', [message]);
+        },
+      });
+  }
+
   private finishSubmit(resubmit: boolean): void {
     this.isSubmitting.set(false);
     this.submitCount.update((count) => count + 1);
@@ -500,11 +537,18 @@ export class ProductForm implements OnInit {
     this.form.markAsPristine();
     this.imageDirty.set(false);
     this.selectedImageFile = null;
-    this.statusMessage.set(resubmit ? '已儲存並重新送審。' : '已儲存品項資料。');
+    const message = resubmit ? '已儲存並重新送審。' : '已儲存品項資料。';
+    this.statusMessage.set(message);
 
-    // 新增商品完成後直接返回品項管理主頁；編輯模式維持原本停留在頁面上
-    // 顯示「儲存成功」的行為，讓使用者能確認剛剛改了什麼。
-    if (!this.isEditMode) void this.router.navigate(['/products']);
+    // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；使用者按下確定後
+    // 才返回品項管理主頁（見 closeInfoDialog()），不是存檔當下就直接跳轉，
+    // 讓使用者能先看清楚儲存結果再離開。
+    this.infoDialog.set({
+      variant: 'success',
+      title: '儲存成功',
+      messages: [message],
+      navigateOnClose: true,
+    });
   }
 
   /**
@@ -575,7 +619,11 @@ export class ProductForm implements OnInit {
     this.infoDialog.set({ variant: 'error', title, messages });
   }
   closeInfoDialog(): void {
+    // 儲存成功的 dialog 關閉時要順便返回品項管理主頁；錯誤 dialog
+    // 只是單純關閉，讓使用者留在頁面上修正問題，不用導頁。
+    const shouldNavigateBack = this.infoDialog()?.navigateOnClose === true;
     this.infoDialog.set(null);
+    if (shouldNavigateBack) void this.router.navigate(['/products']);
   }
 
   requestCancel(): void {

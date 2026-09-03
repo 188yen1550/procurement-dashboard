@@ -30,6 +30,7 @@ describe('ProductForm', () => {
     create: vi.fn((_payload: unknown) => of({ id: 201 })),
     update: vi.fn((_id: unknown, _payload: unknown) => of({ id: 201 })),
     uploadImage: vi.fn((_id: unknown, _file: unknown) => of({ id: 201 })),
+    resubmit: vi.fn((_id: unknown) => of({ id: 201 })),
   };
   const settingsApi = {
     getProductTypes: vi.fn(() => of(productTypes)),
@@ -49,6 +50,7 @@ describe('ProductForm', () => {
     vi.clearAllMocks();
     api.create.mockReturnValue(of({ id: 201 }));
     api.update.mockReturnValue(of({ id: 201 }));
+    api.resubmit.mockReturnValue(of({ id: 201 }));
     settingsApi.getProductTypes.mockReturnValue(of(productTypes));
 
     await TestBed.configureTestingModule({
@@ -68,7 +70,7 @@ describe('ProductForm', () => {
     expect(component).toBeTruthy();
     expect(component.isEditMode).toBe(false);
     expect(component.isResale()).toBe(false);
-    expect(fixture.nativeElement.textContent).toContain('待訂價 PENDING_PRICING');
+    expect(fixture.nativeElement.textContent).toContain('待訂價');
   });
 
   it('shows validation errors for an invalid submit', () => {
@@ -120,7 +122,7 @@ describe('ProductForm', () => {
     );
   });
 
-  it('saves product data via the API and returns to the product list', () => {
+  it('shows a success dialog and returns to the product list only after closing it', () => {
     component.form.patchValue({
       name: '測試商品',
       supplierName: '測試供應商',
@@ -134,10 +136,54 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(api.create).toHaveBeenCalled();
     expect(component.saved()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('儲存成功');
-    expect(fixture.nativeElement.textContent).toContain('已儲存品項資料');
-    // 新增商品（非編輯模式）成功後要自動返回品項管理主頁，不能只顯示連結等使用者點。
+    // 儲存成功一律用 dialog 呈現，不是內嵌卡片，且關閉前不導頁。
+    const dialog = component.infoDialog();
+    expect(dialog?.variant).toBe('success');
+    expect(dialog?.title).toBe('儲存成功');
+    expect(dialog?.messages[0]).toContain('已儲存品項資料');
+    expect(navigateSpy).not.toHaveBeenCalled();
+
+    component.closeInfoDialog();
+    expect(component.infoDialog()).toBeNull();
     expect(navigateSpy).toHaveBeenCalledWith(['/products']);
+  });
+
+  it('calls POST /resubmit after saving when resubmit is true, not just relabels the toast', () => {
+    // ⚠️ 這是這次修正的重點：resubmit=true 之前只換一句顯示文字，
+    // 從來沒有真的呼叫過重新送審這支端點。
+    component.form.patchValue({
+      name: '測試商品',
+      supplierName: '測試供應商',
+      productTypeId: 2,
+      campaignTags: ['daily'],
+      targetCustomer: '家庭',
+    });
+    component.submit(true);
+    fixture.detectChanges();
+    expect(api.create).toHaveBeenCalled();
+    expect(api.resubmit).toHaveBeenCalledWith(201);
+    expect(component.saved()).toBe(true);
+    expect(component.infoDialog()?.messages[0]).toContain('已儲存並重新送審');
+  });
+
+  it('keeps the saved state and shows a dialog when resubmit itself fails after a successful save', () => {
+    api.resubmit.mockReturnValueOnce(
+      throwError(() => ({ error: { message: '此商品狀態已變更，無法重新送審' } })),
+    );
+    component.form.patchValue({
+      name: '測試商品',
+      supplierName: '測試供應商',
+      productTypeId: 2,
+      campaignTags: ['daily'],
+      targetCustomer: '家庭',
+    });
+    component.submit(true);
+    fixture.detectChanges();
+    // 欄位已經存檔成功，不能因為送審這一步失敗就讓使用者以為整筆都沒存到。
+    expect(component.saved()).toBe(true);
+    const dialog = component.infoDialog();
+    expect(dialog?.title).toBe('重新送審失敗');
+    expect(dialog?.messages[0]).toContain('此商品狀態已變更');
   });
 
   it('shows an error dialog and stays on the page when saving fails', () => {

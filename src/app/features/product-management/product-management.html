@@ -7,7 +7,6 @@
     <div>
       <p class="eyebrow">Product Management</p>
       <h1 id="page-title">品項管理</h1>
-      <p>管理正式候選品項與選品審核狀態；AI 建議品項將由獨立清單處理。</p>
     </div>
     <a class="primary-action" routerLink="/products/new"
       ><span aria-hidden="true">＋</span> 新增品項</a
@@ -55,7 +54,10 @@
   @if (hasLoadError()) {
     <section class="notice error-notice" role="alert">
       <div>
-        <strong>無法載入品項資料</strong><span>這是本地 UI 錯誤狀態，未發送網路請求。</span>
+        <strong>無法載入品項資料</strong>
+        <span>{{
+          useMockData ? '這是本地 UI 錯誤狀態，未發送網路請求。' : statusMessage()
+        }}</span>
       </div>
       <button type="button" (click)="retryLoad()">重試</button>
     </section>
@@ -66,7 +68,6 @@
           <p class="eyebrow">Candidate Products</p>
           <h2 id="filter-title">搜尋與篩選</h2>
         </div>
-        <p>僅顯示 <strong>CANDIDATE</strong> 正式候選品項</p>
       </div>
       <div class="filter-grid">
         <div class="field search-field">
@@ -121,12 +122,6 @@
             }
           </select>
         </div>
-        <!-- <div class="field">
-          <label for="candidate-filter">候選狀態</label>
-          <select id="candidate-filter" disabled title="AI_SUGGESTED 請前往獨立 AI 建議清單查看">
-            <option value="CANDIDATE">CANDIDATE 正式候選</option>
-          </select>
-        </div> -->
         <div class="field">
           <label for="sort-select">排序</label
           ><select
@@ -140,9 +135,9 @@
             <option value="finalScore_desc">最終分數（高 → 低）</option>
             <option value="finalScore_asc">最終分數（低 → 高）</option>
           </select>
-          @if (sortOption() === 'finalScore_desc' || sortOption() === 'finalScore_asc') {
+          <!-- @if (sortOption() === 'finalScore_desc' || sortOption() === 'finalScore_asc') {
             <small class="sort-note">僅排序目前頁面已載入的品項，非全體排名</small>
-          }
+          } -->
         </div>
         <button
           type="button"
@@ -164,7 +159,6 @@
             <strong>{{ candidateProducts().length }}</strong> 筆
           </p>
         </div>
-        <span class="candidate-badge">CANDIDATE ONLY</span>
       </header>
       @if (isLoading()) {
         <div class="loading-status" role="status" aria-live="polite">
@@ -326,7 +320,7 @@
                         [disabled]="!product.actions.canDelete"
                         [title]="
                           product.actions.canDelete
-                            ? '從本地 Mock 清單刪除'
+                            ? (useMockData ? '從本地 Mock 清單刪除' : '刪除此品項')
                             : deleteDisabledReason(product)
                         "
                         [attr.aria-label]="
@@ -367,9 +361,9 @@
         <h2 id="dialog-title">
           {{
             dialogMode() === 'delete'
-              ? '確認刪除商品品項？'
+              ? (useMockData ? '確認移除 Mock 品項？' : '確認刪除此品項？')
               : dialogMode() === 'resubmit'
-                ? '模擬編輯並重新送審？'
+                ? (useMockData ? '模擬編輯並重新送審？' : '確認重新送審？')
                 : '功能範圍提示'
           }}
         </h2>
@@ -377,7 +371,11 @@
           {{
             dialogMode() === 'notice'
               ? statusMessage()
-              : '該操作一旦確定就不可逆。'
+              : useMockData
+                ? '這項操作只會更新本地 Mock 資料，不會呼叫後端 API。'
+                : dialogMode() === 'delete'
+                  ? '刪除後無法復原，確定要刪除這筆品項嗎？'
+                  : '確認後會將此品項狀態改回未審核，需要重新走一次選品審核流程。'
           }}
         </p>
         <div class="dialog-actions">

@@ -42,7 +42,7 @@
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
       <h2>無法載入品項詳情</h2>
-      <p>這是本地錯誤狀態模擬，未呼叫 API。</p>
+      <p>{{ useMockData ? '這是本地錯誤狀態模擬，未呼叫 API。' : statusMessage() }}</p>
       <button type="button" (click)="restoreDemo()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {
@@ -264,13 +264,21 @@
       </div>
       <p>最後同步：{{ p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
       @if (syncState() === 'syncing') {
-        <div class="sync-actions">
-          <button type="button" (click)="completeSync(true)">模擬成功</button
-          ><button type="button" (click)="completeSync(false)">模擬失敗</button>
-        </div>
+        @if (useMockData) {
+          <div class="sync-actions">
+            <button type="button" (click)="completeSync(true)">模擬成功</button
+            ><button type="button" (click)="completeSync(false)">模擬失敗</button>
+          </div>
+        } @else {
+          <p class="sync-loading" role="status">
+            <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
+          </p>
+        }
       }
       @if (syncState() === 'error') {
-        <p class="inline-error" role="alert">同步失敗，請確認網路後重試（Mock）。</p>
+        <p class="inline-error" role="alert">
+          {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
+        </p>
       }
     </section>
     <div class="content-grid">
@@ -289,6 +297,19 @@
               <li>{{ reason }}</li>
             }
           </ul>
+          @if (!useMockData) {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="isGeneratingAi()"
+              (click)="generateAiAnalysis()"
+            >
+              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
+            </button>
+            @if (aiError()) {
+              <p class="form-error" role="alert">{{ aiError() }}</p>
+            }
+          }
         } @else {
           <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
                文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->

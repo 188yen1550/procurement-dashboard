@@ -8,17 +8,16 @@
     <span>僅管理角色</span>
   </header>
   <section class="scope-notice">
-    <strong>通過選品審核 ≠ 已銷售</strong
-    ><span>僅代表成為可執行團購銷售的候選品項，不代表已上架、已簽約或已產生營收。</span>
+    <strong>通過選品審核 ≠ 已銷售</strong><span>僅代表成為可執行團購銷售的候選品項，不代表已上架、已簽約或已產生營收。</span>
   </section>
   @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態</strong><span>審核 Mock 不會送出 API</span></div>
     <div role="group" aria-label="切換審核清單狀態">
       @for (state of stateOptions; track state) {
-        <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
-          {{ state }}
-        </button>
+      <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
+        {{ state }}
+      </button>
       }
     </div>
   </section>
@@ -27,136 +26,129 @@
        任何操作結果的回饋，見 product-management.html 的說明。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-    <p class="scope-notice status-toast" role="status">{{ statusMessage() }}</p>
+  <p class="scope-notice status-toast" role="status">{{ statusMessage() }}</p>
   }
   <nav class="tabs">
     <button type="button" [class.active]="view() === 'pending'" (click)="view.set('pending')">
-      待審核清單 <span>{{ items().length }}</span></button
-    ><button type="button" [class.active]="view() === 'records'" (click)="view.set('records')">
+      待審核清單 <span>{{ items().length }}</span></button><button type="button" [class.active]="view() === 'records'"
+      (click)="view.set('records')">
       歷次決策紀錄
     </button>
   </nav>
   @if (pageState() === 'error') {
-    <section class="empty error" role="alert">
-      <h2>審核清單載入失敗</h2>
-      <button type="button" (click)="retry()">重試</button>
-    </section>
+  <section class="empty error" role="alert">
+    <h2>審核清單載入失敗</h2>
+    <button type="button" (click)="retry()">重試</button>
+  </section>
   } @else if (pageState() === 'loading') {
-    <section class="skeleton" role="status">
-      正在載入待審核品項…
-      @for (x of [1, 2, 3, 4]; track x) {
-        <span></span>
-      }
-    </section>
-  } @else if (view() === 'pending') {
-    <section class="toolbar">
-      <label
-        >搜尋品項或送審人<input
-          type="search"
-          [ngModel]="query()"
-          (ngModelChange)="query.set($event)" /></label
-      ><label
-        >審核狀態<select [ngModel]="reviewFilter()" (ngModelChange)="reviewFilter.set($event)">
-          <option value="ALL">全部</option>
-          <option value="PENDING">未審核</option>
-          <option value="APPROVED">已通過</option>
-          <option value="REJECTED">未通過</option>
-        </select></label
-      ><label
-        >品項狀態<select [ngModel]="itemFilter()" (ngModelChange)="itemFilter.set($event)">
-          <option value="ALL">全部</option>
-          <option value="ACTIVE">使用中</option>
-          <option value="ARCHIVED">已封存</option>
-        </select></label
-      ><button type="button" class="secondary-action" (click)="clearFilters()">恢復預設</button>
-    </section>
-    @if (items().length === 0) {
-      <section class="empty">
-        <h2>目前沒有審核品項</h2>
-        <p>待新品項送審後將顯示於此。</p>
-        <button type="button" (click)="resetMock()">恢復 Demo 資料</button>
-      </section>
-    } @else if (filtered().length === 0) {
-      <section class="empty">
-        <h2>找不到符合的審核品項</h2>
-        <button type="button" (click)="clearFilters()">恢復預設篩選</button>
-      </section>
-    } @else {
-      <section class="review-list">
-        @for (item of filtered(); track item.id) {
-          <article [class.disabled]="pageState() === 'disabled'">
-            <div class="score">
-              <strong>{{ item.finalScore ?? '—' }}</strong
-              ><span>Final Score</span>
-            </div>
-            <div>
-              <span class="category">{{ item.category }}</span>
-              <h2>{{ item.name }}</h2>
-              <!-- submittedBy 恆為 null：ProductResponse 只有 createdBy 編號，
-                   後端沒有 id 轉姓名的端點。null 時不顯示「由 null 送審」。 -->
-              <p>
-                @if (item.submittedBy) {
-                  由 {{ item.submittedBy }} 送審 ·
-                }
-                {{ item.submittedAt | date: 'MM/dd HH:mm' }}
-              </p>
-              @if (item.submissionCount > 1) {
-                <strong class="resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
-              }
-            </div>
-            <div class="meta">
-              <span>完整度 {{ item.completeness !== null ? item.completeness + '%' : '—' }}</span
-              ><span>{{ reviewStatusLabel(item.status) }}</span
-              ><span>{{ item.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
-            </div>
-            <!-- 條件收在元件的 canReview()，與後端進入審核頁的前置條件一致 -->
-            @if (!canReview(item)) {
-              <button type="button" disabled title="僅未審核且使用中品項可審核">審核停用</button>
-            } @else {
-              <a [routerLink]="['/review', item.id]">開始審核</a>
-            }
-          </article>
-        }
-      </section>
+  <section class="skeleton" role="status">
+    正在載入待審核品項…
+    @for (x of [1, 2, 3, 4]; track x) {
+    <span></span>
     }
+  </section>
+  } @else if (view() === 'pending') {
+  <section class="toolbar">
+    <label>搜尋品項或送審人<input type="search" [ngModel]="query()"
+        (ngModelChange)="query.set($event)" /></label><label>審核狀態<select [ngModel]="reviewFilter()"
+        (ngModelChange)="reviewFilter.set($event)">
+        <option value="ALL">全部</option>
+        <option value="PENDING">未審核</option>
+        <option value="APPROVED">已通過</option>
+        <option value="REJECTED">未通過</option>
+      </select></label><label>品項狀態<select [ngModel]="itemFilter()" (ngModelChange)="itemFilter.set($event)">
+        <option value="ALL">全部</option>
+        <option value="ACTIVE">使用中</option>
+        <option value="ARCHIVED">已封存</option>
+      </select></label><button type="button" class="secondary-action" (click)="clearFilters()">恢復預設</button>
+  </section>
+  @if (items().length === 0) {
+  <section class="empty">
+    <h2>目前沒有審核品項</h2>
+    <p>{{ useMockData ? '待新品項送審後將顯示於此。' : '目前沒有待審核的品項。' }}</p>
+    <button type="button" (click)="useMockData ? resetMock() : load()">
+      {{ useMockData ? '恢復 Demo 資料' : '重新整理' }}
+    </button>
+  </section>
+  } @else if (filtered().length === 0) {
+  <section class="empty">
+    <h2>找不到符合的審核品項</h2>
+    <button type="button" (click)="clearFilters()">恢復預設篩選</button>
+  </section>
   } @else {
-    <section class="records">
-      <header>
-        <h2>決策紀錄</h2>
-        <p>保留每次送審快照與人工決策依據。</p>
-      </header>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>商品</th>
-              <th>送審次數</th>
-              <th>結果</th>
-              <th>Final Score</th>
-              <th>審核人</th>
-              <th>日期</th>
-              <th>審核留言</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (record of records(); track record.id) {
-              <tr>
-                <td>{{ record.name }}</td>
-                <td>第 {{ record.round }} 次</td>
-                <td>
-                  <span [attr.data-result]="record.result">{{
-                    record.result === 'APPROVED' ? '通過' : '未通過'
-                  }}</span>
-                </td>
-                <td>{{ record.score ?? '—' }}</td>
-                <td>{{ record.reviewer ?? '—' }}</td>
-                <td>{{ record.date | date: 'yyyy/MM/dd' }}</td>
-                <td>{{ record.comment }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+  <section class="review-list">
+    @for (item of filtered(); track item.id) {
+    <article [class.disabled]="pageState() === 'disabled'">
+      <div class="score">
+        <strong>{{ item.finalScore ?? '—' }}</strong><span>Final Score</span>
       </div>
-    </section>
+      <div>
+        <span class="category">{{ item.category }}</span>
+        <h2>{{ item.name }}</h2>
+        <!-- submittedBy 恆為 null：ProductResponse 只有 createdBy 編號，
+                   後端沒有 id 轉姓名的端點。null 時不顯示「由 null 送審」。 -->
+        <p>
+          @if (item.submittedBy) {
+          由 {{ item.submittedBy }} 送審 ·
+          }
+          {{ item.submittedAt | date: 'MM/dd HH:mm' }}
+        </p>
+        @if (item.submissionCount > 1) {
+        <strong class="resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
+        }
+      </div>
+      <div class="meta">
+        <span>完整度 {{ item.completeness !== null ? item.completeness + '%' : '—' }}</span><span>{{
+          reviewStatusLabel(item.status) }}</span><span>{{ item.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
+      </div>
+      <!-- 條件收在元件的 canReview()，與後端進入審核頁的前置條件一致 -->
+      @if (!canReview(item)) {
+      <button type="button" disabled title="僅未審核且使用中品項可審核">審核停用</button>
+      } @else {
+      <a [routerLink]="['/review', item.id]">開始審核</a>
+      }
+    </article>
+    }
+  </section>
+  }
+  } @else {
+  <section class="records">
+    <header>
+      <h2>決策紀錄</h2>
+      <p>保留每次送審快照與人工決策依據。</p>
+    </header>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>商品</th>
+            <th>送審次數</th>
+            <th>結果</th>
+            <th>Final Score</th>
+            <th>審核人</th>
+            <th>日期</th>
+            <th>審核留言</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (record of records(); track record.id) {
+          <tr>
+            <td>{{ record.name }}</td>
+            <td>第 {{ record.round }} 次</td>
+            <td>
+              <span [attr.data-result]="record.result">{{
+                record.result === 'APPROVED' ? '通過' : '未通過'
+                }}</span>
+            </td>
+            <td>{{ record.score ?? '—' }}</td>
+            <td>{{ record.reviewer ?? '—' }}</td>
+            <td>{{ record.date | date: 'yyyy/MM/dd' }}</td>
+            <td>{{ record.comment }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
   }
 </main>

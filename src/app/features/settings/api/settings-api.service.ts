@@ -166,6 +166,16 @@ export class SettingsApiService {
   }
 
   /**
+   * ⚠️ 後端目前沒有這支端點，呼叫會是 404。前端先準備好呼叫邏輯，
+   * 等後端補上對稱的 restore 端點就能直接動，不用再回頭改這一層。
+   */
+  restoreProductType(id: number): Observable<ProductTypeResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<ProductTypeResponsePayload>>(SETTINGS_API.restoreProductType(id), {})
+      .pipe(unwrapData());
+  }
+
+  /**
    * 12. DELETE /api/settings/product-types/{id} [僅管理]
    *
    * ⚠️ 條件式刪除：被商品引用中的類型會收到 409（即使那些商品都已封存）。

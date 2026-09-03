@@ -35,6 +35,13 @@ export const SETTINGS_API = {
   audienceProfile: '/api/settings/audience-profile',
   productTypes: '/api/settings/product-types',
   disableProductType: (id: number | string) => `/api/settings/product-types/${id}/disable`,
+  /**
+   * ⚠️ 這支端點後端目前不存在，只有 disable 有對應實作。這裡先按照
+   * disable 的路徑命名慣例猜一個對稱路徑，讓前端 UI／呼叫邏輯先準備好；
+   * 後端補上這支之前，呼叫這裡一律會是 404，錯誤訊息會照實顯示，
+   * 不會假裝復用成功。
+   */
+  restoreProductType: (id: number | string) => `/api/settings/product-types/${id}/restore`,
   deleteProductType: (id: number | string) => `/api/settings/product-types/${id}`,
   festiveCampaigns: '/api/settings/festive-campaigns',
   updateFestiveCampaign: (id: number | string) => `/api/settings/festive-campaigns/${id}`,

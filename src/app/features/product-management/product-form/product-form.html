@@ -3,67 +3,156 @@
   基本資料與圖片在核准後仍可改；核心資料依 APPROVED 鎖定。aria-live／alert／status 宣告非同步與錯誤狀態。
 -->
 <main class="form-page" aria-labelledby="form-title">
-  <header class="page-header"><div><a routerLink="/products" class="back-link">← 返回品項管理</a><p class="eyebrow">Product Form</p><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : '建立或更新正式候選品項的本地 Mock 資料。' }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
-  @if (useMockData) { <section class="state-bar"><div><strong>UI 狀態</strong><span>不呼叫後端</span></div><div role="group" aria-label="切換表單狀態">@for (state of stateOptions; track state) { <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state" (click)="setState(state)">{{ state }}</button> }</div></section> }
+  <header class="page-header">
+    <div><a routerLink="/products" class="back-link">← 返回品項管理</a>
+      <p class="eyebrow">Product Form</p>
+      <h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1>
+      <p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。')
+        }}</p>
+    </div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span>
+  </header>
+  @if (useMockData) { <section class="state-bar">
+    <div><strong>UI 狀態</strong><span>不呼叫後端</span></div>
+    <div role="group" aria-label="切換表單狀態">@for (state of stateOptions; track state) { <button type="button"
+        [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state" (click)="setState(state)">{{
+        state }}</button> }</div>
+  </section> }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
-  @if (statusMessage() && !saved()) { <div class="feedback-toast" [attr.role]="pageState() === 'error' || imageState() === 'error' ? 'alert' : 'status'">{{ statusMessage() }}</div> }
-  @if (pageState() === 'error') { <section class="notice error" role="alert"><div><strong>無法讀取表單資料</strong><span>這是本地錯誤狀態模擬。</span></div><button type="button" (click)="retry()">重試</button></section> }
-  @else if (pageState() === 'loading') { <section class="form-card skeleton" role="status"><span class="spinner"></span>正在載入品項表單… @for (line of [1,2,3,4,5,6]; track line) { <i></i> }</section> }
+  @if (statusMessage() && !saved()) { <div class="feedback-toast"
+    [attr.role]="pageState() === 'error' || imageState() === 'error' ? 'alert' : 'status'">{{ statusMessage() }}</div> }
+  @if (pageState() === 'error') { <section class="notice error" role="alert">
+    <div><strong>無法讀取表單資料</strong><span>{{ useMockData ? '這是本地錯誤狀態模擬。' : statusMessage() }}</span></div><button
+      type="button" (click)="retry()">重試</button>
+  </section> }
+  @else if (pageState() === 'loading') { <section class="form-card skeleton" role="status"><span
+      class="spinner"></span>正在載入品項表單… @for (line of [1,2,3,4,5,6]; track line) { <i></i> }</section> }
   @else {
-    @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong>🔒 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
-    @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重新送審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
-    @if (saved()) { <section class="notice success" role="status"><div><strong>{{ useMockData ? '本地 Mock 儲存成功' : '儲存成功' }}</strong><span>{{ statusMessage() }}</span></div><a routerLink="/products">回到清單</a></section> }
-    <form class="form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <section aria-labelledby="basic-title"><header><span>01</span><div><h2 id="basic-title">商品基本資料</h2><p>通過審核後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
-        <label class="wide">商品名稱 <em>*</em><input formControlName="name" [attr.aria-invalid]="fieldInvalid('name')" />@if (fieldInvalid('name')) { <small role="alert">請輸入 100 字以內的商品名稱。</small> }</label>
-        <label>供應商名稱 <em>*</em><input formControlName="supplierName" [attr.aria-invalid]="fieldInvalid('supplierName')" />@if (fieldInvalid('supplierName')) { <small role="alert">請輸入供應商名稱。</small> }</label>
+  @if (isApproved() || pageState() === 'locked') { <section class="notice locked">
+    <div><strong>🔒 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div>
+  </section> }
+  @if (isRejected()) { <section class="notice rejected">
+    <div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重新送審」，歷史審核紀錄不會被覆蓋。</span></div>
+  </section> }
+  <!-- 儲存成功／失敗一律用下方的 infoDialog 呈現，不在這裡重複顯示第二層提示。 -->
+  <form class="form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <section aria-labelledby="basic-title">
+      <header><span>01</span>
+        <div>
+          <h2 id="basic-title">商品基本資料</h2>
+          <p>通過審核後仍可更新的識別與供應商資訊。</p>
+        </div>
+      </header>
+      <div class="form-grid">
+        <label class="wide">商品名稱 <em>*</em><input formControlName="name"
+            [attr.aria-invalid]="fieldInvalid('name')" />@if (fieldInvalid('name')) { <small role="alert">請輸入 100
+            字以內的商品名稱。</small> }</label>
+        <label>供應商名稱 <em>*</em><input formControlName="supplierName"
+            [attr.aria-invalid]="fieldInvalid('supplierName')" />@if (fieldInvalid('supplierName')) { <small
+            role="alert">請輸入供應商名稱。</small> }</label>
         <label class="wide">商品說明<textarea rows="3" formControlName="description"></textarea></label>
         <div class="wide image-field" [class.disabled]="pageState() === 'locked'" aria-labelledby="image-label">
-          <div class="image-heading"><div><strong id="image-label">商品圖片</strong><small>僅支援單張 JPG、PNG 或 WebP，最大 {{ maxImageSizeLabel }}；建議使用 4:3、至少 800 × 600 px。選取後先在瀏覽器預覽。</small></div><label class="image-picker" [class.is-disabled]="pageState() === 'locked'"><input id="product-image" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" [disabled]="pageState() === 'locked' || isSubmitting()" (change)="onImageSelected($event)" /><span>{{ imageState() === 'ready' ? '更換圖片' : '選擇圖片' }}</span></label></div>
-          @if (imageState() === 'loading') { <div class="image-loading" role="status"><span class="spinner"></span>正在建立圖片預覽…</div> }
-          @else if (imageState() === 'error') { <div class="image-error" role="alert"><strong>圖片無法使用</strong><span>{{ imageError() }}</span></div> }
-          @else if (imageState() === 'ready' && imagePreviewUrl(); as preview) { <div class="image-preview"><img [src]="preview" [alt]="form.controls.name.value ? form.controls.name.value + ' 商品圖片預覽' : '商品圖片預覽'" /><div>@if (imageInfo(); as info) { <strong>{{ info.name }}</strong><span>{{ info.type }} · {{ formatFileSize(info.size) }}</span> }<small>本地預覽 · 尚未儲存</small><button type="button" class="remove-image" [disabled]="pageState() === 'locked'" (click)="removeImage()">移除圖片</button></div></div> }
-          @else { <div class="image-empty"><span aria-hidden="true">🖼️</span><div><strong>尚未選擇圖片</strong><small>圖片為選填的一般基本資料，不影響建立與送審。</small></div></div> }
+          <div class="image-heading">
+            <div><strong id="image-label">商品圖片</strong><small>僅支援單張 JPG、PNG 或 WebP，最大 {{ maxImageSizeLabel }}；建議使用
+                4:3、至少 800 × 600 px。選取後先在瀏覽器預覽。</small></div><label class="image-picker"
+              [class.is-disabled]="pageState() === 'locked'"><input id="product-image" type="file"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                [disabled]="pageState() === 'locked' || isSubmitting()" (change)="onImageSelected($event)" /><span>{{
+                imageState() === 'ready' ? '更換圖片' : '選擇圖片' }}</span></label>
+          </div>
+          @if (imageState() === 'loading') { <div class="image-loading" role="status"><span
+              class="spinner"></span>正在建立圖片預覽…</div> }
+          @else if (imageState() === 'error') { <div class="image-error" role="alert"><strong>圖片無法使用</strong><span>{{
+              imageError() }}</span></div> }
+          @else if (imageState() === 'ready' && imagePreviewUrl(); as preview) { <div class="image-preview"><img
+              [src]="preview" [alt]="form.controls.name.value ? form.controls.name.value + ' 商品圖片預覽' : '商品圖片預覽'" />
+            <div>@if (imageInfo(); as info) { <strong>{{ info.name }}</strong><span>{{ info.type }} · {{
+                formatFileSize(info.size) }}</span> }<small>本地預覽 · 尚未儲存</small><button type="button"
+                class="remove-image" [disabled]="pageState() === 'locked'" (click)="removeImage()">移除圖片</button></div>
+          </div> }
+          @else { <div class="image-empty"><span aria-hidden="true">🖼️</span>
+            <div><strong>尚未選擇圖片</strong><small>圖片為選填的一般基本資料，不影響建立與送審。</small></div>
+          </div> }
           @if (pageState() === 'locked') { <p class="image-disabled-note">圖片選擇目前已停用。已核准品項在一般編輯狀態下仍可更換圖片。</p> }
         </div>
-      </div></section>
-      <section aria-labelledby="core-title"><header><span>02</span><div><h2 id="core-title">選品核心資料</h2><p>影響評分、排行與審核的條件。</p></div></header><div class="form-grid">
-        <label>商品實際分類 <em>*</em><select formControlName="productTypeId"><option [value]="null">請選擇</option>@for (type of productTypeOptions(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }</select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品實際分類。</small> }</label>
-        <fieldset><legend>訂價分流 <em>*</em></legend><div class="choice-row"><label><input type="radio" formControlName="pricingType" value="NEW" /> 新品 NEW</label><label><input type="radio" formControlName="pricingType" value="RESALE" /> 再販售 RESALE</label></div><small>{{ isResale() ? '再販售需填寫價格與市價比較。' : '新品尚未定價，建立後標示為待訂價。' }}</small></fieldset>
-        <label class="wide">節慶標籤（選填）<select multiple formControlName="campaignTags" aria-describedby="campaign-tags-help">@for (tag of campaignTagOptions(); track tag) { <option [value]="tag">{{ tag }}</option> }</select><small id="campaign-tags-help">可複選目前檔期使用的標籤；未選擇也能儲存。</small>@if (form.controls.campaignTags.value.length) { <span class="selected-tags">@for (tag of form.controls.campaignTags.value; track tag) { <button type="button" (click)="removeCampaignTag(tag)" [attr.aria-label]="'移除節慶標籤 ' + tag">{{ tag }} ×</button> }</span> }</label>
-        @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div> }
-        @else { <div class="pending-pricing wide"><strong>待訂價 PENDING_PRICING</strong><span>新品此階段不要求成本價與售價。</span></div> }
+      </div>
+    </section>
+    <section aria-labelledby="core-title">
+      <header><span>02</span>
+        <div>
+          <h2 id="core-title">選品核心資料</h2>
+          <p>影響評分、排行與審核的條件。</p>
+        </div>
+      </header>
+      <div class="form-grid">
+        <label>商品實際分類 <em>*</em><select formControlName="productTypeId">
+            <option [value]="null">請選擇</option>@for (type of productTypeOptions(); track type.id) { <option
+              [value]="type.id">{{ type.name }}</option> }
+          </select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品實際分類。</small> }</label>
+        <fieldset>
+          <legend>訂價分流 <em>*</em></legend>
+          <div class="choice-row"><label><input type="radio" formControlName="pricingType" value="NEW" /> 新品
+              NEW</label><label><input type="radio" formControlName="pricingType" value="RESALE" /> 再販售 RESALE</label>
+          </div><small>{{ isResale() ? '再販售需填寫價格與市價比較。' : '新品尚未定價，建立後標示為待訂價。' }}</small>
+        </fieldset>
+        <label class="wide">節慶標籤（選填）<select multiple formControlName="campaignTags"
+            aria-describedby="campaign-tags-help">@for (tag of campaignTagOptions(); track tag) { <option [value]="tag">
+              {{ tag }}</option> }</select><small id="campaign-tags-help">可複選目前檔期使用的標籤；未選擇也能儲存。</small>@if
+          (form.controls.campaignTags.value.length) { <span class="selected-tags">@for (tag of
+            form.controls.campaignTags.value; track tag) { <button type="button" (click)="removeCampaignTag(tag)"
+              [attr.aria-label]="'移除節慶標籤 ' + tag">{{ tag }} ×</button> }</span> }</label>
+        @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0"
+              formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0"
+              formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0"
+              formControlName="marketPrice" /></label>
+          <div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%'
+              }}</strong></div>
+        </div> }
+        @else { <div class="pending-pricing wide"><strong>待訂價</strong><span>新品此階段不要求成本價與售價。</span></div>
+        }
         <label>MOQ 最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
         <label>供應穩定性（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="supplyStability" /></label>
-        <label>價格競爭力（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="priceCompetitiveness" /></label>
+        <label>價格競爭力（0–5）<input type="number" min="0" max="5" step="0.1"
+            formControlName="priceCompetitiveness" /></label>
         <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
-        <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer" aria-describedby="target-customer-help"></textarea><small id="target-customer-help">用於客群匹配、AI 摘要與人工審核參考；AI 不會因此自動核准商品。</small>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500 字以內的目標客群描述，不能只有空格。</small> }</label>
-      </div></section>
-      <footer><p>此頁只儲存於當前前端狀態，重新整理後會還原。</p><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
-    </form>
+        <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer"
+            aria-describedby="target-customer-help"></textarea><small id="target-customer-help">用於客群匹配、AI 摘要與人工審核參考；AI
+            不會因此自動核准商品。</small>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500
+            字以內的目標客群描述，不能只有空格。</small> }</label>
+      </div>
+    </section>
+    <footer>
+      <p>此頁只儲存於當前前端狀態，重新整理後會還原。</p>
+      <div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if
+        (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{
+          isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary"
+          [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div>
+    </footer>
+  </form>
   }
-  @if (leaveDialogOpen()) { <div class="dialog-backdrop"><section role="alertdialog" aria-modal="true" aria-labelledby="leave-title" class="dialog"><h2 id="leave-title">放棄未儲存的變更？</h2><p>離開後，目前輸入的本地資料將不會保留。</p><div><button type="button" (click)="closeLeaveDialog()">繼續編輯</button><button type="button" class="danger" (click)="discardAndLeave()">放棄並離開</button></div></section></div> }
+  @if (leaveDialogOpen()) { <div class="dialog-backdrop">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="leave-title" class="dialog">
+      <h2 id="leave-title">放棄未儲存的變更？</h2>
+      <p>離開後，目前輸入的本地資料將不會保留。</p>
+      <div><button type="button" (click)="closeLeaveDialog()">繼續編輯</button><button type="button" class="danger"
+          (click)="discardAndLeave()">放棄並離開</button></div>
+    </section>
+  </div> }
   @if (infoDialog(); as dialog) {
-    <div class="dialog-backdrop">
-      <section
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="info-dialog-title"
-        class="dialog"
-        [class.is-error]="dialog.variant === 'error'"
-      >
-        <h2 id="info-dialog-title">{{ dialog.title }}</h2>
-        @if (dialog.messages.length > 1) {
-          <ol>
-            @for (message of dialog.messages; track message) {
-              <li>{{ message }}</li>
-            }
-          </ol>
-        } @else {
-          <p>{{ dialog.messages[0] }}</p>
+  <div class="dialog-backdrop">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="info-dialog-title" class="dialog"
+      [class.is-error]="dialog.variant === 'error'" [class.is-success]="dialog.variant === 'success'">
+      <h2 id="info-dialog-title">{{ dialog.title }}</h2>
+      @if (dialog.messages.length > 1) {
+      <ol>
+        @for (message of dialog.messages; track message) {
+        <li>{{ message }}</li>
         }
-        <div><button type="button" class="primary" (click)="closeInfoDialog()">我知道了</button></div>
-      </section>
-    </div>
+      </ol>
+      } @else {
+      <p>{{ dialog.messages[0] }}</p>
+      }
+      <div><button type="button" class="primary" (click)="closeInfoDialog()">我知道了</button></div>
+    </section>
+  </div>
   }
 </main>

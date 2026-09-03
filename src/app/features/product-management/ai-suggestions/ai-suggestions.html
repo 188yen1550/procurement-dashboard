@@ -4,10 +4,6 @@
     <div>
       <p class="eyebrow">AI Discovery</p>
       <h1 id="ai-title">AI 建議清單</h1>
-      <p>
-        AI_SUGGESTED 不是正式候選；必須由操作人員加入 CANDIDATE 後，才會進入評分、Top 10
-        與審核流程。
-      </p>
     </div>
     <a routerLink="/products">回到正式候選清單</a>
   </header>
@@ -37,7 +33,7 @@
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
       <h2>AI 建議資料載入失敗</h2>
-      <p>這是本地錯誤狀態，未呼叫 LLM 或後端。</p>
+      <p>{{ useMockData ? '這是本地錯誤狀態，未呼叫 LLM 或後端。' : statusMessage() }}</p>
       <button type="button" (click)="reset()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {

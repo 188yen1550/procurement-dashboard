@@ -118,6 +118,9 @@ describe('Settings', () => {
     disableProductType: vi.fn((id: number) =>
       of({ ...MOCK_PRODUCT_TYPES.find((p) => p.id === id)!, isActive: false }),
     ),
+    restoreProductType: vi.fn((id: number) =>
+      of({ ...MOCK_PRODUCT_TYPES.find((p) => p.id === id)!, isActive: true }),
+    ),
     deleteProductType: vi.fn(() => of(undefined)),
     getFestiveCampaigns: vi.fn(() => of(MOCK_CAMPAIGNS.map((c) => ({ ...c })))),
     updateFestiveCampaign: vi.fn((id: number, body: unknown) =>
@@ -135,6 +138,9 @@ describe('Settings', () => {
     ),
     disable: vi.fn((id: number) =>
       of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: false }),
+    ),
+    restore: vi.fn((id: number) =>
+      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: true }),
     ),
   };
 
@@ -267,6 +273,37 @@ describe('Settings', () => {
     expect(userApi.disable).toHaveBeenCalledWith(2);
     expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(false);
     expect(component.accounts().length).toBe(3);
+  });
+
+  it('shares the same button to toggle an account between disable and restore', () => {
+    component.setTab('accounts');
+    fixture.detectChanges();
+    // 停用：呼叫 disable，文字/顏色切換成「復用帳號」。
+    component.toggleAccountActive('buyer01');
+    expect(userApi.disable).toHaveBeenCalledWith(2);
+    expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(false);
+    fixture.detectChanges();
+    const toggleButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.status-actions-cell .text-action'),
+    ).find((el) => (el as HTMLElement).textContent?.includes('帳號')) as HTMLButtonElement;
+    expect(toggleButton?.textContent).toContain('復用帳號');
+    expect(toggleButton?.classList.contains('is-restore')).toBe(true);
+
+    // 復用：同一個方法，狀態反過來時改呼叫 restore。
+    component.toggleAccountActive('buyer01');
+    expect(userApi.restore).toHaveBeenCalledWith(2);
+    expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(true);
+  });
+
+  it('shares the same button to toggle a product type between disable and restore', () => {
+    component.setTab('productTypes');
+    component.toggleProductTypeActive('食品／生鮮');
+    expect(settingsApi.disableProductType).toHaveBeenCalled();
+    expect(component.productTypes().find((item) => item.name === '食品／生鮮')?.active).toBe(false);
+
+    component.toggleProductTypeActive('食品／生鮮');
+    expect(settingsApi.restoreProductType).toHaveBeenCalled();
+    expect(component.productTypes().find((item) => item.name === '食品／生鮮')?.active).toBe(true);
   });
 
   it('shows fixed read-only weights and switches modes', () => {

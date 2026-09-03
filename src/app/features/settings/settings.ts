@@ -513,6 +513,14 @@ export class Settings implements OnInit {
       });
   }
 
+  /** 依目前狀態決定要停用還是復用，樣板只需要綁定同一個方法。 */
+  toggleProductTypeActive(name: string): void {
+    const item = this.productTypes().find((type) => type.name === name);
+    if (!item) return;
+    if (item.active) this.disableProductType(name);
+    else this.restoreProductType(name);
+  }
+
   disableProductType(name: string): void {
     if (this.useMockData) {
       this.productTypes.update((items) =>
@@ -534,6 +542,32 @@ export class Settings implements OnInit {
           );
           this.productTypeLookup.invalidate();
           this.statusMessage.set(`已停用「${name}」。`);
+        },
+        error: (err) => this.statusMessage.set(toApiError(err).message),
+      });
+  }
+
+  private restoreProductType(name: string): void {
+    if (this.useMockData) {
+      this.productTypes.update((items) =>
+        items.map((item) => (item.name === name ? { ...item, active: true } : item)),
+      );
+      return;
+    }
+
+    const item = this.productTypes().find((type) => type.name === name);
+    if (!item?.id) return;
+
+    this.api
+      .restoreProductType(item.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.productTypes.update((items) =>
+            items.map((type) => (type.name === name ? { ...type, active: true } : type)),
+          );
+          this.productTypeLookup.invalidate();
+          this.statusMessage.set(`已復用「${name}」。`);
         },
         error: (err) => this.statusMessage.set(toApiError(err).message),
       });
@@ -586,6 +620,14 @@ export class Settings implements OnInit {
       });
   }
 
+  /** 依目前狀態決定要停用還是復用，樣板只需要綁定同一個方法。 */
+  toggleAccountActive(username: string): void {
+    const item = this.accounts().find((account) => account.username === username);
+    if (!item) return;
+    if (item.active) this.disableAccount(username);
+    else this.restoreAccount(username);
+  }
+
   disableAccount(username: string): void {
     if (this.useMockData) {
       this.accounts.update((items) =>
@@ -616,6 +658,34 @@ export class Settings implements OnInit {
           // 不要讓使用者以為是網路問題重試。
           this.statusMessage.set(error.message);
         },
+      });
+  }
+
+  private restoreAccount(username: string): void {
+    if (this.useMockData) {
+      this.accounts.update((items) =>
+        items.map((item) => (item.username === username ? { ...item, active: true } : item)),
+      );
+      this.statusMessage.set('已復用帳號。');
+      return;
+    }
+
+    const item = this.accounts().find((account) => account.username === username);
+    if (!item?.id) return;
+
+    this.userApi
+      .restore(item.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.accounts.update((items) =>
+            items.map((account) =>
+              account.username === username ? { ...account, active: true } : account,
+            ),
+          );
+          this.statusMessage.set('已復用帳號。');
+        },
+        error: (err) => this.statusMessage.set(toApiError(err).message),
       });
   }
 

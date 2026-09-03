@@ -214,7 +214,11 @@ export class ProductDetail implements OnInit {
       this.statusMessage.set('Mock 模式不會真的呼叫 LLM，此按鈕僅在真實模式生效。');
       return;
     }
-    if (!window.confirm('產生 AI 分析會呼叫外部 LLM 服務並計入配額，確定要繼續嗎？')) return;
+    const hasExisting = !!this.product()?.aiSummary;
+    const confirmMessage = hasExisting
+      ? '重新產生會呼叫外部 LLM 服務並計入配額，且會覆蓋目前的分析結果，確定要繼續嗎？'
+      : '產生 AI 分析會呼叫外部 LLM 服務並計入配額，確定要繼續嗎？';
+    if (!window.confirm(confirmMessage)) return;
 
     this.isGeneratingAi.set(true);
     this.aiError.set('');
@@ -263,10 +267,45 @@ export class ProductDetail implements OnInit {
     this.imageLoadFailed.set(true);
     this.statusMessage.set('商品圖片載入失敗，已顯示替代內容。');
   }
+  /**
+   * ⚠️ 修正：這支之前不管真實／Mock 模式都只是本地模擬（syncState 直接設
+   * 'syncing'，然後靠畫面上「模擬成功／模擬失敗」兩顆按鈕手動結束），
+   * 從來沒有真的呼叫 POST /api/products/{id}/trend/sync——即使
+   * ProductApiService.syncTrend() 這支方法本來就已經寫好了。
+   */
   syncTrend(): void {
+    if (this.useMockData) {
+      this.syncState.set('syncing');
+      this.statusMessage.set('正在模擬同步趨勢資料。');
+      return;
+    }
     this.syncState.set('syncing');
-    this.statusMessage.set('正在模擬同步趨勢資料。');
+    this.statusMessage.set('正在同步趨勢資料，請稍候。');
+    this.api
+      .syncTrend(this.productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (trend) => {
+          this.syncState.set('success');
+          this.statusMessage.set('趨勢資料已同步更新。');
+          this.product.update((p) =>
+            p
+              ? {
+                  ...p,
+                  trendScore: trend.trendScore ?? p.trendScore,
+                  trendDirection: trend.trendDirection,
+                  lastSyncedAt: trend.collectedAt ?? p.lastSyncedAt,
+                }
+              : p,
+          );
+        },
+        error: (err) => {
+          this.syncState.set('error');
+          this.statusMessage.set(toApiError(err).message);
+        },
+      });
   }
+  /** 僅 Mock 模式使用：手動結束模擬的同步狀態。真實模式由 syncTrend() 的 subscribe 自行結束。 */
   completeSync(success: boolean): void {
     this.syncState.set(success ? 'success' : 'error');
     this.statusMessage.set(success ? '趨勢資料已在本地更新。' : '趨勢同步失敗，可再次嘗試。');

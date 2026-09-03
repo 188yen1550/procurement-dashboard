@@ -7,7 +7,6 @@
     <div>
       <p class="eyebrow">Management Settings</p>
       <h1 id="settings-title">系統設定</h1>
-      <p>管理評估模式、人工風險、商品類型、節慶檔期與帳號。</p>
     </div>
     <span>僅管理角色</span>
   </header>
@@ -63,7 +62,7 @@
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
       <h2>無法載入設定</h2>
-      <p>這是本地錯誤模擬，不會呼叫後端。</p>
+      <p>{{ useMockData ? '這是本地錯誤模擬，不會呼叫後端。' : statusMessage() }}</p>
       <button type="button" (click)="retry()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {
@@ -84,7 +83,10 @@
     }
     @if (saved()) {
       <section class="success" role="status">
-        <div><strong>儲存成功</strong><span>已更新本地 Mock 核心客群。</span></div>
+        <div>
+          <strong>儲存成功</strong
+          ><span>{{ useMockData ? '已更新本地 Mock 核心客群。' : '已更新核心客群設定。' }}</span>
+        </div>
       </section>
     }
     <form class="panel" [formGroup]="form" (ngSubmit)="saveAudience()" novalidate>
@@ -207,16 +209,19 @@
               </td>
               <td>{{ item.system ? '系統預設' : '自訂' }}</td>
               <td>{{ item.used === null ? '—' : item.used }}</td>
-              <td>
-                {{ item.active ? '啟用' : '已停用' }}
+              <td class="status-actions-cell">
+                <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
                 <button
                   type="button"
-                  (click)="disableProductType(item.name)"
-                  [disabled]="!item.active"
+                  class="text-action"
+                  [class.is-restore]="!item.active"
+                  (click)="toggleProductTypeActive(item.name)"
                 >
-                  停用
+                  {{ item.active ? '停用' : '復用' }}
                 </button>
-                <button type="button" (click)="removeProductType(item.name)">刪除</button>
+                <button type="button" class="text-action danger" (click)="removeProductType(item.name)">
+                  刪除
+                </button>
               </td>
             </tr>
           }
@@ -273,7 +278,7 @@
     <section class="management-head">
       <div>
         <h2>帳號管理</h2>
-        <p>帳號由管理人員建立，只能停用、不能刪除。</p>
+        <p>帳號由管理人員建立，可停用／復用，不能刪除。</p>
       </div>
       <button type="button" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
         ＋ 新增帳號
@@ -299,13 +304,15 @@
               <td>{{ item.name }}</td>
               <td>{{ item.role === 'MANAGER' ? '管理' : '操作' }}</td>
               <td>{{ item.active ? '啟用' : '已停用' }}</td>
-              <td>
+              <td class="status-actions-cell">
                 <button
                   type="button"
-                  (click)="disableAccount(item.username)"
-                  [disabled]="pageState() === 'disabled' || !item.active"
+                  class="text-action"
+                  [class.is-restore]="!item.active"
+                  [disabled]="pageState() === 'disabled'"
+                  (click)="toggleAccountActive(item.username)"
                 >
-                  {{ item.active ? '停用帳號' : '已停用' }}
+                  {{ item.active ? '停用帳號' : '復用帳號' }}
                 </button>
               </td>
             </tr>

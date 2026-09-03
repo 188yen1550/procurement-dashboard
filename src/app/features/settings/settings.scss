@@ -435,6 +435,63 @@ textarea:focus-visible {
 .management-head button:disabled {
   opacity: 0.5;
 }
+/**
+ * 狀態／操作欄專用：每列的「狀態文字＋操作按鈕」之間，跟按鈕彼此之間
+ * 之前完全沒有間距，擠在一起不好點也不好讀。這裡改用比照站內
+ * .text-action（product-management 頁面已經在用的風格）的輕量按鈕，
+ * 不要沿用 .data-table button 那種整塊填色的重按鈕——一列裡兩三顆
+ * 全部填滿顏色反而互相搶注意力。
+ */
+.status-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+.status-actions-cell .status-text {
+  color: #455b6e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-actions-cell .text-action {
+  padding: 0.32rem 0.55rem;
+  color: #1c5286;
+  background: #fff;
+  border: 1px solid #cbd9e3;
+  border-radius: 0.42rem;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.status-actions-cell .text-action:hover:not(:disabled) {
+  background: #eaf2f8;
+}
+.status-actions-cell .text-action:disabled {
+  color: #8a969f;
+  background: #eef1f3;
+  border-color: #eef1f3;
+  cursor: not-allowed;
+}
+/* 「復用」跟「停用」共用同一顆按鈕，靠顏色分辨目前是哪個動作：
+   停用維持中性藍（跟其他一般操作一致），復用改成綠色系，
+   跟「刪除」的紅色系明確區隔，三種動作一眼就能分辨後果嚴重程度。 */
+.status-actions-cell .text-action.is-restore {
+  color: #21694f;
+  background: #eaf7f1;
+  border-color: #bfe3d3;
+}
+.status-actions-cell .text-action.is-restore:hover:not(:disabled) {
+  background: #dcf1e6;
+}
+.status-actions-cell .text-action.danger {
+  color: #a43d36;
+}
+.status-actions-cell .text-action.danger:hover:not(:disabled) {
+  background: #fdf0ef;
+}
 .data-table {
   overflow-x: auto;
   background: #fff;

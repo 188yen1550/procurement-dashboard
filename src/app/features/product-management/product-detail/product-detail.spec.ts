@@ -8,7 +8,7 @@
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductDetail } from './product-detail';
@@ -69,6 +69,16 @@ describe('ProductDetail', () => {
     ),
     archive: vi.fn(() => of({})),
     restore: vi.fn(() => of({})),
+    syncTrend: vi.fn(() =>
+      of({
+        source: 'GOOGLE_TRENDS',
+        keyword: '中秋烤肉',
+        trendScore: 92,
+        popularityScore: 88,
+        trendDirection: 'UP' as const,
+        collectedAt: '2026-09-02T10:00:00',
+      }),
+    ),
   };
   const productTypeLookup = {
     getName: vi.fn(() => of('食品／生鮮')),
@@ -119,13 +129,23 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('不進入評估計分與 AI 推薦');
     expect(fixture.nativeElement.textContent).toContain('不會虛構推薦內容');
   });
-  it('simulates trend sync success and failure', () => {
+  it('syncs trend data via the real API in formal mode', () => {
     component.syncTrend();
     expect(component.syncState()).toBe('syncing');
-    component.completeSync(false);
+    // 這支 spec 沒有設定路由參數，productId 實際上是空字串（見同檔案
+    // generateAiAnalysis 測試的說明），語意上跟其他測試保持一致。
+    expect(api.syncTrend).toHaveBeenCalledWith('');
+    expect(component.syncState()).toBe('success');
+    expect(component.product()?.trendDirection).toBe('UP');
+    expect(component.product()?.trendScore).toBe(92);
+  });
+
+  it('shows the real error message when trend sync fails', () => {
+    api.syncTrend.mockReturnValueOnce(throwError(() => ({ error: { message: '外部趨勢資料源逾時' } })));
+    component.syncTrend();
     fixture.detectChanges();
     expect(component.syncState()).toBe('error');
-    expect(fixture.nativeElement.textContent).toContain('同步失敗');
+    expect(fixture.nativeElement.textContent).toContain('外部趨勢資料源逾時');
   });
   it('uses the master API service to archive and restore in formal mode', () => {
     component.toggleArchive();
@@ -178,6 +198,24 @@ describe('ProductDetail', () => {
       '中秋烤肉需求與 bbq 標籤相符',
       '團購價較市價低 20%',
     ]);
+    // ⚠️ 對應這次修正的重點：按鈕之前只存在於「尚未產生」的分支，
+    // 產生成功後整顆按鈕連同分支一起消失，使用者無法再次觸發。
+    // 現在有分析結果時也要能看到「重新產生」按鈕。
+    fixture.detectChanges();
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('.panel.ai button'),
+    ) as HTMLButtonElement[];
+    expect(buttons.some((button) => button.textContent?.includes('重新產生 AI 分析'))).toBe(true);
+  });
+  it('allows regenerating AI analysis and warns that it will overwrite the existing result', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.generateAiAnalysis();
+    confirmSpy.mockClear();
+    component.generateAiAnalysis();
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining('會覆蓋目前的分析結果'),
+    );
+    expect(api.generateAiAnalysis).toHaveBeenCalledTimes(2);
   });
   it('does not call the LLM when the user cancels the confirmation dialog', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);

@@ -66,22 +66,14 @@
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
               <span class="input-icon" aria-hidden="true"> 👤 </span>
 
-              <input
-                id="username"
-                type="text"
-                formControlName="username"
-                placeholder="請輸入帳號或電子郵件"
-                autocomplete="username"
-                [readOnly]="isLoading()"
-                [attr.aria-invalid]="
+              <input id="username" type="text" formControlName="username" placeholder="請輸入帳號或電子郵件"
+                autocomplete="username" [readOnly]="isLoading()" [attr.aria-invalid]="
                   loginForm.controls.username.invalid && loginForm.controls.username.touched
-                "
-                [attr.aria-describedby]="
+                " [attr.aria-describedby]="
                   loginForm.controls.username.invalid && loginForm.controls.username.touched
                     ? 'username-error'
                     : null
-                "
-              />
+                " />
             </div>
 
             <!--
@@ -89,10 +81,10 @@
               才顯示必填錯誤。
             -->
             @if (
-              loginForm.controls.username.touched &&
-              loginForm.controls.username.hasError('required')
+            loginForm.controls.username.touched &&
+            loginForm.controls.username.hasError('required')
             ) {
-              <p id="username-error" class="field-error" role="alert">請輸入帳號或電子郵件</p>
+            <p id="username-error" class="field-error" role="alert">請輸入帳號或電子郵件</p>
             }
           </div>
 
@@ -106,22 +98,14 @@
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
               <span class="input-icon" aria-hidden="true"> 🔒 </span>
 
-              <input
-                id="password"
-                type="password"
-                formControlName="password"
-                placeholder="請輸入密碼"
-                autocomplete="current-password"
-                [readOnly]="isLoading()"
-                [attr.aria-invalid]="
+              <input id="password" type="password" formControlName="password" placeholder="請輸入密碼"
+                autocomplete="current-password" [readOnly]="isLoading()" [attr.aria-invalid]="
                   loginForm.controls.password.invalid && loginForm.controls.password.touched
-                "
-                [attr.aria-describedby]="
+                " [attr.aria-describedby]="
                   loginForm.controls.password.invalid && loginForm.controls.password.touched
                     ? 'password-error'
                     : null
-                "
-              />
+                " />
             </div>
 
             <!--
@@ -129,10 +113,10 @@
               才顯示必填錯誤。
             -->
             @if (
-              loginForm.controls.password.touched &&
-              loginForm.controls.password.hasError('required')
+            loginForm.controls.password.touched &&
+            loginForm.controls.password.hasError('required')
             ) {
-              <p id="password-error" class="field-error" role="alert">請輸入密碼</p>
+            <p id="password-error" class="field-error" role="alert">請輸入密碼</p>
             }
           </div>
 
@@ -141,21 +125,16 @@
                未來後端回傳帳密錯誤時顯示
                =============================== -->
           @if (errorMessage()) {
-            <p id="login-error" class="error-message" role="alert" aria-live="assertive">
-              {{ errorMessage() }}
-            </p>
+          <p id="login-error" class="error-message" role="alert" aria-live="assertive">
+            {{ errorMessage() }}
+          </p>
           }
 
           <!-- ===============================
                登入按鈕
                登入處理中禁止重複送出
                =============================== -->
-          <button
-            type="submit"
-            class="btn-primary"
-            [disabled]="isLoading()"
-            [attr.aria-busy]="isLoading()"
-          >
+          <button type="submit" class="btn-primary" [disabled]="isLoading()" [attr.aria-busy]="isLoading()">
             {{ isLoading() ? '登入中...' : '登入' }}
           </button>
         </form>

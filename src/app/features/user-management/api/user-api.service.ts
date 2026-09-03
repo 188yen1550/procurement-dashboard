@@ -53,4 +53,14 @@ export class UserApiService {
       .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.disable(id), {})
       .pipe(unwrapData());
   }
+
+  /**
+   * ⚠️ 後端目前沒有這支端點，呼叫會是 404。前端先準備好呼叫邏輯，
+   * 等後端補上對稱的 restore 端點就能直接動。
+   */
+  restore(id: number): Observable<UserAccountResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.restore(id), {})
+      .pipe(unwrapData());
+  }
 }

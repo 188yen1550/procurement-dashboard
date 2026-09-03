@@ -24,7 +24,7 @@ button:disabled { opacity:.58; cursor:not-allowed; }
 .filter-heading { align-items:flex-end; margin-bottom:.9rem; }
 .filter-heading h2,.list-header h2 { margin:.15rem 0 0; font-size:1rem; }
 .filter-heading > p { padding:.3rem .55rem; background:#eef6f2; border-radius:999px; font-size:.7rem; }
-.filter-grid { display:grid; grid-template-columns:minmax(220px,1.4fr) repeat(3,minmax(145px,1fr)) auto; gap:.75rem; align-items:end; }
+.filter-grid { display:grid; grid-template-columns:minmax(220px,1.4fr) repeat(4,minmax(145px,1fr)) auto; gap:.75rem; align-items:end; }
 .field { min-width:0; }
 .field label { display:block; margin-bottom:.35rem; color:#455b6e; font-size:.72rem; font-weight:800; }
 .field input,.field select { width:100%; min-width:0; height:2.55rem; padding:.55rem .65rem; color:#243447; background:#f8fafc; border:1px solid #d4dee6; border-radius:.5rem; }
