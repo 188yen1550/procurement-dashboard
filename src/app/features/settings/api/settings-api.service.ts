@@ -14,8 +14,10 @@ import {
   FestiveCampaignUpdateRequestPayload,
   ProductTypeCreateRequestPayload,
   ProductTypeResponsePayload,
+  ProductTypeUpdatePayload,
   RiskOptionCreateRequestPayload,
   RiskOptionResponsePayload,
+  RiskOptionUpdatePayload,
   SETTINGS_API,
   SwitchEvaluationModeRequestPayload,
   WeightSnapshotPayload,
@@ -227,6 +229,58 @@ export class SettingsApiService {
         SETTINGS_API.festiveCampaignManualStatus(id),
         body,
       )
+      .pipe(unwrapData());
+  }
+
+  // ==========================================
+  // 🌟 以下為本次新增的 6 支 API
+  // ==========================================
+
+  /** 17. 帳號 復用 (PUT /api/users/{id}/enable) */
+  enableUser(id: number): Observable<void> {
+    return this.http
+      .put<ApiEnvelope<void>>(SETTINGS_API.userEnable(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** 18. 商品類型 復用 (PUT /api/settings/product-types/{id}/enable) */
+  enableProductType(id: number): Observable<ProductTypeResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<ProductTypeResponsePayload>>(SETTINGS_API.productTypeEnable(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** 19. 商品類別 重新命名 (PUT /api/settings/product-types/{id}) */
+  updateProductType(
+    id: number,
+    body: ProductTypeUpdatePayload,
+  ): Observable<ProductTypeResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<ProductTypeResponsePayload>>(SETTINGS_API.productTypeUpdate(id), body)
+      .pipe(unwrapData());
+  }
+
+  /** 20. 人工風險選項 停用 (PUT /api/settings/risk-options/{id}/disable) */
+  disableRiskOption(id: number): Observable<RiskOptionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<RiskOptionResponsePayload>>(SETTINGS_API.riskOptionDisable(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** 21. 人工風險選項 復用 (PUT /api/settings/risk-options/{id}/enable) */
+  enableRiskOption(id: number): Observable<RiskOptionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<RiskOptionResponsePayload>>(SETTINGS_API.riskOptionEnable(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** 22. 人工風險選項 重新命名 & 關鍵字修改 (PUT /api/settings/risk-options/{id}) */
+  updateRiskOption(
+    id: number,
+    body: RiskOptionUpdatePayload,
+  ): Observable<RiskOptionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<RiskOptionResponsePayload>>(SETTINGS_API.riskOptionUpdate(id), body)
       .pipe(unwrapData());
   }
 }
