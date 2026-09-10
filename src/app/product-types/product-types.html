@@ -1,0 +1,12 @@
+<div *ngIf="isLoading">載入中...</div>
+<div *ngIf="errorMessage" style="color: red;">{{ errorMessage }}</div>
+
+<div *ngFor="let item of productTypes" style="margin-bottom: 8px;">
+  <span>{{ item.id }} - {{ item.name }} (啟用狀態: {{ item.isActive }})</span>
+
+  <!-- 測試 18. 商品類型 復用 -->
+  <button (click)="onEnable(item.id)">啟用</button>
+
+  <!-- 測試 19. 商品類別 重新命名 -->
+  <button (click)="onRename(item.id, item.name + ' (已修改)')">更名</button>
+</div>

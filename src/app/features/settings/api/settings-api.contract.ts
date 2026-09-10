@@ -47,6 +47,13 @@ export const SETTINGS_API = {
   updateFestiveCampaign: (id: number | string) => `/api/settings/festive-campaigns/${id}`,
   festiveCampaignManualStatus: (id: number | string) =>
     `/api/settings/festive-campaigns/${id}/manual-status`,
+  // ... (保留原本的)
+  userEnable: (id: number | string) => `/api/users/${id}/enable`,
+  productTypeEnable: (id: number | string) => `/api/settings/product-types/${id}/enable`,
+  riskOptionDisable: (id: number | string) => `/api/settings/risk-options/${id}/disable`,
+  riskOptionEnable: (id: number | string) => `/api/settings/risk-options/${id}/enable`,
+  productTypeUpdate: (id: number | string) => `/api/settings/product-types/${id}`,
+  riskOptionUpdate: (id: number | string) => `/api/settings/risk-options/${id}`,
 } as const;
 
 // =========================================================================
@@ -54,9 +61,21 @@ export const SETTINGS_API = {
 // =========================================================================
 
 /**
+ *
  * 對應後端 EvaluationModeResponse.java。
  * ⚠️ 權重數值只能看不能改，後端沒有修改 API。畫面做成唯讀展示。
  */
+export interface ProductTypeUpdatePayload {
+  name: string;
+  description?: string | null;
+}
+
+export interface RiskOptionUpdatePayload {
+  name: string;
+  description?: string | null;
+  alertKeywords?: string | null;
+}
+
 export interface EvaluationModeResponsePayload {
   id: number;
   /** 例 'BALANCED'。 */
