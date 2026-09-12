@@ -116,3 +116,61 @@
   font-size: 0.68rem;
   font-weight: 700;
 }
+
+/* ===== 歷次審核紀錄 ===== */
+.review-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review-history-list li {
+  padding: 0.7rem 0.85rem;
+  background: #f8fafc;
+  border-left: 4px solid #cbd9e3;
+  border-radius: 0.4rem;
+}
+.review-history-list li[data-result='APPROVED'] {
+  border-left-color: #2f8f66;
+}
+.review-history-list li[data-result='REJECTED'] {
+  border-left-color: #b94d47;
+}
+.review-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.review-history-round {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--c-ink, #243447);
+}
+.review-history-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+.review-history-badge[data-result='APPROVED'] {
+  color: #21694f;
+  background: #e5f5ee;
+}
+.review-history-badge[data-result='REJECTED'] {
+  color: #8d3733;
+  background: #fce8e6;
+}
+.review-history-date {
+  margin-left: auto;
+  color: #6c7a89;
+  font-size: 0.7rem;
+}
+.review-history-comment {
+  margin: 0.4rem 0 0;
+  color: #526677;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

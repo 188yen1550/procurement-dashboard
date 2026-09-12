@@ -156,6 +156,17 @@ interface ProductTypeGroupVM {
   minors: ProductTypeVM[];
 }
 
+/**
+ * 節慶檔期的四個生命週期狀態，原本畫面上（清單顯示跟手動切換的下拉
+ * 選單）都直接顯示這四個英文代碼給使用者看，沒有經過任何中文轉換。
+ */
+const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
+  UPCOMING: '即將開始',
+  PREPARING: '準備期',
+  ACTIVE: '進行中',
+  EXPIRED: '已結束',
+};
+
 interface CampaignVM {
   id: number | null;
   code: string;
@@ -390,6 +401,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
+  readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
   private readonly api = inject(SettingsApiService);
   private readonly dialog = inject(DialogService);
   private readonly userApi = inject(UserApiService);
@@ -497,6 +509,14 @@ export class Settings implements OnInit {
   readonly draftStart = signal('');
   readonly draftEnd = signal('');
   readonly draftLeadDays = signal(30);
+  /**
+   * 新增檔期用的唯一代碼。原本這裡完全沒有輸入欄位——saveModal() 的
+   * else 分支只留了一句「請洽開發團隊補上欄位」的錯誤訊息，等於新增
+   * 節慶檔期這個功能從來沒有真正做完，使用者點下「新增檔期」按鈕，
+   * 填完表單送出後只會看到這句提示，永遠新增不了。這裡補上真正缺的
+   * 那個欄位，讓建立流程走得通。
+   */
+  readonly draftCampaignCode = signal('');
   readonly draftTags = signal<FestiveCampaignTagPayload[]>([{ tag: '', matchTier: 'CORE' }]);
 
   // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
@@ -983,6 +1003,51 @@ export class Settings implements OnInit {
       )
       .subscribe((confirmed) => {
         if (confirmed) this.performRemoveProductType(name, item);
+      });
+  }
+
+  /**
+   * 人工風險選項停用——原本這裡完全沒有任何停用機制，API 早就存在
+   * （後端方法上的中文說明直接寫著「復用」，代表停用/復用本來就是
+   * 一組對稱的功能），只是從沒接上畫面。
+   *
+   * ⚠️ 跟商品類型的停用/復用不同：這裡只做得到「停用」，做不到「復用」——
+   * GET /api/settings/risk-options 這支端點本身只回傳啟用中的選項
+   * （WHERE is_active=true），停用後這筆資料會直接從清單消失，沒有
+   * 任何畫面看得到已停用的選項，自然也無從點擊復用。這是資料可見性
+   * 本身的既有限制，不是這次能一併解決的，用確認框明確告知這個後果，
+   * 不要讓使用者在不知情的狀況下弄丟一個選項的可見性。
+   */
+  disableRiskOptionRow(item: RiskOptionVM): void {
+    this.dialog
+      .confirm(
+        '確認停用風險選項',
+        [
+          `即將停用「${item.name}」。`,
+          '⚠️ 停用後這個選項會從清單消失，目前沒有畫面可以看到已停用的選項、也無法從這裡復用，請確認這是你要的結果。',
+        ],
+        '確定停用',
+        '取消',
+      )
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        if (this.useMockData) {
+          this.riskOptions.update((items) => items.filter((r) => r.id !== item.id));
+          this.statusMessageState.show(`已在本地模擬停用「${item.name}」。`);
+          return;
+        }
+        if (!item.id) return;
+        this.api
+          .disableRiskOption(item.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.riskOptions.update((items) => items.filter((r) => r.id !== item.id));
+              this.riskOptionLookup.invalidate();
+              this.statusMessageState.show(`已停用「${item.name}」。`);
+            },
+            error: (err) => this.statusMessageState.show(toApiError(err).message),
+          });
       });
   }
 
@@ -1571,6 +1636,7 @@ export class Settings implements OnInit {
     this.editingRiskOptionId.set(null);
     this.draftKeywordChips.set([]);
     this.draftKeywordInput.set('');
+    this.draftCampaignCode.set('');
   }
 
   saveModal(): void {
@@ -1623,7 +1689,7 @@ export class Settings implements OnInit {
       this.campaigns.update((items) =>
         this.selectedCampaign()
           ? items.map((item) => (item.name === this.selectedCampaign() ? { ...item, ...value } : item))
-          : [...items, { id: null, code: '', ...value } as CampaignVM],
+          : [...items, { id: null, code: this.draftCampaignCode().trim(), ...value } as CampaignVM],
       );
     } else if (
       type === 'account' &&
@@ -1742,13 +1808,19 @@ export class Settings implements OnInit {
     }
 
     if (type === 'campaign') {
+      const isCreating = !this.selectedCampaign();
       if (
         !this.draftName().trim() ||
         !this.draftStart() ||
         !this.draftEnd() ||
-        !this.draftTags().some((row) => row.tag.trim())
+        !this.draftTags().some((row) => row.tag.trim()) ||
+        (isCreating && !this.draftCampaignCode().trim())
       ) {
-        this.statusMessageState.show('請完整填寫必填欄位，並至少輸入一個標籤。');
+        this.statusMessageState.show(
+          isCreating
+            ? '請完整填寫必填欄位（含檔期代碼），並至少輸入一個標籤。'
+            : '請完整填寫必填欄位，並至少輸入一個標籤。',
+        );
         return;
       }
       const tags = this.draftTags()
@@ -1779,10 +1851,25 @@ export class Settings implements OnInit {
             error: (err) => this.statusMessageState.show(toApiError(err).message),
           });
       } else {
-        this.statusMessageState.show(
-          '新增檔期需要唯一的檔期代碼（campaignCode），此畫面尚未提供輸入欄位，' +
-            '請洽開發團隊補上欄位後再新增，目前僅支援編輯既有檔期。',
-        );
+        this.api
+          .createFestiveCampaign({
+            campaignCode: this.draftCampaignCode().trim(),
+            campaignName: this.draftName().trim(),
+            category: this.draftCategory(),
+            startDate: this.draftStart(),
+            endDate: this.draftEnd(),
+            preparationLeadDays: this.draftLeadDays(),
+            tags,
+          })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (created) => {
+              this.campaigns.update((items) => [...items, toCampaignVM(created)]);
+              this.statusMessageState.show('已新增檔期。');
+              this.closeModal();
+            },
+            error: (err) => this.statusMessageState.show(toApiError(err).message),
+          });
       }
       return;
     }

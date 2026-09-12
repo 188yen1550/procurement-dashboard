@@ -7,7 +7,7 @@
 <div class="dashboard-page">
   <header class="page-header">
     <div>
-      
+
       <h1>選品決策儀表板</h1>
     </div>
     <div class="data-time">
@@ -77,6 +77,10 @@
         <div class="skeleton-card"><span></span><strong></strong><small></small></div>
       }
     </section>
+    <section class="chart-row" aria-label="圖表載入中">
+      <div class="panel skeleton-panel chart-skeleton"></div>
+      <div class="panel skeleton-panel chart-skeleton"></div>
+    </section>
     <div class="content-grid">
       <section class="panel skeleton-panel" aria-label="推薦清單載入中">
         <span></span><span></span><span></span><span></span>
@@ -93,6 +97,10 @@
       @for (item of [1, 2, 3, 4]; track item) {
         <div class="skeleton-card"><span></span><strong></strong><small></small></div>
       }
+    </section>
+    <section class="chart-row" aria-label="圖表載入中">
+      <div class="panel skeleton-panel chart-skeleton"></div>
+      <div class="panel skeleton-panel chart-skeleton"></div>
     </section>
     <div class="content-grid">
       <section class="panel skeleton-panel" aria-label="推薦清單載入中">
@@ -157,16 +165,40 @@
       </article>
     </section>
 
-    <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
-      <header class="panel-header">
-        <div>
-          
-          <h2 id="status-chart-title">審核狀態分布</h2>
+    <!-- 圓餅圖跟選品轉換率原本分散在頁面兩處（圖表獨立佔一整排在最上方，
+         轉換率被埋在側欄跟高風險提示擠在一起），兩者都是「一眼看全站
+         概況」的小卡片，放在同一排比較符合閱讀動線，也讓側欄專注在
+         「高風險提示」這件需要管理層採取行動的事情上。 -->
+    <section class="chart-row">
+      <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
+        <header class="panel-header">
+          <div>
+            <h2 id="status-chart-title">審核狀態分布</h2>
+          </div>
+        </header>
+        <div class="status-chart-wrap">
+          <canvas #statusChartCanvas aria-label="待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
         </div>
-      </header>
-      <div class="status-chart-wrap">
-        <canvas #statusChartCanvas aria-label="待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
-      </div>
+      </section>
+
+      <section class="panel conversion-panel" aria-labelledby="conversion-title">
+        @if (data().statistics.conversionRate === null) {
+          <div class="conversion-ring" [style.--rate]="'0%'">
+            <strong>—</strong><span>尚無資料</span>
+          </div>
+        } @else {
+          <div class="conversion-ring" [style.--rate]="data().statistics.conversionRate + '%'">
+            <strong>{{ data().statistics.conversionRate }}%</strong><span>核准率</span>
+          </div>
+        }
+        <div>
+          <h2 id="conversion-title">選品轉換率</h2>
+          <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
+          @if (data().statistics.conversionRate === null) {
+            <p class="hint">目前尚無商品送審過，因此無法計算轉換率。</p>
+          }
+        </div>
+      </section>
     </section>
 
     <div class="content-grid" [class.operator-view]="!isManager()">
@@ -242,32 +274,13 @@
       </section>
 
       <aside class="side-column">
-        <section class="panel conversion-panel" aria-labelledby="conversion-title">
-          @if (data().statistics.conversionRate === null) {
-            <div class="conversion-ring" [style.--rate]="'0%'">
-              <strong>—</strong><span>尚無資料</span>
-            </div>
-          } @else {
-            <div class="conversion-ring" [style.--rate]="data().statistics.conversionRate + '%'">
-              <strong>{{ data().statistics.conversionRate }}%</strong><span>核准率</span>
-            </div>
-          }
-          <div>
-            
-            <h2 id="conversion-title">選品轉換率</h2>
-            <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
-            @if (data().statistics.conversionRate === null) {
-              <p class="hint">目前尚無商品送審過，因此無法計算轉換率。</p>
-            }
-          </div>
-        </section>
         <!-- 高風險提示：管理層的治理責任，操作層畫面不顯示這個面板
              （後端 API 權限上兩者都能呼叫，這裡純粹是畫面呈現決定）。 -->
         @if (isManager()) {
           <section class="panel risk-panel" aria-labelledby="risk-title">
             <header class="panel-header">
               <div>
-                
+
                 <h2 id="risk-title">高風險提示</h2>
               </div>
               <span class="risk-count">{{ data().riskAlerts.length }}</span>
@@ -283,7 +296,9 @@
                   <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
                 </article>
               } @empty {
-                <p class="empty">目前沒有需要特別注意的商品。</p>
+                <p class="empty">
+                  目前沒有偵測到風險提示。
+                </p>
               }
             </div>
           </section>

@@ -333,12 +333,12 @@ td {
   --rate: 0%;
   display: grid;
   flex: 0 0 auto;
-  width: 92px;
-  height: 92px;
+  width: 132px;
+  height: 132px;
   place-content: center;
   text-align: center;
   background:
-    radial-gradient(circle, #fff 58%, transparent 60%),
+    radial-gradient(circle, #fff 62%, transparent 64%),
     conic-gradient(#379773 var(--rate), #e6ecef 0);
   border-radius: 50%;
 }
@@ -347,11 +347,12 @@ td {
   display: block;
 }
 .conversion-ring strong {
-  font-size: 1.05rem;
+  font-size: 1.6rem;
+  font-weight: 800;
 }
 .conversion-ring span {
   color: #6c7a89;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
 }
 .conversion-panel > div:last-child {
   min-width: 0;
@@ -588,17 +589,28 @@ td {
 
 /* ===== 審核狀態分布圖表（chart.js）===== */
 .status-chart-panel {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .status-chart-wrap {
   position: relative;
-  height: 220px;
+  height: 260px;
   margin-top: 0.5rem;
 }
 
-/* 操作層沒有風險提示面板，側欄只剩轉換率一張卡，
-   把主欄與側欄的比例拉近，避免側欄顯得空洞。 */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 820px) {
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .content-grid.operator-view {
   grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
 }
@@ -607,4 +619,11 @@ td {
   .content-grid.operator-view {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.chart-skeleton {
+  min-height: 260px;
+  background: linear-gradient(90deg, #eef1f3 25%, #f6f8fa 37%, #eef1f3 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
 }

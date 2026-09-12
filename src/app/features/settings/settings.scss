@@ -570,3 +570,42 @@ tr.is-editing select {
   gap: 0.5rem;
   padding: 0.35rem 0;
 }
+
+/* ===== 以下class原本用在HTML卻完全沒有對應樣式，補上 ===== */
+
+/* 演算法參數分頁：目前數值的顯示，原本只是純文字，跟旁邊的說明文字
+   字級一樣小，完全沒有視覺上的主次之分——這是使用者在讀「現在設定
+   是多少」這個關鍵數字時最重要的資訊，應該放大加粗，不是等同於旁邊
+   的輔助說明。 */
+.system-setting-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--c-brand, #1c5286);
+}
+.unit {
+  margin-left: 0.3rem;
+  color: #6c7a89;
+  font-size: 0.75rem;
+}
+.system-setting-edit-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  input {
+    width: 8rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #d4dee6;
+    border-radius: 0.4rem;
+  }
+}
+
+.footer-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.settings-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}

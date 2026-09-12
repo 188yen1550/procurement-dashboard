@@ -105,7 +105,9 @@ function toSuggestion(item: ProductListItem): Suggestion {
     supplier: item.supplierName,
     trend: null,
     direction: null,
-    reason: null,
+    // 後端已經補上這個欄位（GET /api/products/ai-suggested 專屬），
+    // 用跟批次判定完全相同的門檻即時重算，不再是恆為 null 的死欄位。
+    reason: item.suggestionReason ?? null,
     audienceMatch: null,
     risk: null,
     candidateStatus: 'AI_SUGGESTED',

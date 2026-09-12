@@ -74,3 +74,73 @@
   font-size: 0.8rem;
   color: #6b7280;
 }
+
+.importing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem 0.9rem;
+  color: #38536a;
+  background: #eef4f8;
+  border: 1px solid #dce6ed;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 2px solid #ccd8e1;
+  border-top-color: #1c5286;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * 以下這些 class 原本在 HTML 裡被使用，卻完全沒有對應的 CSS 規則——
+ * 沒有版面配置，元素會直接擠在一起變成零間距；徽章沒有配色，
+ * 會顯示成毫無視覺區隔的純文字。查證後補上。
+ */
+
+.filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e8ee;
+  border-radius: 0.8rem;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #38536a;
+  }
+
+  input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #d4dee6;
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .helper {
+    align-self: center;
+    color: #6c7a89;
+    font-size: 0.72rem;
+  }
+}

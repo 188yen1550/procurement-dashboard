@@ -6,7 +6,7 @@
   <header class="page-header">
     <div>
       <a routerLink="/products" class="back-link">← 返回品項管理</a>
-      
+
       <h1 id="detail-title">{{ product()?.name ?? '品項詳情' }}</h1>
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
     </div>
@@ -132,13 +132,13 @@
     <section class="panel campaign">
       <header>
         <div>
-          
+
           <h2>目前評估模式</h2>
         </div>
         <span>{{ p.evaluationModeName }}</span>
       </header>
       <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預估購買／市場趨勢 25%</p>
-      <small>參考項目：毛利、MOQ、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
+      <small>參考項目：毛利、最低訂購量、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
     </section>
     @if (p.campaign) {
       <section class="panel campaign">
@@ -189,7 +189,7 @@
            三者處理方式完全不同，不能用同一種視覺語言混在一起。 -->
       <section class="panel gate-panel">
         <header>
-          <h2>Gate 可行性判定</h2>
+          <h2>可行性判定</h2>
           @if (p.gateResults; as gate) {
             <span class="gate-summary-badge" [class.has-failed]="gate.failedCount > 0">
               @if (gate.failedCount > 0) {
@@ -318,7 +318,7 @@
             <dd>{{ marginRate(p) === null ? '待訂價' : marginRate(p) + '%' }}</dd>
           </div>
           <div>
-            <dt>MOQ</dt>
+            <dt>最低訂購量</dt>
             <dd>{{ p.moq }} 組</dd>
           </div>
           <div>
@@ -358,7 +358,7 @@
     @if (p.pricingType === 'RESALE') {
       <section class="panel price-compare">
         <div>
-          
+
           <h2>市價與團購價比較</h2>
         </div>
         <div>
@@ -373,7 +373,7 @@
     <section class="panel trend">
       <header>
         <div>
-          
+
           <h2>市場趨勢／熱門度</h2>
         </div>
         <button
@@ -427,6 +427,33 @@
         }
       </section>
     </div>
+    <!-- 這件商品自己的歷次審核紀錄——原本這支 API 完全沒被呼叫過，想知道
+         「這件商品上次為什麼被拒」只能去問管理層或翻全站的決策紀錄分頁
+         自己找，現在直接顯示在商品自己的詳情頁上。 -->
+    @if (reviewHistory().length > 0) {
+      <section class="panel review-history">
+        <header><h2>歷次審核紀錄</h2></header>
+        <ul class="review-history-list">
+          @for (record of reviewHistory(); track record.id) {
+            <li [attr.data-result]="record.reviewStatus">
+              <div class="review-history-head">
+                <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>
+                <span class="review-history-badge" [attr.data-result]="record.reviewStatus">{{
+                  record.reviewStatus === 'APPROVED' ? '通過' : '未通過'
+                }}</span>
+                @if (record.reviewedAt) {
+                  <span class="review-history-date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+                }
+              </div>
+              @if (record.reviewComment) {
+                <p class="review-history-comment">{{ record.reviewComment }}</p>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     <section class="panel lifecycle">
       <div>
         <h2>品項狀態操作</h2>

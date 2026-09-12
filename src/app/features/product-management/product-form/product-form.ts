@@ -79,7 +79,7 @@ const FIELD_LABELS: Record<string, string> = {
   costPrice: '成本價',
   salePrice: '預計售價',
   marketPrice: '市售價',
-  moq: 'MOQ 最低訂購量',
+  moq: '最低訂購量',
   supplyStability: '供應穩定性',
   priceCompetitiveness: '價格競爭力',
   targetCustomer: '目標客群描述',

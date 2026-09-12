@@ -113,14 +113,23 @@ export type { WeightSnapshotPayload };
 // 人工風險選項
 // =========================================================================
 
-/** 對應後端 RiskOptionResponse.java。 */
+/** 對應後端 RiskOptionResponse.java（審核頁用）／RiskOptionSettingResponse.java（設定頁用）共用的前端型別。 */
 export interface RiskOptionResponsePayload {
   id: number;
   name: string;
   description: string | null;
   isSystemDefault: boolean | null;
-  /** 觸發 AI 風險提示用的關鍵字，逗號分隔。先前這支 DTO 從未回傳過。 */
-  alertKeywords: string | null;
+  /**
+   * 觸發 AI 風險提示用的關鍵字，逗號分隔。
+   *
+   * ⚠️ 只有設定頁的 GET /api/settings/risk-options（後端回傳
+   * RiskOptionSettingResponse）會帶這個欄位；審核頁的
+   * GET /api/reviews/pending 等端點（後端回傳 RiskOptionResponse）
+   * 刻意不回傳——那是管理層勾選審核意見用的畫面，AI 比對用的關鍵字
+   * 對審核當下的渲染沒有意義，後端特意不夾帶用不到的內部細節。
+   * 兩種情境共用同一個前端型別，所以這裡標成選填，不是每個來源都有值。
+   */
+  alertKeywords?: string | null;
 }
 
 /**

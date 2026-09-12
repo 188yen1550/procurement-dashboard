@@ -5,30 +5,13 @@
 <main class="product-page" aria-labelledby="page-title">
   <header class="page-header">
     <div>
-      
+
       <h1 id="page-title">品項管理</h1>
     </div>
     <a class="primary-action" routerLink="/products/new"
       ><span aria-hidden="true">＋</span> 新增品項</a
     >
   </header>
-
-  <!-- 狀態分布圖表：全站總覽，跟下方清單的篩選/分頁無關，兩者刻意分開，
-       避免使用者把「目前頁面顯示的幾筆」誤當成「全站比例」。 -->
-  @if (!useMockData && statistics() === null) {
-    <!-- 統計圖表載入失敗時靜默不顯示，不佔用版面提示錯誤——見 ts 檔案
-         loadStatistics() 的降級處理說明。 -->
-  } @else {
-    <section class="panel status-chart-panel" aria-labelledby="list-status-chart-title">
-      <header class="panel-header">
-        
-        <h2 id="list-status-chart-title">全站審核狀態分布</h2>
-      </header>
-      <div class="status-chart-wrap">
-        <canvas #statusChartCanvas aria-label="全站待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
-      </div>
-    </section>
-  }
 
   @if (useMockData) {
   <section class="state-preview" aria-labelledby="state-title">
@@ -164,22 +147,6 @@
             [min]="updatedFromDraft() || undefined"
           />
         </div>
-        <div class="field">
-          <label for="sort-select">排序</label
-          ><select
-            id="sort-select"
-            [ngModel]="sortOption()"
-            (ngModelChange)="updateSort($event)"
-            [disabled]="isLoading()"
-          >
-            <option value="updatedAt_desc">更新時間（新→ 舊）</option>
-            <option value="updatedAt_asc">更新時間（舊 → 新）</option>
-            <option value="finalScore_desc">最終分數（高 → 低）</option>
-            <option value="finalScore_asc">最終分數（低 → 高）</option>
-          </select>
-          <!-- @if (sortOption() === 'finalScore_desc' || sortOption() === 'finalScore_asc') {
-          } -->
-        </div>
         <button
           type="button"
           class="clear-button"
@@ -253,10 +220,38 @@
                 </th>
                 <th scope="col">實際分類／訂價分流</th>
                 <th scope="col">供應商</th>
-                <th scope="col">最終分數</th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleFinalScoreSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'finalScore_desc' ? '最終分數，目前高到低，點擊改為低到高' : '最終分數，點擊排序'
+                    "
+                  >
+                    最終分數
+                    <span class="sort-arrow" aria-hidden="true">{{
+                      sortOption() === 'finalScore_desc' ? '▼' : sortOption() === 'finalScore_asc' ? '▲' : '⇅'
+                    }}</span>
+                  </button>
+                </th>
                 <th scope="col">資料完整度</th>
                 <th scope="col">審核／品項狀態</th>
-                <th scope="col">更新時間</th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleUpdatedAtSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'updatedAt_desc' ? '更新時間，目前新到舊，點擊改為舊到新' : '更新時間，點擊排序'
+                    "
+                  >
+                    更新時間
+                    <span class="sort-arrow" aria-hidden="true">{{
+                      sortOption() === 'updatedAt_desc' ? '▼' : sortOption() === 'updatedAt_asc' ? '▲' : '⇅'
+                    }}</span>
+                  </button>
+                </th>
                 <th scope="col" class="actions-column">操作</th>
               </tr>
             </thead>
@@ -362,7 +357,7 @@
                         <a
                           class="text-action resubmit"
                           [routerLink]="['/products', product.id, 'edit']"
-                          >編輯並重新送審</a
+                          >重新送審</a
                         >
                       } @else if (product.itemStatus === 'ARCHIVED') {
                         <button

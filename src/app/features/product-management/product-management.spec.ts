@@ -100,7 +100,7 @@ describe('ProductManagement', () => {
     const rejectedAction = fixture.nativeElement.querySelector('a.resubmit');
     expect(eligible.disabled).toBe(false);
     expect(approved.disabled).toBe(true);
-    expect(rejectedAction.textContent).toContain('編輯並重新送審');
+    expect(rejectedAction.textContent).toContain('重新送審');
   });
 
   it('renders loading and error recovery states', () => {

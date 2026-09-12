@@ -93,6 +93,12 @@ export interface ProductListItem {
   updatedAt: string | null;
   /** 操作按鈕的啟用條件，集中在這裡算好，樣板不再重複判斷。 */
   actions: ProductActionAvailability;
+  /**
+   * 「為什麼被 AI 推薦」——只有 GET /api/products/ai-suggested 這支端點
+   * 會有值，其餘端點固定是 undefined。原本這個概念完全沒有被計算或
+   * 回傳過，AI 建議清單一直顯示不出「為什麼」。
+   */
+  suggestionReason?: string | null;
 }
 
 /**
@@ -178,6 +184,7 @@ export function toProductListItem(
     submissionCount: payload.submissionCount,
     updatedAt: payload.updatedAt,
     actions: toProductActionAvailability(payload),
+    suggestionReason: payload.suggestionReason,
   };
 }
 

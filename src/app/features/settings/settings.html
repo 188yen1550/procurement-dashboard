@@ -196,6 +196,7 @@
               <td>啟用</td>
               <td class="row-actions">
                 <button type="button" class="btn" (click)="openRiskEditModal(item)">編輯</button>
+                <button type="button" class="btn danger" (click)="disableRiskOptionRow(item)">停用</button>
               </td>
             </tr>
           }
@@ -310,7 +311,7 @@
               <td>{{ item.categoryLabel }}</td>
               <td>{{ item.range }}</td>
               <td>
-                <span class="status-pill" [attr.data-status]="item.status">{{ item.status }}</span>
+                <span class="status-pill" [attr.data-status]="item.status">{{ campaignStatusLabel[item.status] }}</span>
               </td>
               <td>{{ item.override ? '是' : '否' }}</td>
               <td>
@@ -859,7 +860,7 @@
                 : modal() === 'productType'
                   ? '新增商品類型'
                   : modal() === 'campaign'
-                    ? '新增／編輯節慶檔期'
+                    ? (selectedCampaign() ? '編輯節慶檔期' : '新增節慶檔期')
                     : modal() === 'campaignStatus'
                       ? '手動切換檔期狀態'
                       : '新增帳號'
@@ -954,6 +955,18 @@
           /></label>
         }
         @if (modal() === 'campaign') {
+          @if (!selectedCampaign()) {
+            <label
+              >檔期代碼 <em>*</em>
+              <input
+                required
+                placeholder="例：MID_AUTUMN_2026，建立後不可修改"
+                [ngModel]="draftCampaignCode()"
+                (ngModelChange)="draftCampaignCode.set($event)"
+                name="campaignCode" />
+              <small class="helper">全站唯一，用英文字母、數字、底線命名，建立後無法更改。</small></label
+            >
+          }
           <label
             >檔期名稱
             <input
@@ -1057,10 +1070,10 @@
               (ngModelChange)="draftStatus.set($event)"
               name="status"
             >
-              <option>UPCOMING</option>
-              <option>PREPARING</option>
-              <option>ACTIVE</option>
-              <option>EXPIRED</option>
+              <option value="UPCOMING">即將開始</option>
+              <option value="PREPARING">準備期</option>
+              <option value="ACTIVE">進行中</option>
+              <option value="EXPIRED">已結束</option>
             </select></label
           >
           <p>儲存後 is_manual_override 會設為 true。</p>

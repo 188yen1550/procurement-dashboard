@@ -10,6 +10,6 @@
  * [_ngcontent-xxx] 屬性選擇器），所以尚未遷移的頁面外觀不受影響，
  * 可以逐頁遷移。
  */
-@use './styles/tokens';
-@use './styles/base';
-@use './styles/components';
+@use './app/shared/styles/tokens';
+@use './app/shared/styles/base';
+@use './app/shared/styles/components';

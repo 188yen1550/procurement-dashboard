@@ -151,6 +151,12 @@ export interface ProductResponsePayload {
   createdAt: IsoDateTime | null;
   updatedAt: IsoDateTime | null;
   updatedBy: number | null;
+  /**
+   * 「為什麼被 AI 推薦」的說明文字。只有 GET /api/products/ai-suggested
+   * 這支端點會有值，其餘所有回傳這個型別的端點一律是 null——原本這個
+   * 概念完全沒有被計算或回傳過，AI 建議清單想知道「為什麼」只能自己猜。
+   */
+  suggestionReason?: string | null;
 }
 
 /** 對應後端 json/WeightFactorSnapshot.java。 */

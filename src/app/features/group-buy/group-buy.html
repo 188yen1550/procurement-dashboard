@@ -93,7 +93,7 @@
           <th>商品類型</th>
           <th>供應商</th>
           <th>檔期</th>
-          <th class="num">MOQ</th>
+          <th class="num">最低訂購量</th>
           <th class="num">售價</th>
           <th class="num">成本</th>
           <th class="num">市價</th>
@@ -162,6 +162,17 @@
       </details>
 
       <input type="file" accept=".csv" (change)="onFileSelected($event)" [disabled]="isImporting()" />
+
+      @if (isImporting()) {
+        <!-- 後端是「整批送出、同步驗證完才回應」的單次請求，中途沒有進度
+             可以回報——不假裝有精確進度（例如虛構「已檢查 N/M 筆」），
+             用不確定進度動畫讓使用者知道系統還在處理、不是卡住了即可。
+             檔案很大時這一步可能要等一段時間，純文字按鈕不夠明顯。 -->
+        <div class="importing-indicator" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>檔案處理中，請稍候，時間視資料筆數而定…</span>
+        </div>
+      }
 
       @if (importResult(); as result) {
         @if (result.success) {

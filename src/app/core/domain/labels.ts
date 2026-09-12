@@ -220,7 +220,7 @@ export const GATE_STATUS_LABEL: Record<GateStatus, string> = {
 
 /** 對應後端 GateEvaluationService 的五個 Gate，畫面顯示用名稱。 */
 export const GATE_CODE_LABEL: Record<GateCode, string> = {
-  GATE_MOQ_FEASIBILITY: 'MOQ 可行性',
+  GATE_MOQ_FEASIBILITY: '最低訂購量',
   GATE_LEAD_TIME: '備貨前置期',
   GATE_SHELF_LIFE: '效期門檻',
   GATE_TEMPERATURE_ZONE: '溫層支援',

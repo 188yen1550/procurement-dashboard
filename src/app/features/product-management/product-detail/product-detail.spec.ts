@@ -58,6 +58,9 @@ describe('ProductDetail', () => {
     getAiAnalysis: vi.fn(() =>
       of({ hasAnalysis: false, summary: '', recommendation: '', reasons: '', modelName: null, isMockData: false, generatedAt: null }),
     ),
+    // product-detail.ts 的 reload() 也會呼叫這支取得歷次審核紀錄——
+    // 回空陣列即可，這份測試套件不驗證審核歷史區塊的內容。
+    getReviewHistory: vi.fn(() => of([])),
     generateAiAnalysis: vi.fn(() =>
       of({
         hasAnalysis: true,

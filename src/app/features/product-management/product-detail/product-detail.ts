@@ -23,6 +23,7 @@ import {
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
+import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { AiAnalysisModel } from '../api/product.mapper';
 import {
   DetailProduct,
@@ -95,7 +96,7 @@ const APPROVED: DetailProduct = {
   lastSyncedAt: '2026-08-31T09:20:00+08:00',
   aiSummary: '節慶標籤與當前檔期高度吻合，供應穩定且價格具競爭力，建議維持人工確認供貨排程。',
   aiReasons: ['中秋烤肉需求與 bbq 標籤相符', '團購價較市價低 20%', '近期搜尋熱度呈上升'],
-  risks: ['MOQ 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
+  risks: ['最低訂購量 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
   description: '適合中秋家庭與企業團購的海陸烤肉組合。',
   imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"%3E%3Crect width="800" height="600" fill="%23e8f2ed"/%3E%3Ccircle cx="400" cy="270" r="150" fill="%2339735c"/%3E%3Cpath d="M290 300h220l-35 125H325z" fill="%23fff"/%3E%3Ctext x="400" y="510" text-anchor="middle" font-family="sans-serif" font-size="38" fill="%23243447"%3EProduct Mock%3C/text%3E%3C/svg%3E',
   temperatureZone: 'FROZEN',
@@ -176,6 +177,8 @@ export class ProductDetail implements OnInit {
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly useMockData = APP_CONFIG.useMockData;
   readonly gateCodeLabel = GATE_CODE_LABEL;
+  /** 這件商品自己的歷次審核紀錄，時間新→舊排序，供頁面下方新增的區塊顯示。 */
+  readonly reviewHistory = signal<ReviewRecordModel[]>([]);
   readonly gateStatusLabel = GATE_STATUS_LABEL;
   readonly temperatureZoneLabel = TEMPERATURE_ZONE_LABEL;
   readonly shelfLifeTierLabel = SHELF_LIFE_TIER_LABEL;
@@ -228,6 +231,11 @@ export class ProductDetail implements OnInit {
             // 完整度多高都只會顯示「尚未產生」的空狀態——不是資料完整度判斷，
             // 是這裡漏了這支 API 呼叫。GET 不會觸發生成、不產生 LLM 費用。
             aiAnalysis: this.api.getAiAnalysis(this.productId).pipe(catchError(() => of(null))),
+            // 這支 API 存在已久（後端註解明確寫著「唯一操作層也能呼叫的審核
+            // 相關 API，可以放在品項詳情頁」），但從未被呼叫過，導致品項
+            // 詳情頁完全看不到這件商品自己的歷次審核紀錄——想知道「這件
+            // 商品上次為什麼被拒」只能去問管理層或翻決策紀錄分頁自己找。
+            reviewHistory: this.api.getReviewHistory(this.productId).pipe(catchError(() => of([]))),
             // 商品類型名稱：ProductResponse 只有 productTypeId，
             // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
             typeName: this.productTypes.getName(product.productTypeId),
@@ -236,10 +244,11 @@ export class ProductDetail implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival, aiAnalysis, typeName }) => {
+        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName }) => {
           this.product.set(
             toDetailProduct(product, evaluation, festival, typeName, toAiExtras(aiAnalysis)),
           );
+          this.reviewHistory.set(reviewHistory);
           this.pageState.set('default');
           if (!evaluation) this.statusMessageState.show('評估分數載入失敗，其餘資料仍可檢視。');
         },

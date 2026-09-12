@@ -97,22 +97,6 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
 @keyframes shimmer { to { background-position:-200% 0; } }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 
-/* ===== 全站審核狀態分布圖表（chart.js）===== */
-.status-chart-panel {
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e8ee;
-  border-radius: 0.8rem;
-  box-shadow: 0 8px 24px rgba(29, 54, 78, 0.05);
-}
-
-.status-chart-wrap {
-  position: relative;
-  height: 160px;
-  margin-top: 0.5rem;
-}
-
 .status-chart-panel .panel-header {
   margin-bottom: 0.3rem;
 }

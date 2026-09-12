@@ -110,9 +110,10 @@
             <p class="category">{{ item.category }}</p>
             <h2>{{ item.name }}</h2>
             <p class="supplier">{{ item.supplier }}</p>
-            <!-- ⚠️ trend/reason/audienceMatch/risk 真實模式恆為 null：
-                 後端 ai-suggested 端點與正式候選清單同一個 DTO，沒有這些欄位。
-                 有資料才顯示對應區塊，不要顯示假的趨勢箭頭或編造內容。 -->
+            <!-- ⚠️ trend/audienceMatch/risk 真實模式恆為 null：後端 ai-suggested
+                 端點與正式候選清單同一個 DTO，沒有這些欄位。reason 則已經接上
+                 後端補的 suggestionReason（用跟批次判定相同的門檻即時重算），
+                 不再是死欄位——但仍用同一套「有資料才顯示」的防呆，不編造內容。 -->
             @if (item.trend !== null) {
               <div class="trend">
                 <strong>{{ item.trend }}</strong
