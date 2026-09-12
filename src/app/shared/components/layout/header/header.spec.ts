@@ -22,8 +22,8 @@ describe('Header', () => {
   });
 
   it('shows the logged-in user name alongside the role badge when provided', () => {
-    component.userName = '王小明';
-    component.roleLabel = '操作人員';
+    fixture.componentRef.setInput('userName', '王小明');
+    fixture.componentRef.setInput('roleLabel', '操作人員');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('王小明');
     expect(fixture.nativeElement.textContent).toContain('操作人員');
@@ -31,7 +31,7 @@ describe('Header', () => {
   });
 
   it('hides the user name element entirely when there is no name (not an empty badge)', () => {
-    component.userName = '';
+    fixture.componentRef.setInput('userName', '');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.user-name')).toBeNull();
   });

@@ -1,4 +1,4 @@
-<!-- 檔案用途：AI 建議清單；清楚區隔 AI_SUGGESTED 與正式 CANDIDATE，並呈現各種 UI 狀態。 -->
+<!-- 檔案用途：AI 建議清單；清楚區隔 AI_SUGGESTED 與正式 CANDIDATE，並呈現各種 畫面狀態。 -->
 <main class="ai-page" aria-labelledby="ai-title">
   <header class="page-header">
     <div>
@@ -9,7 +9,7 @@
   </header>
   @if (useMockData) {
   <section class="state-bar">
-    <div><strong>UI 狀態</strong><span>AI_SUGGESTED 與 CANDIDATE 單獨呈現</span></div>
+    <div><strong>畫面狀態</strong><span>AI_SUGGESTED 與 CANDIDATE 單獨呈現</span></div>
     <div role="group" aria-label="切換 AI 頁面狀態">
       @for (state of stateOptions; track state) {
         <button
@@ -18,7 +18,7 @@
           [attr.aria-pressed]="pageState() === state"
           (click)="setState(state)"
         >
-          {{ state }}
+          {{ state === 'default' ? '正常' : state === 'loading' ? '載入中' : state === 'empty' ? '無資料' : state === 'error' ? '錯誤' : '唯讀／鎖定' }}
         </button>
       }
     </div>
@@ -69,8 +69,8 @@
     @if (items().length === 0) {
       <section class="empty">
         <h2>目前沒有 AI 建議品項</h2>
-        <p>建議可能已全數加入候選，或 Demo 資料為空。</p>
-        <button type="button" (click)="reset()">恢復 Demo 資料</button>
+        <p>建議可能已全數加入候選，或 展示資料為空。</p>
+        <button type="button" (click)="reset()">恢復展示資料</button>
       </section>
     } @else if (filtered().length === 0) {
       <section class="empty">

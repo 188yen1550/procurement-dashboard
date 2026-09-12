@@ -30,7 +30,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { APP_CONFIG } from '../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 import { toApiError } from '../../core/api/api-error';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
@@ -74,7 +74,7 @@ export class Dashboard implements OnInit {
   private readonly productTypes = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
 
   /** 只在 Mock 模式下有意義的示範狀態；真實模式一律走 realLoadState。 */
   readonly uiState = signal<DashboardUiState>('default');

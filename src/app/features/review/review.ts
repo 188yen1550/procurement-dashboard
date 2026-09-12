@@ -1,3 +1,4 @@
+import { ProductImage } from '../../shared/components/product-image';
 /**
  * 檔案用途：管理人員的待審清單與決策紀錄。
  * 預設範圍是 PENDING＋ACTIVE；核准只是選品決策，不代表上架、簽約、銷售或營收。
@@ -36,7 +37,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
-import { APP_CONFIG } from '../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import { REVIEW_DECISION_LABEL, REVIEW_STATUS_LABEL } from '../../core/domain/labels';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
@@ -46,6 +47,7 @@ import { ReviewApiService } from './api/review-api.service';
 
 /** 待審清單的顯示模型。可為 null 的欄位代表後端目前提供不了。 */
 export interface ReviewItem {
+  imageUrl?: string | null;
   id: number;
   name: string;
   /** 後端已批次查好；找不到對應帳號時為 fallback 字串，不會是 null。 */
@@ -105,7 +107,7 @@ function mock(
 }
 
 const MOCK: readonly ReviewItem[] = [
-  mock(102, '輕量智慧溫控電熱杯', '林小美', 'PENDING', 'ACTIVE', '3C／家電', 81.6, 78, 1, '2026-08-31T09:10:00+08:00'),
+  mock(102, '輕量智慧溫控電熱杯', '林小美', 'PENDING', 'ACTIVE', '電子配件', 81.6, 78, 1, '2026-08-31T09:10:00+08:00'),
   mock(103, '無香低敏濃縮洗衣紙補充組', '陳家豪', 'PENDING', 'ACTIVE', '日用品', 76.1, 88, 2, '2026-08-30T15:25:00+08:00'),
   mock(108, '年節養生堅果禮盒', '林小美', 'PENDING', 'ACTIVE', '精品禮盒', 84.3, 94, 1, '2026-08-29T11:40:00+08:00'),
   mock(109, '已封存測試品項', '陳家豪', 'REJECTED', 'ARCHIVED', '其他', 62, 82, 1, '2026-08-20T10:00:00+08:00'),
@@ -121,6 +123,7 @@ function toReviewItem(item: PendingReviewItem): ReviewItem {
   return {
     id: item.id,
     name: item.name,
+    imageUrl: (item as PendingReviewItem & { imageUrl?: string | null }).imageUrl,
     // 後端已批次查好 createdByName，不再需要「恆為 null」的特殊處理。
     submittedBy: item.createdByName,
     status: item.reviewStatus,
@@ -136,14 +139,14 @@ function toReviewItem(item: PendingReviewItem): ReviewItem {
 @Component({
   selector: 'app-review',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [ProductImage, CommonModule, FormsModule, RouterLink],
   templateUrl: './review.html',
   styleUrl: './review.scss',
 })
 export class ReviewComponent implements OnInit {
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
 
   readonly stateOptions: readonly ReviewState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
   readonly pageState = signal<ReviewState>('default');

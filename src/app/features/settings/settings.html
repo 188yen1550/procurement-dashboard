@@ -5,13 +5,13 @@
 <main class="settings-page" aria-labelledby="settings-title">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Management Settings</p>
+      <p class="eyebrow">管理設定</p>
       <h1 id="settings-title">系統設定</h1>
     </div>
   </header>
   @if (useMockData) {
   <section class="state-bar">
-    <div><strong>UI 狀態</strong><span>managerGuard 持續保護此路由</span></div>
+    <div><strong>畫面狀態</strong><span>僅供管理人員使用</span></div>
     <div role="group" aria-label="切換設定頁狀態">
       @for (state of stateOptions; track state) {
         <button
@@ -20,7 +20,7 @@
           [attr.aria-pressed]="pageState() === state"
           (click)="setState(state)"
         >
-          {{ state }}
+          {{ uiStateLabel[state] }}
         </button>
       }
     </div>
@@ -84,18 +84,18 @@
       <section class="success" role="status">
         <div>
           <strong>儲存成功</strong
-          ><span>{{ useMockData ? '已更新本地 Mock 核心客群。' : '已更新核心客群設定。' }}</span>
+          ><span>{{ useMockData ? '已更新本地模擬核心客群。' : '已更新核心客群設定。' }}</span>
         </div>
       </section>
     }
     <form class="panel" [formGroup]="form" (ngSubmit)="saveAudience()" novalidate>
       <header>
         <div>
-          <p class="eyebrow">Audience Profile</p>
+          <p class="eyebrow">核心客群</p>
           <h2>核心客群設定</h2>
           <p>作為品項客群匹配度的計算依據。</p>
         </div>
-        <span>Version 1 · 使用中</span>
+        <span>版本 1 · 使用中</span>
       </header>
       <div class="form-grid">
         <label class="wide"
@@ -180,7 +180,6 @@
     <section class="management-head">
       <div>
         <h2>商品類型設定</h2>
-        <p>系統預設與自訂類型；已被品項使用時不可刪除。</p>
       </div>
       <button
         type="button"
@@ -207,7 +206,7 @@
                 <strong>{{ item.name }}</strong>
               </td>
               <td>{{ item.system ? '系統預設' : '自訂' }}</td>
-              <td>{{ item.used === null ? '—' : item.used }}</td>
+              <td>{{ item.used ?? '尚無資料' }}</td>
               <td class="status-actions-cell">
                 <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
                 <button
@@ -218,9 +217,10 @@
                 >
                   {{ item.active ? '停用' : '復用' }}
                 </button>
-                <button type="button" class="text-action danger" (click)="removeProductType(item.name)">
+                <button type="button" class="text-action danger" [disabled]="!!productTypeDeleteReason(item)" [title]="productTypeDeleteReason(item)" (click)="removeProductType(item.name)">
                   刪除
                 </button>
+                @if (productTypeDeleteReason(item)) { <small>{{ productTypeDeleteReason(item) }}</small> }
               </td>
             </tr>
           }
@@ -258,7 +258,7 @@
               <td>{{ item.categoryLabel }}</td>
               <td>{{ item.range }}</td>
               <td>
-                <span class="status-pill" [attr.data-status]="item.status">{{ item.status }}</span>
+                <span class="status-pill" [attr.data-status]="item.status">{{ item.status === 'ACTIVE' ? '進行中' : item.status === 'PREPARING' ? '備戰期' : item.status === 'EXPIRED' ? '已結束' : '即將到來' }}</span>
               </td>
               <td>{{ item.override ? '是' : '否' }}</td>
               <td>
@@ -287,7 +287,7 @@
       <table>
         <thead>
           <tr>
-            <th>Username</th>
+            <th>帳號</th>
             <th>姓名</th>
             <th>角色</th>
             <th>狀態</th>
@@ -322,19 +322,20 @@
   } @else {
     <section class="mode-intro">
       <div>
-        <p class="eyebrow">Fixed Weight</p>
+        <p class="eyebrow">系統預設 · 權重唯讀</p>
         <h2>三套固定評估模式</h2>
       </div>
     </section>
     <div class="mode-grid">
       @for (mode of modes(); track mode.code) {
-        <article [class.active]="activeMode() === mode.code">
+        <article [class.active]="activeMode() === mode.code" [class.mode-disabled]="pageState() === 'disabled'">
           <header>
             <div>
-              <span>{{ mode.code }}</span>
+              <span>系統預設</span>
               <h3>{{ mode.name }}</h3>
             </div>
             <input
+              class="mode-radio"
               type="radio"
               name="mode"
               [value]="mode.code"
@@ -342,6 +343,7 @@
               [disabled]="pageState() === 'disabled'"
               [attr.aria-label]="'切換至' + mode.name"
               (change)="selectMode(mode.code)"
+              (keydown.enter)="$event.preventDefault(); selectMode(mode.code)"
             />
           </header>
           <p>{{ mode.description }}</p>
@@ -376,15 +378,44 @@
       }
     </div>
   }
+  @if (useMockData && activeTab() === 'modes' && (pageState() === 'default' || pageState() === 'disabled')) {
+    <section class="custom-panel" aria-labelledby="custom-title">
+      <header><div><h2 id="custom-title">自訂評估模式</h2><p>前端原型 · 四項基本權重；天氣另待規格確認。</p></div><button type="button" [disabled]="pageState() === 'disabled' || customSaving()" (click)="openCustom()">新增自訂模式</button></header>
+      @if (customMessage()) { <p role="status" class="custom-feedback">{{ customMessage() }}</p> }
+      @for (mode of prototype.customModes(); track mode.id) {
+        <article class="custom-summary"><div><strong>{{ mode.name }}</strong><p>{{ mode.description || '未填寫說明' }}</p><small>自訂 · 建立者：{{ mode.creator }}</small></div>
+          @if (prototype.activeMode() === mode.id) { <strong>目前使用中</strong> }
+          <button type="button" [disabled]="pageState() === 'disabled' || customSaving()" (click)="openCustom(mode)">編輯</button>
+          <button type="button" [disabled]="pageState() === 'disabled' || customSaving() || prototype.activeMode() === mode.id" (click)="applyCustom(mode.id)">套用</button>
+        </article>
+      } @empty { <p>尚無自訂模式，可從均衡權重開始建立。</p> }
+      @if (customDraft(); as draft) {
+        <form (ngSubmit)="saveCustom()" class="custom-form">
+          <fieldset [disabled]="customSaving() || pageState() === 'disabled'">
+            <label>模式名稱（必填，1～50 字）<input name="customName" maxlength="50" required [ngModel]="draft.name" (ngModelChange)="changeCustom('name', $event)" /></label>
+            <label>模式說明（最多 255 字）<textarea name="customDescription" maxlength="255" [ngModel]="draft.description" (ngModelChange)="changeCustom('description', $event)"></textarea></label>
+            <p>建立者：{{ draft.creator }}</p>
+            @for (factor of draft.factors; track factor.code; let i = $index) {
+              <div class="weight-row"><label [for]="'weight-' + i">{{ factor.name }}（%）</label><input [id]="'weight-' + i" [name]="'weight-' + i" type="number" min="0" max="100" step="0.1" [ngModel]="factor.weight" (ngModelChange)="changeWeight(i, $event)" /><input type="range" min="0" max="100" step="0.1" [name]="'slider-' + i" [attr.aria-label]="factor.name + '權重滑桿'" [value]="factor.weight ?? 0" #weightSlider (input)="changeWeight(i, weightSlider.valueAsNumber)" /></div>
+            }
+            <p aria-live="polite">目前總和 {{ weightTotal() }}% · {{ weightTotal() < 100 ? '還差 ' + (100 - weightTotal()).toFixed(1) + '%' : weightTotal() > 100 ? '超過 ' + (weightTotal() - 100).toFixed(1) + '%' : '總和正確' }}</p>
+            @if (!customValid()) { <p role="alert">請填寫模式名稱；每項權重須為 0～100 的數字，總和必須等於 100%。</p> }
+            <label><input type="checkbox" name="customFailure" [ngModel]="customFailure()" (ngModelChange)="customFailure.set($event)" />模擬儲存失敗</label>
+          </fieldset>
+          <div class="custom-actions"><button type="button" [disabled]="customSaving()" (click)="cancelCustom()">取消</button><button type="submit" [disabled]="!customValid() || customSaving() || pageState() === 'disabled'">{{ customSaving() ? '儲存中…' : '儲存自訂模式' }}</button></div>
+        </form>
+      }
+    </section>
+  }
   @if (modal()) {
-    <div class="modal-backdrop" (click)="closeModal()">
+    <dialog appModal class="modal-backdrop" aria-labelledby="settings-modal-title" [modalBusy]="isSaving()" (dismissed)="closeModal()">
       <form
         class="settings-modal"
         (click)="$event.stopPropagation()"
         (ngSubmit)="modal() === 'campaignStatus' ? applyCampaignStatus() : saveModal()"
       >
         <header>
-          <h2>
+          <h2 id="settings-modal-title">
             {{
               modal() === 'risk'
                 ? '新增人工風險'
@@ -429,7 +460,7 @@
         }
         @if (modal() === 'account') {
           <label
-            >Username
+            >帳號
             <input
               required
               [ngModel]="draftUsername()"
@@ -509,12 +540,7 @@
             <legend>命中標籤與等級</legend>
             @for (row of draftTags(); track $index) {
               <div class="tag-row">
-                <input
-                  placeholder="標籤"
-                  [ngModel]="row.tag"
-                  (ngModelChange)="row.tag = $event"
-                  [name]="'tag' + $index"
-                /><select
+                <select [ngModel]="row.tag" (ngModelChange)="row.tag = $event" [name]="'tag' + $index" aria-label="選擇節慶標籤"><option value="">請選擇中文標籤</option>@for (tag of tagOptions; track tag.code) {<option [value]="tag.code">{{ tag.name }}</option>}</select><select
                   [ngModel]="row.matchTier"
                   (ngModelChange)="row.matchTier = $event"
                   [name]="'tier' + $index"
@@ -545,19 +571,19 @@
               (ngModelChange)="draftStatus.set($event)"
               name="status"
             >
-              <option>UPCOMING</option>
-              <option>PREPARING</option>
-              <option>ACTIVE</option>
-              <option>EXPIRED</option>
+              <option value="UPCOMING">即將到來</option>
+              <option value="PREPARING">備戰期</option>
+              <option value="ACTIVE">進行中</option>
+              <option value="EXPIRED">已結束</option>
             </select></label
           >
-          <p>儲存後 is_manual_override 會設為 true。</p>
+          <p>儲存後將啟用手動覆蓋狀態。</p>
         }
         <footer>
           <button type="button" (click)="closeModal()">取消</button
-          ><button type="submit" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
+          ><button type="submit" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存本地資料' : '儲存') }}</button>
         </footer>
       </form>
-    </div>
+    </dialog>
   }
 </main>

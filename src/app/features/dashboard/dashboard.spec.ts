@@ -1,3 +1,4 @@
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 /**
  * 檔案用途：驗證 Dashboard Mock 狀態、推薦與錯誤畫面；assertion 不涉及真實 API。
  *
@@ -19,7 +20,8 @@ describe('Dashboard', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Dashboard],
-      providers: [provideHttpClient(), provideRouter([])],
+      providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },provideHttpClient(), provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Dashboard);

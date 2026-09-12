@@ -1,27 +1,27 @@
 <!--
-  檔案用途：審核詳情頁。Mock 模式維持原本的固定展示資料與 UI 狀態切換器；
+  檔案用途：審核詳情頁。模擬模式維持原本的固定展示資料與 畫面狀態切換器；
   真實模式呼叫 ReviewApiService，風險清單改用後端回傳的 availableRiskOptions
   （只含目前啟用中的選項），送出前套用 validateReviewForm 的三條規則。
 -->
 <main class="detail" aria-labelledby="title">
   <header class="page-header">
     <div>
-      <a routerLink="/review">← 返回待審核清單</a>
-      <p class="eyebrow">Review Detail</p>
+      <a class="page-back" routerLink="/review"><span aria-hidden="true">←</span> 返回待審核清單</a>
+      <p class="eyebrow">審核詳情</p>
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
     </div>
     @if (useMockData) {
-      <button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
+      <button type="button" class="conflict" (click)="simulateConflict()">模擬審核狀態衝突</button>
     }
   </header>
 
   @if (useMockData) {
     <section class="state-bar">
-      <div><strong>UI 狀態</strong></div>
+      <div><strong>畫面狀態</strong></div>
       <div>
         @for (state of stateOptions; track state) {
           <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
-            {{ state }}
+            {{ uiStateLabel[state] }}
           </button>
         }
       </div>
@@ -48,9 +48,10 @@
       }
     </section>
   } @else if (product(); as p) {
+    <app-product-image style="width:240px;max-width:100%;margin:1rem 0" [src]="p.imageUrl" [name]="p.productName" />
     @if (p.isResubmission) {
       <section class="resubmit">
-        <strong>曾被拒絕 · 第 {{ p.submissionCount }} 次送審</strong>
+        <strong>第 {{ p.submissionCount }} 次送審</strong>
         @if (useMockData) {
           <span>上次留言：{{ previousComment }}</span>
         }
@@ -63,17 +64,17 @@
           <span>{{ p.productTypeName }}</span>
           <h2>商品與評估快照</h2>
         </div>
-        <span>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</span>
+        <span>{{ p.pricingType === 'NEW' ? '新品' : '再販售' }}</span>
       </header>
       <div class="scores">
         <article>
-          <span>資料完整度</span><strong>{{ p.scores.dataCompleteness ?? '—' }}%</strong>
+          <span>資料完整度</span><strong>{{ p.scores.dataCompleteness == null ? '尚未計算' : p.scores.dataCompleteness + '%' }}</strong>
         </article>
         <article>
           <span>基本分數</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
         </article>
         <article>
-          <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
+          <span>節慶分數</span><strong>節慶加成 {{ p.scores.festivalBoost ?? 0 }} 分</strong>
         </article>
         <article class="final">
           <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
@@ -88,11 +89,11 @@
       @if (p.matchedCampaign) {
         <div class="campaign-match">
           <strong>命中檔期：{{ p.matchedCampaign.campaignName }}  </strong>
-          <span>標籤：{{ p.matchedCampaign.matchedTags.join('、') }}</span>
+          <span>標籤：{{ tagNames(p.matchedCampaign.matchedTags) }}</span>
         </div>
       }
       <div class="weights">
-        <strong>{{ p.scores.evaluationModeName }} · Version {{ p.scores.evaluationModeVersion ?? '—' }}</strong>
+        <strong>{{ p.scores.evaluationModeName }} · 版本 {{ p.scores.evaluationModeVersion ?? '—' }}</strong>
         <small>權重為審核快照唯讀資訊。</small>
       </div>
     </section>
@@ -100,7 +101,7 @@
     <section class="panel ai">
       <header>
         <div>
-          <p class="eyebrow">AI Assistance</p>
+          <p class="eyebrow">AI 輔助分析</p>
           <h2>AI 推薦摘要</h2>
         </div>
         <span>AI 不會自動核准</span>
@@ -192,13 +193,13 @@
   }
 
   @if (conflictOpen()) {
-    <div class="dialog-backdrop">
-      <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+    <dialog appModal class="dialog-backdrop" aria-labelledby="conflict-title" [modalBusy]="false" (dismissed)="closeConflict()">
+      <section class="dialog">
         <span aria-hidden="true">!</span>
         <h2 id="conflict-title">審核狀態已變更</h2>
         <p>此品項已被其他管理人員完成審核（409 Conflict）。請返回清單重新載入。</p>
         <button type="button" (click)="closeConflict()">我知道了</button>
       </section>
-    </div>
+    </dialog>
   }
 </main>

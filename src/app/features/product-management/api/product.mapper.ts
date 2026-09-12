@@ -47,6 +47,7 @@ export const NOT_PROVIDED = '—';
 // =========================================================================
 
 export interface ProductListItem {
+  imageUrl?: string | null;
   id: number;
   name: string;
   productTypeId: number | null;
@@ -154,6 +155,7 @@ export function toProductListItem(
     name: payload.name,
     productTypeId: payload.productTypeId,
     productTypeName,
+    imageUrl: payload.imageUrl,
     pricingType: payload.pricingType,
     supplierName: payload.supplierName ?? NOT_PROVIDED,
     createdByName: payload.createdByName ?? NOT_PROVIDED,

@@ -4,13 +4,10 @@
   自己再刻一份 dialog 樣板。
 -->
 @if (dialog.state(); as state) {
-  <div class="app-dialog-backdrop" (click)="dialog.handleCancel()" role="presentation">
+  <dialog appModal [modalTrigger]="state.trigger ?? null" class="app-dialog-backdrop" aria-labelledby="app-dialog-title" [attr.role]="state.variant === 'confirm' ? 'alertdialog' : 'dialog'" (dismissed)="dialog.handleCancel()">
     <section
       class="app-dialog"
       [class]="'variant-' + state.variant"
-      [attr.role]="state.variant === 'confirm' ? 'alertdialog' : 'alert'"
-      aria-modal="true"
-      aria-labelledby="app-dialog-title"
       (click)="$event.stopPropagation()"
     >
       <span class="app-dialog-icon" aria-hidden="true">{{
@@ -43,5 +40,5 @@
         </button>
       </div>
     </section>
-  </div>
+  </dialog>
 }

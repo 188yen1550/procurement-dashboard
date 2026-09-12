@@ -2,7 +2,6 @@
 <main class="review-page" aria-labelledby="review-title">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Human Review</p>
       <h1 id="review-title">選品審核</h1>
     </div>
   </header>
@@ -11,11 +10,11 @@
   </section> -->
   @if (useMockData) {
   <section class="state-bar">
-    <div><strong>UI 狀態</strong><span>審核 Mock 不會送出 API</span></div>
+    <div><strong>畫面狀態</strong><span>審核模擬 不會送出 API</span></div>
     <div role="group" aria-label="切換審核清單狀態">
       @for (state of stateOptions; track state) {
       <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
-        {{ state }}
+        {{ state === 'default' ? '正常' : state === 'loading' ? '載入中' : state === 'empty' ? '無資料' : state === 'error' ? '錯誤' : '唯讀／鎖定' }}
       </button>
       }
     </div>
@@ -66,7 +65,7 @@
     <h2>目前沒有審核品項</h2>
     <p>{{ useMockData ? '待新品項送審後將顯示於此。' : '目前沒有待審核的品項。' }}</p>
     <button type="button" (click)="useMockData ? resetMock() : load()">
-      {{ useMockData ? '恢復 Demo 資料' : '重新整理' }}
+      {{ useMockData ? '恢復展示資料' : '重新整理' }}
     </button>
   </section>
   } @else if (filtered().length === 0) {
@@ -83,6 +82,7 @@
       </div>
       <div>
         <span class="category">{{ item.category }}</span>
+        <app-product-image style="width:96px;max-width:100%" [src]="item.imageUrl" [name]="item.name" />
         <h2>{{ item.name }}</h2>
         <!-- submittedBy 恆為 null：ProductResponse 只有 createdBy 編號，
                    後端沒有 id 轉姓名的端點。null 時不顯示「由 null 送審」。 -->
@@ -93,11 +93,11 @@
           {{ item.submittedAt | date: 'MM/dd HH:mm' }}
         </p>
         @if (item.submissionCount > 1) {
-        <strong class="resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
+        <strong class="resubmit">第 {{ item.submissionCount }} 次送審</strong>
         }
       </div>
       <div class="meta">
-        <span>完整度 {{ item.completeness !== null ? item.completeness + '%' : '—' }}</span><span>{{
+        <span>完整度 {{ item.completeness == null ? '尚未計算' : item.completeness + '%' }}</span><span>{{
           reviewStatusLabel(item.status) }}</span><span>{{ item.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
       </div>
       <!-- 條件收在元件的 canReview()，與後端進入審核頁的前置條件一致 -->

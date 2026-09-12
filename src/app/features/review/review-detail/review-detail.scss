@@ -26,12 +26,7 @@
   margin-bottom: 1rem
 }
 
-.page-header a {
-  color: #1c5286;
-  font-size: .72rem;
-  font-weight: 700;
-  text-decoration: none
-}
+
 
 .page-header h1 {
   margin: .15rem 0 .3rem;
@@ -272,7 +267,7 @@
   border: 1px solid #d4dee6;
   border-radius: .45rem;
   font: inherit;
-  resize: vertical
+
 }
 
 .decision {
@@ -356,15 +351,7 @@
   border-radius: .3rem
 }
 
-.dialog-backdrop {
-  position: fixed;
-  z-index: 1500;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(15, 35, 55, .58)
-}
+
 
 .dialog {
   width: min(420px, 100%);

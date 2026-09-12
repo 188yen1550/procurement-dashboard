@@ -1,0 +1,29 @@
+<section class="analysis-card" aria-labelledby="trend-title">
+  <header><div><h2 id="trend-title">不同評估模式下的趨勢</h2><p>本地展示數據，尚非正式後端評估結果。</p></div>
+    <label>評估模式<select aria-label="趨勢評估模式" [disabled]="locked() || trendState() === 'loading'" [ngModel]="selectedMode()" (ngModelChange)="selectMode($event)">@for (mode of modes.options(); track mode.id) {<option [value]="mode.id">{{ mode.name }}</option>}</select></label>
+  </header>
+  <p>目前選用：<strong>{{ modeName() }}</strong> · 圖例：評估結果（分）</p>
+  @if (locked()) { <p>目前為唯讀狀態，模式切換已停用。</p> }
+  @if (incomplete() || trendState() === 'empty') { <p role="status">尚無趨勢資料。</p> }
+  @else if (trendState() === 'loading') { <p role="status">正在載入模式趨勢…</p> }
+  @else if (trendState() === 'error') { <p role="alert">模擬趨勢載入失敗。</p><button type="button" (click)="setTrendState('ready')">重試</button> }
+  @else {
+    <div class="chart" role="img" [attr.aria-label]="modeName() + '，9月1日至7日評估趨勢，單位分'"><div class="axis">100 分<br/>50 分<br/>0 分</div><div class="bars">@for (score of trend(); track $index) {<div class="column" tabindex="0" [attr.title]="'9月' + ($index + 1) + '日：' + score + ' 分'"><span>{{ score }}</span><i [style.height.%]="score"></i><small>9/{{ $index + 1 }}</small></div>}</div></div>
+    <p class="caption">橫軸：日期（2026 年 9 月） · 縱軸：評估結果（0～100 分）</p>
+  }
+  <details><summary>趨勢展示狀態</summary><div class="actions"><button type="button" (click)="setTrendState('ready')">正常資料</button><button type="button" (click)="setTrendState('empty')">無資料</button><button type="button" (click)="setTrendState('error')">載入失敗</button></div></details>
+</section>
+<section class="analysis-card" aria-labelledby="ai-title">
+  <header><div><h2 id="ai-title">AI 摘要</h2><p>本地模擬分析，僅供人工決策參考。</p></div><button type="button" (click)="generate()" [disabled]="analyzing() || incomplete() || locked()">{{ analyzing() ? '分析中…' : '重新分析' }}</button></header>
+  @if (incomplete()) { <p role="status">資料不足，暫時無法產生完整分析</p> }
+  @else if (!snapshot()) { <p role="status">首次尚未生成摘要，可點擊重新分析。</p> }
+  @if (analyzing()) { <p role="status">正在分析，請稍候…</p> }
+  @if (analysisError()) { <p class="error" role="alert">{{ analysisError() }}</p> }
+  @if (stale()) { <p role="status">{{ stale() }}</p> }
+  <div class="summary-grid"><div><h3>推薦原因</h3><ul>@for (reason of snapshot()?.reasons ?? []; track $index) {<li>{{ reason }}</li>} @empty {<li>目前沒有推薦原因。</li>}</ul></div><div><h3>風險提示</h3><ul>@for (risk of snapshot()?.risks ?? []; track $index) {<li>{{ risk }}</li>} @empty {<li>目前沒有風險提示，仍需人工確認。</li>}</ul></div></div>
+  <p>生成時間：{{ snapshot()?.generatedAt ? (snapshot()!.generatedAt | date:'yyyy/MM/dd HH:mm:ss') : '尚未生成' }} · 資料版本：{{ snapshot()?.dataVersion ?? '待生成' }} · 規則版本：{{ snapshot()?.ruleVersion ?? '待生成' }}</p>
+  <details><summary>分析展示狀態</summary><div class="actions"><button type="button" [disabled]="analyzing()" (click)="clearAnalysis()">首次尚未生成</button><button type="button" [disabled]="analyzing()" (click)="dataVersion.set(dataVersion() + 1)">模擬資料更新</button><button type="button" [disabled]="analyzing()" (click)="ruleVersion.set(ruleVersion() + 1)">模擬規則變更</button><label><input type="checkbox" [disabled]="analyzing()" [ngModel]="failAnalysis()" (ngModelChange)="failAnalysis.set($event)"/>模擬分析失敗</label></div></details>
+</section>
+@if (showWeather()) {
+<section class="analysis-card weather"><header><h2>天氣額外加成候選項目</h2><button type="button" (click)="showWeather.set(false)">隱藏此區塊</button></header><strong>實驗性展示 · 此功能仍待規格確認</strong><p>適用狀態：{{ weatherApplies() ? '此分類適用於展示情境' : '此分類不適用於展示情境' }}。影響分類：飲料、生鮮、冷凍食品。</p><p>模擬情境：夏季高溫 · 模擬加成：{{ weatherApplies() ? '2' : '0' }} 分 · 資料更新：2026/09/01 10:00</p><p>非即時天氣；未納入四項基本權重、趨勢或最終分數。核准商品的凍結規則待確認。</p></section>
+}

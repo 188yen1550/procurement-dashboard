@@ -1,3 +1,11 @@
+import { finalize } from 'rxjs';
+import { ModalSurface } from '../../core/dialog/modal-surface';
+import { UI_STATE_LABEL } from '../../core/domain/frontend-options';
+import { BASE_FACTORS, CustomEvaluationMode, EvaluationPrototype, validWeights } from '../../core/domain/evaluation-prototype';
+import { PRODUCT_TYPES, CAMPAIGN_TAGS, tagLabel } from '../../core/domain/frontend-options';
+import { DialogService } from '../../core/dialog/dialog.service';
+import { HostListener } from '@angular/core';
+import { of, Observable } from 'rxjs';
 /**
  * 檔案用途：管理頁的三套固定評估模式、人工風險、核心客群、商品類型、檔期與帳號。
  * 帳號只能停用；使用中的商品類型不可刪除；檔期編輯與手動狀態切換是不同入口。
@@ -16,9 +24,7 @@
  * - 人工風險選項：`RiskOptionResponsePayload` 沒有 `alertKeywords` 欄位，
  *   清單頁看不到目前設定的關鍵字內容（只能看到名稱），這是後端 GET 端點
  *   本來就沒回傳，不是前端疏漏。
- * - 商品類型：`ProductTypeResponsePayload` 沒有「使用品項數」，刪除鍵一律
- *   可按，實際擋下與否交給後端的 409（已被品項引用）處理，不在前端假裝
- *   算得出使用數。
+ * - 商品類型：使用數未知時禁止刪除，保留停用功能。
  * - 帳號管理：`UserAccountResponsePayload` 沒有姓名以外的稽核欄位，
  *   跟 Mock 一致，沒有落差。
  */
@@ -26,7 +32,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toApiError } from '../../core/api/api-error';
-import { APP_CONFIG } from '../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { FestiveCategory, UserRole } from '../../core/domain/enums';
@@ -67,6 +73,7 @@ interface ProductTypeVM {
   system: boolean;
   /** ⚠️ 真實模式恆為 null：後端沒有這個統計。 */
   used: number | null;
+  deletionBlocked?: boolean;
   active: boolean;
 }
 
@@ -111,17 +118,7 @@ const MOCK_RISK_OPTIONS: readonly RiskOptionVM[] = [
   { id: 3, name: '市場不確定性與需求變動風險', keywords: '熱度下降、需求波動、競品', isSystemDefault: true },
 ];
 
-const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
-  { id: 1, name: '食品／生鮮', system: true, used: 12, active: true },
-  { id: 2, name: '日用品', system: true, used: 8, active: true },
-  { id: 3, name: '3C／家電', system: true, used: 6, active: true },
-  { id: 4, name: '生活雜貨', system: true, used: 4, active: true },
-  { id: 5, name: '美妝保養', system: true, used: 3, active: true },
-  { id: 6, name: '服飾配件', system: true, used: 0, active: true },
-  { id: 7, name: '寢具家用', system: true, used: 2, active: true },
-  { id: 8, name: '精品禮盒', system: true, used: 1, active: true },
-  { id: 9, name: '其他', system: true, used: 0, active: true },
-];
+const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = PRODUCT_TYPES.map(t => ({ ...t, system: true, used: t.id === 1 ? 12 : 0, active: true }));
 
 const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
   {
@@ -167,18 +164,79 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [ModalSurface, FormsModule, ReactiveFormsModule],
   templateUrl: './settings.html',
-  styleUrl: './settings.scss',
+  styleUrls: ['./settings.scss', './settings-prototype.scss'],
 })
 export class Settings implements OnInit {
+  readonly uiStateLabel = UI_STATE_LABEL;
+  readonly prototype = inject(EvaluationPrototype);
+  private readonly dialog = inject(DialogService);
+  readonly tagOptions = CAMPAIGN_TAGS;
+  readonly tagLabel = tagLabel;
+  readonly customDraft = signal<CustomEvaluationMode | null>(null);
+  readonly customDirty = signal(false);
+  readonly customSaving = signal(false);
+  readonly customFailure = signal(false);
+  readonly customMessage = signal('');
+  readonly weightTotal = computed(() => Math.round((this.customDraft()?.factors.reduce((n, f) => n + (Number.isFinite(f.weight) ? f.weight ?? 0 : 0), 0) ?? 0) * 100) / 100);
+  readonly customValid = computed(() => {
+    const d = this.customDraft();
+    return !!d && d.name.trim().length > 0 && d.name.trim().length <= 50 && d.description.length <= 255 && validWeights(d.factors);
+  });
+  openCustom(mode?: CustomEvaluationMode): void {
+    if (!this.useMockData || this.pageState() !== 'default' || this.customSaving()) return;
+    const open = () => {
+      this.customDraft.set(mode ? {...mode, factors: mode.factors.map(f => ({...f}))} : {id: 'custom-' + Date.now(), name: '', description: '', creator: '管理測試人員（本地展示）', factors: BASE_FACTORS.map(f => ({...f})), version: 1});
+      this.customDirty.set(false); this.customMessage.set('');
+    };
+    if (this.customDirty()) this.canLeave().subscribe(ok => {if (ok) open();}); else open();
+  }
+  changeCustom(field: 'name' | 'description', value: string): void {
+    if (this.customSaving() || this.pageState() !== 'default') return;
+    this.customDraft.update(d => d ? {...d, [field]: value} : null); this.customDirty.set(true);
+  }
+  changeWeight(index: number, value: number | null): void {
+    if (this.customSaving() || this.pageState() !== 'default') return;
+    this.customDraft.update(d => d ? {...d, factors: d.factors.map((f,i) => i === index ? {...f, weight: value} : f)} : null);
+    this.customDirty.set(true);
+  }
+  saveCustom(): void {
+    if (!this.customValid() || this.customSaving() || this.pageState() !== 'default') return;
+    const draft = this.customDraft()!;
+    this.customSaving.set(true); this.customMessage.set('');
+    const timer = window.setTimeout(() => {
+      this.customSaving.set(false);
+      if (this.customFailure()) { this.customMessage.set('模擬儲存失敗，已保留輸入，請重試。'); return; }
+      this.prototype.save({...draft, version: draft.version + 1});
+      this.customDirty.set(false); this.customDraft.set(null);
+      this.customMessage.set('自訂模式已儲存於本地記憶體，尚未寫入資料庫。');
+    }, 500);
+    this.destroyRef.onDestroy(() => window.clearTimeout(timer));
+  }
+  cancelCustom(): void {
+    if (this.customSaving()) return;
+    this.canLeave().subscribe(ok => { if(ok) {this.customDraft.set(null); this.customDirty.set(false);} });
+  }
+  applyCustom(id: string): void {
+    if (this.pageState() !== 'default' || this.customSaving()) return;
+    this.prototype.apply(id); this.activeMode.set(id);
+    this.customMessage.set('已套用本地自訂模式；趨勢可預覽此模式，正式分數不變。');
+  }
+  canLeave(): Observable<boolean> {
+    if (this.customSaving()) return of(false);
+    return this.customDirty() ? this.dialog.confirm('尚有未儲存的自訂模式', ['離開將放棄目前輸入。'], '離開', '繼續編輯') : of(true);
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  protectCustom(event: BeforeUnloadEvent): void { if (this.customDirty() || this.customSaving()) event.preventDefault(); }
+
   private readonly api = inject(SettingsApiService);
   private readonly userApi = inject(UserApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly riskOptionLookup = inject(RiskOptionLookupService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
   /**
    * 核心客群設定目前鎖住，不開放操作／管理層進入編輯。
    * 沿用 20260831 分支的既有決策，不是這次合併新增的規則——
@@ -192,7 +250,7 @@ export class Settings implements OnInit {
   readonly saved = signal(false);
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
-  readonly activeMode = signal('BALANCED');
+  readonly activeMode = signal(this.prototype.activeMode());
 
   constructor() {
     // 原本呼叫 autoDismissStatusMessage(this.statusMessage) 的地方拿掉了，
@@ -263,8 +321,12 @@ export class Settings implements OnInit {
       this.statusMessageState.show('核心客群設定目前暫不開放。');
       return;
     }
+    if (this.customSaving()) return;
+    if (this.customDirty() && tab !== this.activeTab()) {
+      this.canLeave().subscribe(ok => { if (ok) {this.customDirty.set(false); this.customDraft.set(null); this.setTab(tab);} });
+      return;
+    }
     this.activeTab.set(tab);
-    // this.statusMessageState.show('已切換設定分類。');
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);
   }
 
@@ -371,6 +433,7 @@ export class Settings implements OnInit {
     if (this.pageState() === 'disabled') return;
 
     if (this.useMockData) {
+      this.prototype.apply(code);
       this.activeMode.set(code);
       this.statusMessageState.show(`已在本地切換為 ${this.modes().find((m) => m.code === code)?.name}。`);
       return;
@@ -485,7 +548,7 @@ export class Settings implements OnInit {
             list.map((item) => ({
               id: item.id,
               name: item.name,
-              system: item.isSystemDefault ?? false,
+              system: item.isSystemDefault ?? true,
               used: null,
               active: item.isActive ?? true,
             })),
@@ -496,7 +559,40 @@ export class Settings implements OnInit {
       });
   }
 
+  readonly deletingType = signal<string | null>(null);
+
+  productTypeDeleteReason(item: ProductTypeVM): string {
+    if (item.system) return '系統預設類型不可刪除。';
+    if (item.deletionBlocked) return '此類型已被品項使用，不可刪除，請改為停用。';
+    if (item.used === null) return '使用情況不明，暫不可刪除。';
+    if (item.used > 0) return '此類型已被品項使用，不可刪除，請改為停用。';
+    if (this.pageState() !== 'default') return '目前狀態不可刪除。';
+    if (this.deletingType() !== null) return '正在確認或刪除商品類型，請稍候。';
+    return '';
+  }
+
   removeProductType(name: string): void {
+    const target = this.productTypes().find(type => type.name === name);
+    if (!target) return;
+    const reason = this.productTypeDeleteReason(target);
+    if (reason) { this.statusMessageState.show(reason); return; }
+    this.deletingType.set(name);
+    this.dialog.confirm('確認刪除商品類型', [
+      '刪除對象：「' + name + '」。',
+      '刪除後將無法再選用此類型，且無法復原。已被品項使用及系統預設類型不可刪除。',
+    ], '刪除', '取消').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(ok => {
+      this.deletingType.set(null);
+      if (!ok) return;
+      const current = this.productTypes().find(type => type === target);
+      if (!current) return;
+      const blocked = this.productTypeDeleteReason(current);
+      if (blocked) { this.statusMessageState.show(blocked); return; }
+      this.deletingType.set(name);
+      this.deleteConfirmedProductType(name);
+    });
+  }
+
+  private deleteConfirmedProductType(name: string): void {
     const item = this.productTypes().find((type) => type.name === name);
     if (!item) return;
 
@@ -506,13 +602,15 @@ export class Settings implements OnInit {
         return;
       }
       this.productTypes.update((items) => items.filter((type) => type.name !== name));
+      this.deletingType.set(null);
+      this.statusMessageState.show('已從本地資料刪除「' + name + '」。');
       return;
     }
 
-    if (!item.id) return;
+    if (!item.id) { this.deletingType.set(null); return; }
     this.api
       .deleteProductType(item.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(finalize(() => this.deletingType.set(null)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.productTypes.update((items) => items.filter((type) => type.name !== name));
@@ -521,6 +619,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           const error = toApiError(err);
+          if (error.status === 409) this.productTypes.update(items => items.map(type => type.id === item.id ? {...type, deletionBlocked: true} : type));
           this.statusMessageState.show(
             error.status === 409 ? '此類型已被品項使用，不可刪除，請改為停用。' : error.message,
           );
@@ -712,6 +811,7 @@ export class Settings implements OnInit {
   }
 
   closeModal(): void {
+    if (this.isSaving()) return;
     this.modal.set(null);
     this.draftName.set('');
     this.draftKeywords.set('');
@@ -725,10 +825,12 @@ export class Settings implements OnInit {
   }
 
   removeTagRow(index: number): void {
+    if (this.isSaving() || this.draftTags().length <= 1) return;
     this.draftTags.update((rows) => rows.filter((_, i) => i !== index));
   }
 
   saveModal(): void {
+    if (this.isSaving()) return;
     const type = this.modal();
 
     if (this.useMockData) {

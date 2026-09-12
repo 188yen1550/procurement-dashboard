@@ -1,3 +1,8 @@
+import { finalize } from 'rxjs';
+import { ModalSurface } from '../../core/dialog/modal-surface';
+import { ProductPrototype } from '../../core/domain/product-prototype';
+import { ProductImage } from '../../shared/components/product-image';
+import { PRODUCT_TYPES } from '../../core/domain/frontend-options';
 /**
  * 檔案用途：正式候選 CANDIDATE 商品主清單、篩選及生命週期操作。
  * AI_SUGGESTED 不在主清單顯示；刪除只允許未審核且從未送審者。
@@ -27,7 +32,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
-import { APP_CONFIG } from '../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -42,7 +47,7 @@ import { ProductListItem, toProductActionAvailability } from './api/product.mapp
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 
 export type PageState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
-export type SortOption = 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
+export type SortOption = 'name_asc' | 'name_desc' | 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
 
 /** 本地 Mock：欄位形狀與 ProductListItem 一致，切換模式時樣板不用改。 */
 function mockItem(
@@ -90,27 +95,28 @@ function mockItem(
 }
 
 const MOCK_PRODUCTS: readonly ProductListItem[] = [
-  mockItem(101, '中秋炭烤海陸組合禮盒', '食品／生鮮', 'RESALE', '潮港鮮物有限公司', 92.4, 96, 'APPROVED', 'ACTIVE', 'CANDIDATE', '2026-08-31T09:25:00+08:00', 1),
-  mockItem(102, '輕量智慧溫控電熱杯', '3C／家電', 'NEW', '沐光科技', 81.6, 78, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-30T16:40:00+08:00', 0),
+  mockItem(101, '中秋炭烤海陸組合禮盒', '生鮮', 'RESALE', '潮港鮮物有限公司', 92.4, 96, 'APPROVED', 'ACTIVE', 'CANDIDATE', '2026-08-31T09:25:00+08:00', 1),
+  mockItem(102, '輕量智慧溫控電熱杯', '電子配件', 'NEW', '沐光科技', 81.6, 78, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-30T16:40:00+08:00', 0),
   mockItem(103, '無香低敏濃縮洗衣紙補充組', '日用品', 'RESALE', '淨好生活實業', 74.8, 88, 'REJECTED', 'ACTIVE', 'CANDIDATE', '2026-08-29T11:15:00+08:00', 1),
   mockItem(104, '超輕量折疊收納推車', '生活雜貨', 'NEW', '簡居創意工坊', null, 48, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-28T14:08:00+08:00', 0),
   mockItem(105, '敏弱肌保濕修護組', '美妝保養', 'RESALE', '禾心生技', 86.2, 100, 'APPROVED', 'ARCHIVED', 'CANDIDATE', '2026-08-26T10:30:00+08:00', 1),
   mockItem(106, '可機洗抗菌涼感被', '寢具家用', 'RESALE', '眠好家紡織', null, 55, 'REJECTED', 'ARCHIVED', 'CANDIDATE', '2026-08-24T13:50:00+08:00', 2),
-  mockItem(107, '旅行用全能轉接充電器', '3C／家電', 'RESALE', '沐光科技', 79.1, 82, 'PENDING', 'ACTIVE', 'AI_SUGGESTED', '2026-08-31T07:10:00+08:00', 0),
+  mockItem(107, '旅行用全能轉接充電器', '電子配件', 'RESALE', '沐光科技', 79.1, 82, 'PENDING', 'ACTIVE', 'AI_SUGGESTED', '2026-08-31T07:10:00+08:00', 0),
 ];
 
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [ModalSurface, CommonModule, FormsModule, RouterLink, ProductImage],
   templateUrl: './product-management.html',
   styleUrls: ['./product-management.scss', './product-management-actions.scss'],
 })
 export class ProductManagement implements OnInit {
+  readonly productPrototype = inject(ProductPrototype);
   private readonly api = inject(ProductApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
 
   readonly products = signal<ProductListItem[]>([]);
   readonly pageState = signal<PageState>('default');
@@ -135,6 +141,7 @@ export class ProductManagement implements OnInit {
    */
   readonly sortOption = signal<SortOption>('updatedAt_desc');
   readonly dialogProduct = signal<ProductListItem | null>(null);
+  readonly actionPending = signal(false);
   readonly dialogMode = signal<'delete' | 'resubmit' | 'notice' | null>(null);
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
@@ -155,7 +162,7 @@ export class ProductManagement implements OnInit {
   readonly totalPages = signal(0);
 
   readonly productTypes = computed(() =>
-    [...new Set(this.products().map((p) => p.productTypeName))].sort(),
+    this.useMockData ? PRODUCT_TYPES.map(t => t.name) : [...new Set(this.products().map((p) => p.productTypeName))].sort(),
   );
 
   /**
@@ -208,6 +215,10 @@ export class ProductManagement implements OnInit {
   readonly sortedProducts = computed(() => {
     const list = this.filteredProducts();
     const sort = this.sortOption();
+    if (this.useMockData && (sort === 'name_asc' || sort === 'name_desc')) {
+      const direction = sort === 'name_asc' ? 1 : -1;
+      return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant', { numeric: true }) * direction);
+    }
     if (sort === 'finalScore_desc' || sort === 'finalScore_asc') {
       const direction = sort === 'finalScore_desc' ? -1 : 1;
       return [...list].sort((a, b) => {
@@ -343,7 +354,13 @@ export class ProductManagement implements OnInit {
    * 「分數」兩個選項不用重新載入——資料沒變，只是同一批資料換個順序看，
    * sortedProducts() 這個 computed 會自動反映。
    */
+  toggleNameSort(): void {
+    if (!this.useMockData || this.isLoading()) return;
+    this.updateSort(this.sortOption() === 'name_asc' ? 'name_desc' : 'name_asc');
+  }
+
   updateSort(value: string): void {
+    if (!this.useMockData && (value === 'name_asc' || value === 'name_desc')) return;
     this.sortOption.set(value as SortOption);
     if (value === 'updatedAt_desc' || value === 'updatedAt_asc') {
       this.pageNumber.set(0);
@@ -381,14 +398,14 @@ export class ProductManagement implements OnInit {
   }
 
   requestDelete(product: ProductListItem): void {
-    if (!product.actions.canDelete) return;
+    if (!product.actions.canDelete || this.actionPending() || this.dialogMode()) return;
     this.dialogProduct.set(product);
     this.dialogMode.set('delete');
   }
 
   confirmDelete(): void {
     const target = this.dialogProduct();
-    if (!target || !target.actions.canDelete) return;
+    if (this.dialogMode() !== 'delete' || !target || !target.actions.canDelete || this.actionPending()) return;
 
     if (this.useMockData) {
       this.products.update((items) => items.filter((item) => item.id !== target.id));
@@ -397,12 +414,14 @@ export class ProductManagement implements OnInit {
       return;
     }
 
+    this.actionPending.set(true);
     this.api
       .remove(target.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(finalize(() => this.actionPending.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.statusMessageState.show(`已刪除「${target.name}」。`);
+          this.actionPending.set(false);
           this.closeDialog();
           this.load();
         },
@@ -455,6 +474,7 @@ export class ProductManagement implements OnInit {
   }
 
   closeDialog(): void {
+    if (this.actionPending()) return;
     this.dialogProduct.set(null);
     this.dialogMode.set(null);
   }
@@ -467,6 +487,7 @@ export class ProductManagement implements OnInit {
    * 而不是顯示通用錯誤讓使用者對著過期的按鈕繼續點。
    */
   private handleActionError(err: unknown): void {
+    this.actionPending.set(false);
     const error = toApiError(err);
     this.statusMessageState.show(
       error.status === 409 ? `${error.message}（已重新載入最新狀態）` : error.message,
@@ -511,7 +532,8 @@ export class ProductManagement implements OnInit {
   }
 
   private resetMockData(): void {
-    this.products.set(MOCK_PRODUCTS.map((p) => ({ ...p })));
+    const saved = this.productPrototype.items();
+    this.products.set([...MOCK_PRODUCTS.filter(p => !saved.some(s => s.id === p.id)), ...saved.map(p => this.productPrototype.listItem(p))]);
     this.totalElements.set(MOCK_PRODUCTS.length);
     this.totalPages.set(1);
   }

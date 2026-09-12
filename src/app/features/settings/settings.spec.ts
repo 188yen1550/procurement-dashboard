@@ -1,3 +1,7 @@
+import { DialogService } from '../../core/dialog/dialog.service';
+import { Subject } from 'rxjs';
+import '../../core/dialog/modal-test-setup';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 /**
  * 檔案用途：驗證固定模式、9 類商品、條件式刪除、檔期入口與帳號停用等設定規則。
  *
@@ -6,10 +10,7 @@
  * 用同一套策略：整個 mock 掉 SettingsApiService／UserApiService／兩個
  * Lookup 服務，讓測試不依賴全域設定值，也不需要真的打網路。
  *
- * 「刪除使用中商品類型」這條規則在真實模式下改變了驗證方式：
- * 後端 ProductTypeResponse 沒有「使用品項數」欄位，前端無從事先判斷，
- * 一律送出 DELETE 請求，由後端的 409 擋下——測試也跟著改成驗證這個流程，
- * 而不是驗證「前端本地判斷擋下」。
+ * 商品類型刪除需確認系統來源及使用數；仍保留後端 409 的最後一道防線。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -168,6 +169,7 @@ describe('Settings', () => {
     await TestBed.configureTestingModule({
       imports: [Settings],
       providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },
         { provide: SettingsApiService, useValue: settingsApi },
         { provide: UserApiService, useValue: userApi },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
@@ -177,6 +179,22 @@ describe('Settings', () => {
     fixture = TestBed.createComponent(Settings);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it.each([[null, '尚無資料'], [0, '0'], [12, '12']])('renders used count %s without treating zero as missing', (value, label) => {
+    component.setTab('productTypes');
+    component.productTypes.update(items => [{...items[0], used: value as number | null}]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('tbody tr td:nth-child(3)').textContent.trim()).toBe(label);
+    expect(fixture.nativeElement.textContent).not.toContain('系統預設與自訂類型；已被品項使用時不可刪除。');
+  });
+
+  it('switches settings tabs without a classification toast', () => {
+    component.setTab('productTypes');
+    component.setTab('risks');
+    fixture.detectChanges();
+    expect(component.statusMessage()).toBe('');
+    expect(fixture.nativeElement.querySelector('.status-toast')).toBeNull();
   });
 
   it('creates the complete management settings page', () => {
@@ -246,7 +264,7 @@ describe('Settings', () => {
     expect(component.riskOptions().some((item) => item.name === '測試風險')).toBe(true);
   });
 
-  it('lets the backend 409 decide whether a product type is in use', () => {
+  it('preserves the server 409 guard even after confirming a known unused custom type', () => {
     component.setTab('productTypes');
     settingsApi.deleteProductType.mockReturnValue(
       throwError(
@@ -258,13 +276,45 @@ describe('Settings', () => {
       ),
     );
 
-    // ⚠️ 後端 ProductTypeResponse 沒有「使用品項數」欄位，前端無從事先判斷，
-    // 一律送出刪除請求，由後端的 409 擋下——這是真實模式下唯一的判斷依據。
+    // 模擬已確認未使用，但確認後被其他人引用的情境。
+    component.productTypes.update(items => items.map(item => item.name === '食品／生鮮' ? { ...item, system: false, used: 0 } : item));
     component.removeProductType('食品／生鮮');
+    TestBed.inject(DialogService).handleConfirm();
 
     expect(settingsApi.deleteProductType).toHaveBeenCalled();
     expect(component.productTypes().some((item) => item.name === '食品／生鮮')).toBe(true);
     expect(component.statusMessage()).toContain('不可刪除');
+  });
+
+  it('blocks default, used and unknown product types before confirmation', () => {
+    component.setTab('productTypes');
+    for (const patch of [{system: true, used: 0}, {system: false, used: 2}, {system: false, used: null}]) {
+      component.productTypes.update(items => items.map(item => ({...item, ...patch})));
+      component.removeProductType('食品／生鮮');
+      expect(TestBed.inject(DialogService).state()).toBeNull();
+      expect(component.statusMessage()).toBeTruthy();
+    }
+    expect(settingsApi.deleteProductType).not.toHaveBeenCalled();
+  });
+
+  it('requires confirmation and prevents repeat deletes while pending', () => {
+    component.setTab('productTypes');
+    component.productTypes.update(items => items.map(item => ({...item, system: false, used: 0})));
+    const response = new Subject<undefined>();
+    settingsApi.deleteProductType.mockReturnValueOnce(response);
+    const dialog = TestBed.inject(DialogService);
+    component.removeProductType('食品／生鮮');
+    expect(dialog.state()?.messages.join('')).toContain('食品／生鮮');
+    expect(settingsApi.deleteProductType).not.toHaveBeenCalled();
+    dialog.handleCancel();
+    expect(component.deletingType()).toBeNull();
+    component.removeProductType('食品／生鮮');
+    dialog.handleConfirm();
+    component.removeProductType('食品／生鮮');
+    expect(settingsApi.deleteProductType).toHaveBeenCalledTimes(1);
+    response.next(undefined); response.complete();
+    expect(component.deletingType()).toBeNull();
+    expect(component.statusMessage()).toContain('已刪除');
   });
 
   it('disables accounts via the API and retains their records', () => {
@@ -285,7 +335,7 @@ describe('Settings', () => {
     fixture.detectChanges();
     const toggleButton = Array.from(
       fixture.nativeElement.querySelectorAll('.status-actions-cell .text-action'),
-    ).find((el) => (el as HTMLElement).textContent?.includes('帳號')) as HTMLButtonElement;
+    ).find((el) => (el as HTMLElement).closest('tr')?.textContent?.includes('buyer01')) as HTMLButtonElement;
     expect(toggleButton?.textContent).toContain('復用帳號');
     expect(toggleButton?.classList.contains('is-restore')).toBe(true);
 

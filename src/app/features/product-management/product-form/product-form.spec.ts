@@ -1,3 +1,5 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 /**
  * 檔案用途：驗證品項表單的 NEW／RESALE、圖片格式與大小、離頁 dirty、核准欄位鎖定及防重送。
  *
@@ -58,6 +60,7 @@ describe('ProductForm', () => {
     await TestBed.configureTestingModule({
       imports: [ProductForm],
       providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },
         provideRouter([]),
         { provide: ProductApiService, useValue: api },
         { provide: SettingsApiService, useValue: settingsApi },
@@ -168,7 +171,7 @@ describe('ProductForm', () => {
 
   it('keeps the saved state and shows a dialog when resubmit itself fails after a successful save', () => {
     api.resubmit.mockReturnValueOnce(
-      throwError(() => ({ error: { message: '此商品狀態已變更，無法重新送審' } })),
+      throwError(() => new HttpErrorResponse({ error: { message: '此商品狀態已變更，無法重新送審' }, status: 500 })),
     );
     component.form.patchValue({
       name: '測試商品',
@@ -188,7 +191,7 @@ describe('ProductForm', () => {
 
   it('shows an error dialog and stays on the page when saving fails', () => {
     api.create.mockReturnValue(
-      throwError(() => ({ error: { message: '伺服器發生錯誤，請稍後再試' }, status: 500 })),
+      throwError(() => new HttpErrorResponse({ error: { message: '伺服器發生錯誤，請稍後再試' }, status: 500 })),
     );
     component.form.patchValue({
       name: '測試商品',
@@ -386,12 +389,29 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(component.isCoreLocked()).toBe(true);
     const tagButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('.tag-toggle-group .tag-toggle'),
+      fixture.nativeElement.querySelectorAll('#campaign-select'),
     ) as HTMLButtonElement[];
     expect(tagButtons.length).toBeGreaterThan(0);
     expect(tagButtons.every((button) => button.disabled)).toBe(true);
   });
 
+  it('warns for resale above market price without blocking saving or allowing duplicate requests', () => {
+    api.create.mockReturnValue(NEVER);
+    component.form.patchValue({name:'價格測試', supplierName:'供應商', productTypeId:1, targetCustomer:'家庭', pricingType:'RESALE', costPrice:50, salePrice:120, marketPrice:100});
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('預計售價高於市售價格');
+    component.submit(); component.submit();
+    expect(api.create).toHaveBeenCalledTimes(1);
+    expect(component.isSubmitting()).toBe(true);
+  });
+  it('does not compare new product prices or warn when resale price equals market price', () => {
+    component.form.patchValue({pricingType:'RESALE',costPrice:50,salePrice:100,marketPrice:100});
+    expect(component.priceWarnings()).toEqual([]);
+    component.form.patchValue({pricingType:'NEW',salePrice:120});
+    fixture.detectChanges();
+    expect(component.priceWarnings()).toEqual([]);
+    expect(fixture.nativeElement.textContent).not.toContain('預計售價高於市售價格');
+  });
   it('blocks duplicate submissions while saving', () => {
     // create() 故意用 NEVER：模擬請求還在飛行中，讓第二次 submit() 真的會被
     // isSubmitting() 的防重送guard擋下。若這裡改用 of(...)（同步立即完成），

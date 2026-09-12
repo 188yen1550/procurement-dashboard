@@ -1,3 +1,8 @@
+import { ProductImage } from '../../../shared/components/product-image';
+import { ProductPrototype } from '../../../core/domain/product-prototype';
+import { PRODUCT_TYPES } from '../../../core/domain/frontend-options';
+import { AnalysisPanel } from './analysis-panel';
+import { tagLabel, supplyLabel } from '../../../core/domain/frontend-options';
 /**
  * 檔案用途：品項詳情的評分拆解、圖片、趨勢、AI、封存／復用與各種本地 UI 狀態。
  * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
@@ -7,7 +12,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
-import { APP_CONFIG } from '../../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { DialogService } from '../../../core/dialog/dialog.service';
@@ -53,7 +58,7 @@ function toAiExtras(
 const APPROVED: DetailProduct = {
   id: 101,
   name: '中秋炭烤海陸組合禮盒',
-  category: '食品／生鮮',
+  category: '生鮮',
   pricingType: 'RESALE',
   supplier: '潮港鮮物有限公司',
   reviewStatus: 'APPROVED',
@@ -85,10 +90,10 @@ const APPROVED: DetailProduct = {
   trendDirection: 'UP',
   lastSyncedAt: '2026-08-31T09:20:00+08:00',
   aiSummary: '節慶標籤與當前檔期高度吻合，供應穩定且價格具競爭力，建議維持人工確認供貨排程。',
-  aiReasons: ['中秋烤肉需求與 bbq 標籤相符', '團購價較市價低 20%', '近期搜尋熱度呈上升'],
-  risks: ['MOQ 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
+  aiReasons: ['商品符合中秋烤肉需求', '團購價較市價低 20%', '近期搜尋熱度呈上升'],
+  risks: ['最低訂購量（MOQ）50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
   description: '適合中秋家庭與企業團購的海陸烤肉組合。',
-  imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"%3E%3Crect width="800" height="600" fill="%23e8f2ed"/%3E%3Ccircle cx="400" cy="270" r="150" fill="%2339735c"/%3E%3Cpath d="M290 300h220l-35 125H325z" fill="%23fff"/%3E%3Ctext x="400" y="510" text-anchor="middle" font-family="sans-serif" font-size="38" fill="%23243447"%3EProduct Mock%3C/text%3E%3C/svg%3E',
+  imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"%3E%3Crect width="800" height="600" fill="%23e8f2ed"/%3E%3Ccircle cx="400" cy="270" r="150" fill="%2339735c"/%3E%3Cpath d="M290 300h220l-35 125H325z" fill="%23fff"/%3E%3Ctext x="400" y="510" text-anchor="middle" font-family="sans-serif" font-size="38" fill="%23243447"%3E商品示意%3C/text%3E%3C/svg%3E',
 };
 const INCOMPLETE: DetailProduct = {
   ...APPROVED,
@@ -123,19 +128,23 @@ const INCOMPLETE: DetailProduct = {
 
 @Component({
   selector: 'app-product-detail',
-  imports: [CommonModule, RouterLink],
+  imports: [ProductImage, CommonModule, RouterLink, AnalysisPanel],
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
 export class ProductDetail implements OnInit {
+  readonly productPrototype = inject(ProductPrototype);
+  readonly tagLabel = tagLabel;
+  readonly supplyLabel = supplyLabel;
+  tagNames(tags: string[]): string { return tags.map(tagLabel).join('、'); }
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
   private readonly productTypes = inject(ProductTypeLookupService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
   readonly stateOptions: readonly DetailState[] = [
     'default',
     'locked',
@@ -148,7 +157,6 @@ export class ProductDetail implements OnInit {
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
-  readonly imageLoadFailed = signal(false);
   /** 是否正在呼叫 generateAiAnalysis()；期間停用按鈕，避免重複觸發 LLM 費用。 */
   readonly isGeneratingAi = signal(false);
   readonly aiError = signal('');
@@ -164,7 +172,16 @@ export class ProductDetail implements OnInit {
   /** Mock 模式沿用本地資料；真實模式呼叫三支 API 並組成同一個 View Model。 */
   reload(): void {
     if (this.useMockData) {
-      this.product.set(this.productId === '104' ? INCOMPLETE : APPROVED);
+      const stored = this.productPrototype.items().find(p => p.id === Number(this.productId));
+      if (stored) {
+        const d = stored.draft;
+        this.product.set({...INCOMPLETE, id: stored.id, name: d.name, supplier: d.supplierName, description: d.description,
+          imageUrl: stored.imageUrl, category: PRODUCT_TYPES.find(t => t.id === d.productTypeId)?.name ?? '未分類',
+          pricingType: d.pricingType === 'RESALE' ? 'RESALE' : 'NEW', reviewStatus: stored.reviewStatus,
+          submissionCount: stored.submissionCount, moq: d.moq, supplyStability: d.supplyStability,
+          costPrice: d.pricingType === 'RESALE' ? d.costPrice : null, salePrice: d.pricingType === 'RESALE' ? d.salePrice : null, marketPrice: d.pricingType === 'RESALE' ? d.marketPrice : null,
+          completeness: 100, purchaseScore: d.estimatedPurchaseRate, audience: d.targetCustomer, evaluationModeName: '尚未評估', historicalNote: '尚無歷史銷售資料。'});
+      } else this.product.set(this.productId === '104' ? INCOMPLETE : APPROVED);
       this.pageState.set('default');
       return;
     }
@@ -259,7 +276,6 @@ export class ProductDetail implements OnInit {
     if (state === 'empty') this.product.set(null);
     else if (!this.product()) this.product.set(APPROVED);
     this.statusMessageState.show(`已切換為 ${state} 狀態。`);
-    this.imageLoadFailed.set(false);
   }
   showIncomplete(): void {
     this.product.set(INCOMPLETE);
@@ -274,11 +290,6 @@ export class ProductDetail implements OnInit {
     this.product.set(APPROVED);
     this.pageState.set('default');
     this.statusMessageState.show('已恢復完整 Demo 資料。');
-    this.imageLoadFailed.set(false);
-  }
-  handleImageError(): void {
-    this.imageLoadFailed.set(true);
-    this.statusMessageState.show('商品圖片載入失敗，已顯示替代內容。');
   }
   /**
    * ⚠️ 修正：這支之前不管真實／Mock 模式都只是本地模擬（syncState 直接設

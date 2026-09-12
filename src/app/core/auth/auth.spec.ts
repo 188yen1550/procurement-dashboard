@@ -1,3 +1,4 @@
+import { APP_RUNTIME_CONFIG } from '../config/app-config';
 /** 檔案用途：驗證正式模式登入會透過後端 Cookie Session 更新目前使用者狀態。 */
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -12,7 +13,8 @@ describe('Auth', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(Auth);
     http = TestBed.inject(HttpTestingController);

@@ -1,3 +1,4 @@
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 /**
  * 檔案用途：驗證 AI 建議搜尋、Empty 與人工加入候選流程。
  *
@@ -97,7 +98,8 @@ describe('AiSuggestions', () => {
 
     await TestBed.configureTestingModule({
       imports: [AiSuggestions],
-      providers: [provideRouter([]), { provide: ProductApiService, useValue: api }],
+      providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },provideRouter([]), { provide: ProductApiService, useValue: api }],
     }).compileComponents();
     fixture = TestBed.createComponent(AiSuggestions);
     component = fixture.componentInstance;

@@ -1,3 +1,5 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 /**
  * 檔案用途：驗證詳情頁 SNAPSHOT、60% 門檻、圖片替代、趨勢、封存／復用與 AI 分析規則。
  *
@@ -92,6 +94,7 @@ describe('ProductDetail', () => {
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
       providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },
         provideRouter([]),
         { provide: ProductApiService, useValue: api },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
@@ -112,7 +115,7 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('毛利率');
     expect(fixture.nativeElement.textContent).toContain('31.1%');
     expect(fixture.nativeElement.textContent).toContain('參考項目');
-    expect(fixture.nativeElement.textContent).toContain('SNAPSHOT');
+    expect(fixture.nativeElement.textContent).toContain('審核凍結');
   });
   it('explains approved scope and locked core data', () => {
     expect(component.isLocked()).toBe(false);
@@ -134,7 +137,7 @@ describe('ProductDetail', () => {
   });
   it('syncs trend data via the real API in formal mode', () => {
     component.syncTrend();
-    expect(component.syncState()).toBe('syncing');
+    expect(component.syncState()).toBe('success');
     // 這支 spec 沒有設定路由參數，productId 實際上是空字串（見同檔案
     // generateAiAnalysis 測試的說明），語意上跟其他測試保持一致。
     expect(api.syncTrend).toHaveBeenCalledWith('');
@@ -144,7 +147,7 @@ describe('ProductDetail', () => {
   });
 
   it('shows the real error message when trend sync fails', () => {
-    api.syncTrend.mockReturnValueOnce(throwError(() => ({ error: { message: '外部趨勢資料源逾時' } })));
+    api.syncTrend.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ error: { message: '外部趨勢資料源逾時' }, status: 500 })));
     component.syncTrend();
     fixture.detectChanges();
     expect(component.syncState()).toBe('error');
@@ -175,11 +178,11 @@ describe('ProductDetail', () => {
     expect(image).toBeTruthy(); expect(image.alt).toContain(component.product()!.name);
   });
   it('shows fallback content when the product image fails', () => {
-    component.handleImageError(); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.image-fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('最終分數');
+    fixture.nativeElement.querySelector('app-product-image img').dispatchEvent(new Event('error')); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-product-image [role=img]').getAttribute('aria-label')).toContain(component.product()!.name); expect(fixture.nativeElement.textContent).toContain('最終分數');
   });
   it('shows an empty image state when imageUrl is absent', () => {
-    component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無商品圖片');
+    component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無圖片');
   });
   it('shows the correct empty state for AI analysis, not conflated with data completeness', () => {
     // getAiAnalysis 預設 mock 回 hasAnalysis:false（尚未生成過），

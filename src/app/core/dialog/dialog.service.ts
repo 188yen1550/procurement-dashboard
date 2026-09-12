@@ -13,7 +13,8 @@
  *   訂閱後才會拿到使用者的選擇——用法跟 window.confirm() 的呼叫端幾乎一樣，
  *   差別只在這是非同步的（confirm() 本身不阻塞，要在 subscribe 裡處理結果）。
  */
-import { Injectable, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 
 export type DialogVariant = 'info' | 'success' | 'error' | 'confirm';
@@ -24,10 +25,21 @@ export interface DialogState {
   messages: string[];
   confirmLabel: string;
   cancelLabel?: string;
+  trigger?: HTMLElement | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class DialogService {
+  private readonly document = inject(DOCUMENT);
+  private previousTrigger: HTMLElement | null = null;
+
+  private captureTrigger(): HTMLElement | null {
+    const active = this.document.activeElement as HTMLElement | null;
+    // Preserve the original trigger through a confirmation → result dialog chain.
+    if (active && !active.closest('dialog[appModal]')) this.previousTrigger = active;
+    return this.previousTrigger;
+  }
+
   private readonly dialogState = signal<DialogState | null>(null);
   readonly state = this.dialogState.asReadonly();
 
@@ -41,7 +53,7 @@ export class DialogService {
     confirmLabel = '我知道了',
   ): Observable<void> {
     return new Observable<void>((subscriber) => {
-      this.dialogState.set({ variant, title, messages, confirmLabel });
+      this.dialogState.set({ variant, title, messages, confirmLabel, trigger: this.captureTrigger() });
       this.pendingRespond = () => {
         subscriber.next();
         subscriber.complete();
@@ -60,7 +72,7 @@ export class DialogService {
     cancelLabel = '取消',
   ): Observable<boolean> {
     return new Observable<boolean>((subscriber) => {
-      this.dialogState.set({ variant: 'confirm', title, messages, confirmLabel, cancelLabel });
+      this.dialogState.set({ variant: 'confirm', title, messages, confirmLabel, cancelLabel, trigger: this.captureTrigger() });
       this.pendingRespond = (confirmed) => {
         subscriber.next(confirmed);
         subscriber.complete();

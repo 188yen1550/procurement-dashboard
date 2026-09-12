@@ -1,3 +1,5 @@
+import { DialogService } from '../../../core/dialog/dialog.service';
+import { finalize } from 'rxjs';
 /**
  * 檔案用途：品項編輯頁。一般基本資料永遠可編輯，選品核心資料在 APPROVED 時鎖定；
  * 同時提供刪除／封存／復用三個生命週期操作與評估分數區塊。
@@ -51,6 +53,9 @@ export class ProductEdit implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly dialog = inject(DialogService);
+  isDeleting = false;
+  deleteConfirming = false;
   productId!: string;
   reviewStatus: ReviewStatus = 'PENDING';
   itemStatus: ItemStatus = 'ACTIVE';
@@ -200,16 +205,34 @@ export class ProductEdit implements OnInit {
 
   // ----- 生命週期操作 -----
 
-  onDelete(): void {
-    if (!this.actions.canDelete) return;
-    if (!confirm('確定要刪除這個品項嗎？此操作無法復原。')) return;
+  get deleteDisabledReason(): string {
+    if (this.isDeleting || this.deleteConfirming) return '正在確認或刪除品項，請稍候。';
+    if (this.dialog.state()) return '請先完成目前的對話框操作。';
+    if (this.isLoading || this.isSaving) return '資料處理中，請稍候。';
+    if (this.itemStatus === 'ARCHIVED') return '已封存的品項不可刪除。';
+    if (!this.actions.canDelete) return '僅未審核且從未送審的品項可刪除。';
+    return '';
+  }
 
-    this.api
-      .remove(this.productId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => this.router.navigate(['/products']),
-        error: (err) => this.handleActionError(err, '刪除'),
+  onDelete(): void {
+    if (this.deleteDisabledReason) return;
+    const name = this.editForm.controls.name.value;
+    this.deleteConfirming = true;
+    this.dialog.confirm('確認刪除品項', ['刪除對象：「' + name + '」。', '將永久移除此品項資料，刪除後無法復原。'], '刪除', '取消')
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe(ok => {
+        this.deleteConfirming = false;
+        if (!ok || this.deleteDisabledReason) return;
+        this.isDeleting = true;
+        this.api.remove(this.productId)
+          .pipe(finalize(() => this.isDeleting = false), takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => this.dialog.notify('success', '刪除成功', ['已刪除「' + name + '」。'])
+              .pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => void this.router.navigate(['/products'])),
+            error: err => {
+              this.handleActionError(err, '刪除');
+              this.dialog.notify('error', '刪除失敗', [this.errorMessage]).subscribe();
+            },
+          });
       });
   }
 

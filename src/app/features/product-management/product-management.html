@@ -5,7 +5,7 @@
 <main class="product-page" aria-labelledby="page-title">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Product Management</p>
+      <p class="eyebrow">品項管理</p>
       <h1 id="page-title">品項管理</h1>
     </div>
     <a class="primary-action" routerLink="/products/new"
@@ -16,10 +16,10 @@
   @if (useMockData) {
   <section class="state-preview" aria-labelledby="state-title">
     <div>
-      <strong id="state-title">UI 狀態預覽</strong
-      ><span>用於 Demo 驗證四大狀態，不會呼叫後端。</span>
+      <strong id="state-title">畫面狀態預覽</strong
+      ><span>用於 展示驗證四大狀態，不會呼叫後端。</span>
     </div>
-    <div class="state-actions" role="group" aria-label="切換 UI 狀態">
+    <div class="state-actions" role="group" aria-label="切換 畫面狀態">
       @for (state of stateOptions; track state) {
         <button
           type="button"
@@ -56,7 +56,7 @@
       <div>
         <strong>無法載入品項資料</strong>
         <span>{{
-          useMockData ? '這是本地 UI 錯誤狀態，未發送網路請求。' : statusMessage()
+          useMockData ? '這是本地畫面 錯誤狀態，未發送網路請求。' : statusMessage()
         }}</span>
       </div>
       <button type="button" (click)="retryLoad()">重試</button>
@@ -129,6 +129,9 @@
             (ngModelChange)="updateSort($event)"
             [disabled]="isLoading()"
           >
+            @if (sortOption() === 'name_asc' || sortOption() === 'name_desc') {
+              <option [value]="sortOption()">{{ sortOption() === 'name_asc' ? '名稱正序' : '名稱倒序' }}</option>
+            }
             <option value="updatedAt_desc">更新時間（新→ 舊）</option>
             <option value="updatedAt_asc">更新時間（舊 → 新）</option>
             <option value="finalScore_desc">最終分數（高 → 低）</option>
@@ -176,7 +179,7 @@
           <span aria-hidden="true">▦</span>
           <h3>目前沒有正式候選品項</h3>
           <p>可新增品項，或從獨立 AI 建議清單加入候選。</p>
-          <button type="button" (click)="retryLoad()">恢復 Demo 資料</button>
+          <button type="button" (click)="retryLoad()">恢復展示資料</button>
         </div>
       } @else if (filteredProducts().length === 0) {
         <div class="empty-state no-results">
@@ -193,8 +196,17 @@
             </caption>
             <thead>
               <tr>
-                <th scope="col">商品名稱</th>
-                <th scope="col">實際分類／訂價分流</th>
+                <th scope="col" [attr.aria-sort]="sortOption() === 'name_asc' ? 'ascending' : sortOption() === 'name_desc' ? 'descending' : 'none'">
+                  商品名稱
+                  <button type="button" class="name-sort" (click)="toggleNameSort()"
+                    [disabled]="!useMockData || isLoading()"
+                    [attr.aria-label]="sortOption() === 'name_asc' ? '商品名稱改為倒序排列' : '商品名稱改為正序排列'"
+                    [attr.aria-describedby]="!useMockData ? 'name-sort-unavailable' : null">
+                    <span aria-hidden="true">{{ sortOption() === 'name_asc' ? '↑' : sortOption() === 'name_desc' ? '↓' : '↕' }}</span>
+                  </button>
+                  @if (!useMockData) { <small id="name-sort-unavailable">尚未確認後端支援名稱排序，暫不可用</small> }
+                </th>
+                <th scope="col">實際分類／定價分流</th>
                 <th scope="col">供應商</th>
                 <th scope="col">最終分數</th>
                 <th scope="col">資料完整度</th>
@@ -209,9 +221,9 @@
                   [class.locked-row]="product.reviewStatus === 'APPROVED'"
                   [class.archived-row]="product.itemStatus === 'ARCHIVED'"
                 >
-                  <td class="product-cell">
+                  <td class="product-cell"><div class="list-thumbnail"><app-product-image [src]="product.imageUrl" [name]="product.name" /></div>
                     <strong [title]="product.name">{{ product.name }}</strong
-                    ><span>#{{ product.id }}</span>
+                    ><span>第 {{ product.submissionCount }} 次送審</span>
                     @if (product.reviewStatus === 'APPROVED') {
                       <small class="lock-note"
                         ><span aria-hidden="true">🔒</span> 核心選品資料已鎖定</small
@@ -247,10 +259,8 @@
                     }
                   </td>
                   <td>
-                    @if (!hasScore(product) || product.dataCompleteness === null) {
-                      <!-- product.dataCompleteness === null：欄位存在但這筆商品
-                           尚無評估紀錄，不能顯示成「null%」，維持「—」。 -->
-                      <span class="unavailable">—</span>
+                    @if (!hasScore(product) || product.dataCompleteness == null) {
+                      <span class="unavailable">尚未計算</span>
                     } @else {
                     <div class="completeness-cell" [class.incomplete]="isIncomplete(product)">
                       <div>
@@ -314,10 +324,10 @@
                       <button
                         type="button"
                         class="text-action danger"
-                        [disabled]="!product.actions.canDelete"
+                        [disabled]="!product.actions.canDelete || actionPending()"
                         [title]="
                           product.actions.canDelete
-                            ? (useMockData ? '從本地 Mock 清單刪除' : '刪除此品項')
+                            ? (useMockData ? '從本地模擬清單刪除' : '刪除此品項')
                             : deleteDisabledReason(product)
                         "
                         [attr.aria-label]="
@@ -344,12 +354,9 @@
   }
 
   @if (dialogMode()) {
-    <div class="dialog-backdrop" (click)="closeDialog()" role="presentation">
+    <dialog appModal class="dialog-backdrop" aria-labelledby="dialog-title" [modalBusy]="actionPending()" (dismissed)="closeDialog()">
       <section
         class="alert-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="dialog-title"
         (click)="$event.stopPropagation()"
       >
         <span class="dialog-icon" aria-hidden="true">{{
@@ -358,18 +365,19 @@
         <h2 id="dialog-title">
           {{
             dialogMode() === 'delete'
-              ? (useMockData ? '確認移除 Mock 品項？' : '確認刪除此品項？')
+              ? (useMockData ? '確認移除 模擬品項？' : '確認刪除此品項？')
               : dialogMode() === 'resubmit'
                 ? (useMockData ? '模擬編輯並重新送審？' : '確認重新送審？')
                 : '功能範圍提示'
           }}
         </h2>
+        <p><strong>{{ dialogProduct()?.name }}</strong></p>
         <p>
           {{
             dialogMode() === 'notice'
               ? statusMessage()
               : useMockData
-                ? '這項操作只會更新本地 Mock 資料，不會呼叫後端 API。'
+                ? '這項操作只會更新本地模擬資料，不會呼叫後端 API。'
                 : dialogMode() === 'delete'
                   ? '刪除後無法復原，確定要刪除這筆品項嗎？'
                   : '確認後會將此品項狀態改回未審核，需要重新走一次選品審核流程。'
@@ -377,10 +385,10 @@
         </p>
         <div class="dialog-actions">
           @if (dialogMode() !== 'notice') {
-            <button type="button" class="secondary-action" (click)="closeDialog()">取消</button
+            <button type="button" class="secondary-action" [disabled]="actionPending()" (click)="closeDialog()">取消</button
             ><button
               type="button"
-              class="confirm-action"
+              class="confirm-action" [disabled]="actionPending()"
               (click)="dialogMode() === 'delete' ? confirmDelete() : confirmResubmit()"
             >
               確認
@@ -390,6 +398,6 @@
           }
         </div>
       </section>
-    </div>
+    </dialog>
   }
 </main>

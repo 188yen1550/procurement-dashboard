@@ -2,7 +2,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, of, tap, throwError } from 'rxjs';
-import { APP_CONFIG } from '../config/app-config';
+import { APP_RUNTIME_CONFIG } from '../config/app-config';
 import { AuthApiService } from './auth-api';
 import { CurrentUser, UserRole } from './auth.contract';
 
@@ -28,7 +28,7 @@ const MOCK_ACCOUNTS: readonly MockAccount[] = [
 export class Auth {
   private readonly router = inject(Router);
   private readonly api = inject(AuthApiService);
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
 
   private readonly currentUserState = signal<CurrentUser | null>(null);
   readonly currentUser = this.currentUserState.asReadonly();

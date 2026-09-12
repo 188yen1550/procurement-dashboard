@@ -5,8 +5,8 @@
 <main class="detail-page" aria-labelledby="detail-title">
   <header class="page-header">
     <div>
-      <a routerLink="/products">← 返回品項管理</a>
-      <p class="eyebrow">Product Detail</p>
+      <a class="page-back" routerLink="/products"><span aria-hidden="true">←</span> 返回品項管理</a>
+      <p class="eyebrow">品項詳情</p>
       <h1 id="detail-title">{{ product()?.name ?? '品項詳情' }}</h1>
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
     </div>
@@ -28,7 +28,7 @@
   </header>
   @if (useMockData) {
   <section class="state-bar">
-    <div><strong>UI 狀態預覽</strong><span>本地 Mock 評估與趨勢資料</span></div>
+    <div><strong>畫面狀態預覽</strong><span>本地模擬評估與趨勢資料</span></div>
     <div role="group" aria-label="切換詳情頁狀態">
       @for (state of stateOptions; track state) {
         <button
@@ -37,7 +37,7 @@
           [attr.aria-pressed]="pageState() === state"
           (click)="setState(state)"
         >
-          {{ state }}
+          {{ state === 'default' ? '正常' : state === 'loading' ? '載入中' : state === 'empty' ? '無資料' : state === 'error' ? '錯誤' : '唯讀／鎖定' }}
         </button>
       }
     </div>
@@ -61,8 +61,8 @@
   } @else if (!product()) {
     <section class="empty">
       <h2>找不到品項資料</h2>
-      <p>此品項可能已移除，或目前 Demo 資料為空。</p>
-      <button type="button" (click)="restoreDemo()">恢復 Demo 資料</button>
+      <p>此品項可能已移除，或目前 展示資料為空。</p>
+      <button type="button" (click)="restoreDemo()">恢復展示資料</button>
     </section>
   } @else {
     @let p = product()!;
@@ -76,15 +76,14 @@
     }
     @if (incomplete()) {
       <section class="notice incomplete">
-        <strong>資料待補 · {{ p.completeness }}%</strong
+        <strong>資料待補 · {{ p.completeness == null ? '尚未計算' : p.completeness + '%' }}</strong
         ><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span
         ><a [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
       </section>
     }
     <section class="product-media panel" aria-labelledby="product-image-title">
-      <header><div><p class="eyebrow">Product Image</p><h2 id="product-image-title">商品主圖</h2></div><span>一般基本資料 · 可於編輯頁更換</span></header>
-      @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'" (error)="handleImageError()" /> }
-      @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><span aria-hidden="true">🖼️</span><div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong><p>{{ imageLoadFailed() ? '其他品項資訊仍可正常閱覽，可前往編輯頁重新選擇。' : '圖片為選填資料，不影響評分或審核。' }}</p></div></div> }
+      <header><div><p class="eyebrow">商品圖片</p><h2 id="product-image-title">商品主圖</h2></div><span>一般基本資料 · 可於編輯頁更換</span></header>
+      <app-product-image style="max-width:480px;margin:1rem auto" [src]="p.imageUrl" [name]="p.name" />
     </section>
     <section class="summary panel">
       <div>
@@ -99,8 +98,8 @@
           <dd>{{ p.category }}</dd>
         </div>
         <div>
-          <dt>訂價分流</dt>
-          <dd>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</dd>
+          <dt>定價分流</dt>
+          <dd>{{ p.pricingType === 'NEW' ? '新品' : '再販售' }}</dd>
         </div>
         <div>
           <dt>供應商</dt>
@@ -108,7 +107,7 @@
         </div>
         <div>
           <dt>資料完整度</dt>
-          <dd>{{ p.completeness }}%</dd>
+          <dd>{{ p.completeness == null ? '尚未計算' : p.completeness + '%' }}</dd>
         </div>
       </dl>
     </section>
@@ -118,27 +117,27 @@
         ><small>綜合加權分數</small>
       </article>
       <article>
-        <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong
+        <span>節慶分數</span><strong>{{ p.festivalBoost }} 分</strong
         ><small>{{ p.campaign ?? '未命中檔期' }}</small>
       </article>
       <article class="final">
         <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong
         ><small
-          >dataSource:
-          {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small
+          >分數來源：
+          {{ p.dataSource === 'SNAPSHOT' ? '審核凍結' : '目前評估' }}</small
         >
       </article>
     </section>
     <section class="panel campaign">
       <header>
         <div>
-          <p class="eyebrow">Evaluation Mode</p>
+          <p class="eyebrow">評估模式</p>
           <h2>目前評估模式</h2>
         </div>
         <span>{{ p.evaluationModeName }}</span>
       </header>
-      <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預估購買／市場趨勢 25%</p>
-      <small>參考項目：毛利、MOQ、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
+      <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預測人氣 25%</p>
+      <small>參考項目：毛利、最低訂購量（MOQ）、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
     </section>
     @if (p.campaign) {
       <section class="panel campaign">
@@ -150,7 +149,7 @@
           <span>{{ p.campaign }}</span>
         </header>
         <p>
-          命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
+          命中標籤：<strong>{{ tagNames(p.matchedTags) }}</strong>
         </p>
         <dl class="metrics boost-breakdown">
           <div>
@@ -165,7 +164,7 @@
           </div>
           <div class="boost-result">
             <dt>本次節慶加成</dt>
-            <dd>+{{ p.festivalBoost }} 分</dd>
+            <dd>節慶加成 {{ p.festivalBoost }} 分</dd>
           </div>
         </dl>
         <p class="boost-hint">
@@ -191,17 +190,14 @@
             <dd>{{ marginRate(p) === null ? '待訂價' : marginRate(p) + '%' }}</dd>
           </div>
           <div>
-            <dt>MOQ</dt>
+            <dt>最低訂購量（MOQ）</dt>
             <dd>{{ p.moq }} 組</dd>
           </div>
           <div>
             <dt>供應穩定性</dt>
-            <dd>{{ p.supplyStability }}/5</dd>
+            <dd>{{ supplyLabel(p.supplyStability) }}</dd>
           </div>
-          <div>
-            <dt>價格競爭力</dt>
-            <dd>{{ p.priceCompetitiveness }}/5</dd>
-          </div>
+
         </dl>
       </section>
       <section class="panel">
@@ -214,14 +210,14 @@
       <section class="panel">
         <header>
           <h2>歷史銷售資料</h2>
-          <strong>{{ p.historicalScore || '—' }}</strong>
+          <strong>{{ p.historicalScore ? p.historicalScore + ' 分' : '—' }}</strong>
         </header>
         <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
       </section>
       <section class="panel">
         <header>
-          <h2>預估購買</h2>
-          <strong>{{ p.purchaseScore || '—' }}</strong>
+          <h2>預估購買率（%）</h2>
+          <strong>{{ incomplete() ? '—' : p.purchaseScore + '%' }}</strong>
         </header>
         <p>
           {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
@@ -231,7 +227,7 @@
     @if (p.pricingType === 'RESALE') {
       <section class="panel price-compare">
         <div>
-          <p class="eyebrow">Price Insight</p>
+          <p class="eyebrow">價格比較</p>
           <h2>市價與團購價比較</h2>
         </div>
         <div>
@@ -243,10 +239,13 @@
         <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
       </section>
     }
+    @if (useMockData) {
+      <app-analysis-panel [productId]="p.id" [incomplete]="incomplete()" [locked]="isLocked()" [reasons]="p.aiReasons" [risks]="p.risks" [category]="p.category" />
+    } @else {
     <section class="panel trend">
       <header>
         <div>
-          <p class="eyebrow">Trend Signal</p>
+          <p class="eyebrow">市場趨勢</p>
           <h2>市場趨勢／熱門度</h2>
         </div>
         <button
@@ -290,7 +289,7 @@
       <section class="panel ai">
         <header>
           <div>
-            <p class="eyebrow">AI Analysis</p>
+            <p class="eyebrow">AI 分析</p>
             <h2>AI 摘要／推薦原因</h2>
           </div>
           <span>AI 僅輔助分析</span>
@@ -347,6 +346,7 @@
         }
       </section>
     </div>
+    }
     <section class="panel lifecycle">
       <div>
         <h2>品項狀態操作</h2>

@@ -28,7 +28,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
-import { APP_CONFIG } from '../../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
 import { ProductApiService } from '../api/product-api.service';
@@ -56,7 +56,7 @@ const SUGGESTIONS: readonly Suggestion[] = [
   {
     id: 201,
     name: '旅行用全能轉接充電器',
-    category: '3C／家電',
+    category: '電子配件',
     supplier: '沐光科技',
     trend: 88,
     direction: 'UP',
@@ -121,7 +121,7 @@ export class AiSuggestions implements OnInit {
   private readonly api = inject(ProductApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
   readonly stateOptions: readonly AiState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
   readonly pageState = signal<AiState>('default');
   readonly query = signal('');

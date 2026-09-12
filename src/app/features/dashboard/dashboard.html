@@ -1,31 +1,31 @@
 <!--
-  檔案用途：Dashboard 模板。
-  Mock 模式：統計、Top 10、風險、Loading／Error／Locked 狀態展示皆源自本地 Mock，
+  檔案用途：儀表板 模板。
+  模擬模式：統計、Top 10、風險、Loading／Error／Locked 狀態展示皆源自本地模擬，
   核准文案刻意排除上架與營收語意。
   真實模式：走 realLoadState，四支 API 任一失敗只影響對應卡片，不讓整頁空白。
 -->
 <div class="dashboard-page">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Dashboard</p>
+      <p class="eyebrow">儀表板</p>
       <h1>選品決策儀表板</h1>
     </div>
     <div class="data-time">
       <span aria-hidden="true">●</span>
       @if (useMockData) {
-        Mock 資料更新：{{ data().generatedAt }}
+        模擬資料更新：{{ data().generatedAt }}
       } @else {
         資料更新：{{ data().generatedAt }}
       }
     </div>
   </header>
 
-  <!-- UI 狀態預覽是給 PM／利害關係人展示畫面樣貌用的純前端示範，只在 Mock 模式顯示；
+  <!-- 畫面狀態預覽是給 PM／利害關係人展示畫面樣貌用的純前端示範，只在 模擬模式顯示；
        真實模式沒有意義去模擬假的鎖定／例外狀態，改用下方真正的載入/錯誤區塊。 -->
   @if (useMockData) {
     <section class="state-preview" aria-labelledby="state-preview-title">
       <div>
-        <strong id="state-preview-title">UI 狀態預覽</strong><span>純前端展示，不呼叫 API</span>
+        <strong id="state-preview-title">畫面狀態預覽</strong><span>純前端展示，不呼叫 API</span>
       </div>
       <div class="state-actions">
         <button
@@ -188,7 +188,7 @@
                     <p>{{ item.aiReason }}</p>
                     @if (item.submissionCount > 1) {
                       <span class="resubmission"
-                        >曾被拒絕 · 第 {{ item.submissionCount }} 次送審</span
+                        >第 {{ item.submissionCount }} 次送審</span
                       >
                       <small>{{ item.previousRejectionSummary }}</small>
                     }

@@ -141,9 +141,11 @@
   .sidebar {
     max-width: 300px;
     transform: translateX(-105%);
+    visibility: hidden;
     transition: transform 0.25s ease;
 
     &.is-open {
+      visibility: visible;
       pointer-events: auto;
       transform: translateX(0);
     }

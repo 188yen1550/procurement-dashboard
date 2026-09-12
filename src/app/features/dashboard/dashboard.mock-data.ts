@@ -17,7 +17,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     recommendation(
       1,
       '中秋炭烤海鮮組',
-      '食品／生鮮',
+      '生鮮',
       94.6,
       'PENDING',
       100,
@@ -26,7 +26,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     recommendation(
       2,
       '智能溫控氣炸鍋',
-      '3C／家電',
+      '電子配件',
       91.8,
       'PENDING',
       92,
@@ -82,7 +82,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     recommendation(
       8,
       '磁吸快充行動電源',
-      '3C／家電',
+      '電子配件',
       82.1,
       'PENDING',
       76,
@@ -102,7 +102,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     recommendation(
       10,
       '常溫滴雞精禮盒',
-      '食品／生鮮',
+      '生鮮',
       79.6,
       'PENDING',
       68,
@@ -137,7 +137,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
 export const INCOMPLETE_RECOMMENDATION: DashboardRecommendation = recommendation(
   0,
   '產地直送水果箱',
-  '食品／生鮮',
+  '生鮮',
   0,
   'PENDING',
   48,

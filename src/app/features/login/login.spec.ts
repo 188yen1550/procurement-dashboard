@@ -1,3 +1,4 @@
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 /** 驗證登入成功、各類錯誤、Loading 收尾、可重試及重複提交防護。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -18,7 +19,8 @@ describe('Login', () => {
     auth.login.mockReset();
     await TestBed.configureTestingModule({
       imports: [Login],
-      providers: [provideRouter([]), { provide: Auth, useValue: auth }],
+      providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },provideRouter([]), { provide: Auth, useValue: auth }],
     }).compileComponents();
     fixture = TestBed.createComponent(Login);
     component = fixture.componentInstance;
@@ -26,6 +28,17 @@ describe('Login', () => {
     navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.loginForm.setValue({ username: 'manager', password: 'demo123' });
     fixture.detectChanges();
+  });
+
+  it('focuses username once and preserves subsequent user focus', async () => {
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#username'));
+    const password = fixture.nativeElement.querySelector('#password');
+    password.focus();
+    component.errorMessage.set('測試錯誤');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(password);
   });
 
   it('closes loading and navigates only after login succeeds', () => {

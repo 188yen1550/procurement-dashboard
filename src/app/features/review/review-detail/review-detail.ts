@@ -1,3 +1,6 @@
+import { ProductImage } from '../../../shared/components/product-image';
+import { ModalSurface } from '../../../core/dialog/modal-surface';
+import { UI_STATE_LABEL, tagLabel } from '../../../core/domain/frontend-options';
 /**
  * 檔案用途：管理人員審核詳情、人工風險、留言、APPROVED／REJECTED 決策。
  * 「其他」風險需備註；AI 只提供摘要，最終核准一定由人工選擇。
@@ -29,7 +32,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toApiError } from '../../../core/api/api-error';
-import { APP_CONFIG } from '../../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
@@ -51,7 +54,7 @@ function mockDetail(productId: string): ReviewDetailModel {
     productId: Number(productId) || 102,
     productName: isSecond ? '無香低敏濃縮洗衣紙補充組' : '輕量智慧溫控電熱杯',
     productTypeId: null,
-    productTypeName: isSecond ? '日用品' : '3C／家電',
+    productTypeName: isSecond ? '日用品' : '電子配件',
     pricingType: isSecond ? 'RESALE' : 'NEW',
     supplierName: '—',
     campaignTags: [],
@@ -91,23 +94,25 @@ const MOCK_PREVIOUS_COMMENT = '上次因備援供應方案不足而未通過，�
 
 @Component({
   selector: 'app-review-detail',
-  imports: [FormsModule, RouterLink],
+  imports: [ProductImage, ModalSurface, FormsModule, RouterLink],
   templateUrl: './review-detail.html',
   styleUrl: './review-detail.scss',
 })
 export class ReviewDetail implements OnInit {
+  readonly uiStateLabel = UI_STATE_LABEL;
+  tagNames(tags: string[]): string {return tags.map(tagLabel).join('、');}
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(DialogService);
 
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
   readonly productId = this.route.snapshot.paramMap.get('id') ?? '102';
   readonly stateOptions: readonly DetailState[] = ['default', 'disabled', 'loading', 'error'];
   readonly pageState = signal<DetailState>('default');
 
-  readonly product = signal<ReviewDetailModel | null>(null);
+  readonly product = signal<(ReviewDetailModel & { imageUrl?: string | null }) | null>(null);
   readonly errorMessage = signal('');
 
   readonly selectedRiskIds = signal<number[]>([]);

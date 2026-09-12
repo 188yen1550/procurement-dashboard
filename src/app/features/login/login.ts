@@ -1,10 +1,10 @@
 /** 檔案用途：登入頁互動、可恢復的非同步狀態與安全錯誤訊息呈現。 */
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, afterNextRender, viewChild, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { defer, finalize } from 'rxjs';
 import { Auth, MockUsername } from '../../core/auth/auth';
-import { APP_CONFIG } from '../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../core/config/app-config';
 
 interface LoginErrorLike {
   status?: number;
@@ -18,10 +18,16 @@ interface LoginErrorLike {
   styleUrl: './login.scss',
 })
 export class Login {
+  private readonly usernameInput = viewChild.required<ElementRef<HTMLInputElement>>('usernameInput');
+
+  constructor() {
+    afterNextRender(() => this.usernameInput().nativeElement.focus());
+  }
+
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private auth = inject(Auth);
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
 
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');

@@ -1,3 +1,5 @@
+import '../../../core/dialog/modal-test-setup';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 /**
  * 檔案用途：驗證審核表單必填、其他風險備註、提交、衝突與狀態畫面。
  *
@@ -68,7 +70,8 @@ describe('ReviewDetail', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [ReviewDetail],
-      providers: [provideRouter([]), { provide: ReviewApiService, useValue: api }],
+      providers: [
+        { provide: APP_RUNTIME_CONFIG, useValue: { useMockData: false } },provideRouter([]), { provide: ReviewApiService, useValue: api }],
     }).compileComponents();
     router = TestBed.inject(Router);
     dialog = TestBed.inject(DialogService);
@@ -78,10 +81,29 @@ describe('ReviewDetail', () => {
     fixture.detectChanges();
   });
 
+  it('uses the shared image fallback without removing page actions', () => {
+    const item=component.product()!; component.product.set({...item,imageUrl:'/broken.png'});
+    fixture.detectChanges();
+    const host=fixture.nativeElement.querySelector('app-product-image');
+    const img=host.querySelector('img');
+    expect(img.alt).toContain(item.productName);
+    img.dispatchEvent(new Event('error')); fixture.detectChanges();
+    expect(host.querySelector('[role=img]').getAttribute('aria-label')).toContain(item.productName);
+    expect(fixture.nativeElement.querySelector('a,button')).toBeTruthy();
+  });
   it('creates with product snapshot and AI disclaimer', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('商品與評估快照');
     expect(fixture.nativeElement.textContent).toContain('AI 不會自動核准');
+  });
+
+  it.each([[null, '尚未計算'], [0, '0%'], [78, '78%']])('renders snapshot completeness %s with the expected label', (value, label) => {
+    component.product.set({...mockDetail, scores: {...mockDetail.scores, dataCompleteness: value as number | null}});
+    fixture.detectChanges();
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('article')) as HTMLElement[];
+    const completeness = labels.find(item => item.textContent?.includes('資料完整度'))!;
+    expect(completeness.textContent).toContain(label);
+    expect(completeness.textContent).not.toContain('—%');
   });
 
   it('requires a decision', () => {

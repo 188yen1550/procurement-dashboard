@@ -1,3 +1,5 @@
+import { UI_STATE_LABEL } from '../../../core/domain/frontend-options';
+import { ProductPrototype } from '../../../core/domain/product-prototype';
 /**
  * 檔案用途：新增／編輯品項表單、圖片上傳、欄位鎖定、重複送出與未儲存變更保護。
  * NEW 顯示 PENDING_PRICING 且不要求價格；RESALE 要求成本／售價／市價。APPROVED 仍可改一般資料與圖片，但核心資料鎖定。
@@ -27,6 +29,8 @@
  * 5. APPROVED 商品若異動核心資料，後端回 409，這裡單獨處理成
  *    「已核准商品僅能修改一般基本資料與圖片」，不是通用錯誤訊息。
  */
+import { PRODUCT_TYPES, CAMPAIGN_TAGS, RESALE_PRODUCTS, IMAGE_POLICY, tagLabel, imageTypeLabel } from '../../../core/domain/frontend-options';
+import { ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -34,7 +38,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { toApiError } from '../../../core/api/api-error';
-import { APP_CONFIG } from '../../../core/config/app-config';
+import { APP_RUNTIME_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { joinCampaignTags } from '../../../core/domain/labels';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
@@ -58,23 +62,23 @@ const FIELD_LABELS: Record<string, string> = {
   name: '商品名稱',
   supplierName: '供應商名稱',
   productTypeId: '商品實際分類',
-  pricingType: '訂價分流',
+  pricingType: '定價分流',
   description: '商品說明',
   campaignTags: '節慶標籤',
   costPrice: '成本價',
   salePrice: '預計售價',
   marketPrice: '市售價',
-  moq: 'MOQ 最低訂購量',
+  moq: '最低訂購量（MOQ）',
   supplyStability: '供應穩定性',
   priceCompetitiveness: '價格競爭力',
   targetCustomer: '目標客群描述',
   estimatedPurchaseRate: '預估購買率',
 };
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
-const MOCK_CAMPAIGN_TAGS = ['bbq', 'gift', 'family', 'daily', 'summer', 'winter'] as const;
+const MAX_IMAGE_BYTES = IMAGE_POLICY.maxBytes;
+const SUPPORTED_IMAGE_TYPES = new Set<string>(IMAGE_POLICY.types);
+const SUPPORTED_IMAGE_EXTENSIONS = new Set<string>(IMAGE_POLICY.extensions);
+const MOCK_CAMPAIGN_TAGS = CAMPAIGN_TAGS.map(t => t.code);
 
 function nonBlank(control: AbstractControl): ValidationErrors | null {
   return typeof control.value === 'string' && control.value.trim().length > 0
@@ -83,17 +87,7 @@ function nonBlank(control: AbstractControl): ValidationErrors | null {
 }
 
 /** Mock 模式的固定分類清單，id 只是本地展示用的流水號，不對應真實資料庫。 */
-const MOCK_PRODUCT_TYPES: readonly ProductTypeOption[] = [
-  { id: 1, name: '食品／生鮮' },
-  { id: 2, name: '日用品' },
-  { id: 3, name: '3C／家電' },
-  { id: 4, name: '生活雜貨' },
-  { id: 5, name: '美妝保養' },
-  { id: 6, name: '服飾配件' },
-  { id: 7, name: '寢具家用' },
-  { id: 8, name: '精品禮盒' },
-  { id: 9, name: '其他' },
-];
+const MOCK_PRODUCT_TYPES = PRODUCT_TYPES;
 
 interface EditMockEntry {
   name: string;
@@ -161,6 +155,37 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
   styleUrls: ['./product-form.scss', './product-image.scss'],
 })
 export class ProductForm implements OnInit {
+  readonly uiStateLabel = UI_STATE_LABEL;
+  readonly productPrototype = inject(ProductPrototype);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly tagLabel = tagLabel;
+  readonly imageTypeLabel = imageTypeLabel;
+  readonly resaleProducts = RESALE_PRODUCTS;
+  readonly mockSaveFailure = signal(false);
+  readonly mockUploadFailure = signal(false);
+  readonly validationSummary = signal<string[]>([]);
+  addCampaignTag(value: string): void {
+    if (!value || this.isCoreLocked() || this.isSubmitting() || this.isCampaignTagSelected(value)) return;
+    this.toggleCampaignTag(value);
+  }
+  priceWarnings(): string[] {
+    if (!this.isResale()) return [];
+    const {costPrice, salePrice, marketPrice} = this.form.getRawValue();
+    return [salePrice < costPrice ? '預計售價低於成本價，請確認價格。' : '', salePrice > marketPrice ? '預計售價高於市售價格，請確認商品差異。' : ''].filter(Boolean);
+  }
+  duplicateName(): boolean {
+    return this.productPrototype.items().some(p => String(p.id) !== this.productId && p.draft.name === this.form.controls.name.value.trim()) || this.resaleProducts.some(p => String(p.id) !== this.productId && p.name === this.form.controls.name.value.trim());
+  }
+  private updatePricingValidators(): void {
+    for (const name of ['costPrice', 'salePrice', 'marketPrice'] as const) {
+      const control = this.form.controls[name];
+      control.setValidators(this.isResale() ? [Validators.required, Validators.min(0), Validators.max(99999999.99), Validators.pattern(/^\d+(\.\d{1,2})?$/), c => c.value === 0 ? {required: true} : null] : []);
+      control.updateValueAndValidity({emitEvent: false});
+    }
+    this.validationSummary.set([]);
+  }
+  handlePreviewError(): void { this.setImageError('圖片讀取失敗，請重新選擇檔案。'); }
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -169,7 +194,7 @@ export class ProductForm implements OnInit {
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly useMockData = APP_CONFIG.useMockData;
+  readonly useMockData = inject(APP_RUNTIME_CONFIG).useMockData;
   readonly productId = this.route.snapshot.paramMap.get('id');
   readonly isEditMode = !!this.productId;
 
@@ -222,16 +247,17 @@ export class ProductForm implements OnInit {
     supplierName: ['', [Validators.required, nonBlank, Validators.maxLength(100)]],
     productTypeId: [null as number | null, Validators.required],
     pricingType: ['NEW', Validators.required],
+    resaleProductId: [null as number | null],
     description: ['', Validators.maxLength(500)],
     campaignTags: this.fb.nonNullable.control<string[]>([]),
     costPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     salePrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     marketPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
-    moq: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
+    moq: [1, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]],
     // 後端 Product.supplyStability / priceCompetitiveness 是 0–5 分制
     // （precision=5, scale=2），不是 0–100。
-    supplyStability: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
-    priceCompetitiveness: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
+    supplyStability: [4.6, [Validators.required, Validators.min(0), Validators.max(5)]],
+    priceCompetitiveness: [2.5], // 保留 API 欄位，UI 隱藏；移除對正式評分的影響待後端確認。
     targetCustomer: ['', [Validators.required, nonBlank, Validators.maxLength(500)]],
     // 表單維持 0–100（%）輸入，實際送出時要換算成後端要的 0–1 小數
     // （見 toEstimatedPurchaseRateDecimal()）。
@@ -254,6 +280,9 @@ export class ProductForm implements OnInit {
   }
 
   ngOnInit(): void {
+    this.updatePricingValidators();
+    this.form.controls.pricingType.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.updatePricingValidators());
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.saved.set(false));
     if (!this.useMockData) {
       this.loadProductTypes();
       this.loadCampaignTags();
@@ -262,7 +291,9 @@ export class ProductForm implements OnInit {
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
 
     if (this.useMockData) {
-      const entry = EDIT_DATA[this.productId];
+      const stored = this.productPrototype.items().find(p => p.id === Number(this.productId));
+      const entry = stored ? {...stored.draft, reviewStatus: stored.reviewStatus} : EDIT_DATA[this.productId];
+      if (stored?.imageUrl) {this.imagePreviewUrl.set(stored.imageUrl); this.currentImageUrl.set(stored.imageUrl); this.imageState.set('ready');}
       if (entry) {
         this.form.patchValue(entry);
         this.reviewStatus.set(entry.reviewStatus);
@@ -342,6 +373,7 @@ export class ProductForm implements OnInit {
   }
 
   removeCampaignTag(tag: string): void {
+    if (this.isCoreLocked() || this.isSubmitting()) return;
     this.form.controls.campaignTags.setValue(
       this.form.controls.campaignTags.value.filter((selected) => selected !== tag),
     );
@@ -359,6 +391,7 @@ export class ProductForm implements OnInit {
    * 標籤按鈕，不需要任何隱藏的鍵盤組合鍵。
    */
   toggleCampaignTag(tag: string): void {
+    if (this.isCoreLocked() || this.isSubmitting()) return;
     if (this.isCampaignTagSelected(tag)) {
       this.removeCampaignTag(tag);
       return;
@@ -368,6 +401,7 @@ export class ProductForm implements OnInit {
   }
 
   setState(state: FormPageState): void {
+    if (this.isSubmitting()) return;
     this.pageState.set(state);
     if (state === 'locked') this.lockCoreFields();
     else if (!this.isApproved()) this.unlockCoreFields();
@@ -387,43 +421,39 @@ export class ProductForm implements OnInit {
     // 按鈕已綁定 [disabled]="isSubmitting()"，正常點擊不會走到這裡；
     // 保留 statusMessage 是為了防呆極端情況（例如程式化重複呼叫），
     // 不用 alert()——高頻率跳出視窗式對話框反而干擾使用者，用 toast 就夠。
-    if (this.isSubmitting()) {
+    if (this.isSubmitting() || this.saved()) {
       this.statusMessageState.show('正在儲存，請勿重複送出。');
       return;
     }
 
-    // 再販售必填價格，先設 errors 再一起收進下面的錯誤清單，
-    // 不要跟表單本身的驗證錯誤分開顯示成兩套不一致的提示。
-    if (
-      this.isResale() &&
-      (!this.form.controls.costPrice.value ||
-        !this.form.controls.salePrice.value ||
-        !this.form.controls.marketPrice.value)
-    ) {
-      this.form.controls.costPrice.setErrors({ required: true });
-      this.form.controls.salePrice.setErrors({ required: true });
-      this.form.controls.marketPrice.setErrors({ required: true });
-    }
-
+    if (this.imageState() === 'loading' || this.pageState() === 'loading' || this.pageState() === 'error') return;
+    this.updatePricingValidators();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       const errors = this.collectFormErrors();
+      this.validationSummary.set(errors);
       // ⚠️ 不要在這裡再 set statusMessage：dialog 本身已經是唯一提醒層，
       // 加上每個無效欄位旁邊 fieldInvalid() 顯示的逐欄錯誤文字就足夠——
       // 這正是原本回報的 bug：使用者後來把欄位都修正了，畫面上卻還留著
       // 一句「請先修正表單中的錯誤」的殘留 toast，因為沒有任何地方會清掉它。
-      this.dialog.notify('error', `表單有 ${errors.length} 項欄位需要修正`, errors).subscribe();
+      this.dialog.notify('error', `表單有 ${errors.length} 項欄位需要修正`, errors).subscribe(() => {
+        this.element.nativeElement.querySelector<HTMLElement>('[formControlName].ng-invalid')?.focus();
+      });
       return;
     }
 
     if (this.useMockData) {
       this.isSubmitting.set(true);
       this.submitCount.update((count) => count + 1);
-      this.form.markAsPristine();
-      this.imageDirty.set(false);
       const message = resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。';
       window.setTimeout(() => {
         this.isSubmitting.set(false);
+        if (this.mockSaveFailure() || (this.mockUploadFailure() && this.imagePreviewUrl())) {
+          this.dialog.notify('error', '儲存失敗', [this.mockSaveFailure() ? '模擬儲存失敗，已保留輸入，請重試。' : '模擬圖片上傳失敗，已保留圖片與表單，請重試。']).subscribe();
+          return;
+        }
+        this.productPrototype.save(this.form.getRawValue(), this.imagePreviewUrl(), this.productId ? Number(this.productId) : undefined, this.reviewStatus() ?? 'PENDING', resubmit);
+        this.form.markAsPristine(); this.imageDirty.set(false);
         this.saved.set(true);
         this.statusMessageState.show(message);
         // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；
@@ -577,6 +607,7 @@ export class ProductForm implements OnInit {
    * data URL 預覽。實際上傳留到 submit() 成功之後才做（見 afterSaveSuccess）。
    */
   onImageSelected(event: Event): void {
+    if (this.isSubmitting() || this.imageState() === 'loading' || this.pageState() === 'locked') return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
@@ -616,6 +647,7 @@ export class ProductForm implements OnInit {
 
   /** 移除目前圖片並標記未儲存變更；真實模式下會在下次儲存時把 imageUrl 設為 null。 */
   removeImage(): void {
+    if (this.isSubmitting() || this.imageState() === 'loading' || this.pageState() === 'locked') return;
     this.imagePreviewUrl.set(null);
     this.imageInfo.set(null);
     this.imageError.set('');
@@ -683,11 +715,11 @@ export class ProductForm implements OnInit {
   /** 收集目前表單所有無效欄位，依畫面上由上到下的欄位順序排列。 */
   private collectFormErrors(): string[] {
     const fieldOrder: (keyof typeof this.form.controls)[] = [
+      'pricingType',
+      'productTypeId',
       'name',
       'supplierName',
       'description',
-      'productTypeId',
-      'pricingType',
       'campaignTags',
       'costPrice',
       'salePrice',
@@ -728,7 +760,7 @@ export class ProductForm implements OnInit {
   }
 
   private hasUnsavedChanges(): boolean {
-    return !this.saved() && (this.form.dirty || this.imageDirty());
+    return this.isSubmitting() || this.form.dirty || this.imageDirty();
   }
   private setImageError(message: string): void {
     this.imagePreviewUrl.set(null);
@@ -758,5 +790,6 @@ export class ProductForm implements OnInit {
   }
   private unlockCoreFields(): void {
     this.form.enable();
+    this.updatePricingValidators();
   }
 }
