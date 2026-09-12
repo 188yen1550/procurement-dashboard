@@ -1,0 +1,93 @@
+/*
+ * 檔案用途：全站設計 token。所有顏色、字級、間距、圓角、陰影的唯一來源。
+ *
+ * ## 為什麼是 CSS custom property 而不是 SCSS 變數
+ * SCSS 變數在編譯期就被展開，每個元件樣式檔都會各自複製一份數值，
+ * 對 anyComponentStyle budget 沒有幫助。CSS custom property 只在 :root
+ * 定義一次，元件端引用的是 var(--x) 字串，重複成本趨近於零。
+ *
+ * ## 色票來源
+ * 這些值不是新設計的，是從既有 21 個元件 SCSS 統計出現頻率後收斂而來
+ * （例如 #1c5286 出現 77 次、#6c7a89 49 次），目的是「把既有視覺語言
+ * 集中管理」，不是換一套新風格。若要調整品牌色，改這裡一處即可。
+ */
+:root {
+  /* --- 品牌與互動 --- */
+  --c-brand: #1c5286;
+  --c-brand-hover: #17456f;
+  --c-brand-tint: #eaf3fb;
+
+  /* --- 文字階層（由深到淺）--- */
+  --c-ink: #243447;
+  --c-ink-soft: #455b6e;
+  --c-ink-muted: #6c7a89;
+  --c-ink-faint: #8a969f;
+
+  /* --- 表面 --- */
+  --c-surface: #fff;
+  --c-surface-sunken: #f8fafc;
+  --c-surface-alt: #eef4f8;
+  --c-surface-hover: #eef1f3;
+
+  /* --- 框線 --- */
+  --c-border: #e0e8ee;
+  --c-border-strong: #cbd9e3;
+  --c-border-soft: #e8eef2;
+
+  /* --- 語意色：成功／核准／啟用 --- */
+  --c-ok: #21694f;
+  --c-ok-tint: #e5f5ee;
+  --c-ok-border: #add9c7;
+
+  /* --- 語意色：警告／準備中／待處理 --- */
+  --c-warn: #725510;
+  --c-warn-tint: #fff8dc;
+  --c-warn-border: #ead895;
+
+  /* --- 語意色：危險／拒絕／刪除 --- */
+  --c-danger: #a43d36;
+  --c-danger-strong: #7a2927;
+  --c-danger-tint: #fff5f4;
+  --c-danger-border: #efc1be;
+
+  /*
+   * --- 字級 ---
+   * 原本全站主要落在 .62rem ~ .74rem（約 10~12px），長時間閱讀表格數字
+   * 相當吃力。這裡整體上調一階：最小可用字級拉到 13px，表格內文 14px，
+   * 並新增 --t-metric 供儀表板大數字使用。
+   */
+  --t-xs: 0.8125rem; /* 13px：徽章、輔助說明 */
+  --t-sm: 0.875rem; /* 14px：表格內文、次要文字 */
+  --t-base: 1rem; /* 16px：一般內文、表單輸入 */
+  --t-lg: 1.125rem; /* 18px：卡片標題 */
+  --t-xl: 1.375rem; /* 22px：區塊標題 */
+  --t-display: clamp(1.625rem, 3vw, 2.125rem); /* 頁面主標 */
+  --t-metric: clamp(2rem, 4vw, 2.75rem); /* 儀表板關鍵數字 */
+
+  --lh-tight: 1.25;
+  --lh-base: 1.6;
+
+  /* --- 間距 --- */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+
+  /* --- 圓角 --- */
+  --r-sm: 0.4rem;
+  --r-md: 0.6rem;
+  --r-lg: 0.8rem;
+  --r-pill: 999px;
+
+  /* --- 陰影 --- */
+  --sh-card: 0 8px 24px rgba(29, 54, 78, 0.05);
+  --sh-raised: 0 8px 24px rgba(39, 119, 90, 0.12);
+  --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.24);
+
+  /* --- 其他 --- */
+  --focus-ring: 3px solid rgba(28, 82, 134, 0.24);
+  --layout-max: 1100px;
+  --motion-fast: 0.15s ease;
+}

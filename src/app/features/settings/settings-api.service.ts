@@ -2,12 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ApiEnvelope } from '../../../core/api/api-envelope';
-import { unwrapData } from '../../../core/api/unwrap';
+import { ApiEnvelope } from '../../core/api/api-envelope';
+import { unwrapData } from '../../core/api/unwrap';
 import {
   AudienceProfileResponsePayload,
   AudienceProfileUpdateRequestPayload,
-  EvaluationFactorUpdateRequestPayload,
   EvaluationModeResponsePayload,
   FestiveCampaignCreateRequestPayload,
   FestiveCampaignManualStatusRequestPayload,
@@ -15,16 +14,11 @@ import {
   FestiveCampaignUpdateRequestPayload,
   ProductTypeCreateRequestPayload,
   ProductTypeResponsePayload,
-  ProductTypeScoreBandCreateRequestPayload,
-  ProductTypeScoreBandResponsePayload,
-  ProductTypeScoreBandUpdateRequestPayload,
   ProductTypeUpdatePayload,
   RiskOptionCreateRequestPayload,
   RiskOptionResponsePayload,
   RiskOptionUpdatePayload,
   SETTINGS_API,
-  SystemSettingResponsePayload,
-  SystemSettingUpdateRequestPayload,
   SwitchEvaluationModeRequestPayload,
   WeightSnapshotPayload,
 } from './settings-api.contract';
@@ -303,121 +297,6 @@ export class SettingsApiService {
   ): Observable<RiskOptionResponsePayload> {
     return this.http
       .put<ApiEnvelope<RiskOptionResponsePayload>>(SETTINGS_API.riskOptionUpdate(id), body)
-      .pipe(unwrapData());
-  }
-
-  // ----- 評估權重編輯（僅自訂模式）-----
-
-  /**
-   * 23. PUT /api/settings/evaluation-modes/{id}/factors [僅管理]
-   *
-   * ⚠️ **整份覆蓋**：body.factors 必須包含全部七個因子。只送想改的那幾個
-   *    會讓後端拿資料庫現值補齊後才驗加總，與畫面上顯示的加總可能不一致。
-   *
-   * ⚠️ 呼叫前請自行確認加總為 100（FACTOR_WEIGHT_TOTAL），
-   *    後端會擋，但先在前端擋下可以省一次往返、也能即時標示是哪一欄有問題。
-   *
-   * ⚠️ **只有 isEditable = true 的模式能改**。對固定模式呼叫會被後端拒絕。
-   *
-   * ⚠️ 權重調整**只影響之後新送審的商品**，已完成審核的紀錄不會變動
-   *    （審核 snapshot 不可覆蓋）。這句話必須顯示給使用者看，否則主管會
-   *    以為調權重可以修正已經審過的分數。
-   */
-  updateEvaluationModeFactors(
-    id: number,
-    body: EvaluationFactorUpdateRequestPayload,
-  ): Observable<WeightSnapshotPayload> {
-    return this.http
-      .put<ApiEnvelope<WeightSnapshotPayload>>(SETTINGS_API.evaluationModeFactors(id), body)
-      .pipe(unwrapData());
-  }
-
-  // ----- 目標區間 -----
-
-  /**
-   * 24. GET /api/settings/product-type-score-bands [操作+管理]
-   *
-   * ⚠️ 讀取權限與其他 settings 端點不同——這一支**採購也讀得到**，
-   *    後端沒有掛 @PreAuthorize。修改（PUT）才是僅管理。
-   *
-   * ⚠️ 回傳裡 productTypeId 為 null 的是**全域預設區間**，
-   *    套用到所有沒有專屬設定的品類。畫面要能區分，不要顯示成空白。
-   */
-  getProductTypeScoreBands(): Observable<ProductTypeScoreBandResponsePayload[]> {
-    return this.http
-      .get<ApiEnvelope<ProductTypeScoreBandResponsePayload[]>>(SETTINGS_API.productTypeScoreBands)
-      .pipe(unwrapData());
-  }
-
-  /**
-   * 25. POST /api/settings/product-type-score-bands [僅管理]
-   *
-   * 新增品類專屬目標區間。⚠️ 只支援 MANUAL 模式建立，body 不接受
-   * sourceMode 欄位——後端 DTO 就沒有這個欄位，新建列一律是 MANUAL。
-   *
-   * ⚠️ 同一品類×因子已存在生效中的列時，後端回 400（訊息會提示改用
-   *    編輯），呼叫端把這個錯誤原樣顯示即可，不需要另外判斷成別的文案。
-   */
-  createProductTypeScoreBand(
-    body: ProductTypeScoreBandCreateRequestPayload,
-  ): Observable<ProductTypeScoreBandResponsePayload> {
-    return this.http
-      .post<ApiEnvelope<ProductTypeScoreBandResponsePayload>>(
-        SETTINGS_API.createProductTypeScoreBand,
-        body,
-      )
-      .pipe(unwrapData());
-  }
-
-  /**
-   * 26. PUT /api/settings/product-type-score-bands/{id} [僅管理]
-   *
-   * ⚠️ sourceMode 決定 body 其餘欄位會不會被採用：
-   *    - MANUAL：帶 lowerBound／upperBound；沒帶則沿用資料庫現值（不清空）
-   *    - HISTORICAL：lowerBound／upperBound **一律被忽略**，
-   *      後端從歷史開團紀錄重新計算並凍結
-   *
-   * 所以切到 HISTORICAL 時畫面應把上下界設為唯讀，
-   * 不要讓使用者填了數字、存檔後才發現沒生效。
-   */
-  updateProductTypeScoreBand(
-    id: number,
-    body: ProductTypeScoreBandUpdateRequestPayload,
-  ): Observable<ProductTypeScoreBandResponsePayload> {
-    return this.http
-      .put<ApiEnvelope<ProductTypeScoreBandResponsePayload>>(
-        SETTINGS_API.updateProductTypeScoreBand(id),
-        body,
-      )
-      .pipe(unwrapData());
-  }
-
-  // ----- 系統設定（演算法參數）-----
-
-  /**
-   * 26. GET /api/settings/system-settings [僅管理]
-   *
-   * 貝氏收縮 k 值、趨勢半衰期等演算法參數清單，每筆附帶型別與合法範圍，
-   * 畫面依此渲染輸入元件並做送出前檢查。
-   */
-  getSystemSettings(): Observable<SystemSettingResponsePayload[]> {
-    return this.http
-      .get<ApiEnvelope<SystemSettingResponsePayload[]>>(SETTINGS_API.systemSettings)
-      .pipe(unwrapData());
-  }
-
-  /**
-   * 27. PUT /api/settings/system-settings/{key} [僅管理]
-   *
-   * ⚠️ 後端依 key 對照登記表驗證型別與範圍，失敗時是 400，
-   * message 會說明是違反哪個限制，直接顯示即可。
-   */
-  updateSystemSetting(
-    key: string,
-    body: SystemSettingUpdateRequestPayload,
-  ): Observable<SystemSettingResponsePayload> {
-    return this.http
-      .put<ApiEnvelope<SystemSettingResponsePayload>>(SETTINGS_API.updateSystemSetting(key), body)
       .pipe(unwrapData());
   }
 }

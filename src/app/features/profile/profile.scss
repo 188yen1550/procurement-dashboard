@@ -1,0 +1,74 @@
+/*
+ * 檔案用途：個人資料頁「專屬」樣式。
+ *
+ * 卡片、表單欄位、按鈕、訊息區塊、空狀態全部來自 src/styles/_components.scss，
+ * 這裡只放這一頁獨有的帳號資訊區塊與表單頁尾的按鈕排列。
+ */
+:host {
+  display: block;
+  min-width: 0;
+}
+
+/* 每張表單卡片之間留白，避免三張卡黏在一起分不出邊界。 */
+.panel + .panel {
+  margin-top: var(--s-5);
+}
+
+/* ===================== 帳號資訊 ===================== */
+
+.identity-card {
+  margin-bottom: var(--s-5);
+}
+
+/*
+ * auto-fit + minmax 讓三欄在寬螢幕並排、窄螢幕自動掉成一欄，
+ * 不需要另外寫 media query。
+ */
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-4);
+  padding: var(--s-5);
+}
+
+.identity-label {
+  display: block;
+  margin-bottom: var(--s-1);
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+}
+
+/* 帳號與角色是這頁的關鍵識別資訊，字級明顯大於標籤。 */
+.identity-value {
+  display: block;
+  font-size: var(--t-xl);
+  line-height: var(--lh-tight);
+  word-break: break-all;
+}
+
+/* ===================== 表單頁尾 ===================== */
+
+.footer-actions {
+  display: flex;
+  gap: var(--s-3);
+}
+
+/*
+ * 表單內的訊息區塊預設帶 margin-bottom（給頁面層級用的），
+ * 放在卡片內部時改用左右內縮對齊卡片其他內容。
+ */
+.panel .alert,
+.panel .success {
+  margin: 0 var(--s-5) var(--s-4);
+}
+
+@media (max-width: 760px) {
+  .footer-actions {
+    width: 100%;
+  }
+
+  .footer-actions .btn,
+  .footer-actions .btn-primary {
+    flex: 1;
+  }
+}

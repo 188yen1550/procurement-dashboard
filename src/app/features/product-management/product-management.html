@@ -5,13 +5,30 @@
 <main class="product-page" aria-labelledby="page-title">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Product Management</p>
+      
       <h1 id="page-title">品項管理</h1>
     </div>
     <a class="primary-action" routerLink="/products/new"
       ><span aria-hidden="true">＋</span> 新增品項</a
     >
   </header>
+
+  <!-- 狀態分布圖表：全站總覽，跟下方清單的篩選/分頁無關，兩者刻意分開，
+       避免使用者把「目前頁面顯示的幾筆」誤當成「全站比例」。 -->
+  @if (!useMockData && statistics() === null) {
+    <!-- 統計圖表載入失敗時靜默不顯示，不佔用版面提示錯誤——見 ts 檔案
+         loadStatistics() 的降級處理說明。 -->
+  } @else {
+    <section class="panel status-chart-panel" aria-labelledby="list-status-chart-title">
+      <header class="panel-header">
+        
+        <h2 id="list-status-chart-title">全站審核狀態分布</h2>
+      </header>
+      <div class="status-chart-wrap">
+        <canvas #statusChartCanvas aria-label="全站待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
+      </div>
+    </section>
+  }
 
   @if (useMockData) {
   <section class="state-preview" aria-labelledby="state-title">

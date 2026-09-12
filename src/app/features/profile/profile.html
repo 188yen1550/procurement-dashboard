@@ -1,0 +1,173 @@
+<!--
+  檔案用途：個人資料頁樣板。兩張獨立表單——顯示名稱、密碼。
+
+  帳號與角色刻意做成唯讀文字而非輸入框：後端 UpdateProfileRequest 只接受
+  name，username 與 role 都不開放自行修改（role 可改的話 PURCHASER
+  就能把自己升成 MANAGER）。做成看起來可編輯但送不出去的欄位是誤導。
+-->
+<main class="page-shell profile-page" aria-labelledby="profile-title">
+  <header class="page-header">
+    <div>
+      
+      <h1 id="profile-title">個人資料</h1>
+      <p>修改自己的顯示名稱與登入密碼。帳號與角色需由管理者在帳號管理中調整。</p>
+    </div>
+  </header>
+
+  @if (currentUser(); as user) {
+    <section class="panel identity-card" aria-label="帳號資訊">
+      <div class="identity-grid">
+        <div>
+          <span class="identity-label">登入帳號</span>
+          <strong class="identity-value">{{ user.username }}</strong>
+        </div>
+        <div>
+          <span class="identity-label">角色權限</span>
+          <strong class="identity-value">{{ roleLabel() }}</strong>
+        </div>
+        <div>
+          <span class="identity-label">目前顯示名稱</span>
+          <strong class="identity-value">{{ user.name }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 顯示名稱 ===== -->
+    <form class="panel" (ngSubmit)="submitName()" aria-labelledby="name-section-title">
+      <header>
+        <div>
+          <h2 id="name-section-title">顯示名稱</h2>
+          <p>會出現在商品送審紀錄與審核紀錄上，讓其他人知道是誰做的。</p>
+        </div>
+      </header>
+
+      <div class="form-grid">
+        <label class="wide"
+          >顯示名稱 <em aria-hidden="true">*</em>
+          <input
+            type="text"
+            name="displayName"
+            autocomplete="name"
+            [maxlength]="nameMaxLength"
+            [ngModel]="nameDraft()"
+            (ngModelChange)="nameDraft.set($event)"
+            [attr.aria-invalid]="nameValidation() ? 'true' : null"
+            [attr.aria-describedby]="nameValidation() ? 'name-error' : 'name-helper'"
+          />
+          @if (nameValidation()) {
+            <small id="name-error">{{ nameValidation() }}</small>
+          } @else {
+            <span class="helper" id="name-helper"
+              >{{ nameDraft().trim().length }} / {{ nameMaxLength }} 字</span
+            >
+          }
+        </label>
+      </div>
+
+      @if (nameError()) {
+        <p class="alert" role="alert">{{ nameError() }}</p>
+      }
+      @if (nameMessage()) {
+        <p class="success" role="status">{{ nameMessage() }}</p>
+      }
+
+      <footer>
+        <p>
+          @if (isNameUnchanged()) {
+            尚未變更
+          } @else {
+            有未儲存的變更
+          }
+        </p>
+        <div class="footer-actions">
+          <button type="button" class="btn" [disabled]="isNameUnchanged() || isSavingName()" (click)="resetName()">
+            復原
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="!canSubmitName()">
+            {{ isSavingName() ? '儲存中…' : '儲存名稱' }}
+          </button>
+        </div>
+      </footer>
+    </form>
+
+    <!-- ===== 密碼 ===== -->
+    <form class="panel" (ngSubmit)="submitPassword()" aria-labelledby="password-section-title">
+      <header>
+        <div>
+          <h2 id="password-section-title">變更密碼</h2>
+          <p>需要先輸入目前密碼，確認是本人操作。改完不會被登出。</p>
+        </div>
+      </header>
+
+      <div class="form-grid">
+        <label class="wide"
+          >目前密碼 <em aria-hidden="true">*</em>
+          <input
+            type="password"
+            name="currentPassword"
+            autocomplete="current-password"
+            [ngModel]="currentPassword()"
+            (ngModelChange)="currentPassword.set($event)"
+          />
+        </label>
+
+        <label
+          >新密碼 <em aria-hidden="true">*</em>
+          <input
+            type="password"
+            name="newPassword"
+            autocomplete="new-password"
+            [ngModel]="newPassword()"
+            (ngModelChange)="newPassword.set($event)"
+            [attr.aria-invalid]="newPasswordTooShort() || newPasswordSameAsCurrent() ? 'true' : null"
+          />
+          @if (newPasswordTooShort()) {
+            <small>至少需要 {{ passwordMinLength }} 個字元</small>
+          } @else if (newPasswordSameAsCurrent()) {
+            <small>新密碼與目前密碼相同，等於沒有變更</small>
+          } @else {
+            <span class="helper">至少 {{ passwordMinLength }} 個字元</span>
+          }
+        </label>
+
+        <label
+          >確認新密碼 <em aria-hidden="true">*</em>
+          <input
+            type="password"
+            name="confirmPassword"
+            autocomplete="new-password"
+            [ngModel]="confirmPassword()"
+            (ngModelChange)="confirmPassword.set($event)"
+            [attr.aria-invalid]="confirmMismatch() ? 'true' : null"
+          />
+          @if (confirmMismatch()) {
+            <small>兩次輸入的新密碼不一致</small>
+          }
+        </label>
+      </div>
+
+      @if (passwordError()) {
+        <p class="alert" role="alert">{{ passwordError() }}</p>
+      }
+      @if (passwordMessage()) {
+        <p class="success" role="status">{{ passwordMessage() }}</p>
+      }
+
+      <footer>
+        <p>密碼變更後，這次登入的工作階段會自動延續，不需要重新登入。</p>
+        <div class="footer-actions">
+          <button type="button" class="btn" [disabled]="isSavingPassword()" (click)="clearPasswordFields()">
+            清空
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="!canSubmitPassword()">
+            {{ isSavingPassword() ? '更新中…' : '更新密碼' }}
+          </button>
+        </div>
+      </footer>
+    </form>
+  } @else {
+    <section class="empty">
+      <p>尚未取得登入資訊，請重新登入後再試。</p>
+    </section>
+  }
+</main>

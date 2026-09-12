@@ -1,5 +1,5 @@
 /** 檔案用途：登入頁互動、可恢復的非同步狀態與安全錯誤訊息呈現。 */
-import { Component, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { defer, finalize } from 'rxjs';
@@ -17,11 +17,20 @@ interface LoginErrorLike {
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
-export class Login {
+export class Login implements AfterViewInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private auth = inject(Auth);
   readonly useMockData = APP_CONFIG.useMockData;
+
+  // 進頁面直接把游標放在帳號欄位——不用原生 autofocus 屬性，因為 Angular
+  // 的變更偵測時機不穩定，autofocus 在某些路由切換情境下不會確實觸發；
+  // AfterViewInit 這個時間點保證輸入框已經渲染完成，focus() 才會真的生效。
+  @ViewChild('usernameInput') private readonly usernameInput?: ElementRef<HTMLInputElement>;
+
+  ngAfterViewInit(): void {
+    this.usernameInput?.nativeElement.focus();
+  }
 
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');

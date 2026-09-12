@@ -22,12 +22,14 @@
  * demo 仰賴它，不因為接了 API 就砍掉。
  */
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import Chart from 'chart.js/auto';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { AuthService } from '../../core/auth/auth';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -40,6 +42,8 @@ import {
 import { ProductApiService } from './api/product-api.service';
 import { ProductListItem, toProductActionAvailability } from './api/product.mapper';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
+import { DashboardApiService } from '../dashboard/api/dashboard-api.service';
+import { DashboardStatisticsResponsePayload } from '../dashboard/api/dashboard-api.contract';
 
 export type PageState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
 export type SortOption = 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
@@ -106,16 +110,25 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
   templateUrl: './product-management.html',
   styleUrls: ['./product-management.scss', './product-management-actions.scss'],
 })
-export class ProductManagement implements OnInit {
+export class ProductManagement implements OnInit, OnDestroy {
   private readonly api = inject(ProductApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
+  private readonly dashboardApi = inject(DashboardApiService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   readonly useMockData = APP_CONFIG.useMockData;
+
+  /**
+   * 管理層的職責是全面掌握審核狀況，預設看全部；操作層的日常工作是
+   * 盯著自己送出去的東西有沒有結果，預設只看待審核——這是初始篩選值
+   * 的角色差異，使用者仍然可以自行切換篩選條件，不是鎖死的權限限制。
+   */
+  readonly isManager = computed(() => this.auth.isManager());
 
   readonly products = signal<ProductListItem[]>([]);
   readonly pageState = signal<PageState>('default');
   readonly searchTerm = signal('');
-  readonly reviewFilter = signal<ReviewStatus | 'ALL'>('ALL');
+  readonly reviewFilter = signal<ReviewStatus | 'ALL'>(this.auth.isManager() ? 'ALL' : 'PENDING');
   readonly itemFilter = signal<ItemStatus | 'ALL'>('ALL');
   readonly productTypeFilter = signal('ALL');
   /**
@@ -145,7 +158,7 @@ export class ProductManagement implements OnInit {
     // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
     // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
-    if (!this.useMockData) reloadOnRevisit(() => this.load());
+    if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadStatistics(); });
   }
 
   /** 分頁狀態。後端 @PageableDefault(size = 20)，前端沿用同一個預設值。 */
@@ -229,8 +242,63 @@ export class ProductManagement implements OnInit {
     return list;
   });
 
+  // ----- 狀態分布圖表：重用 dashboard 的統計端點，跟品項清單本身的篩選
+  // 及分頁無關，永遠顯示全站總覽，讓使用者在篩選清單的同時看得到
+  // 整體脈絡，不是「目前頁面顯示的 20 筆裡的比例」這種容易誤導的統計。
+  readonly statistics = signal<DashboardStatisticsResponsePayload | null>(null);
+  @ViewChild('statusChartCanvas') private readonly statusChartCanvas?: ElementRef<HTMLCanvasElement>;
+  private chart: Chart | null = null;
+
+  private readonly renderStatusChartEffect = effect(() => {
+    const stats = this.statistics();
+    const canvas = this.statusChartCanvas?.nativeElement;
+    if (!canvas || !stats) return;
+
+    const chartData = {
+      labels: ['待審核', '已通過', '未通過'],
+      datasets: [
+        {
+          data: [stats.pendingCount, stats.approvedCount, stats.rejectedCount],
+          backgroundColor: ['#d19a32', '#379773', '#c76661'],
+          borderWidth: 0,
+        },
+      ],
+    };
+
+    if (this.chart) {
+      this.chart.data = chartData;
+      this.chart.update();
+      return;
+    }
+    this.chart = new Chart(canvas, {
+      type: 'doughnut',
+      data: chartData,
+      options: {
+        cutout: '70%',
+        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } },
+      },
+    });
+  });
+
+  private loadStatistics(): void {
+    if (this.useMockData) {
+      this.statistics.set({ totalProducts: 42, pendingCount: 12, approvedCount: 25, rejectedCount: 5 });
+      return;
+    }
+    this.dashboardApi
+      .getStatistics()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (stats) => this.statistics.set(stats),
+        // 統計圖表載入失敗不影響主清單，靜默降級成不顯示圖表即可，
+        // 不需要額外的錯誤提示佔用使用者注意力。
+        error: () => this.statistics.set(null),
+      });
+  }
+
   ngOnInit(): void {
     this.load();
+    this.loadStatistics();
   }
 
   // ----- 載入 -----
@@ -514,5 +582,9 @@ export class ProductManagement implements OnInit {
     this.products.set(MOCK_PRODUCTS.map((p) => ({ ...p })));
     this.totalElements.set(MOCK_PRODUCTS.length);
     this.totalPages.set(1);
+  }
+
+  ngOnDestroy(): void {
+    this.chart?.destroy();
   }
 }

@@ -16,6 +16,11 @@ describe('ProductManagement', () => {
     fixture = TestBed.createComponent(ProductManagement);
     component = fixture.componentInstance;
     Object.defineProperty(component, 'useMockData', { value: true });
+    // 這份測試套件驗證的是篩選/操作可見性邏輯本身，不是「角色決定預設篩選值」
+    // 這個新行為——後者屬於未登入測試環境下 isManager() 恆為 false 的副作用，
+    // 這裡明確重設回中性的 'ALL'，避免測試環境的預設角色悄悄改變一整份
+    // 既有測試套件的基準狀態。若要測角色差異的預設值，應另外寫專屬測試。
+    component.updateReviewFilter('ALL');
     fixture.detectChanges();
   });
 

@@ -1,9 +1,10 @@
 /** 檔案用途：後台頂部列；呈現系統定位並透過事件交由父層控制手機選單。 */
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'app-header',
-  imports: [],
+  imports: [RouterLink, RouterLinkActive],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })

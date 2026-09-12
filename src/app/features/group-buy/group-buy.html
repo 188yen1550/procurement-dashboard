@@ -1,0 +1,209 @@
+<!-- 檔案用途：歷史開團紀錄頁面樣板。唯讀查詢對操作＋管理層開放，匯入／整批回退僅管理層。 -->
+<section class="page-header">
+  <div>
+    <h1>歷史銷售紀錄</h1>
+    <p>
+      外部系統開團結果的唯讀參考資料，是「歷史成團率」這個計分因子的資料來源。
+      本頁不提供單筆新增／編輯／刪除——只有「整批匯入」與「整批回退」兩種寫入路徑。
+    </p>
+  </div>
+  @if (isManager()) {
+    <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
+  }
+</section>
+
+@if (statusMessage()) {
+  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+}
+
+<!-- ===== 篩選 ===== -->
+<section class="filter-panel">
+  <label>
+    商品類型 ID
+    <input
+      type="number"
+      placeholder="不篩選則留空"
+      [ngModel]="filterProductTypeId()"
+      (ngModelChange)="setFilterProductTypeId($event)"
+    />
+  </label>
+  <label>
+    商品 ID
+    <input
+      type="number"
+      placeholder="不篩選則留空"
+      [ngModel]="filterProductId()"
+      (ngModelChange)="setFilterProductId($event)"
+    />
+  </label>
+  <span class="helper">兩者同時填寫時，僅商品 ID 生效。</span>
+  <button type="button" class="btn-primary" (click)="applyFilter()">套用篩選</button>
+  <button type="button" class="btn" (click)="clearFilter()">清除篩選</button>
+</section>
+
+<!-- ===== 成團率統計卡 ===== -->
+<section class="stat-card-grid">
+  <article class="stat-card">
+    <p class="stat-label">目前清單筆數</p>
+    <p class="stat-value">{{ records().length }}</p>
+  </article>
+  <article class="stat-card">
+    <p class="stat-label">有效樣本（成團+未成團）</p>
+    <p class="stat-value">{{ effectiveCount() }}</p>
+  </article>
+  <article class="stat-card">
+    <p class="stat-label">成團率</p>
+    <p class="stat-value">
+      @if (fulfillmentRate() !== null) {
+        {{ fulfillmentRate() }}%
+      } @else {
+        —
+      }
+    </p>
+    <p class="stat-hint">分母不含「取消開團」，與後端計分邏輯一致</p>
+  </article>
+</section>
+
+@if (pageState() === 'error') {
+  <section class="empty error" role="alert">
+    <h2>無法載入資料</h2>
+    <p>{{ statusMessage() }}</p>
+  </section>
+} @else if (pageState() === 'loading') {
+  <section class="empty">
+    <p>載入中…</p>
+  </section>
+} @else if (records().length === 0) {
+  <section class="empty">
+    <h2>目前沒有符合條件的紀錄</h2>
+    <p>
+      @if (isManager()) {
+        可以透過右上角「匯入 CSV」新增歷史開團紀錄。
+      } @else {
+        目前沒有歷史開團紀錄，或篩選條件沒有符合的資料。
+      }
+    </p>
+  </section>
+} @else {
+  <section class="data-table">
+    <table>
+      <thead>
+        <tr>
+          <th>商品名稱</th>
+          <th>商品類型</th>
+          <th>供應商</th>
+          <th>檔期</th>
+          <th class="num">MOQ</th>
+          <th class="num">售價</th>
+          <th class="num">成本</th>
+          <th class="num">市價</th>
+          <th class="num">集單量</th>
+          <th>結果</th>
+          <th>批次</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of records(); track r.id) {
+          <tr>
+            <td>
+              {{ r.externalProductName }}
+              @if (r.productId !== null) {
+                <span class="helper">(對應商品 #{{ r.productId }})</span>
+              }
+              @if (r.isSimulated) {
+                <span class="badge badge-muted" title="這是模擬資料，非真實開團績效">模擬資料</span>
+              }
+            </td>
+            <td>{{ r.productTypeName }}</td>
+            <td>{{ r.supplierName ?? '—' }}</td>
+            <td>
+              @if (r.campaignStartDate && r.campaignEndDate) {
+                {{ r.campaignStartDate }} ~ {{ r.campaignEndDate }}
+              } @else {
+                —
+              }
+            </td>
+            <td class="num">{{ r.moqAtTime ?? '—' }}</td>
+            <td class="num">{{ r.salePriceAtTime ?? '—' }}</td>
+            <td class="num">{{ r.costPriceAtTime ?? '—' }}</td>
+            <td class="num">{{ r.marketPriceAtTime ?? '—' }}</td>
+            <td class="num">{{ r.actualQuantity ?? '—' }} / {{ r.targetQuantity ?? '—' }}</td>
+            <td>
+              <span class="badge" [class]="resultBadgeClass(r.result)">{{ resultLabel[r.result] }}</span>
+            </td>
+            <td>{{ r.importBatchId ?? '—' }}</td>
+            <td class="row-actions">
+              @if (isManager() && r.importBatchId) {
+                <button type="button" class="text-action danger" (click)="confirmDeleteBatch(r.importBatchId)">
+                  回退整批
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}
+
+<!-- ===== 匯入對話框 ===== -->
+@if (isImportDialogOpen()) {
+  <div class="modal-backdrop" (click)="closeImportDialog()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <h2>匯入歷史開團紀錄</h2>
+      <p class="helper">
+        CSV 格式須含必要欄位（品類 ID、商品名稱、開團起訖日、實際成團量、結果），
+        任何一列格式錯誤會整批拒絕匯入，不會發生「匯入一半」的情況。
+      </p>
+      <details class="csv-headers">
+        <summary>CSV 可用欄位（點擊展開）</summary>
+        <code>{{ csvRequiredHeaders.join(', ') }}</code>
+      </details>
+
+      <input type="file" accept=".csv" (change)="onFileSelected($event)" [disabled]="isImporting()" />
+
+      @if (importResult(); as result) {
+        @if (result.success) {
+          <p class="notice status-toast success">匯入成功，共 {{ result.importedRows }} 筆。</p>
+        } @else {
+          <p class="notice status-toast error">
+            匯入失敗，共 {{ result.totalRows }} 列中有 {{ result.errors.length }} 列格式錯誤，整批未寫入：
+          </p>
+          <div class="data-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>列號</th>
+                  <th>欄位</th>
+                  <th>錯誤訊息</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (e of result.errors; track $index) {
+                  <tr>
+                    <td>{{ e.rowNumber }}</td>
+                    <td>{{ e.field }}</td>
+                    <td>{{ e.message }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <div class="modal-actions">
+        <button type="button" class="btn" [disabled]="isImporting()" (click)="closeImportDialog()">關閉</button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!selectedFile() || isImporting()"
+          (click)="submitImport()"
+        >
+          {{ isImporting() ? '匯入中…' : '開始匯入' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

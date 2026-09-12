@@ -1,4 +1,4 @@
-import { IsoDate } from '../../../core/api/api-envelope';
+import { Decimal, IsoDate, IsoDateTime } from '../../../core/api/api-envelope';
 import {
   FestiveCampaignStatus,
   FestiveCategory,
@@ -35,13 +35,6 @@ export const SETTINGS_API = {
   audienceProfile: '/api/settings/audience-profile',
   productTypes: '/api/settings/product-types',
   disableProductType: (id: number | string) => `/api/settings/product-types/${id}/disable`,
-  /**
-   * ⚠️ 這支端點後端目前不存在，只有 disable 有對應實作。這裡先按照
-   * disable 的路徑命名慣例猜一個對稱路徑，讓前端 UI／呼叫邏輯先準備好；
-   * 後端補上這支之前，呼叫這裡一律會是 404，錯誤訊息會照實顯示，
-   * 不會假裝復用成功。
-   */
-  restoreProductType: (id: number | string) => `/api/settings/product-types/${id}/restore`,
   deleteProductType: (id: number | string) => `/api/settings/product-types/${id}`,
   festiveCampaigns: '/api/settings/festive-campaigns',
   updateFestiveCampaign: (id: number | string) => `/api/settings/festive-campaigns/${id}`,
@@ -54,6 +47,18 @@ export const SETTINGS_API = {
   riskOptionEnable: (id: number | string) => `/api/settings/risk-options/${id}/enable`,
   productTypeUpdate: (id: number | string) => `/api/settings/product-types/${id}`,
   riskOptionUpdate: (id: number | string) => `/api/settings/risk-options/${id}`,
+  /** GET [操作+管理]：目標區間清單。注意讀取權限與其他 settings 端點不同。 */
+  productTypeScoreBands: '/api/settings/product-type-score-bands',
+  /** POST [僅管理]：新增品類專屬目標區間（只支援 MANUAL 模式建立）。 */
+  createProductTypeScoreBand: '/api/settings/product-type-score-bands',
+  /** PUT [僅管理]：更新單一目標區間。 */
+  updateProductTypeScoreBand: (id: number | string) =>
+    `/api/settings/product-type-score-bands/${id}`,
+  /** GET [僅管理]：演算法參數清單（貝氏收縮 k 值、趨勢半衰期等）。 */
+  systemSettings: '/api/settings/system-settings',
+  /** PUT [僅管理]：更新單一演算法參數。key 是路徑參數，不是 body 欄位。 */
+  updateSystemSetting: (key: string) =>
+    `/api/settings/system-settings/${encodeURIComponent(key)}`,
 } as const;
 
 // =========================================================================
@@ -85,6 +90,12 @@ export interface EvaluationModeResponsePayload {
   version: number;
   description: string | null;
   isActive: boolean | null;
+  /**
+   * 是否允許調整權重。後端註解說明理由：只靠前端寫死 id 判斷會在換環境
+   * 或重新匯入資料後失準，id 是流水號不是穩定識別。畫面上「編輯權重」
+   * 按鈕只在這個欄位為 true 時顯示（目前只有 CUSTOM 模式）。
+   */
+  isEditable: boolean | null;
 }
 
 /** 對應後端 SwitchEvaluationModeRequest.java。 */
@@ -258,4 +269,181 @@ export interface FestiveCampaignUpdateRequestPayload {
 export interface FestiveCampaignManualStatusRequestPayload {
   status: FestiveCampaignStatus;
   overrideEnabled: boolean;
+}
+
+// =========================================================================
+// 目標區間（product_type_score_bands）
+// =========================================================================
+
+/**
+ * 目標區間的資料來源模式。對應後端 ScoreBandSourceMode enum。
+ *
+ * 兩者是**可互相切換的並存模式**，不是「先建議後確認」的兩階段流程：
+ * - HISTORICAL：切換當下由後端從歷史開團紀錄算一次，並把結果**凍結**寫進
+ *   lowerBound／upperBound。不是每次評分都重算——那會違反系統的可重現性約束。
+ * - MANUAL：主管直接輸入固定數字。切到這個模式但沒給新數字時沿用目前值，不清空。
+ *
+ * ⚠️ 評分時 ScoreBandResolver **只讀 lowerBound／upperBound，完全不看 sourceMode**。
+ * 這個欄位純粹是給畫面顯示「這組區間是算出來的還是手填的」。
+ */
+export type ScoreBandSourceMode = 'HISTORICAL' | 'MANUAL';
+
+/**
+ * 對應後端 ProductTypeScoreBandResponse.java。
+ *
+ * ⚠️ productTypeId 為 null 代表**全域預設區間**（套用到所有沒有專屬設定的品類）。
+ * 目前資料庫只有兩筆全域列（MARGIN_RATE、DISCOUNT_DEPTH），畫面要能區分
+ * 「全域」與「某品類專屬」，不要把 null 顯示成空白或 0。
+ *
+ * ⚠️ sampleSize／computedAt 只有 HISTORICAL 模式才有意義，MANUAL 模式下
+ * 可能是舊值或 null。顯示時要依 sourceMode 決定要不要露出這兩欄，
+ * 否則使用者會以為手動填的數字也是從 N 筆樣本算出來的。
+ */
+export interface ProductTypeScoreBandResponsePayload {
+  id: number;
+  /** null = 全域預設。 */
+  productTypeId: number | null;
+  factorCode: string;
+  lowerBound: Decimal;
+  upperBound: Decimal;
+  version: number;
+  sourceMode: ScoreBandSourceMode;
+  /** 僅 HISTORICAL 有意義：算這組區間用了幾筆歷史紀錄。 */
+  sampleSize: number | null;
+  /** 僅 HISTORICAL 有意義：樣本是否含模擬資料。 */
+  includesSimulated: boolean | null;
+  /** 僅 HISTORICAL 有意義：這組區間是什麼時候算出來的。 */
+  computedAt: IsoDateTime | null;
+  updatedAt: IsoDateTime | null;
+}
+
+/**
+ * 對應後端 ProductTypeScoreBandUpdateRequest.java（PUT）。
+ *
+ * ⚠️ **必填欄位隨 sourceMode 改變**，這是後端 DTO 註解明寫的設計：
+ * - MANUAL：lowerBound／upperBound 應該帶；沒帶的話後端沿用資料庫現值
+ * - HISTORICAL：lowerBound／upperBound **一律被忽略**，即使有送也不採用
+ *
+ * 所以畫面在 HISTORICAL 模式下應該把上下界輸入框設為唯讀或直接隱藏，
+ * 不要讓使用者填了一組數字、按下儲存卻發現沒有生效。
+ *
+ * 後端 DTO 刻意沒對這兩欄加 @NotNull，因為「某欄位必填與否取決於另一個
+ * 欄位的值」屬於跨欄位條件式驗證，放 Service 層判斷。
+ */
+export interface ProductTypeScoreBandUpdateRequestPayload {
+  sourceMode: ScoreBandSourceMode;
+  lowerBound?: Decimal;
+  upperBound?: Decimal;
+}
+
+/**
+ * 對應後端 ProductTypeScoreBandCreateRequest.java（POST，新增品類專屬目標區間）。
+ *
+ * ⚠️ **只支援建立 MANUAL 模式**：後端 DTO 沒有 sourceMode 欄位，新建的列
+ * 一律是 MANUAL。HISTORICAL 需要先有歷史開團紀錄樣本，新建立的品類覆寫
+ * 通常還沒有樣本，建立時就選 HISTORICAL 會直接撞到「樣本不足」的錯誤；
+ * 之後有足夠資料時，再透過既有的 PUT 端點切換成 HISTORICAL。
+ *
+ * ⚠️ 同一品類×因子若已存在生效中的列，後端會回 400（請改用編輯），
+ * 不是靠前端先查一次避免——那樣會有競態條件（兩個分頁同時新增）。
+ */
+export interface ProductTypeScoreBandCreateRequestPayload {
+  productTypeId: number;
+  factorCode: string;
+  lowerBound: Decimal;
+  upperBound: Decimal;
+}
+
+// =========================================================================
+// 評估權重編輯（僅自訂模式）
+// =========================================================================
+
+/**
+ * 對應後端 EvaluationFactorUpdateRequest.java（PUT .../factors）。
+ *
+ * ⚠️ **整份覆蓋語意**：必須送出全部七個因子，不接受只送想改的那幾個。
+ * 後端 DTO 註解說明理由——只送部分欄位的話，後端得把送來的值與資料庫
+ * 現值混合後才能驗「加總為 100」，使用者看到的加總與實際生效的可能不一致。
+ * 整份送出，畫面上算出來的加總就是後端會驗的加總。
+ *
+ * ⚠️ 用 factorCode 對應因子而非陣列索引，是刻意的：靠索引對應的話，
+ * 前端少送一個或順序調換都會**安靜地把權重套錯因子**。
+ *
+ * ⚠️ **只有 isEditable = true 的模式可以改**。三套固定模式（均衡／衝量／
+ * 高利潤）後端會拒絕。前端要隱藏編輯入口，但後端那道檢查才是真防線——
+ * 有人直接打 API 就繞過前端了，而權重被改掉不會有錯誤訊息，
+ * 只會讓所有商品的分數安靜地變成另一組數字。
+ *
+ * 單欄驗證：weight 需 0.00 ~ 100.00，整數 3 位、小數 2 位。
+ * 「七項加總須為 100」是跨欄位規則，由 SettingsService 攔截。
+ */
+export interface EvaluationFactorUpdateRequestPayload {
+  factors: EvaluationFactorWeightPayload[];
+}
+
+export interface EvaluationFactorWeightPayload {
+  factorCode: string;
+  /** 0.00 ~ 100.00。 */
+  weight: Decimal;
+}
+
+/** 後端 SettingsService 驗證的權重加總。前端送出前先自行檢查，避免來回一趟。 */
+export const FACTOR_WEIGHT_TOTAL = 100;
+
+// =========================================================================
+// 系統設定（演算法參數：貝氏收縮 k 值、趨勢半衰期等）
+// =========================================================================
+
+/**
+ * 對應後端 SystemSettingRegistry.DataType。
+ *
+ * ⚠️ 這裡決定畫面該用什麼輸入元件：INTEGER/DECIMAL 用數字輸入框
+ * （INTEGER 額外限制不可輸入小數點），STRING（目前只有
+ * supported_temperature_zones 一項）用逗號分隔的多選標籤元件，
+ * 不要用一般文字輸入框讓使用者手打逗號分隔字串，容易打錯格式。
+ */
+export type SystemSettingDataType = 'INTEGER' | 'DECIMAL' | 'STRING';
+
+/**
+ * 對應後端 SystemSettingResponse.java。
+ *
+ * ⚠️ hasStoredValue = false 代表資料庫其實沒有這筆紀錄，目前顯示的是
+ * 後端登記表裡的預設值。畫面上可以用一個小標籤標示「預設值，尚未手動
+ * 調整過」，但**不要**因為 hasStoredValue=false 就不讓使用者編輯——
+ * 這只是顯示上的區別，不是權限限制。
+ *
+ * ⚠️ minValue／maxValue 在 dataType='STRING' 時為 null。
+ */
+export interface SystemSettingResponsePayload {
+  key: string;
+  /** 分組用，例如「貝氏收縮」「趨勢分析」「MOQ判定」，畫面依此分區塊顯示。 */
+  category: string;
+  displayName: string;
+  description: string;
+  dataType: SystemSettingDataType;
+  minValue: Decimal | null;
+  maxValue: Decimal | null;
+  /** 例如「天」「次」「百分位」，顯示在輸入框旁邊。dataType='STRING' 時為 null。 */
+  unit: string | null;
+  /** 目前生效值，統一是字串，畫面依 dataType 決定要不要轉數字。 */
+  value: string;
+  hasStoredValue: boolean;
+  updatedAt: IsoDateTime | null;
+  updatedByName: string | null;
+}
+
+/**
+ * 對應後端 SystemSettingUpdateRequest.java（PUT .../system-settings/{key}）。
+ *
+ * ⚠️ 後端會依 key 對照登記表做型別與範圍驗證，直接顯示後端回傳的錯誤
+ * 訊息即可，不需要前端自己組一份錯誤文字。
+ *
+ * ⚠️ score_band_percentile_upper 必須大於 score_band_percentile_lower，
+ * 這是跨兩個 key 的規則，後端**不會**在單一 key 的更新請求裡驗證這件事。
+ * 畫面若讓使用者同時看到這兩個設定，建議在送出前端自行比較兩者目前值
+ * 並提示，避免存了一組上下界相反的設定導致後端 HISTORICAL 模式計算
+ * 結果錯亂。
+ */
+export interface SystemSettingUpdateRequestPayload {
+  value: string;
 }

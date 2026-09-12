@@ -10,6 +10,7 @@ import { ReviewRecordModel, toReviewRecordModel } from '../../review/api/review.
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import {
   AiAnalysisResponsePayload,
+  AiSuggestionBatchResultPayload,
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
   PRODUCT_API,
@@ -17,6 +18,8 @@ import {
   ProductListQuery,
   ProductResponsePayload,
   ProductUpdateRequestPayload,
+  SimilarCandidateQuery,
+  SimilarProductCandidatePayload,
   TrendSnapshotPayload,
 } from './product-api.contract';
 import {
@@ -157,6 +160,55 @@ export class ProductApiService {
   /** 11. POST /api/products/{id}/promote-to-candidate：AI_SUGGESTED → CANDIDATE。 */
   promoteToCandidate(id: number | string): Observable<ProductResponsePayload> {
     return this.postAction(PRODUCT_API.promote(id));
+  }
+
+  /**
+   * 13. GET /api/products/similar-candidates：RESALE 商品搜尋相似參考商品。
+   *
+   * 純唯讀查詢，不會修改任何資料。後端只負責排序建議，**不做自動合併判定**——
+   * 回傳的清單要交給使用者人工挑選，選定的 productId 再填進
+   * ProductCreateRequest／ProductUpdateRequest 的 resaleReferenceProductId 送出。
+   *
+   * ⚠️ productTypeId 與 name 是必填（後端沒有 required = false），
+   * 兩者任一為空時**不要發請求**，否則收到的是 400 而不是空清單。
+   *
+   * ⚠️ 編輯既有商品時務必帶 excludeId = 自己的 id，
+   * 否則第一名永遠是商品自己（名稱 100% 相同）。
+   */
+  findSimilarCandidates(query: SimilarCandidateQuery): Observable<SimilarProductCandidatePayload[]> {
+    return this.http
+      .get<ApiEnvelope<SimilarProductCandidatePayload[]>>(PRODUCT_API.similarCandidates, {
+        params: buildParams({
+          productTypeId: query.productTypeId,
+          name: query.name,
+          supplierName: query.supplierName,
+          excludeId: query.excludeId,
+        }),
+      })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 14. POST /api/products/ai-suggested/batch-generate [僅管理]
+   *
+   * 手動觸發 AI 主動選品批次。正式排程是 AiSuggestionBatchService 的
+   * @Scheduled（每日凌晨三點），這支端點存在的理由是 demo／開發時
+   * 不用乾等到凌晨三點才看得到效果。
+   *
+   * ⚠️ **這支會實際呼叫 Gemini 並消耗配額**，且執行時間隨商品數量增加，
+   *    不是瞬間回應。畫面上必須：
+   *    1. 觸發前要二次確認（避免誤點）
+   *    2. 執行中把按鈕 disable（避免連點送出多批）
+   *    3. 完成後用回傳的 checkedCount／suggestedCount 給明確回饋
+   *
+   * ⚠️ 後端 Controller 上有 @PreAuthorize("hasRole('MANAGER')")，
+   *    採購角色呼叫會是 403。前端要一併隱藏按鈕，但**不能只靠前端隱藏**
+   *    ——後端那道檢查才是真正的防線。
+   */
+  triggerAiSuggestionBatch(): Observable<AiSuggestionBatchResultPayload> {
+    return this.http
+      .post<ApiEnvelope<AiSuggestionBatchResultPayload>>(PRODUCT_API.aiSuggestedBatchGenerate, {})
+      .pipe(unwrapData());
   }
 
   /**

@@ -64,3 +64,47 @@ export type TrendDirection = 'UP' | 'DOWN' | 'STABLE';
  * 避免使用者疑惑「為什麼改了資料分數卻沒變」。
  */
 export type DataSource = 'SNAPSHOT' | 'LIVE';
+
+/** enums/TemperatureZone.java。Gate 屬性欄位之一，供 GATE_TEMPERATURE_ZONE 判定使用。 */
+export type TemperatureZone = 'NORMAL' | 'CHILLED' | 'FROZEN';
+
+/**
+ * enums/ShelfLifeTier.java。Gate 屬性欄位之一，供 GATE_SHELF_LIFE 判定使用。
+ * NA 代表「這件商品沒有效期概念」，不是「效期未知」——兩者語意不同，
+ * 畫面上不要把 NA 跟「尚未填寫」用同一種視覺表示。
+ */
+export type ShelfLifeTier = 'D7' | 'D8_30' | 'D31_90' | 'D90_PLUS' | 'NA';
+
+/** enums/SupplierLeadTimeTier.java。Gate 屬性欄位之一，供 GATE_LEAD_TIME 判定使用。 */
+export type SupplierLeadTimeTier = 'D3' | 'D4_7' | 'D8_14' | 'D15_PLUS';
+
+/**
+ * enums/PackageSizeTier.java。供運費估算查表使用（進而影響毛利率因子），
+ * 不是 Gate 判定的輸入。
+ */
+export type PackageSizeTier = 'XS' | 'S' | 'M' | 'L';
+
+/** enums/PackingType.java。純 Signal 顯示用，不參與任何判定或計分。 */
+export type PackingType = 'WHOLE_CARTON' | 'REPACK';
+
+/**
+ * enums/GateStatus.java。
+ *
+ * ⚠️ 只有 FAILED 算「明確擋下」，其餘三態都不阻擋送審——畫面上不要把
+ * INSUFFICIENT_DATA／NOT_APPLICABLE 跟 FAILED 用同一種警示顏色，
+ * 那會讓使用者分不清「這件真的有問題」跟「這件只是資料還沒填」或
+ * 「這項檢查對這件商品不適用」，三者處理方式完全不同。
+ */
+export type GateStatus = 'PASSED' | 'FAILED' | 'INSUFFICIENT_DATA' | 'NOT_APPLICABLE';
+
+/**
+ * Gate 判定代碼。對應後端 GateEvaluationService 目前實作的五個 Gate。
+ * riskCategory 目前恆為 null（後端尚未把 Gate 結果對應到風險分類），
+ * 前端不要假設這個欄位一定有值。
+ */
+export type GateCode =
+  | 'GATE_MOQ_FEASIBILITY'
+  | 'GATE_LEAD_TIME'
+  | 'GATE_SHELF_LIFE'
+  | 'GATE_TEMPERATURE_ZONE'
+  | 'GATE_DATA_COMPLETENESS';

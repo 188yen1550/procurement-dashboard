@@ -66,7 +66,7 @@
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
               <span class="input-icon" aria-hidden="true"> 👤 </span>
 
-              <input id="username" type="text" formControlName="username" placeholder="請輸入帳號或電子郵件"
+              <input id="username" #usernameInput type="text" formControlName="username" placeholder="請輸入帳號或電子郵件"
                 autocomplete="username" [readOnly]="isLoading()" [attr.aria-invalid]="
                   loginForm.controls.username.invalid && loginForm.controls.username.touched
                 " [attr.aria-describedby]="

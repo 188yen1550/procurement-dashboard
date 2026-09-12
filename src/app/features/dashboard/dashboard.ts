@@ -26,11 +26,13 @@
  * 不去猜測或假造數值。若要補齊，需要後端在對應 DTO 加欄位——
  * 例如 productTypeId 這種其他端點已有的欄位，遷移成本應該很低。
  */
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import Chart from 'chart.js/auto';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { AuthService } from '../../core/auth/auth';
 import { toApiError } from '../../core/api/api-error';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
@@ -69,10 +71,20 @@ type RealLoadState = 'loading' | 'loaded' | 'error';
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
   private readonly api = inject(DashboardApiService);
   private readonly productTypes = inject(ProductTypeLookupService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /**
+   * 管理層／操作層各自獨立設計的畫面重點：管理層的治理責任是留意風險
+   * 提示（審核時要不要特別留意），操作層的日常工作是根據 AI 推薦排序
+   * 決定要優先處理哪些候選商品。兩支 API 權限上操作層都能呼叫（後端
+   * 沒有限制），這裡純粹是畫面呈現的優先順序決定，不是資料存取限制——
+   * 風險提示面板只在管理層畫面出現，操作層畫面把版面讓給更大的推薦清單。
+   */
+  readonly isManager = computed(() => this.auth.isManager());
 
   readonly useMockData = APP_CONFIG.useMockData;
 
@@ -89,6 +101,53 @@ export class Dashboard implements OnInit {
   readonly data = computed<DashboardMockData>(() =>
     this.useMockData ? DASHBOARD_MOCK_DATA : this.realData(),
   );
+
+  // ----- 狀態分布圖表（chart.js）-----
+  @ViewChild('statusChartCanvas') private readonly statusChartCanvas?: ElementRef<HTMLCanvasElement>;
+  private chart: Chart | null = null;
+
+  /**
+   * 用 effect() 而非在 load() 成功回呼裡手動畫圖，是因為 Mock 模式完全
+   * 不會呼叫 load()——用 effect() 讓圖表跟著 data() 這個 computed signal
+   * 走，不論資料從哪個管道更新（Mock 常數／真實 API／使用者切換示範
+   * 狀態）都會自動重繪，不需要在每個資料來源各自呼叫一次畫圖方法。
+   */
+  private readonly renderStatusChartEffect = effect(() => {
+    // 讀取 data() 建立依賴——待審／通過／未通過三個數字任一變動，
+    // 圖表都要重新畫。canvas 在 skeleton／empty／error 狀態下不存在，
+    // ViewChild 拿到 undefined 時直接跳過，不強行畫圖到不存在的元素上。
+    const stats = this.data().statistics;
+    const canvas = this.statusChartCanvas?.nativeElement;
+    if (!canvas) return;
+
+    const chartData = {
+      labels: ['待審核', '已通過', '未通過'],
+      datasets: [
+        {
+          data: [stats.pendingReviews, stats.approvedProducts, stats.rejectedProducts],
+          backgroundColor: ['#d19a32', '#379773', '#c76661'],
+          borderWidth: 0,
+        },
+      ],
+    };
+
+    if (this.chart) {
+      this.chart.data = chartData;
+      this.chart.update();
+      return;
+    }
+
+    this.chart = new Chart(canvas, {
+      type: 'doughnut',
+      data: chartData,
+      options: {
+        cutout: '68%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        },
+      },
+    });
+  });
 
   readonly recommendations = computed<readonly DashboardRecommendation[]>(() => {
     // 鎖定示範只在 Mock 模式下才需要模擬「全部變成已核准」的畫面。
@@ -185,6 +244,10 @@ export class Dashboard implements OnInit {
     if (level === 'HIGH') return '高風險';
     if (level === 'MEDIUM') return '需留意';
     return '示警';
+  }
+
+  ngOnDestroy(): void {
+    this.chart?.destroy();
   }
 }
 

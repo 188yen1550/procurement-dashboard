@@ -23,10 +23,12 @@
  *   跟 Mock 一致，沒有落差。
  */
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { DialogService } from '../../core/dialog/dialog.service';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { FestiveCategory, UserRole } from '../../core/domain/enums';
@@ -35,14 +37,26 @@ import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
   FestiveCampaignTagPayload,
+  ProductTypeScoreBandCreateRequestPayload,
+  ProductTypeScoreBandResponsePayload,
   RiskOptionResponsePayload,
+  ScoreBandSourceMode,
 } from './api/settings-api.contract';
 import { SettingsApiService } from './api/settings-api.service';
 import { UserApiService } from '../user-management/api/user-api.service';
 import { UserAccountResponsePayload } from '../user-management/api/user-api.contract';
+import { WeightFactorPayload } from '../product-management/api/product-api.contract';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
-type SettingsTab = 'modes' | 'risks' | 'audience' | 'productTypes' | 'campaigns' | 'accounts';
+type SettingsTab =
+  | 'modes'
+  | 'risks'
+  | 'audience'
+  | 'productTypes'
+  | 'campaigns'
+  | 'accounts'
+  | 'scoreBands'
+  | 'systemSettings';
 
 interface EvaluationModeVM {
   id: number | null;
@@ -51,6 +65,71 @@ interface EvaluationModeVM {
   description: string;
   /** 真實模式載入中或載入失敗時為 null，畫面顯示「載入中」而非假權重。 */
   weights: { business: number; audience: number; history: number; forecast: number } | null;
+  /** 七個因子的原始權重，供權重編輯器使用；四象限彙總（weights）僅供卡片顯示。 */
+  rawFactors: WeightFactorPayload[] | null;
+  /** 只有 CUSTOM 模式為 true。三套固定模式後端會拒絕修改，此欄位決定要不要顯示編輯入口。 */
+  isEditable: boolean;
+}
+
+/**
+ * 七個評分因子的中文顯示名稱。
+ *
+ * 對應後端 constants/FactorCode.java 的 ALL 清單。後端只回 factorCode
+ * （英文代碼）與 category（畫面分組用），中文名稱前端自行維護對照表——
+ * 跟 role 顯示文案走同一套模式（後端不外露中文，見 auth.contract.ts）。
+ */
+const FACTOR_LABEL: Record<string, string> = {
+  MARGIN_RATE: '毛利率',
+  DISCOUNT_DEPTH: '折扣深度',
+  SUPPLY_STABILITY: '供應穩定性',
+  AUDIENCE_MATCH: '核心客群匹配度',
+  HISTORY_FULFILLMENT: '歷史成團率',
+  PURCHASE_RATE: '預估購買率',
+  TREND_HEAT: '市場趨勢熱度',
+};
+
+/** 後端 FactorCode.ALL 的順序，畫面上的權重編輯器沿用同一順序，避免每次渲染順序跳動。 */
+const FACTOR_ORDER: readonly string[] = [
+  'MARGIN_RATE',
+  'DISCOUNT_DEPTH',
+  'SUPPLY_STABILITY',
+  'AUDIENCE_MATCH',
+  'HISTORY_FULFILLMENT',
+  'PURCHASE_RATE',
+  'TREND_HEAT',
+];
+
+/**
+ * 目標區間（product_type_score_bands）的顯示模型。
+ *
+ * ⚠️ productTypeId 為 null 代表全域預設，套用到所有沒有專屬設定的品類。
+ */
+interface SystemSettingVM {
+  key: string;
+  category: string;
+  displayName: string;
+  description: string;
+  dataType: 'INTEGER' | 'DECIMAL' | 'STRING';
+  minValue: number | null;
+  maxValue: number | null;
+  unit: string | null;
+  value: string;
+  hasStoredValue: boolean;
+  updatedAt: string | null;
+  updatedByName: string | null;
+}
+
+interface ScoreBandVM {
+  id: number;
+  productTypeId: number | null;
+  productTypeName: string;
+  factorCode: string;
+  factorLabel: string;
+  lowerBound: number;
+  upperBound: number;
+  sourceMode: ScoreBandSourceMode;
+  sampleSize: number | null;
+  computedAt: string | null;
 }
 
 interface RiskOptionVM {
@@ -99,10 +178,141 @@ const MODE_SHELLS: readonly { code: string; name: string; description: string }[
   { code: 'PROFIT', name: '高利潤模式', description: '提高商業條件權重，同時保留人氣預測。' },
 ];
 
+/** Mock 版的七因子明細，四套模式（含 CUSTOM）都要有，供權重編輯器 demo 用。 */
+function mockRawFactors(business: number, audience: number, history: number, forecast: number) {
+  return FACTOR_ORDER.map((factorCode): WeightFactorPayload => {
+    const category = ['MARGIN_RATE', 'DISCOUNT_DEPTH', 'SUPPLY_STABILITY'].includes(factorCode)
+      ? 'BUSINESS'
+      : factorCode === 'AUDIENCE_MATCH'
+        ? 'AUDIENCE'
+        : factorCode === 'HISTORY_FULFILLMENT'
+          ? 'HISTORY'
+          : 'FORECAST';
+    const groupTotal =
+      category === 'BUSINESS' ? business : category === 'AUDIENCE' ? audience : category === 'HISTORY' ? history : forecast;
+    const groupSize =
+      category === 'BUSINESS' ? 3 : category === 'FORECAST' ? 2 : 1;
+    return { factorCode, factorName: FACTOR_LABEL[factorCode], category, weight: Math.round((groupTotal / groupSize) * 100) / 100 };
+  });
+}
+
 const MOCK_MODES: readonly EvaluationModeVM[] = [
-  { id: 1, ...MODE_SHELLS[0], weights: { business: 25, audience: 25, history: 25, forecast: 25 } },
-  { id: 2, ...MODE_SHELLS[1], weights: { business: 15, audience: 30, history: 15, forecast: 40 } },
-  { id: 3, ...MODE_SHELLS[2], weights: { business: 45, audience: 15, history: 15, forecast: 25 } },
+  {
+    id: 1,
+    ...MODE_SHELLS[0],
+    weights: { business: 25, audience: 25, history: 25, forecast: 25 },
+    rawFactors: mockRawFactors(25, 25, 25, 25),
+    isEditable: false,
+  },
+  {
+    id: 2,
+    ...MODE_SHELLS[1],
+    weights: { business: 15, audience: 30, history: 15, forecast: 40 },
+    rawFactors: mockRawFactors(15, 30, 15, 40),
+    isEditable: false,
+  },
+  {
+    id: 3,
+    ...MODE_SHELLS[2],
+    weights: { business: 45, audience: 15, history: 15, forecast: 25 },
+    rawFactors: mockRawFactors(45, 15, 15, 25),
+    isEditable: false,
+  },
+  {
+    id: 4,
+    code: 'CUSTOM',
+    name: '自訂模式',
+    description: '主管可自行調整七項因子權重，用於實驗性的選品策略。',
+    weights: { business: 25, audience: 25, history: 25, forecast: 25 },
+    rawFactors: mockRawFactors(25, 25, 25, 25),
+    isEditable: true,
+  },
+];
+
+const MOCK_SYSTEM_SETTINGS: readonly SystemSettingVM[] = [
+  {
+    key: 'shrinkage_k_category',
+    category: '貝氏收縮',
+    displayName: '品類層平滑常數 k',
+    description: '要累積多少筆樣本，品類才會被信任一半以上；數字越大，愈需要更多樣本才會偏離全域平均。',
+    dataType: 'INTEGER',
+    minValue: 1,
+    maxValue: 100,
+    unit: '次',
+    value: '10',
+    hasStoredValue: true,
+    updatedAt: '2025-01-05T10:00:00',
+    updatedByName: '林建宏',
+  },
+  {
+    key: 'shrinkage_k_product',
+    category: '貝氏收縮',
+    displayName: '商品層平滑常數 k',
+    description: '同上，但作用在單一商品自己的歷史上。建議小於品類層 k，否則商品層永遠不會真正發揮作用。',
+    dataType: 'INTEGER',
+    minValue: 1,
+    maxValue: 100,
+    unit: '次',
+    value: '5',
+    hasStoredValue: true,
+    updatedAt: '2025-01-05T10:00:00',
+    updatedByName: '林建宏',
+  },
+  {
+    key: 'trend_half_life_days',
+    category: '趨勢分析',
+    displayName: '趨勢新鮮度半衰期',
+    description: '趨勢訊號的影響力衰減一半所需的天數，數字越小系統對最新資料的反應越敏感、越快忘記舊資料。',
+    dataType: 'INTEGER',
+    minValue: 1,
+    maxValue: 365,
+    unit: '天',
+    value: '14',
+    hasStoredValue: true,
+    updatedAt: '2025-01-05T10:00:00',
+    updatedByName: '林建宏',
+  },
+  {
+    key: 'score_band_min_sample_size',
+    category: '目標區間',
+    displayName: '歷史模式最低樣本數',
+    description: '切換目標區間為 HISTORICAL 模式時，低於這個樣本數會直接拒絕計算，改請使用 MANUAL 模式。',
+    dataType: 'INTEGER',
+    minValue: 1,
+    maxValue: 1000,
+    unit: '筆',
+    value: '5',
+    hasStoredValue: false,
+    updatedAt: null,
+    updatedByName: null,
+  },
+];
+
+const MOCK_SCORE_BANDS: readonly ScoreBandVM[] = [
+  {
+    id: 1,
+    productTypeId: null,
+    productTypeName: '全域預設',
+    factorCode: 'DISCOUNT_DEPTH',
+    factorLabel: FACTOR_LABEL['DISCOUNT_DEPTH'],
+    lowerBound: 0,
+    upperBound: 0.5,
+    sourceMode: 'MANUAL',
+    sampleSize: null,
+    computedAt: null,
+  },
+  {
+    id: 2,
+    productTypeId: null,
+    productTypeName: '全域預設',
+    factorCode: 'MARGIN_RATE',
+    factorLabel: FACTOR_LABEL['MARGIN_RATE'],
+    lowerBound: 0,
+    upperBound: 0.4,
+    sourceMode: 'MANUAL',
+    sampleSize: null,
+    computedAt: null,
+  },
 ];
 
 const MOCK_RISK_OPTIONS: readonly RiskOptionVM[] = [
@@ -167,12 +377,13 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, DatePipe],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
   private readonly api = inject(SettingsApiService);
+  private readonly dialog = inject(DialogService);
   private readonly userApi = inject(UserApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly riskOptionLookup = inject(RiskOptionLookupService);
@@ -213,10 +424,14 @@ export class Settings implements OnInit {
   );
   readonly campaigns = signal<CampaignVM[]>(this.useMockData ? [...MOCK_CAMPAIGNS] : []);
   readonly accounts = signal<AccountVM[]>(this.useMockData ? [...MOCK_ACCOUNTS] : []);
+  readonly scoreBands = signal<ScoreBandVM[]>(this.useMockData ? [...MOCK_SCORE_BANDS] : []);
+  readonly systemSettings = signal<SystemSettingVM[]>(
+    this.useMockData ? [...MOCK_SYSTEM_SETTINGS] : [],
+  );
 
   /** 每個分頁是否已經載入過一次，避免切回去重複打 API。Mock 模式視為全部已載入。 */
   private readonly loadedTabs = new Set<SettingsTab>(this.useMockData ? (
-    ['modes', 'risks', 'audience', 'productTypes', 'campaigns', 'accounts'] as const
+    ['modes', 'risks', 'audience', 'productTypes', 'campaigns', 'accounts', 'scoreBands', 'systemSettings'] as const
   ) : []);
 
   readonly modal = signal<
@@ -289,6 +504,12 @@ export class Settings implements OnInit {
       case 'accounts':
         this.loadAccounts();
         return;
+      case 'scoreBands':
+        this.loadScoreBands();
+        return;
+      case 'systemSettings':
+        this.loadSystemSettings();
+        return;
     }
   }
 
@@ -316,6 +537,8 @@ export class Settings implements OnInit {
             name: mode.modeName,
             description: mode.description ?? '',
             weights: null,
+            rawFactors: null,
+            isEditable: mode.isEditable ?? false,
           }));
           this.modes.set(shells);
           this.markLoaded('modes');
@@ -344,26 +567,118 @@ export class Settings implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (snapshot) => {
-          const weightOf = (category: string) =>
-            snapshot.factors.find((f) => f.category === category)?.weight ?? 0;
           this.modes.update((items) =>
             items.map((item) =>
               item.id === modeId
-                ? {
-                    ...item,
-                    weights: {
-                      business: weightOf('BUSINESS'),
-                      audience: weightOf('AUDIENCE'),
-                      history: weightOf('HISTORY'),
-                      forecast: weightOf('FORECAST'),
-                    },
-                  }
+                ? { ...item, weights: aggregateWeightsByGroup(snapshot.factors), rawFactors: snapshot.factors }
                 : item,
             ),
           );
         },
         // 單一模式的權重載入失敗，該卡片維持「載入中」而非讓整頁報錯。
         error: () => undefined,
+      });
+  }
+
+  // ----- 權重編輯（僅 CUSTOM 模式）-----
+
+  readonly editingWeightsModeId = signal<number | null>(null);
+  readonly weightDrafts = signal<Record<string, number>>({});
+  readonly isSavingWeights = signal(false);
+
+  readonly factorOrder = FACTOR_ORDER;
+  readonly factorLabel = FACTOR_LABEL;
+
+  /** 目前草稿的加總。畫面即時顯示，但依決議只在送出時檢查、不擋輸入。 */
+  readonly weightDraftTotal = computed(() =>
+    Math.round(Object.values(this.weightDrafts()).reduce((sum, w) => sum + (w || 0), 0) * 100) / 100,
+  );
+
+  startEditWeights(mode: EvaluationModeVM): void {
+    if (!mode.isEditable || !mode.rawFactors || mode.id === null) return;
+    const drafts: Record<string, number> = {};
+    mode.rawFactors.forEach((f) => {
+      drafts[f.factorCode] = f.weight ?? 0;
+    });
+    this.weightDrafts.set(drafts);
+    this.editingWeightsModeId.set(mode.id);
+  }
+
+  cancelEditWeights(): void {
+    this.editingWeightsModeId.set(null);
+    this.weightDrafts.set({});
+  }
+
+  updateWeightDraft(factorCode: string, value: number): void {
+    this.weightDrafts.update((drafts) => ({ ...drafts, [factorCode]: value }));
+  }
+
+  /**
+   * 送出權重編輯。依決議只在送出時檢查一次加總，不做輸入中即時擋。
+   *
+   * ⚠️ 整份覆蓋：後端 EvaluationFactorUpdateRequest 要求全部七個因子，
+   * weightDrafts 由 startEditWeights() 一次帶入全部七項，這裡不會遺漏。
+   */
+  saveWeights(): void {
+    const modeId = this.editingWeightsModeId();
+    if (modeId === null || this.isSavingWeights()) return;
+
+    const total = this.weightDraftTotal();
+    if (Math.abs(total - 100) > 0.01) {
+      this.statusMessageState.show(`七項權重加總須為 100，目前為 ${total}，請調整後再送出。`);
+      return;
+    }
+
+    const factors = this.factorOrder.map((factorCode) => ({
+      factorCode,
+      weight: this.weightDrafts()[factorCode] ?? 0,
+    }));
+
+    if (this.useMockData) {
+      this.modes.update((items) =>
+        items.map((item) =>
+          item.id === modeId && item.rawFactors
+            ? {
+                ...item,
+                rawFactors: item.rawFactors.map((f) => ({
+                  ...f,
+                  weight: this.weightDrafts()[f.factorCode] ?? f.weight,
+                })),
+                weights: aggregateWeightsByGroup(
+                  item.rawFactors.map((f) => ({ ...f, weight: this.weightDrafts()[f.factorCode] ?? f.weight })),
+                ),
+              }
+            : item,
+        ),
+      );
+      this.cancelEditWeights();
+      this.statusMessageState.show('已更新本地 Mock 權重。');
+      return;
+    }
+
+    this.isSavingWeights.set(true);
+    this.api
+      .updateEvaluationModeFactors(modeId, { factors })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (snapshot) => {
+          this.modes.update((items) =>
+            items.map((item) =>
+              item.id === modeId
+                ? { ...item, weights: aggregateWeightsByGroup(snapshot.factors), rawFactors: snapshot.factors }
+                : item,
+            ),
+          );
+          this.isSavingWeights.set(false);
+          this.cancelEditWeights();
+          this.statusMessageState.show(
+            '權重已更新。本次調整僅影響之後新送審的商品，已完成審核的紀錄不會變動。',
+          );
+        },
+        error: (err) => {
+          this.isSavingWeights.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
       });
   }
 
@@ -496,10 +811,33 @@ export class Settings implements OnInit {
       });
   }
 
+  /**
+   * 刪除是不可復原的破壞性操作——這是真正的 DELETE，不是像帳號／風險選項
+   * 那種可以復用的停用。原本這裡按下按鈕就立刻呼叫 API，中間沒有任何
+   * 確認步驟；查證整份檔案後發現這是全站唯一一個真正刪除資料、卻完全
+   * 沒有確認機制的操作，補上確認框，訊息裡明確寫出要刪除的品類名稱，
+   * 不是泛用的「確定要刪除嗎？」。
+   */
   removeProductType(name: string): void {
     const item = this.productTypes().find((type) => type.name === name);
     if (!item) return;
 
+    this.dialog
+      .confirm(
+        '確認刪除商品類型',
+        [
+          `即將永久刪除「${name}」，此操作無法復原。`,
+          '若這個類型已經被任何品項使用，刪除會被拒絕，請改用「停用」。',
+        ],
+        '確定刪除',
+        '取消',
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) this.performRemoveProductType(name, item);
+      });
+  }
+
+  private performRemoveProductType(name: string, item: ProductTypeVM): void {
     if (this.useMockData) {
       if (item.used && item.used > 0) {
         this.statusMessageState.show('此類型已被品項使用，不可刪除，請改為停用。');
@@ -701,6 +1039,358 @@ export class Settings implements OnInit {
           this.statusMessageState.show('已復用帳號。');
         },
         error: (err) => this.statusMessageState.show(toApiError(err).message),
+      });
+  }
+
+  // ----- 目標區間（全域預設 + 各商品類型覆寫）-----
+
+  private loadScoreBands(): void {
+    this.api
+      .getProductTypeScoreBands()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          // 品類名稱要另外查——ProductTypeScoreBandResponse 只有 productTypeId，
+          // 跟商品清單頁同一個陷阱，沿用既有的 ProductTypeLookupService 避免 N+1。
+          this.productTypeLookup
+            .getNameMap()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe((nameById) => {
+              this.scoreBands.set(list.map((band) => toScoreBandVM(band, nameById)));
+              this.markLoaded('scoreBands');
+            });
+        },
+        error: (err) => this.handleLoadError(err),
+      });
+  }
+
+  // ----- 8. 系統設定（演算法參數）-----
+
+  private loadSystemSettings(): void {
+    this.api
+      .getSystemSettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.systemSettings.set(
+            list.map((s) => ({
+              key: s.key,
+              category: s.category,
+              displayName: s.displayName,
+              description: s.description,
+              dataType: s.dataType,
+              minValue: s.minValue === null ? null : Number(s.minValue),
+              maxValue: s.maxValue === null ? null : Number(s.maxValue),
+              unit: s.unit,
+              value: s.value,
+              hasStoredValue: s.hasStoredValue,
+              updatedAt: s.updatedAt,
+              updatedByName: s.updatedByName,
+            })),
+          );
+          this.markLoaded('systemSettings');
+        },
+        error: (err) => this.handleLoadError(err),
+      });
+  }
+
+  /**
+   * 依 category 分組，畫面依此分區塊顯示（貝氏收縮／趨勢分析／MOQ判定／
+   * 效期判定／溫層判定／運費估算／目標區間），不要把 17 項全部攤平在
+   * 同一長串清單裡，那樣使用者很難找到自己要調整的那一項。
+   */
+  readonly systemSettingsByCategory = computed(() => {
+    const groups = new Map<string, SystemSettingVM[]>();
+    for (const s of this.systemSettings()) {
+      const arr = groups.get(s.category) ?? [];
+      arr.push(s);
+      groups.set(s.category, arr);
+    }
+    return Array.from(groups.entries()).map(([category, items]) => ({ category, items }));
+  });
+
+  readonly editingSystemSettingKey = signal<string | null>(null);
+  readonly systemSettingDraftValue = signal('');
+  readonly isSavingSystemSetting = signal(false);
+
+  openSystemSettingEditor(setting: SystemSettingVM): void {
+    this.editingSystemSettingKey.set(setting.key);
+    this.systemSettingDraftValue.set(setting.value);
+  }
+
+  cancelSystemSettingEdit(): void {
+    this.editingSystemSettingKey.set(null);
+  }
+
+  /**
+   * 送出前先做一次前端範圍檢查——不是為了取代後端驗證（後端一定會重新
+   * 驗證一次，範圍規則的唯一真實來源在後端的 SystemSettingRegistry），
+   * 純粹是避免使用者填了明顯超出範圍的值之後，還要等一趟網路來回才知道
+   * 錯在哪裡。STRING 型別（目前只有 supported_temperature_zones）不做
+   * 數值檢查，只確認非空。
+   */
+  saveSystemSetting(): void {
+    const key = this.editingSystemSettingKey();
+    if (key === null || this.isSavingSystemSetting()) return;
+
+    const setting = this.systemSettings().find((s) => s.key === key);
+    if (!setting) return;
+
+    const raw = this.systemSettingDraftValue().trim();
+    if (!raw) {
+      this.statusMessageState.show('設定值不可為空。');
+      return;
+    }
+    if (setting.dataType !== 'STRING') {
+      const parsed = Number(raw);
+      if (Number.isNaN(parsed)) {
+        this.statusMessageState.show(`${setting.displayName} 必須是數字。`);
+        return;
+      }
+      if (setting.dataType === 'INTEGER' && !Number.isInteger(parsed)) {
+        this.statusMessageState.show(`${setting.displayName} 必須是整數。`);
+        return;
+      }
+      if (setting.minValue !== null && parsed < setting.minValue) {
+        this.statusMessageState.show(`${setting.displayName} 不可小於 ${setting.minValue}。`);
+        return;
+      }
+      if (setting.maxValue !== null && parsed > setting.maxValue) {
+        this.statusMessageState.show(`${setting.displayName} 不可大於 ${setting.maxValue}。`);
+        return;
+      }
+    }
+
+    if (this.useMockData) {
+      this.systemSettings.update((items) =>
+        items.map((s) =>
+          s.key === key
+            ? { ...s, value: raw, hasStoredValue: true, updatedAt: new Date().toISOString() }
+            : s,
+        ),
+      );
+      this.cancelSystemSettingEdit();
+      this.statusMessageState.show('已更新本地 Mock 設定值。');
+      return;
+    }
+
+    this.isSavingSystemSetting.set(true);
+    this.api
+      .updateSystemSetting(key, { value: raw })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.systemSettings.update((items) =>
+            items.map((s) =>
+              s.key === key
+                ? {
+                    ...s,
+                    value: updated.value,
+                    hasStoredValue: updated.hasStoredValue,
+                    updatedAt: updated.updatedAt,
+                    updatedByName: updated.updatedByName,
+                  }
+                : s,
+            ),
+          );
+          this.isSavingSystemSetting.set(false);
+          this.cancelSystemSettingEdit();
+          this.statusMessageState.show(`已更新「${setting.displayName}」。`);
+        },
+        error: (err) => {
+          this.isSavingSystemSetting.set(false);
+          // 後端範圍驗證失敗的錯誤訊息（例如「不可小於 1」）直接顯示，
+          // 不重新組一份文字。
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /** 全域預設（productTypeId 為 null）的列。 */
+  readonly globalScoreBands = computed(() => this.scoreBands().filter((b) => b.productTypeId === null));
+
+  /** 各商品類型覆寫的列。 */
+  readonly overrideScoreBands = computed(() => this.scoreBands().filter((b) => b.productTypeId !== null));
+
+  readonly editingScoreBandId = signal<number | null>(null);
+  readonly scoreBandDraftMode = signal<ScoreBandSourceMode>('MANUAL');
+  readonly scoreBandDraftLower = signal(0);
+  readonly scoreBandDraftUpper = signal(0);
+  readonly isSavingScoreBand = signal(false);
+
+  /** 開始編輯一筆既有的目標區間（全域或品類覆寫皆可）。 */
+  openScoreBandEditor(band: ScoreBandVM): void {
+    this.editingScoreBandId.set(band.id);
+    this.scoreBandDraftMode.set(band.sourceMode);
+    this.scoreBandDraftLower.set(band.lowerBound);
+    this.scoreBandDraftUpper.set(band.upperBound);
+  }
+
+  // ----- 新增品類專屬覆寫 -----
+
+  readonly isCreatingScoreBand = signal(false);
+  readonly newScoreBandProductTypeId = signal<number | null>(null);
+  readonly newScoreBandFactorCode = signal<string>('MARGIN_RATE');
+  readonly newScoreBandLower = signal(0);
+  readonly newScoreBandUpper = signal(0);
+  readonly isSavingNewScoreBand = signal(false);
+
+  /**
+   * 目標區間適用的因子代碼。後端 `applyHistoricalBand()` 只有 MARGIN_RATE／
+   * DISCOUNT_DEPTH 有對應的歷史資料計算邏輯，但 MANUAL 模式（新增時唯一
+   * 支援的模式）理論上七個因子都能設定固定區間。這裡先只開放已知會被
+   * ScoreBandResolver／ScoringAlgorithms 用到的兩個，避免使用者建立一筆
+   * 「因子代碼合法但評分邏輯從未讀取它」的死資料——目前只有這兩個因子
+   * 的計分路徑（normalizeByBand）會查目標區間表，其餘五個因子用別的
+   * 方式計分，不會讀這張表。
+   */
+  readonly scoreBandFactorOptions: readonly { code: string; label: string }[] = [
+    { code: 'MARGIN_RATE', label: FACTOR_LABEL['MARGIN_RATE'] },
+    { code: 'DISCOUNT_DEPTH', label: FACTOR_LABEL['DISCOUNT_DEPTH'] },
+  ];
+
+  openCreateScoreBand(): void {
+    this.newScoreBandProductTypeId.set(null);
+    this.newScoreBandFactorCode.set('MARGIN_RATE');
+    this.newScoreBandLower.set(0);
+    this.newScoreBandUpper.set(0);
+    this.isCreatingScoreBand.set(true);
+  }
+
+  cancelCreateScoreBand(): void {
+    this.isCreatingScoreBand.set(false);
+  }
+
+  /**
+   * 新增品類專屬目標區間。⚠️ 只支援 MANUAL——與後端
+   * ProductTypeScoreBandCreateRequest 的限制一致，見該檔案的類別註解。
+   */
+  createScoreBand(): void {
+    if (this.isSavingNewScoreBand()) return;
+
+    const productTypeId = this.newScoreBandProductTypeId();
+    const factorCode = this.newScoreBandFactorCode();
+    const lowerBound = this.newScoreBandLower();
+    const upperBound = this.newScoreBandUpper();
+
+    if (productTypeId === null) {
+      this.statusMessageState.show('請選擇商品類型。');
+      return;
+    }
+    if (upperBound <= lowerBound) {
+      this.statusMessageState.show('上界必須大於下界。');
+      return;
+    }
+
+    if (this.useMockData) {
+      const typeName = this.productTypes().find((t) => t.id === productTypeId)?.name ?? '—';
+      this.scoreBands.update((items) => [
+        ...items,
+        {
+          id: Math.max(0, ...items.map((i) => i.id)) + 1,
+          productTypeId,
+          productTypeName: typeName,
+          factorCode,
+          factorLabel: FACTOR_LABEL[factorCode] ?? factorCode,
+          lowerBound,
+          upperBound,
+          sourceMode: 'MANUAL',
+          sampleSize: null,
+          computedAt: null,
+        },
+      ]);
+      this.cancelCreateScoreBand();
+      this.statusMessageState.show('已新增本地 Mock 品類覆寫。');
+      return;
+    }
+
+    const payload: ProductTypeScoreBandCreateRequestPayload = {
+      productTypeId,
+      factorCode,
+      lowerBound,
+      upperBound,
+    };
+
+    this.isSavingNewScoreBand.set(true);
+    this.api
+      .createProductTypeScoreBand(payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (created) => {
+          this.productTypeLookup
+            .getNameMap()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe((nameById) => {
+              this.scoreBands.update((items) => [...items, toScoreBandVM(created, nameById)]);
+              this.isSavingNewScoreBand.set(false);
+              this.cancelCreateScoreBand();
+              this.statusMessageState.show('已新增品類專屬目標區間。');
+            });
+        },
+        error: (err) => {
+          this.isSavingNewScoreBand.set(false);
+          // 品類×因子已存在時後端回 400，訊息已包含「請改用編輯」的提示，原樣顯示即可。
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  cancelScoreBandEdit(): void {
+    this.editingScoreBandId.set(null);
+  }
+
+  saveScoreBand(): void {
+    const id = this.editingScoreBandId();
+    if (id === null || this.isSavingScoreBand()) return;
+
+    const sourceMode = this.scoreBandDraftMode();
+    // HISTORICAL 模式下這兩個值會被後端忽略，這裡仍然送出目前草稿值也無妨，
+    // 但不送更清楚表達「這兩個欄位在這個模式下不生效」。
+    const payload =
+      sourceMode === 'MANUAL'
+        ? { sourceMode, lowerBound: this.scoreBandDraftLower(), upperBound: this.scoreBandDraftUpper() }
+        : { sourceMode };
+
+    if (this.useMockData) {
+      this.scoreBands.update((items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                sourceMode,
+                lowerBound: sourceMode === 'MANUAL' ? this.scoreBandDraftLower() : item.lowerBound,
+                upperBound: sourceMode === 'MANUAL' ? this.scoreBandDraftUpper() : item.upperBound,
+              }
+            : item,
+        ),
+      );
+      this.cancelScoreBandEdit();
+      this.statusMessageState.show('已更新本地 Mock 目標區間。');
+      return;
+    }
+
+    this.isSavingScoreBand.set(true);
+    this.api
+      .updateProductTypeScoreBand(id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.productTypeLookup
+            .getNameMap()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe((nameById) => {
+              this.scoreBands.update((items) =>
+                items.map((item) => (item.id === id ? toScoreBandVM(updated, nameById) : item)),
+              );
+              this.isSavingScoreBand.set(false);
+              this.cancelScoreBandEdit();
+              this.statusMessageState.show('目標區間已更新。');
+            });
+        },
+        error: (err) => {
+          this.isSavingScoreBand.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
       });
   }
 
@@ -979,6 +1669,48 @@ export class Settings implements OnInit {
 // =========================================================================
 // Payload → View Model 轉換（純函式，元件外層方便測試）
 // =========================================================================
+
+/**
+ * 依 category 加總七個因子的權重，還原成卡片顯示用的四象限彙總。
+ *
+ * ⚠️ 修正：舊版用 `.find()` 只取「第一個符合 category 的因子」的權重，
+ * 但 BUSINESS 組有 3 個因子（MARGIN_RATE／DISCOUNT_DEPTH／SUPPLY_STABILITY）、
+ * FORECAST 組有 2 個（PURCHASE_RATE／TREND_HEAT），find() 會漏掉其餘因子，
+ * 導致卡片顯示的商業條件／預測人氣百分比比實際權重小很多。改用加總。
+ */
+function aggregateWeightsByGroup(
+  factors: WeightFactorPayload[],
+): { business: number; audience: number; history: number; forecast: number } {
+  const sumOf = (category: string) =>
+    Math.round(
+      factors.filter((f) => f.category === category).reduce((sum, f) => sum + (f.weight ?? 0), 0) * 100,
+    ) / 100;
+  return {
+    business: sumOf('BUSINESS'),
+    audience: sumOf('AUDIENCE'),
+    history: sumOf('HISTORY'),
+    forecast: sumOf('FORECAST'),
+  };
+}
+
+function toScoreBandVM(
+  payload: ProductTypeScoreBandResponsePayload,
+  productTypeNameById: Map<number, string>,
+): ScoreBandVM {
+  return {
+    id: payload.id,
+    productTypeId: payload.productTypeId,
+    productTypeName:
+      payload.productTypeId === null ? '全域預設' : productTypeNameById.get(payload.productTypeId) ?? '—',
+    factorCode: payload.factorCode,
+    factorLabel: FACTOR_LABEL[payload.factorCode] ?? payload.factorCode,
+    lowerBound: payload.lowerBound ?? 0,
+    upperBound: payload.upperBound ?? 0,
+    sourceMode: payload.sourceMode,
+    sampleSize: payload.sampleSize,
+    computedAt: payload.computedAt,
+  };
+}
 
 function toRiskOptionVM(payload: RiskOptionResponsePayload): RiskOptionVM {
   return {

@@ -55,12 +55,17 @@ export class UserApiService {
   }
 
   /**
-   * ⚠️ 後端目前沒有這支端點，呼叫會是 404。前端先準備好呼叫邏輯，
-   * 等後端補上對稱的 restore 端點就能直接動。
+   * 4. PUT /api/users/{id}/enable [僅管理]：停用的反向操作。
+   *
+   * ⚠️ 後端端點的動詞是 `enable`，不是 `restore`。
+   * UserController.enableUser() 才是實際存在的那一支；
+   * 先前這裡打的 `/restore` 後端從來沒有實作過，真實模式下必定 404。
+   *
+   * 命名保留 restore 以對齊畫面上的「復用」字樣與既有呼叫端。
    */
   restore(id: number): Observable<UserAccountResponsePayload> {
     return this.http
-      .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.restore(id), {})
+      .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.enable(id), {})
       .pipe(unwrapData());
   }
 }

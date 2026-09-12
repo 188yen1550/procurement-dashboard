@@ -3,7 +3,7 @@
   基本資料與圖片在核准後仍可改；核心資料依 APPROVED 鎖定。aria-live／alert／status 宣告非同步與錯誤狀態。
 -->
 <main class="form-page" aria-labelledby="form-title">
-  <header class="page-header"><div><a routerLink="/products" class="back-link">← 返回品項管理</a><p class="eyebrow">Product Form</p><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。') }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
+  <header class="page-header"><div><a routerLink="/products" class="back-link">← 返回品項管理</a><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。') }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
   @if (useMockData) { <section class="state-bar"><div><strong>UI 狀態</strong><span>不呼叫後端</span></div><div role="group" aria-label="切換表單狀態">@for (state of stateOptions; track state) { <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state" (click)="setState(state)">{{ state }}</button> }</div></section> }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage() && !saved()) { <div class="feedback-toast" [attr.role]="pageState() === 'error' || imageState() === 'error' ? 'alert' : 'status'">{{ statusMessage() }}</div> }
@@ -47,13 +47,72 @@
             }
           </div>
         </label>
-        @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div> }
+        @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div>
+          <!-- ===== RESALE 相似商品參考 ===== -->
+          <div class="wide resale-reference" aria-labelledby="resale-reference-title">
+            <div class="resale-reference-heading">
+              <strong id="resale-reference-title">參考商品（選填）</strong>
+              <small>輸入上方商品名稱時會自動查詢系統內相似的既有商品，供人工核對後選定。</small>
+            </div>
+
+            @if (resaleReferenceProductId(); as refId) {
+              <div class="resale-reference-selected">
+                <span>已選定：{{ resaleReferenceName() }}（#{{ refId }}）</span>
+                <button type="button" class="btn" [disabled]="isCoreLocked()" (click)="clearResaleReference()">
+                  取消選定
+                </button>
+              </div>
+            } @else {
+              @if (isSearchingSimilar()) {
+                <p class="helper">搜尋中…</p>
+              } @else if (similarSearchError()) {
+                <p class="resale-reference-error">{{ similarSearchError() }}</p>
+              } @else if (similarCandidates().length > 0) {
+                <ul class="resale-candidate-list">
+                  @for (candidate of similarCandidates(); track candidate.productId) {
+                    <li>
+                      <button
+                        type="button"
+                        class="resale-candidate"
+                        [disabled]="isCoreLocked()"
+                        (click)="selectResaleReference(candidate)"
+                      >
+                        <span class="resale-candidate-name">{{ candidate.name }}</span>
+                        <span class="resale-candidate-meta">
+                          {{ candidate.supplierName ?? '—' }} · 名稱相似度
+                          {{ toSimilarityPercent(candidate.nameSimilarity) }} · 供應商相似度
+                          {{ toSimilarityPercent(candidate.supplierSimilarity) }}
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="helper">輸入商品名稱（至少 2 個字）並選擇商品分類後，這裡會顯示相似的既有商品。</p>
+              }
+            }
+          </div>
+        }
         @else { <div class="pending-pricing wide"><strong>待訂價</strong><span>新品此階段不要求成本價與售價。</span></div> }
         <label>MOQ 最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
         <label>供應穩定性（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="supplyStability" /></label>
         <label>價格競爭力（0–5）<input type="number" min="0" max="5" step="0.1" formControlName="priceCompetitiveness" /></label>
         <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
         <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer"></textarea>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500 字以內的目標客群描述，不能只有空格。</small> }</label>
+
+        <!-- Gate 判定屬性：全部選填，留空時 Gate 判定改用品類層的預設屬性繼承，不是必填欄位。 -->
+        <fieldset class="wide"><legend>供應與物流屬性（選填）</legend>
+          <div class="gate-attr-grid">
+            <label>溫層<select formControlName="temperatureZone"><option [value]="null">未設定（依品類繼承）</option><option value="NORMAL">常溫</option><option value="CHILLED">冷藏</option><option value="FROZEN">冷凍</option></select></label>
+            <label>效期級距<select formControlName="shelfLifeTier"><option [value]="null">未設定（依品類繼承）</option><option value="D7">7天內</option><option value="D8_30">8-30天</option><option value="D31_90">31-90天</option><option value="D90_PLUS">90天以上</option><option value="NA">不適用（無效期概念）</option></select></label>
+            <label>供應商前置期<select formControlName="supplierLeadTimeTier"><option [value]="null">未設定（依品類繼承）</option><option value="D3">3天內</option><option value="D4_7">4-7天</option><option value="D8_14">8-14天</option><option value="D15_PLUS">15天以上</option></select></label>
+            <label>材積級距<select formControlName="packageSizeTier"><option [value]="null">未設定</option><option value="XS">極小（可放信封）</option><option value="S">小（單手可拿）</option><option value="M">中（一般紙箱）</option><option value="L">大（需兩人搬）</option></select><small>影響毛利率因子的運費估算，非 Gate 判定輸入。</small></label>
+            <label>分裝方式<select formControlName="packingType"><option [value]="null">未設定</option><option value="WHOLE_CARTON">原箱直出</option><option value="REPACK">需拆箱分裝</option></select></label>
+            <label>供應商產能上限<input type="number" min="0" formControlName="supplierMaxCapacity" placeholder="不填則不限制" /></label>
+            <label class="wide">處理注意事項<input type="text" formControlName="handlingFlags" placeholder="例：FRAGILE,UPRIGHT（逗號分隔）" maxlength="200" /><small>純顯示用提示，不影響任何判定或計分。</small></label>
+            <label class="wide">認證狀態<input type="text" formControlName="certificationFlags" placeholder="逗號分隔" maxlength="200" /><small>目前沒有任何 Gate 或計分邏輯讀取這個欄位，純記錄用。</small></label>
+          </div>
+        </fieldset>
       </div></section>
       <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
     </form>

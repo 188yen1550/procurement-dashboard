@@ -1,590 +1,429 @@
 /*
- * 檔案用途：設定分頁、唯讀模式卡、表格、狀態、Modal、focus-visible 與手機捲動版面。
- * Modal 的尺寸與 overflow 確保 375px 手機仍能看到關閉與操作按鈕。
+ * 檔案用途：系統設定頁「專屬」樣式——分頁列、評估模式卡、管理區塊標頭、
+ * Modal 內的標籤列與雙欄配置。
+ *
+ * ## 這裡刻意不再有什麼
+ * 頁首、狀態列容器、卡片、表格、按鈕、表單欄位、狀態徽章、訊息區塊、
+ * 空狀態／骨架、Modal 外框、焦點環、sr-only 全部移到 src/styles/ 共用層。
+ * 這些樣式原本在本頁與其他 5~8 個頁面各寫一份，是 anyComponentStyle
+ * budget 被撐爆的主因。要調整它們請改 src/styles/_components.scss，
+ * 不要在這裡覆寫，否則又會回到各頁分歧的狀態。
+ *
+ * ## 顏色與尺寸一律走 var(--x)
+ * 不要再寫死 hex。色票定義在 src/styles/_tokens.scss。
  */
 :host {
   display: block;
   min-width: 0;
-  color: #243447;
 }
-.settings-page {
-  max-width: 1100px;
-  margin: auto;
-}
-.page-header,
-.state-bar,
-.panel > header,
-.panel footer,
-.mode-intro,
-.notice,
-.success {
+
+/* ===================== 分頁列 ===================== */
+
+.tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: var(--s-1);
+  margin-bottom: var(--s-4);
+  border-bottom: 1px solid #dbe4ea;
 }
-.page-header {
-  margin-bottom: 1rem;
-}
-.page-header h1 {
-  margin: 0.15rem 0 0.3rem;
-  font-size: clamp(1.5rem, 3vw, 2rem);
-}
-.page-header p {
-  margin: 0;
-  color: #6c7a89;
-}
-.page-header > span {
-  padding: 0.4rem 0.6rem;
-  color: #725510;
-  background: #fff8dc;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 800;
-}
-.eyebrow {
-  margin: 0 !important;
-  color: #39735c !important;
-  font-size: 0.68rem !important;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.state-bar {
-  margin-bottom: 1rem;
-  padding: 0.7rem 0.9rem;
-  background: #eef4f8;
-  border: 1px solid #dce6ed;
-  border-radius: 0.7rem;
-}
-.state-bar span {
-  display: block;
-  color: #6c7a89;
-  font-size: 0.68rem;
-}
-.state-bar > div:last-child {
-  display: flex;
-  gap: 0.35rem;
-}
-.state-bar button,
-.tabs button,
-.empty button,
-.panel footer button {
-  padding: 0.48rem 0.7rem;
-  color: #38536a;
-  background: #fff;
-  border: 1px solid #cbd9e3;
-  border-radius: 0.42rem;
+
+.tabs button {
+  padding: 0.55rem 0.85rem;
+  color: var(--c-ink-soft);
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
   font: inherit;
-  font-size: 0.72rem;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabs button:hover {
+  background: var(--c-surface-hover);
+}
+
+.tabs button.active {
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
+  border-bottom-color: var(--c-brand);
+}
+
+/* Demo 狀態切換鈕（僅 useMockData 模式顯示）。 */
+.state-bar button {
+  padding: 0.45rem 0.7rem;
+  color: var(--c-ink-soft);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--t-sm);
   font-weight: 700;
   cursor: pointer;
 }
-.state-bar button.active,
-.panel footer button {
-  color: #fff;
-  background: #1c5286;
-  border-color: #1c5286;
+
+.state-bar button.active {
+  color: var(--c-surface);
+  background: var(--c-brand);
+  border-color: var(--c-brand);
 }
-.tabs {
+
+.state-bar > div:last-child {
   display: flex;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #dbe4ea;
+  gap: var(--s-1);
 }
-.tabs button {
-  border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: 0.4rem 0.4rem 0 0;
+
+/* 操作回饋 toast：沿用 .notice 外觀，只調整為不佔滿寬度的行內區塊。 */
+.status-toast {
+  justify-content: flex-start;
 }
-.tabs button.active {
-  color: #1c5286;
-  background: #eaf3fb;
-  border-bottom-color: #1c5286;
+
+/* ===================== 評估模式 ===================== */
+
+.mode-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
 }
-.panel,
-.mode-grid article,
-.empty,
-.skeleton {
-  background: #fff;
-  border: 1px solid #e0e8ee;
-  border-radius: 0.8rem;
-  box-shadow: 0 8px 24px rgba(29, 54, 78, 0.05);
-}
-.panel > header {
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid #e8eef2;
-}
-.panel h2,
+
 .mode-intro h2 {
   margin: 0.15rem 0;
-  font-size: 1rem;
+  font-size: var(--t-lg);
 }
-.panel header p,
+
 .mode-intro p {
   margin: 0.2rem 0 0;
-  color: #6c7a89;
-  font-size: 0.72rem;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
 }
-.panel > header > span {
-  color: #21694f;
-  font-size: 0.68rem;
-  font-weight: 800;
-}
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  padding: 1.2rem;
-}
-.form-grid label {
-  min-width: 0;
-  color: #40576a;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-.wide {
-  grid-column: 1/-1;
-}
-.form-grid input,
-.form-grid select,
-.form-grid textarea {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  margin-top: 0.35rem;
-  padding: 0.65rem;
-  color: #243447;
-  background: #f8fafc;
-  border: 1px solid #d4dee6;
-  border-radius: 0.45rem;
-  font: inherit;
-}
-.form-grid textarea {
-  resize: vertical;
-}
-.form-grid em {
-  color: #a43d36;
-  font-style: normal;
-}
-.form-grid small {
-  display: block;
-  margin-top: 0.25rem;
-  color: #8d3733;
-  font-size: 0.65rem;
-}
-.helper {
-  display: block;
-  margin-top: 0.25rem;
-  color: #6c7a89;
-  font-size: 0.65rem;
-  font-weight: 400;
-}
-.panel footer {
-  padding: 1rem 1.2rem;
-  background: #f8fafc;
-  border-top: 1px solid #e8eef2;
-}
-.panel footer p {
-  margin: 0;
-  color: #6c7a89;
-  font-size: 0.68rem;
-}
-.panel footer button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.notice,
-.success {
-  margin-bottom: 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: 0.65rem;
-}
-.notice {
-  color: #725510;
-  background: #fff8dc;
-  border: 1px solid #ead895;
-}
-.success {
-  color: #21694f;
-  background: #e5f5ee;
-  border: 1px solid #add9c7;
-}
-.notice strong,
-.notice span,
-.success strong,
-.success span {
-  display: block;
-}
-.notice span,
-.success span {
-  margin-top: 0.2rem;
-  font-size: 0.7rem;
-}
-.mode-intro {
-  margin-bottom: 1rem;
-}
+
+/* 「唯讀」標記。 */
 .mode-intro > span {
-  padding: 0.35rem 0.55rem;
-  color: #725510;
-  background: #fff8dc;
-  border-radius: 999px;
-  font-size: 0.68rem;
+  padding: 0.3rem 0.6rem;
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
   font-weight: 800;
+  white-space: nowrap;
 }
+
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: var(--s-4);
 }
+
 .mode-grid article {
   position: relative;
-  padding: 1rem;
+  padding: var(--s-4);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
 }
+
+/* 目前生效的模式：綠色框線 + 抬升陰影，一眼看出是哪一套。 */
 .mode-grid article.active {
   border-color: #74af98;
-  box-shadow: 0 8px 24px rgba(39, 119, 90, 0.12);
+  box-shadow: var(--sh-raised);
 }
+
 .mode-grid article header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--s-2);
 }
+
 .mode-grid h3 {
   margin: 0.15rem 0;
-  font-size: 1rem;
+  font-size: var(--t-lg);
 }
+
 .mode-grid header span {
-  color: #6c7a89;
-  font-size: 0.63rem;
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
   font-weight: 800;
 }
+
+/* min-height 讓三張卡的權重清單起始高度一致，不會因說明長短而錯位。 */
 .mode-grid p {
   min-height: 3.2em;
-  color: #5c6f7e;
-  font-size: 0.72rem;
-  line-height: 1.5;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
 }
+
 .mode-grid dl {
   display: grid;
-  gap: 0.35rem;
-  margin: 1rem 0;
+  gap: var(--s-1);
+  margin: var(--s-4) 0;
 }
+
 .mode-grid dl div {
   display: flex;
   justify-content: space-between;
-  padding: 0.4rem 0.5rem;
-  background: #f8fafc;
-  border-radius: 0.35rem;
+  gap: var(--s-2);
+  padding: 0.45rem 0.6rem;
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-sm);
 }
+
 .mode-grid dt,
 .mode-grid dd {
-  font-size: 0.68rem;
+  font-size: var(--t-sm);
 }
+
+/* 權重數值等寬，三張卡縱向比對時位數會對齊。 */
 .mode-grid dd {
   margin: 0;
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
 }
+
 .current {
   display: block;
-  padding: 0.35rem;
-  color: #21694f;
-  background: #e5f5ee;
-  border-radius: 0.35rem;
-  font-size: 0.68rem;
+  padding: 0.45rem;
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  font-weight: 700;
   text-align: center;
 }
-.empty,
-.skeleton {
-  padding: 4rem 1rem;
-  text-align: center;
-}
-.empty.error {
-  color: #7a2927;
-  background: #fff5f4;
-}
-.skeleton {
-  text-align: left;
-  min-height: 400px;
-}
-.skeleton span {
-  display: block;
-  height: 1rem;
-  margin: 1.2rem;
-  background: #edf1f4;
-  border-radius: 0.3rem;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-}
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(28, 82, 134, 0.24);
-  outline-offset: 2px;
-}
+
+/* ===================== 管理區塊標頭 ===================== */
+
 .management-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
 }
+
 .management-head h2 {
   margin: 0 0 0.25rem;
-  font-size: 1rem;
+  font-size: var(--t-xl);
 }
+
 .management-head p,
 .scope-note {
   margin: 0;
-  color: #6c7a89;
-  font-size: 0.72rem;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
 }
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(20, 36, 49, 0.55);
+
+.scope-note {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  background: var(--c-surface-alt);
+  border-radius: var(--r-md);
 }
-.settings-modal {
-  width: min(620px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 1.2rem;
-  background: #fff;
-  border-radius: 0.8rem;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
-}
-.settings-modal header,
-.settings-modal footer,
+
+/* ===================== Modal 內的專屬配置 ===================== */
+
+/* 節慶標籤列：標籤輸入框吃滿剩餘寬度，層級下拉固定寬。 */
 .tag-row,
 .modal-grid {
   display: flex;
-  align-items: center;
-  gap: 0.7rem;
+  align-items: flex-end;
+  gap: var(--s-3);
 }
-.settings-modal header {
-  justify-content: space-between;
-  margin-bottom: 1rem;
+
+.tag-row {
+  margin: var(--s-2) 0;
 }
-.settings-modal h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-.settings-modal label {
-  display: block;
-  margin: 0.75rem 0;
-  color: #40576a;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-.settings-modal input,
-.settings-modal select,
-.settings-modal textarea {
-  display: block;
-  width: 100%;
-  margin-top: 0.3rem;
-  padding: 0.6rem;
-  border: 1px solid #d4dee6;
-  border-radius: 0.4rem;
-  font: inherit;
-}
-.settings-modal fieldset {
-  margin: 0.8rem 0;
-  border: 1px solid #dbe4ea;
-  border-radius: 0.5rem;
-}
-.tag-row input,
-.tag-row select {
-  margin: 0.3rem 0;
-}
+
 .tag-row input {
   flex: 1;
 }
+
 .tag-row select {
   width: 120px;
 }
-/* 標籤列刪除／＋增列、modal 頁尾／關閉鈕之前完全沒有樣式，補齊。 */
-.tag-row button,.settings-modal fieldset>button{padding:.4rem .6rem;color:#455b6e;background:#fff;border:1px solid #cbd9e3;border-radius:.4rem;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer}
-.tag-row button:hover,.settings-modal fieldset>button:hover{background:#eef1f3}
-.tag-row button:disabled{opacity:.55;cursor:not-allowed}
-.settings-modal fieldset>button{margin:.5rem .8rem .8rem}
+
 .modal-grid label {
   flex: 1;
 }
-.settings-modal footer {
-  justify-content: flex-end;
-  margin-top: 1rem;
+
+.settings-modal fieldset {
+  margin: var(--s-3) 0;
+  padding: var(--s-3);
+  border: 1px solid #dbe4ea;
+  border-radius: var(--r-md);
 }
-.settings-modal header button{display:grid;width:1.9rem;height:1.9rem;place-items:center;color:#455b6e;background:#f8fafc;border:1px solid #d4dee6;border-radius:50%;font-size:1rem;line-height:1;cursor:pointer}
-.settings-modal header button:hover{background:#eef1f3}
-.settings-modal footer button{padding:.55rem 1rem;border-radius:.5rem;font:inherit;font-size:.76rem;font-weight:700;cursor:pointer}
-.settings-modal footer button[type=button]{color:#455b6e;background:#fff;border:1px solid #cbd9e3}
-.settings-modal footer button[type=button]:hover{background:#eef1f3}
-.settings-modal footer button[type=submit]:hover{filter:brightness(1.08)}
-.settings-modal footer button:disabled{opacity:.6;cursor:not-allowed}
-.management-head button,
-.data-table button,
-.settings-modal footer button[type=submit] {
-  padding: 0.48rem 0.7rem;
-  color: #fff;
-  background: #1c5286;
-  border: 0;
-  border-radius: 0.42rem;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
-  cursor: pointer;
+
+.settings-modal fieldset > button {
+  margin-top: var(--s-2);
 }
-.management-head button:disabled {
-  opacity: 0.5;
+
+/* ===================== 目標區間 ===================== */
+
+.score-band-group + .score-band-group {
+  margin-top: var(--s-5);
 }
-/**
- * 狀態／操作欄專用：每列的「狀態文字＋操作按鈕」之間，跟按鈕彼此之間
- * 之前完全沒有間距，擠在一起不好點也不好讀。這裡改用比照站內
- * .text-action（product-management 頁面已經在用的風格）的輕量按鈕，
- * 不要沿用 .data-table button 那種整塊填色的重按鈕——一列裡兩三顆
- * 全部填滿顏色反而互相搶注意力。
- */
-.status-actions-cell {
+
+.score-band-group-title {
+  margin: 0 0 var(--s-2);
+  font-size: var(--t-lg);
+}
+
+.score-band-group-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
 }
-.status-actions-cell .status-text {
-  color: #455b6e;
-  font-size: 0.7rem;
+
+.score-band-group-header .score-band-group-title {
+  margin: 0;
+}
+
+.score-band-create-form {
+  margin-bottom: var(--s-3);
+}
+
+.score-band-edit-grid {
+  display: flex;
+  gap: var(--s-3);
+}
+
+.score-band-edit-grid label {
+  display: block;
+  color: var(--c-ink-soft);
+  font-size: var(--t-xs);
   font-weight: 700;
-  white-space: nowrap;
 }
-.status-actions-cell .text-action {
-  padding: 0.32rem 0.55rem;
-  color: #1c5286;
-  background: #fff;
-  border: 1px solid #cbd9e3;
-  border-radius: 0.42rem;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.status-actions-cell .text-action:hover:not(:disabled) {
-  background: #eaf2f8;
-}
-.status-actions-cell .text-action:disabled {
-  color: #8a969f;
-  background: #eef1f3;
-  border-color: #eef1f3;
-  cursor: not-allowed;
-}
-/* 「復用」跟「停用」共用同一顆按鈕，靠顏色分辨目前是哪個動作：
-   停用維持中性藍（跟其他一般操作一致），復用改成綠色系，
-   跟「刪除」的紅色系明確區隔，三種動作一眼就能分辨後果嚴重程度。 */
-.status-actions-cell .text-action.is-restore {
-  color: #21694f;
-  background: #eaf7f1;
-  border-color: #bfe3d3;
-}
-.status-actions-cell .text-action.is-restore:hover:not(:disabled) {
-  background: #dcf1e6;
-}
-.status-actions-cell .text-action.danger {
-  color: #a43d36;
-}
-.status-actions-cell .text-action.danger:hover:not(:disabled) {
-  background: #fdf0ef;
-}
-.data-table {
-  overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e0e8ee;
-  border-radius: 0.8rem;
-}
-.data-table table {
+
+.score-band-edit-grid input {
+  display: block;
   width: 100%;
-  min-width: 720px;
-  border-collapse: collapse;
+  margin-top: var(--s-1);
+  padding: 0.45rem 0.55rem;
+  background: var(--c-surface-sunken);
+  border: 1px solid #d4dee6;
+  border-radius: var(--r-sm);
+  font: inherit;
 }
-.data-table th,
-.data-table td {
-  padding: 0.8rem;
-  text-align: left;
-  border-bottom: 1px solid #e8eef2;
-  font-size: 0.7rem;
+
+tr.is-editing {
+  background: var(--c-surface-alt);
 }
-.data-table th {
-  color: #5c6f7e;
-  background: #f8fafc;
+
+tr.is-editing select {
+  display: block;
+  padding: 0.45rem 0.55rem;
+  background: var(--c-surface);
+  border: 1px solid #d4dee6;
+  border-radius: var(--r-sm);
+  font: inherit;
 }
-.status-pill {
-  padding: 0.25rem 0.4rem;
-  background: #eef4f8;
-  border-radius: 999px;
-  font-size: 0.62rem;
+
+/* ===================== 權重編輯器 ===================== */
+
+.weight-editor {
+  display: grid;
+  gap: var(--s-2);
+  margin: var(--s-3) 0;
+  padding: var(--s-3);
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-sm);
+}
+
+.weight-editor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.weight-editor-row input {
+  width: 5.5rem;
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+  background: var(--c-surface);
+  border: 1px solid #d4dee6;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.weight-editor-total {
+  padding: var(--s-2);
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
   font-weight: 800;
+  text-align: center;
 }
-.status-pill[data-status='ACTIVE'] {
-  color: #21694f;
-  background: #e5f5ee;
+
+/* 加總不是 100 時只變色提示，不擋輸入——依決議只在送出時擋。 */
+.weight-editor-total.is-invalid {
+  color: var(--c-danger);
+  background: var(--c-danger-tint);
 }
-.status-pill[data-status='PREPARING'] {
-  color: #725510;
-  background: #fff8dc;
+
+.weight-editor-actions {
+  display: flex;
+  gap: var(--s-2);
 }
-.scope-note {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: #eef4f8;
-  border-radius: 0.5rem;
+
+.weight-editor-actions .btn,
+.weight-editor-actions .btn-primary {
+  flex: 1;
 }
+
+.edit-weights-button {
+  width: 100%;
+  margin-top: var(--s-2);
+}
+
+/* ===================== 響應式 ===================== */
+
 @media (max-width: 760px) {
-  .page-header,
-  .state-bar,
-  .panel > header,
-  .panel footer,
   .mode-intro,
-  .notice,
-  .success {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .state-bar > div:last-child {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .form-grid,
-  .mode-grid {
-    grid-template-columns: 1fr;
-  }
-  .wide {
-    grid-column: auto;
-  }
-  .tabs {
-    overflow-x: auto;
-  }
-  .tabs button {
-    flex: 0 0 auto;
-  }
-  .panel footer button {
-    width: 100%;
-  }
   .management-head {
     align-items: stretch;
     flex-direction: column;
   }
-  .management-head button {
+
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .management-head .btn-primary {
+    width: 100%;
+  }
+
+  .state-bar > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+
+  .tabs button {
+    flex: 0 0 auto;
+  }
+
+  .tag-row,
+  .modal-grid {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tag-row select {
     width: 100%;
   }
 }
-

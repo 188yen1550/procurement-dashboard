@@ -107,6 +107,17 @@ describe('ReviewDetail', () => {
     component.comment.set('確認供貨後通過');
     component.submit();
     fixture.detectChanges();
+
+    // 核准／拒絕是不可逆決策，submit() 現在會先跳出確認對話框，不是
+    // 按下就立刻送出——這裡先驗證確認框有正確覆誦這次的決定內容，
+    // 而且此時 api.submit 還不應該被呼叫過。
+    const confirmState = dialog.state();
+    expect(confirmState?.variant).toBe('confirm');
+    expect(confirmState?.messages[0]).toContain('通過選品審核');
+    expect(api.submit).not.toHaveBeenCalled();
+
+    dialog.handleConfirm();
+    fixture.detectChanges();
     expect(api.submit).toHaveBeenCalled();
     expect(component.submitted()).toBe(true);
     // 送出成功一律用 DialogService 呈現，跟 product-form.ts「儲存並重新送審」
@@ -119,6 +130,24 @@ describe('ReviewDetail', () => {
     dialog.handleConfirm();
     expect(dialog.state()).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/review']);
+  });
+
+  it('does not submit the decision when the user cancels the confirmation dialog', () => {
+    component.toggleRisk(1);
+    component.decision.set('REJECTED');
+    component.comment.set('待補齊資料');
+    component.submit();
+    fixture.detectChanges();
+    expect(dialog.state()?.variant).toBe('confirm');
+
+    dialog.handleCancel();
+    fixture.detectChanges();
+
+    // 使用者選擇「再檢查一次」：決策不應該被送出，表單維持可編輯狀態，
+    // 讓使用者能回頭修改，不是被鎖死或已經送出去了。
+    expect(api.submit).not.toHaveBeenCalled();
+    expect(component.submitted()).toBe(false);
+    expect(dialog.state()).toBeNull();
   });
 
   it('shows and closes simulated 409 conflict', () => {

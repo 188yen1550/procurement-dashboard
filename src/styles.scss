@@ -1,16 +1,15 @@
 /*
  * 檔案用途：全站樣式入口。
- * 目前不放 feature-specific 規則，避免全域 selector 意外改變元件封裝後的視覺結果。
+ *
+ * 分三層，順序不可調換（後面依賴前面的 token）：
+ *   tokens     設計 token（顏色／字級／間距／圓角／陰影）
+ *   base       reset、文字排版基準、焦點環、無障礙工具類
+ *   components 跨頁共用元件（卡片／表格／按鈕／表單／狀態徽章／Modal）
+ *
+ * 這些全域規則的 specificity 低於 Angular 元件樣式（元件樣式會被補上
+ * [_ngcontent-xxx] 屬性選擇器），所以尚未遷移的頁面外觀不受影響，
+ * 可以逐頁遷移。
  */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
-}
+@use './styles/tokens';
+@use './styles/base';
+@use './styles/components';

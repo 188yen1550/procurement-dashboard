@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, of, tap, throwError } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
 import { AuthApiService } from './auth-api';
-import { CurrentUser, UserRole } from './auth.contract';
+import { ChangePasswordRequestPayload, CurrentUser, UserRole } from './auth.contract';
 
 export type MockUsername = 'purchaser' | 'manager';
 
@@ -86,6 +86,55 @@ export class Auth {
 
   isManager(): boolean {
     return this.currentUser()?.role === 'MANAGER';
+  }
+
+  /**
+   * 修改自己的顯示名稱。成功後直接把回應寫回 currentUser signal，
+   * header 與側欄的名字會立刻更新，不需要重新整理或再打一次 /api/auth/me。
+   *
+   * Mock 模式下只改本地 signal，不發請求——沒有後端可以持久化，
+   * 但畫面行為要跟真實模式一致，否則 demo 時看不出這個功能有沒有做。
+   */
+  updateProfile(name: string): Observable<CurrentUser> {
+    const trimmed = name.trim();
+
+    if (this.useMockData) {
+      const current = this.currentUserState();
+      if (!current) {
+        return throwError(() => ({ error: { message: '尚未登入' } }));
+      }
+      const updated: CurrentUser = { ...current, name: trimmed };
+      this.currentUserState.set(updated);
+      return of(updated);
+    }
+
+    return this.api.updateProfile({ name: trimmed }).pipe(tap((user) => this.currentUserState.set(user)));
+  }
+
+  /**
+   * 修改自己的密碼。
+   *
+   * 後端成功後會重發 Cookie，session 不中斷，所以這裡不做任何導向。
+   * 錯誤（目前密碼不符）一律往上拋，讓表單自己顯示在對應欄位旁邊。
+   *
+   * Mock 模式比對 MOCK_ACCOUNTS 的固定密碼，但**不會真的改掉它**——
+   * mock 帳號是常數，改了下次登入反而登不進去。這裡只驗證目前密碼正確，
+   * 讓「填錯目前密碼會被擋下」這條防呆在 demo 時也看得到。
+   */
+  changePassword(payload: ChangePasswordRequestPayload): Observable<CurrentUser> {
+    if (this.useMockData) {
+      const current = this.currentUserState();
+      if (!current) {
+        return throwError(() => ({ error: { message: '尚未登入' } }));
+      }
+      const account = MOCK_ACCOUNTS.find((item) => item.username === current.username);
+      if (!account || account.password !== payload.currentPassword) {
+        return throwError(() => ({ error: { message: '目前密碼不正確' } }));
+      }
+      return of(current);
+    }
+
+    return this.api.changePassword(payload).pipe(tap((user) => this.currentUserState.set(user)));
   }
 
   logout(): void {

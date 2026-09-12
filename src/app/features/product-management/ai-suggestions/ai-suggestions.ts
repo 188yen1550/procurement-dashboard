@@ -28,6 +28,8 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
+import { Auth } from '../../../core/auth/auth';
+import { DialogService } from '../../../core/dialog/dialog.service';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
@@ -120,6 +122,8 @@ function toSuggestion(item: ProductListItem): Suggestion {
 export class AiSuggestions implements OnInit {
   private readonly api = inject(ProductApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(Auth);
+  private readonly dialog = inject(DialogService);
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly stateOptions: readonly AiState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
@@ -145,6 +149,79 @@ export class AiSuggestions implements OnInit {
 
   ngOnInit(): void {
     if (!this.useMockData) this.load();
+  }
+
+  // ===================== AI 主動選品批次 =====================
+
+  /**
+   * 批次觸發只開放管理角色。後端 AiSuggestionBatchController 掛了
+   * @PreAuthorize("hasRole('MANAGER')")，採購呼叫會是 403。
+   *
+   * ⚠️ 前端隱藏按鈕只是體驗問題，**後端那道檢查才是真正的防線**。
+   */
+  readonly canTriggerBatch = computed(() => this.auth.isManager());
+
+  readonly isBatchRunning = signal(false);
+
+  /**
+   * 手動觸發 AI 主動選品批次。
+   *
+   * 三道防呆，缺一不可：
+   * 1. **執行前二次確認**——這支會實際呼叫 Gemini 並消耗配額，不是免費操作，
+   *    誤點的代價是真的花掉額度。
+   * 2. **執行中鎖住按鈕**——批次時間隨商品數量成長，不鎖的話使用者會
+   *    以為沒反應而連點，送出好幾批重複的請求。
+   * 3. **完成後給具體數字**——回報「檢查 N 個、新增 M 個」而不是「執行完成」。
+   *    checkedCount 遠大於 suggestedCount 是正常的（多數商品不符合建議條件），
+   *    只說「完成」會讓使用者以為沒有作用。
+   */
+  triggerBatch(): void {
+    if (!this.canTriggerBatch() || this.isBatchRunning()) return;
+
+    if (this.useMockData) {
+      this.statusMessageState.show('Mock 模式不會實際觸發批次，也不會消耗 Gemini 配額');
+      return;
+    }
+
+    this.dialog
+      .confirm(
+        '要執行 AI 主動選品批次嗎？',
+        [
+          '系統會掃描現有商品並產生新的 AI 建議候選。',
+          '這個動作會實際呼叫 Gemini 並消耗 API 配額，商品數量多時需要一段時間。',
+          '正式排程每日凌晨三點會自動執行，手動觸發通常只在需要立即看到結果時使用。',
+        ],
+        '開始執行',
+      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.runBatch();
+      });
+  }
+
+  private runBatch(): void {
+    this.isBatchRunning.set(true);
+    this.statusMessageState.show('批次執行中，請稍候…', 60_000);
+
+    this.api
+      .triggerAiSuggestionBatch()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.isBatchRunning.set(false);
+          this.statusMessageState.show(
+            `批次完成：檢查 ${result.checkedCount} 個商品，新增 ${result.suggestedCount} 個 AI 建議候選`,
+            8000,
+          );
+          // 新增了候選才需要重抓清單；一個都沒新增時重抓只是白費一次請求。
+          if (result.suggestedCount > 0) this.load();
+        },
+        error: (err: unknown) => {
+          this.isBatchRunning.set(false);
+          this.statusMessageState.show(toApiError(err).message, 8000);
+        },
+      });
   }
 
   load(): void {

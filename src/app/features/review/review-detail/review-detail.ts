@@ -216,6 +216,32 @@ export class ReviewDetail implements OnInit {
       return;
     }
 
+    // 核准／拒絕是不可逆的正式決策——畫面本身的提示文字就寫著「送出後將
+    // 建立正式審核紀錄，無法覆蓋」，卻沒有任何確認步驟擋在「按下按鈕」
+    // 與「決策真正送出」之間，使用者滑鼠稍微一滑、或在填完表單後分心
+    // 誤觸，就會讓一筆不能反悔的決策成立。這裡補上最後一道確認關卡，
+    // 訊息裡明確覆誦這次的決定是「通過」還是「不通過」，不是泛用的
+    // 「確定要送出嗎？」——泛用訊息無法讓使用者核對「我選的是不是我
+    // 真正要的那個決定」，這才是誤觸真正會出錯的地方。
+    const decisionLabel = this.decision() === 'APPROVED' ? '通過選品審核' : '不通過';
+    this.dialog
+      .confirm(
+        '確認送出審核決策',
+        [
+          `即將把「${product.productName}」的審核結果送出為：${decisionLabel}。`,
+          this.useMockData
+            ? '這是本地模擬，不會建立正式紀錄。'
+            : '送出後將建立正式審核紀錄，無法覆蓋或撤回，請確認決定無誤。',
+        ],
+        '確定送出',
+        '再檢查一次',
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) this.proceedSubmit(form);
+      });
+  }
+
+  private proceedSubmit(form: ReviewFormModel): void {
     if (this.useMockData) {
       const message = `已在本地模擬${this.decision() === 'APPROVED' ? '通過' : '不通過'}決策。`;
       this.submitted.set(true);

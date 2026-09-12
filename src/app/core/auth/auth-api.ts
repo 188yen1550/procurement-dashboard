@@ -4,7 +4,13 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiEnvelope } from '../api/api-envelope';
 import { unwrapData } from '../api/unwrap';
-import { AUTH_API, CurrentUser, LoginRequestPayload } from './auth.contract';
+import {
+  AUTH_API,
+  ChangePasswordRequestPayload,
+  CurrentUser,
+  LoginRequestPayload,
+  UpdateProfileRequestPayload,
+} from './auth.contract';
 
 /**
  * 登入相關 API 的唯一呼叫入口。
@@ -79,5 +85,33 @@ export class AuthApiService {
     return this.http
       .post<ApiEnvelope<null>>(AUTH_API.logout, {})
       .pipe(map(() => undefined));
+  }
+
+  /**
+   * PATCH /api/auth/me：修改自己的顯示名稱。
+   *
+   * 回應是更新後的完整 UserResponse，呼叫端（Auth）應拿它覆蓋 currentUser
+   * signal，讓 header 的名字立刻跟著變，不要只更新表單本地狀態。
+   */
+  updateProfile(payload: UpdateProfileRequestPayload): Observable<CurrentUser> {
+    return this.http
+      .patch<ApiEnvelope<CurrentUser>>(AUTH_API.updateProfile, payload)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * PATCH /api/auth/me/password：修改自己的密碼。
+   *
+   * 後端成功後會重發 access_token Cookie（屬性與 login 完全一致），
+   * 所以改完密碼不會被登出，呼叫端不需要導回登入頁。
+   *
+   * 目前密碼填錯時後端回 401，與「未登入」是同一個狀態碼。呼叫端必須
+   * 自己從 HttpErrorResponse.error.message 取文案顯示在表單上，不能讓
+   * 全域 401 處理把使用者踢回登入頁——那會讓人誤以為 session 過期。
+   */
+  changePassword(payload: ChangePasswordRequestPayload): Observable<CurrentUser> {
+    return this.http
+      .patch<ApiEnvelope<CurrentUser>>(AUTH_API.changePassword, payload)
+      .pipe(unwrapData());
   }
 }

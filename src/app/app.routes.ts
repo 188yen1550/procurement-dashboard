@@ -37,6 +37,25 @@ export const routes: Routes = [
         loadChildren: () => import('./features/review/review.routes').then((m) => m.REVIEW_ROUTES),
       },
       {
+        /**
+         * 個人資料。只掛頂層 authGuard，不加 managerGuard——
+         * 採購角色也必須能改自己的名字與密碼。
+         */
+        path: 'profile',
+        loadChildren: () =>
+          import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES),
+      },
+      {
+        /**
+         * 歷史開團紀錄。不加 managerGuard——查詢對操作＋管理層都開放，
+         * 匯入／整批回退僅管理層可操作，那是畫面內部依 isManager() 決定
+         * 按鈕要不要出現，不是整頁層級的權限管制，詳見 group-buy.routes.ts。
+         */
+        path: 'group-buy',
+        loadChildren: () =>
+          import('./features/group-buy/group-buy.routes').then((m) => m.GROUP_BUY_ROUTES),
+      },
+      {
         path: 'settings',
         canActivate: [managerGuard],
         loadChildren: () =>

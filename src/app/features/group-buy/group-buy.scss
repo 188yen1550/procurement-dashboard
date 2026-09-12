@@ -1,0 +1,76 @@
+/*
+ * 檔案用途：group-buy 頁面專屬樣式。
+ *
+ * .stat-card 系列跟 dashboard.scss 裡的定義概念一致（三張卡片橫向排列），
+ * 但 Angular 元件樣式預設是各自 scoped 的（ViewEncapsulation.Emulated），
+ * 不會跨元件套用，所以這裡重新定義一份，不是複製貼上偷懶——這是兩個
+ * 元件各自獨立維護樣式的必然結果。
+ */
+:host {
+  display: block;
+}
+
+.stat-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 0.35rem;
+}
+
+.stat-value {
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.stat-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0.35rem 0 0;
+}
+
+.csv-headers {
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+
+  summary {
+    cursor: pointer;
+    color: #2563eb;
+  }
+
+  code {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #f3f4f6;
+    border-radius: 6px;
+    word-break: break-all;
+    font-size: 0.8rem;
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.helper {
+  font-size: 0.8rem;
+  color: #6b7280;
+}

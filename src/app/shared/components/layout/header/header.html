@@ -13,10 +13,22 @@
   </div>
 
   <div class="user-actions">
-    @if (userName) {
-      <span class="user-name">{{ userName }}</span>
-    }
-    <span class="role-badge">{{ roleLabel }}</span>
+    <!--
+      使用者名稱同時是個人資料的入口。做成連結而不是另外加一顆齒輪按鈕，
+      是因為「點自己的名字看／改自己的資料」已經是使用者熟悉的慣例，
+      不需要再教一次新的圖示代表什麼。
+    -->
+    <a
+      class="user-link"
+      routerLink="/profile"
+      routerLinkActive="active"
+      [attr.aria-label]="userName ? userName + '，開啟個人資料' : '開啟個人資料'"
+    >
+      @if (userName) {
+        <span class="user-name">{{ userName }}</span>
+      }
+      <span class="role-badge">{{ roleLabel }}</span>
+    </a>
     <button type="button" class="logout-button" (click)="logoutRequested.emit()">登出</button>
   </div>
 </header>

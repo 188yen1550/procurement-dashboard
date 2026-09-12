@@ -2,10 +2,10 @@
   檔案用途：系統設定分頁與 Modal。
   評估權重唯讀；檔期編輯／手動狀態分開；帳號只停用。aria-modal 與標題關聯協助輔助科技理解對話框。
 -->
-<main class="settings-page" aria-labelledby="settings-title">
+<main class="page-shell settings-page" aria-labelledby="settings-title">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Management Settings</p>
+      
       <h1 id="settings-title">系統設定</h1>
     </div>
   </header>
@@ -54,6 +54,18 @@
       (click)="setTab('campaigns')"
     >
       節慶檔期</button
+    ><button
+      type="button"
+      [class.active]="activeTab() === 'scoreBands'"
+      (click)="setTab('scoreBands')"
+    >
+      目標區間</button
+    ><button
+      type="button"
+      [class.active]="activeTab() === 'systemSettings'"
+      (click)="setTab('systemSettings')"
+    >
+      演算法參數</button
     ><button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">
       帳號管理
     </button>
@@ -62,7 +74,7 @@
     <section class="empty error" role="alert">
       <h2>無法載入設定</h2>
       <p>{{ useMockData ? '這是本地錯誤模擬，不會呼叫後端。' : statusMessage() }}</p>
-      <button type="button" (click)="retry()">重試</button>
+      <button type="button" class="btn" (click)="retry()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {
     <section class="skeleton" role="status">
@@ -91,7 +103,7 @@
     <form class="panel" [formGroup]="form" (ngSubmit)="saveAudience()" novalidate>
       <header>
         <div>
-          <p class="eyebrow">Audience Profile</p>
+          
           <h2>核心客群設定</h2>
           <p>作為品項客群匹配度的計算依據。</p>
         </div>
@@ -138,7 +150,7 @@
       </div>
       <footer>
         <p>儲存後只更新當前元件狀態，不會寫入資料庫。</p>
-        <button type="submit" [disabled]="pageState() === 'disabled'">儲存客群設定</button>
+        <button type="submit" class="btn-primary" [disabled]="pageState() === 'disabled'">儲存客群設定</button>
       </footer>
     </form>
   } @else if (activeTab() === 'risks') {
@@ -147,7 +159,7 @@
         <h2>人工風險選項</h2>
         <p>審核時可複選；風險關鍵字用於引導 AI 風險提示。</p>
       </div>
-      <button type="button" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
+      <button type="button" class="btn-primary" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
         ＋ 新增風險選項
       </button>
     </section>
@@ -184,6 +196,7 @@
       </div>
       <button
         type="button"
+        class="btn-primary"
         (click)="openModal('productType')"
         [disabled]="pageState() === 'disabled'"
       >
@@ -208,17 +221,17 @@
               </td>
               <td>{{ item.system ? '系統預設' : '自訂' }}</td>
               <td>{{ item.used === null ? '—' : item.used }}</td>
-              <td class="status-actions-cell">
+              <td class="row-actions">
                 <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
                 <button
                   type="button"
-                  class="text-action"
+                  class="btn"
                   [class.is-restore]="!item.active"
                   (click)="toggleProductTypeActive(item.name)"
                 >
                   {{ item.active ? '停用' : '復用' }}
                 </button>
-                <button type="button" class="text-action danger" (click)="removeProductType(item.name)">
+                <button type="button" class="btn danger" (click)="removeProductType(item.name)">
                   刪除
                 </button>
               </td>
@@ -233,7 +246,7 @@
         <h2>節慶檔期管理</h2>
         <p>自動判斷狀態；編輯與手動切換狀態為獨立操作。</p>
       </div>
-      <button type="button" (click)="openModal('campaign')" [disabled]="pageState() === 'disabled'">
+      <button type="button" class="btn-primary" (click)="openModal('campaign')" [disabled]="pageState() === 'disabled'">
         ＋ 新增檔期
       </button>
     </section>
@@ -262,8 +275,8 @@
               </td>
               <td>{{ item.override ? '是' : '否' }}</td>
               <td>
-                <button type="button" (click)="editCampaign(item.name)">編輯</button>
-                <button type="button" (click)="openModal('campaignStatus', item.name)">
+                <button type="button" class="btn" (click)="editCampaign(item.name)">編輯</button>
+                <button type="button" class="btn" (click)="openModal('campaignStatus', item.name)">
                   手動切換狀態
                 </button>
               </td>
@@ -273,13 +286,384 @@
       </table>
     </section>
     <p class="scope-note">命中標籤以「標籤＋命中等級（核心／一般／弱）」逐列管理。</p>
+  } @else if (activeTab() === 'scoreBands') {
+    <section class="management-head">
+      <div>
+        <h2>目標區間</h2>
+        <p>各評分因子的正規化區間，分「全域預設」與「各商品類型覆寫」兩層；品類覆寫優先於全域。</p>
+      </div>
+    </section>
+
+    <!-- ===== 全域預設 ===== -->
+    <section class="score-band-group">
+      <h3 class="score-band-group-title">全域預設</h3>
+      <div class="data-table">
+        <table>
+          <thead>
+            <tr>
+              <th>因子</th>
+              <th class="num">下界</th>
+              <th class="num">上界</th>
+              <th>來源模式</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (band of globalScoreBands(); track band.id) {
+              @if (editingScoreBandId() === band.id) {
+                <tr class="is-editing">
+                  <td>{{ band.factorLabel }}</td>
+                  <td colspan="2">
+                    <div class="score-band-edit-grid">
+                      <label
+                        >下界
+                        <input
+                          type="number"
+                          step="0.0001"
+                          [disabled]="scoreBandDraftMode() === 'HISTORICAL'"
+                          [ngModel]="scoreBandDraftLower()"
+                          (ngModelChange)="scoreBandDraftLower.set($event)"
+                        />
+                      </label>
+                      <label
+                        >上界
+                        <input
+                          type="number"
+                          step="0.0001"
+                          [disabled]="scoreBandDraftMode() === 'HISTORICAL'"
+                          [ngModel]="scoreBandDraftUpper()"
+                          (ngModelChange)="scoreBandDraftUpper.set($event)"
+                        />
+                      </label>
+                    </div>
+                  </td>
+                  <td>
+                    <select
+                      [ngModel]="scoreBandDraftMode()"
+                      (ngModelChange)="scoreBandDraftMode.set($event)"
+                    >
+                      <option value="MANUAL">手動填入</option>
+                      <option value="HISTORICAL">依歷史紀錄計算</option>
+                    </select>
+                    @if (scoreBandDraftMode() === 'HISTORICAL') {
+                      <span class="helper">儲存後由系統依歷史開團紀錄重新計算並凍結，上方輸入值不會生效。</span>
+                    }
+                  </td>
+                  <td class="row-actions">
+                    <button type="button" class="btn" [disabled]="isSavingScoreBand()" (click)="cancelScoreBandEdit()">
+                      取消
+                    </button>
+                    <button type="button" class="btn-primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
+                      {{ isSavingScoreBand() ? '儲存中…' : '儲存' }}
+                    </button>
+                  </td>
+                </tr>
+              } @else {
+                <tr>
+                  <td>{{ band.factorLabel }}</td>
+                  <td class="num">{{ band.lowerBound }}</td>
+                  <td class="num">{{ band.upperBound }}</td>
+                  <td>
+                    {{ band.sourceMode === 'MANUAL' ? '手動填入' : '依歷史紀錄計算' }}
+                    @if (band.sourceMode === 'HISTORICAL' && band.sampleSize !== null) {
+                      <span class="helper">樣本數 {{ band.sampleSize }}</span>
+                    }
+                  </td>
+                  <td class="row-actions">
+                    <button
+                      type="button"
+                      class="btn"
+                      [disabled]="pageState() === 'disabled'"
+                      (click)="openScoreBandEditor(band)"
+                    >
+                      編輯
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 各商品類型覆寫 ===== -->
+    <section class="score-band-group">
+      <div class="score-band-group-header">
+        <h3 class="score-band-group-title">各商品類型覆寫</h3>
+        @if (!isCreatingScoreBand()) {
+          <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'" (click)="openCreateScoreBand()">
+            ＋ 新增覆寫
+          </button>
+        }
+      </div>
+
+      @if (isCreatingScoreBand()) {
+        <div class="panel score-band-create-form">
+          <div class="form-grid">
+            <label
+              >商品類型 <em>*</em>
+              <select
+                [ngModel]="newScoreBandProductTypeId()"
+                (ngModelChange)="newScoreBandProductTypeId.set($event)"
+              >
+                <option [ngValue]="null">請選擇</option>
+                @for (type of productTypes(); track type.id) {
+                  <option [ngValue]="type.id">{{ type.name }}</option>
+                }
+              </select>
+            </label>
+            <label
+              >因子 <em>*</em>
+              <select
+                [ngModel]="newScoreBandFactorCode()"
+                (ngModelChange)="newScoreBandFactorCode.set($event)"
+              >
+                @for (factor of scoreBandFactorOptions; track factor.code) {
+                  <option [value]="factor.code">{{ factor.label }}</option>
+                }
+              </select>
+            </label>
+            <label
+              >下界 <em>*</em>
+              <input
+                type="number"
+                step="0.0001"
+                [ngModel]="newScoreBandLower()"
+                (ngModelChange)="newScoreBandLower.set($event)"
+              />
+            </label>
+            <label
+              >上界 <em>*</em>
+              <input
+                type="number"
+                step="0.0001"
+                [ngModel]="newScoreBandUpper()"
+                (ngModelChange)="newScoreBandUpper.set($event)"
+              />
+            </label>
+          </div>
+          <p class="helper">
+            新增的列一律為「手動填入」模式；建立後若已有足夠歷史開團紀錄，可再切換成「依歷史紀錄計算」。
+          </p>
+          <footer>
+            <p>同一商品類型的同一因子只能有一筆生效中的區間，重複新增會被拒絕。</p>
+            <div class="footer-actions">
+              <button type="button" class="btn" [disabled]="isSavingNewScoreBand()" (click)="cancelCreateScoreBand()">
+                取消
+              </button>
+              <button type="button" class="btn-primary" [disabled]="isSavingNewScoreBand()" (click)="createScoreBand()">
+                {{ isSavingNewScoreBand() ? '新增中…' : '新增' }}
+              </button>
+            </div>
+          </footer>
+        </div>
+      }
+
+      @if (overrideScoreBands().length === 0 && !isCreatingScoreBand()) {
+        <section class="empty">
+          <p>目前沒有任何品類專屬的目標區間，按上方「＋ 新增覆寫」建立第一筆。</p>
+        </section>
+      } @else if (overrideScoreBands().length > 0) {
+        <div class="data-table">
+          <table>
+            <thead>
+              <tr>
+                <th>商品類型</th>
+                <th>因子</th>
+                <th class="num">下界</th>
+                <th class="num">上界</th>
+                <th>來源模式</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (band of overrideScoreBands(); track band.id) {
+                @if (editingScoreBandId() === band.id) {
+                  <tr class="is-editing">
+                    <td>{{ band.productTypeName }}</td>
+                    <td>{{ band.factorLabel }}</td>
+                    <td colspan="2">
+                      <div class="score-band-edit-grid">
+                        <label
+                          >下界
+                          <input
+                            type="number"
+                            step="0.0001"
+                            [disabled]="scoreBandDraftMode() === 'HISTORICAL'"
+                            [ngModel]="scoreBandDraftLower()"
+                            (ngModelChange)="scoreBandDraftLower.set($event)"
+                          />
+                        </label>
+                        <label
+                          >上界
+                          <input
+                            type="number"
+                            step="0.0001"
+                            [disabled]="scoreBandDraftMode() === 'HISTORICAL'"
+                            [ngModel]="scoreBandDraftUpper()"
+                            (ngModelChange)="scoreBandDraftUpper.set($event)"
+                          />
+                        </label>
+                      </div>
+                    </td>
+                    <td>
+                      <select
+                        [ngModel]="scoreBandDraftMode()"
+                        (ngModelChange)="scoreBandDraftMode.set($event)"
+                      >
+                        <option value="MANUAL">手動填入</option>
+                        <option value="HISTORICAL">依歷史紀錄計算</option>
+                      </select>
+                    </td>
+                    <td class="row-actions">
+                      <button type="button" class="btn" [disabled]="isSavingScoreBand()" (click)="cancelScoreBandEdit()">
+                        取消
+                      </button>
+                      <button type="button" class="btn-primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
+                        {{ isSavingScoreBand() ? '儲存中…' : '儲存' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @else {
+                  <tr>
+                    <td>{{ band.productTypeName }}</td>
+                    <td>{{ band.factorLabel }}</td>
+                    <td class="num">{{ band.lowerBound }}</td>
+                    <td class="num">{{ band.upperBound }}</td>
+                    <td>{{ band.sourceMode === 'MANUAL' ? '手動填入' : '依歷史紀錄計算' }}</td>
+                    <td class="row-actions">
+                      <button
+                        type="button"
+                        class="btn"
+                        [disabled]="pageState() === 'disabled'"
+                        (click)="openScoreBandEditor(band)"
+                      >
+                        編輯
+                      </button>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  } @else if (activeTab() === 'systemSettings') {
+    <section class="management-head">
+      <div>
+        <h2>演算法參數</h2>
+        <p>
+          貝氏收縮的平滑常數、趨勢新鮮度半衰期等會直接影響全站分數計算的參數。
+          調整後立即對所有後續計分生效，不會影響已經產生的審核快照。
+        </p>
+      </div>
+    </section>
+
+    @for (group of systemSettingsByCategory(); track group.category) {
+      <section class="score-band-group">
+        <h3 class="score-band-group-title">{{ group.category }}</h3>
+        <div class="data-table">
+          <table>
+            <thead>
+              <tr>
+                <th>參數</th>
+                <th class="num">目前值</th>
+                <th>最後異動</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (setting of group.items; track setting.key) {
+                @if (editingSystemSettingKey() === setting.key) {
+                  <tr class="is-editing">
+                    <td>
+                      <strong>{{ setting.displayName }}</strong>
+                      <p class="helper">{{ setting.description }}</p>
+                    </td>
+                    <td colspan="2">
+                      <label class="system-setting-edit-field">
+                        <input
+                          [type]="setting.dataType === 'STRING' ? 'text' : 'number'"
+                          [step]="setting.dataType === 'INTEGER' ? 1 : 0.01"
+                          [ngModel]="systemSettingDraftValue()"
+                          (ngModelChange)="systemSettingDraftValue.set($event)"
+                        />
+                        @if (setting.unit) {
+                          <span class="unit">{{ setting.unit }}</span>
+                        }
+                      </label>
+                      @if (setting.minValue !== null && setting.maxValue !== null) {
+                        <span class="helper"
+                          >合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}</span
+                        >
+                      }
+                    </td>
+                    <td class="row-actions">
+                      <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isSavingSystemSetting()"
+                        (click)="cancelSystemSettingEdit()"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-primary"
+                        [disabled]="isSavingSystemSetting()"
+                        (click)="saveSystemSetting()"
+                      >
+                        {{ isSavingSystemSetting() ? '儲存中…' : '儲存' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @else {
+                  <tr>
+                    <td>
+                      <strong>{{ setting.displayName }}</strong>
+                      <p class="helper">{{ setting.description }}</p>
+                      @if (!setting.hasStoredValue) {
+                        <span class="badge badge-muted">預設值，尚未手動調整過</span>
+                      }
+                    </td>
+                    <td class="num">
+                      <span class="system-setting-value">{{ setting.value }}</span>
+                      @if (setting.unit) {
+                        <span class="unit">{{ setting.unit }}</span>
+                      }
+                    </td>
+                    <td>
+                      @if (setting.updatedAt) {
+                        {{ setting.updatedAt | date: 'yyyy-MM-dd HH:mm' }}
+                        @if (setting.updatedByName) {
+                          <span class="helper">by {{ setting.updatedByName }}</span>
+                        }
+                      } @else {
+                        <span class="helper">—</span>
+                      }
+                    </td>
+                    <td class="row-actions">
+                      <button type="button" class="btn" (click)="openSystemSettingEditor(setting)">
+                        編輯
+                      </button>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
   } @else if (activeTab() === 'accounts') {
     <section class="management-head">
       <div>
         <h2>帳號管理</h2>
         <p>帳號由管理人員建立，可停用／復用，不能刪除。</p>
       </div>
-      <button type="button" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
+      <button type="button" class="btn-primary" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
         ＋ 新增帳號
       </button>
     </section>
@@ -303,10 +687,10 @@
               <td>{{ item.name }}</td>
               <td>{{ item.role === 'MANAGER' ? '管理' : '操作' }}</td>
               <td>{{ item.active ? '啟用' : '已停用' }}</td>
-              <td class="status-actions-cell">
+              <td class="row-actions">
                 <button
                   type="button"
-                  class="text-action"
+                  class="btn"
                   [class.is-restore]="!item.active"
                   [disabled]="pageState() === 'disabled'"
                   (click)="toggleAccountActive(item.username)"
@@ -322,8 +706,9 @@
   } @else {
     <section class="mode-intro">
       <div>
-        <p class="eyebrow">Fixed Weight</p>
-        <h2>三套固定評估模式</h2>
+        
+        <h2>評估模式與權重</h2>
+        <p>三套固定模式唯讀；自訂模式可調整七項因子權重，加總須為 100。</p>
       </div>
     </section>
     <div class="mode-grid">
@@ -349,6 +734,35 @@
                先顯示「載入中」而不是顯示 undefined%。 -->
           @if (!mode.weights) {
             <p class="empty">權重載入中…</p>
+          } @else if (editingWeightsModeId() === mode.id) {
+            <!-- ===== 權重編輯器（僅 CUSTOM，isEditable = true）===== -->
+            <div class="weight-editor">
+              @for (factorCode of factorOrder; track factorCode) {
+                <label class="weight-editor-row"
+                  >{{ factorLabel[factorCode] }}
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    [ngModel]="weightDrafts()[factorCode]"
+                    (ngModelChange)="updateWeightDraft(factorCode, $event)"
+                  />
+                </label>
+              }
+              <div class="weight-editor-total" [class.is-invalid]="weightDraftTotal() !== 100">
+                目前加總：{{ weightDraftTotal() }} / 100
+              </div>
+              <div class="weight-editor-actions">
+                <button type="button" class="btn" [disabled]="isSavingWeights()" (click)="cancelEditWeights()">
+                  取消
+                </button>
+                <button type="button" class="btn-primary" [disabled]="isSavingWeights()" (click)="saveWeights()">
+                  {{ isSavingWeights() ? '儲存中…' : '儲存權重' }}
+                </button>
+              </div>
+              <p class="helper">調整僅影響之後新送審的商品，已完成審核的紀錄不會變動。</p>
+            </div>
           } @else {
             <dl>
               <div>
@@ -368,6 +782,16 @@
                 <dd>{{ mode.weights.forecast }}%</dd>
               </div>
             </dl>
+            @if (mode.isEditable) {
+              <button
+                type="button"
+                class="btn edit-weights-button"
+                [disabled]="pageState() === 'disabled'"
+                (click)="startEditWeights(mode)"
+              >
+                編輯權重
+              </button>
+            }
           }
           @if (activeMode() === mode.code) {
             <strong class="current">目前生效</strong>
@@ -379,7 +803,7 @@
   @if (modal()) {
     <div class="modal-backdrop" (click)="closeModal()">
       <form
-        class="settings-modal"
+        class="modal-card settings-modal"
         (click)="$event.stopPropagation()"
         (ngSubmit)="modal() === 'campaignStatus' ? applyCampaignStatus() : saveModal()"
       >
@@ -397,7 +821,7 @@
                       : '新增帳號'
             }}
           </h2>
-          <button type="button" (click)="closeModal()" aria-label="關閉">×</button>
+          <button type="button" class="modal-close" (click)="closeModal()" aria-label="關閉">×</button>
         </header>
         @if (modal() === 'risk') {
           <label
@@ -524,6 +948,7 @@
                   <option value="WEAK">弱</option></select
                 ><button
                   type="button"
+                  class="btn danger"
                   (click)="removeTagRow($index)"
                   [disabled]="draftTags().length === 1"
                 >
@@ -531,7 +956,7 @@
                 </button>
               </div>
             }
-            <button type="button" (click)="addTagRow()">＋ 增列</button>
+            <button type="button" class="btn" (click)="addTagRow()">＋ 增列</button>
           </fieldset>
         }
         @if (modal() === 'campaignStatus') {
@@ -554,8 +979,8 @@
           <p>儲存後 is_manual_override 會設為 true。</p>
         }
         <footer>
-          <button type="button" (click)="closeModal()">取消</button
-          ><button type="submit" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
+          <button type="button" class="btn" (click)="closeModal()">取消</button
+          ><button type="submit" class="btn-primary" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
         </footer>
       </form>
     </div>

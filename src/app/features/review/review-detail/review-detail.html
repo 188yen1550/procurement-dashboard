@@ -6,8 +6,8 @@
 <main class="detail" aria-labelledby="title">
   <header class="page-header">
     <div>
-      <a routerLink="/review">← 返回待審核清單</a>
-      <p class="eyebrow">Review Detail</p>
+      <a routerLink="/review" class="back-link">← 返回待審核清單</a>
+      
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
     </div>
     @if (useMockData) {
@@ -100,7 +100,7 @@
     <section class="panel ai">
       <header>
         <div>
-          <p class="eyebrow">AI Assistance</p>
+          
           <h2>AI 推薦摘要</h2>
         </div>
         <span>AI 不會自動核准</span>

@@ -7,7 +7,7 @@
 <div class="dashboard-page">
   <header class="page-header">
     <div>
-      <p class="eyebrow">Dashboard</p>
+      
       <h1>選品決策儀表板</h1>
     </div>
     <div class="data-time">
@@ -157,7 +157,19 @@
       </article>
     </section>
 
-    <div class="content-grid">
+    <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
+      <header class="panel-header">
+        <div>
+          
+          <h2 id="status-chart-title">審核狀態分布</h2>
+        </div>
+      </header>
+      <div class="status-chart-wrap">
+        <canvas #statusChartCanvas aria-label="待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
+      </div>
+    </section>
+
+    <div class="content-grid" [class.operator-view]="!isManager()">
       <section class="panel recommendations-panel" aria-labelledby="recommendations-title">
         <header class="panel-header">
           <div>
@@ -241,7 +253,7 @@
             </div>
           }
           <div>
-            <p class="eyebrow">Conversion</p>
+            
             <h2 id="conversion-title">選品轉換率</h2>
             <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
             @if (data().statistics.conversionRate === null) {
@@ -249,29 +261,33 @@
             }
           </div>
         </section>
-        <section class="panel risk-panel" aria-labelledby="risk-title">
-          <header class="panel-header">
-            <div>
-              <p class="eyebrow">Risk Alerts</p>
-              <h2 id="risk-title">高風險提示</h2>
+        <!-- 高風險提示：管理層的治理責任，操作層畫面不顯示這個面板
+             （後端 API 權限上兩者都能呼叫，這裡純粹是畫面呈現決定）。 -->
+        @if (isManager()) {
+          <section class="panel risk-panel" aria-labelledby="risk-title">
+            <header class="panel-header">
+              <div>
+                
+                <h2 id="risk-title">高風險提示</h2>
+              </div>
+              <span class="risk-count">{{ data().riskAlerts.length }}</span>
+            </header>
+            <div class="risk-list">
+              @for (risk of data().riskAlerts; track risk.id) {
+                <article class="risk-item" [attr.data-level]="risk.level ?? 'UNKNOWN'">
+                  <div>
+                    <strong>{{ risk.productName }}</strong
+                    ><span>{{ riskLevelLabel(risk.level) }}</span>
+                  </div>
+                  <p>{{ risk.message }}</p>
+                  <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
+                </article>
+              } @empty {
+                <p class="empty">目前沒有需要特別注意的商品。</p>
+              }
             </div>
-            <span class="risk-count">{{ data().riskAlerts.length }}</span>
-          </header>
-          <div class="risk-list">
-            @for (risk of data().riskAlerts; track risk.id) {
-              <article class="risk-item" [attr.data-level]="risk.level ?? 'UNKNOWN'">
-                <div>
-                  <strong>{{ risk.productName }}</strong
-                  ><span>{{ riskLevelLabel(risk.level) }}</span>
-                </div>
-                <p>{{ risk.message }}</p>
-                <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
-              </article>
-            } @empty {
-              <p class="empty">目前沒有需要特別注意的商品。</p>
-            }
-          </div>
-        </section>
+          </section>
+        }
       </aside>
     </div>
   }

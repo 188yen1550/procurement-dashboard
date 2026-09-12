@@ -3,10 +3,17 @@ import { PageQuery } from '../../../core/api/unwrap';
 import {
   CandidateStatus,
   DataSource,
+  GateCode,
+  GateStatus,
   ItemStatus,
+  PackageSizeTier,
+  PackingType,
   PricingStatus,
   PricingType,
   ReviewStatus,
+  ShelfLifeTier,
+  SupplierLeadTimeTier,
+  TemperatureZone,
   TrendDirection,
 } from '../../../core/domain/enums';
 
@@ -39,6 +46,10 @@ export const PRODUCT_API = {
   archive: (id: number | string) => `/api/products/${id}/archive`,
   restore: (id: number | string) => `/api/products/${id}/restore`,
   promote: (id: number | string) => `/api/products/${id}/promote-to-candidate`,
+  /** GET：RESALE 商品搜尋相似參考商品。唯讀查詢，不會修改任何資料。 */
+  similarCandidates: '/api/products/similar-candidates',
+  /** POST [僅管理]：手動觸發 AI 主動選品批次。 */
+  aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
 } as const;
 
 // =========================================================================
@@ -81,6 +92,45 @@ export interface ProductResponsePayload {
   targetCustomerDescription: string | null;
   /** ⚠️ 0–1 的小數（0.8 代表 80%），顯示時要 ×100。 */
   estimatedPurchaseRate: Decimal;
+  /**
+   * 僅 RESALE 商品可能有值，NEW 商品恆為 null。
+   *
+   * 後端這次補上的欄位（原本 GET 端點不回傳，只有 Create／Update 能寫入，
+   * 編輯既有 RESALE 商品時完全看不到目前設定的參考商品）。有這個欄位後，
+   * 商品表單編輯模式應該用它預先標示目前選定的參考商品，不必再顯示
+   * 「無法顯示」的提示文字。
+   */
+  resaleReferenceProductId: number | null;
+
+  /**
+   * 以下 9 個欄位是 Gate 判定（GateEvaluationService）用來讀取的商品層
+   * 屬性——先前這 9 欄完全沒有被任何 API 回傳過，商品詳情頁看不到、
+   * 建立／編輯表單也填不了。這批新增之後才第一次真正串起來。
+   *
+   * ⚠️ 全部選填。商品層沒填時，Gate 判定會依三層繼承規則往上查品類的
+   * 預設屬性——留空不代表 Gate 判定失效，只是改用品類層的值。畫面上
+   * 不需要因為這些欄位是 null 就顯示錯誤或警告。
+   */
+  temperatureZone: TemperatureZone | null;
+  shelfLifeTier: ShelfLifeTier | null;
+  supplierLeadTimeTier: SupplierLeadTimeTier | null;
+  /** 供運費估算查表使用，非 Gate 判定輸入。 */
+  packageSizeTier: PackageSizeTier | null;
+  /** 純 Signal 顯示用，不參與任何判定或計分。 */
+  packingType: PackingType | null;
+  /** 逗號分隔的自由文字標籤（例：FRAGILE,UPRIGHT），非固定選項集。 */
+  handlingFlags: string | null;
+  /** 逗號分隔的自由文字標籤，目前沒有任何 Gate 或計分邏輯讀取這個欄位。 */
+  certificationFlags: string | null;
+  supplierMaxCapacity: number | null;
+
+  /**
+   * Gate 判定結果彙總。⚠️ 只有 GET /api/products/{id}（單筆詳情）才會有值，
+   * 清單／搜尋端點恆為 undefined——一次回傳多筆時重算五個 Gate 成本太高，
+   * 後端只在看單一商品詳情時才計算。畫面不要假設清單頁的每一筆都有這個欄位。
+   */
+  gateResults?: GateResultSummaryPayload;
+
   reviewStatus: ReviewStatus;
   candidateStatus: CandidateStatus;
   pricingStatus: PricingStatus;
@@ -233,6 +283,25 @@ export interface ProductCreateRequestPayload {
   priceCompetitiveness?: number | null;
   targetCustomerDescription?: string | null;
   estimatedPurchaseRate?: number | null;
+  /**
+   * 僅 RESALE 商品使用。來自 GET /api/products/similar-candidates 的人工
+   * 挑選結果，這支端點本身不會修改資料，選定的 id 要靠這裡送出才會生效。
+   */
+  resaleReferenceProductId?: number | null;
+
+  /**
+   * 以下 8 個欄位供 Gate 判定使用，語意見 ProductResponsePayload 同名欄位
+   * 的註解。全部選填——留空時 Gate 判定會依三層繼承規則改用品類層的
+   * 預設屬性，不是必填欄位。
+   */
+  temperatureZone?: TemperatureZone | null;
+  shelfLifeTier?: ShelfLifeTier | null;
+  supplierLeadTimeTier?: SupplierLeadTimeTier | null;
+  packageSizeTier?: PackageSizeTier | null;
+  packingType?: PackingType | null;
+  handlingFlags?: string | null;
+  certificationFlags?: string | null;
+  supplierMaxCapacity?: number | null;
 }
 
 /**
@@ -264,4 +333,93 @@ export interface ProductListQuery extends PageQuery {
   itemStatus?: ItemStatus;
   candidateStatus?: CandidateStatus;
   productTypeId?: number;
+}
+
+/**
+ * GET /api/products/similar-candidates 的 query 參數。
+ *
+ * 對應 ProductController.findSimilarCandidates() 的四個 @RequestParam。
+ * productTypeId 與 name 為必填（後端沒有 required = false），
+ * 缺任一個會是 400 而不是空清單。
+ *
+ * excludeId 在「編輯既有商品」時要帶自己的 id，否則候選清單第一名
+ * 一定是商品自己（名稱 100% 相同），使用者會看到自己參考自己。
+ */
+export interface SimilarCandidateQuery {
+  productTypeId: number;
+  name: string;
+  supplierName?: string;
+  excludeId?: number;
+}
+
+/**
+ * 對應後端 SimilarProductCandidateResponse.java。
+ *
+ * ⚠️ 後端刻意回傳**分項相似度**而非只給綜合分數，DTO 註解寫明理由：
+ * 只給一個 72 分，使用者無從判斷這個分數合不合理；附上分項才能核對
+ * 系統的判斷依據。畫面上請把 nameSimilarity／supplierSimilarity 顯示出來，
+ * 不要只顯示 combinedScore。
+ *
+ * ⚠️ supplierSimilarity **任一邊供應商名稱為空時是 null，不是 0**。
+ * null 代表「無法比較」，顯示成 0% 會讓使用者以為供應商完全不像。
+ *
+ * 三個相似度都是 0~1 的小數（Jaro-Winkler），要顯示成百分比需自行 ×100。
+ */
+export interface SimilarProductCandidatePayload {
+  productId: number;
+  name: string;
+  supplierName: string | null;
+  pricingType: PricingType | null;
+  /** 0~1。 */
+  nameSimilarity: Decimal;
+  /** 0~1；無法比較時為 null。 */
+  supplierSimilarity: Decimal | null;
+  /** 0~1，排序依據。 */
+  combinedScore: Decimal;
+}
+
+/**
+ * 對應後端 AiSuggestionBatchService.BatchResult（record）。
+ *
+ * checkedCount 是本次掃描過的商品數，suggestedCount 是實際新增的
+ * AI_SUGGESTED 候選數。兩者相差很大是正常的——大部分商品不符合建議條件。
+ */
+export interface AiSuggestionBatchResultPayload {
+  checkedCount: number;
+  suggestedCount: number;
+}
+
+// =========================================================================
+// Gate 判定結果
+// =========================================================================
+
+/**
+ * 對應後端 GateResult record（service/gate/GateResult.java）。
+ *
+ * ⚠️ riskCategory 目前恆為 null——後端還沒把 Gate 結果對應到風險分類，
+ * 這是刻意留給未來擴充的欄位，不是這次漏傳，畫面不要假設它一定有值。
+ */
+export interface GateResultPayload {
+  gateCode: GateCode;
+  status: GateStatus;
+  /** 人類可讀的判定說明，直接顯示即可，不需要前端自己組文字。 */
+  reason: string;
+  riskCategory: string | null;
+}
+
+/**
+ * 對應後端 GateResult.Summary record。
+ *
+ * ⚠️ 四態計數必須分開顯示，不要合併成「有問題／沒問題」兩種——
+ * INSUFFICIENT_DATA（資料不足）與 NOT_APPLICABLE（不適用）都不是
+ * FAILED（不通過），三者的後續處理完全不同：FAILED 需要主管決定要不要
+ * 例外放行，INSUFFICIENT_DATA 該請採購回去補資料，NOT_APPLICABLE 則是
+ * 這項檢查對這件商品本來就不適用，三者混在一起顯示會誤導使用者。
+ */
+export interface GateResultSummaryPayload {
+  results: GateResultPayload[];
+  passedCount: number;
+  failedCount: number;
+  insufficientDataCount: number;
+  notApplicableCount: number;
 }

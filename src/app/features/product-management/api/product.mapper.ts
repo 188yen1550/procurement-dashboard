@@ -2,9 +2,14 @@ import {
   CandidateStatus,
   DataSource,
   ItemStatus,
+  PackageSizeTier,
+  PackingType,
   PricingStatus,
   PricingType,
   ReviewStatus,
+  ShelfLifeTier,
+  SupplierLeadTimeTier,
+  TemperatureZone,
   TrendDirection,
 } from '../../../core/domain/enums';
 import { joinCampaignTags, splitCampaignTags } from '../../../core/domain/labels';
@@ -209,6 +214,20 @@ export interface ProductFormModel {
     targetCustomerDescription: string;
     /** ⚠️ 表單存 0–1 小數（與後端一致），顯示層才 ×100。 */
     estimatedPurchaseRate: number | null;
+    /**
+     * 僅 RESALE 商品可能有值。後端這次補上 GET 回傳這個欄位後，
+     * 編輯模式才第一次能夠回填目前已設定的參考商品 id。
+     */
+    resaleReferenceProductId: number | null;
+    /** 語意見 ProductResponsePayload 同名欄位註解，全部選填。 */
+    temperatureZone: TemperatureZone | null;
+    shelfLifeTier: ShelfLifeTier | null;
+    supplierLeadTimeTier: SupplierLeadTimeTier | null;
+    packageSizeTier: PackageSizeTier | null;
+    packingType: PackingType | null;
+    handlingFlags: string;
+    certificationFlags: string;
+    supplierMaxCapacity: number | null;
   };
   reviewStatus: ReviewStatus;
   itemStatus: ItemStatus;
@@ -236,6 +255,15 @@ export function toProductFormModel(payload: ProductResponsePayload): ProductForm
       priceCompetitiveness: payload.priceCompetitiveness,
       targetCustomerDescription: payload.targetCustomerDescription ?? '',
       estimatedPurchaseRate: payload.estimatedPurchaseRate,
+      resaleReferenceProductId: payload.resaleReferenceProductId,
+      temperatureZone: payload.temperatureZone,
+      shelfLifeTier: payload.shelfLifeTier,
+      supplierLeadTimeTier: payload.supplierLeadTimeTier,
+      packageSizeTier: payload.packageSizeTier,
+      packingType: payload.packingType,
+      handlingFlags: payload.handlingFlags ?? '',
+      certificationFlags: payload.certificationFlags ?? '',
+      supplierMaxCapacity: payload.supplierMaxCapacity,
     },
     reviewStatus: payload.reviewStatus,
     itemStatus: payload.itemStatus,

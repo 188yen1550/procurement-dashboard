@@ -1,0 +1,586 @@
+/*
+ * 檔案用途：跨頁共用的元件樣式。
+ *
+ * ## 收錄標準
+ * 只收「已經有 2 個以上頁面在用同一個 class 名稱」的樣式。實測：
+ *   .notice 9 頁 / .eyebrow 9 頁 / .empty 9 頁 / .skeleton 8 頁
+ *   .page-header 8 頁 / .state-bar 6 頁 / .panel 6 頁
+ * 這些原本在每個元件 SCSS 各寫一份，是 anyComponentStyle budget
+ * 被撐爆的主因。
+ *
+ * ## 為什麼可以逐頁遷移、不會一次改壞
+ * Angular 的 emulated encapsulation 會在元件樣式的選擇器補上
+ * [_ngcontent-xxx] 屬性選擇器，specificity 天生高於這裡的全域規則。
+ * 因此尚未遷移的頁面仍沿用自己那份樣式，外觀不變；遷移一頁就是
+ * 把該頁 SCSS 裡的重複規則刪掉，讓全域規則接手。
+ */
+
+/* ===================== 版面容器 ===================== */
+
+.page-shell {
+  max-width: var(--layout-max);
+  margin: auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.page-header h1 {
+  margin: 0.15rem 0 0.3rem;
+  font-size: var(--t-display);
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+}
+
+/*
+ * .eyebrow 是各頁標題上方的小標。刻意保留既有的
+ * uppercase + letter-spacing 寫法，因為站內 9 頁都已經這樣呈現，
+ * 這裡的目標是集中管理而不是改風格。
+ */
+.eyebrow {
+  margin: 0;
+  color: var(--c-ok);
+  font-size: var(--t-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.state-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-surface-alt);
+  border: 1px solid #dce6ed;
+  border-radius: var(--r-md);
+}
+
+.state-bar span {
+  display: block;
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+}
+
+/* ===================== 卡片／面板 ===================== */
+
+.panel {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+
+.panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--c-border-soft);
+}
+
+.panel h2 {
+  margin: 0.15rem 0;
+  font-size: var(--t-lg);
+}
+
+.panel > header p {
+  margin: 0.2rem 0 0;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+}
+
+.panel > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background: var(--c-surface-sunken);
+  border-top: 1px solid var(--c-border-soft);
+}
+
+.panel > footer p {
+  margin: 0;
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+}
+
+/* ===================== 按鈕 ===================== */
+
+/*
+ * 三種層級，對應三種後果嚴重度：
+ *   .btn-primary  主要動作（送出、儲存、新增）
+ *   .btn          一般動作（取消、切換、次要操作）
+ *   .btn.danger   破壞性動作（刪除）
+ * 沿用站內既有的 .text-action 輕量風格作為 .btn 基礎，
+ * 避免一列裡三顆實心按鈕互相搶注意力。
+ */
+.btn,
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-1);
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.btn {
+  color: var(--c-ink-soft);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--c-surface-hover);
+}
+
+.btn-primary {
+  color: var(--c-surface);
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--c-brand-hover);
+  border-color: var(--c-brand-hover);
+}
+
+.btn.danger {
+  color: var(--c-danger);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: var(--c-danger-tint);
+  border-color: var(--c-danger-border);
+}
+
+/* 復用動作用綠色系，與停用（中性）、刪除（紅）一眼區隔。 */
+.btn.is-restore {
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+  border-color: var(--c-ok-border);
+}
+
+.btn.is-restore:hover:not(:disabled) {
+  background: #dcf1e6;
+}
+
+.btn:disabled,
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ===================== 表單 ===================== */
+
+/*
+ * 兩欄表單網格。.wide 讓單一欄位橫跨整列（長文字、描述欄用）。
+ * 直接讓 .form-grid 底下的 label 繼承 .field 樣式，樣板不必逐個加 class。
+ */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  padding: var(--s-5);
+}
+
+.form-grid > .wide {
+  grid-column: 1 / -1;
+}
+
+.field,
+.form-grid label,
+.modal-card label {
+  display: block;
+  min-width: 0;
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form-grid input,
+.form-grid select,
+.form-grid textarea,
+.modal-card input,
+.modal-card select,
+.modal-card textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--s-1);
+  padding: 0.6rem 0.7rem;
+  color: var(--c-ink);
+  background: var(--c-surface-sunken);
+  border: 1px solid #d4dee6;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--t-base);
+  font-weight: 400;
+}
+
+.field textarea,
+.form-grid textarea,
+.modal-card textarea {
+  resize: vertical;
+}
+
+/* 必填標記。既有樣板用 <em> 承載，維持不變。 */
+.field em,
+.form-grid em {
+  color: var(--c-danger);
+  font-style: normal;
+}
+
+/* 欄位下方的驗證錯誤訊息。 */
+.field small,
+.form-grid small {
+  display: block;
+  margin-top: var(--s-1);
+  color: var(--c-danger-strong);
+  font-size: var(--t-xs);
+  font-weight: 400;
+}
+
+/* 欄位下方的中性說明文字。 */
+.helper {
+  display: block;
+  margin-top: var(--s-1);
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+  font-weight: 400;
+}
+
+/* ===================== 訊息區塊 ===================== */
+
+.notice,
+.success,
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+}
+
+.notice {
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border: 1px solid var(--c-warn-border);
+}
+
+.success {
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+  border: 1px solid var(--c-ok-border);
+}
+
+.alert {
+  color: var(--c-danger-strong);
+  background: var(--c-danger-tint);
+  border: 1px solid var(--c-danger-border);
+}
+
+.notice strong,
+.success strong,
+.alert strong,
+.notice span,
+.success span,
+.alert span {
+  display: block;
+}
+
+/* ===================== 空狀態與載入骨架 ===================== */
+
+.empty,
+.skeleton {
+  padding: var(--s-6) var(--s-4);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+  text-align: center;
+}
+
+.empty p {
+  color: var(--c-ink-muted);
+}
+
+.empty.error {
+  color: var(--c-danger-strong);
+  background: var(--c-danger-tint);
+  border-color: var(--c-danger-border);
+}
+
+.skeleton {
+  min-height: 400px;
+  text-align: left;
+}
+
+.skeleton span {
+  display: block;
+  height: 1rem;
+  margin: var(--s-5) var(--s-4);
+  background: #edf1f4;
+  border-radius: var(--r-sm);
+}
+
+/* ===================== 資料表格 ===================== */
+
+.data-table {
+  overflow-x: auto;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+}
+
+.data-table table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--c-border-soft);
+  font-size: var(--t-sm);
+  text-align: left;
+}
+
+.data-table th {
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover {
+  background: var(--c-surface-sunken);
+}
+
+/* 狀態文字與操作按鈕同格時，需要間距才點得準也讀得清楚。 */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.row-actions .status-text {
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===================== 狀態徽章 ===================== */
+
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  color: var(--c-ink-soft);
+  background: var(--c-surface-alt);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill[data-status='ACTIVE'],
+.status-pill[data-status='APPROVED'],
+.status-pill[data-status='FULFILLED'] {
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+}
+
+.status-pill[data-status='PREPARING'],
+.status-pill[data-status='PENDING'],
+.status-pill[data-status='PENDING_PRICING'] {
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+}
+
+.status-pill[data-status='REJECTED'],
+.status-pill[data-status='FAILED'],
+.status-pill[data-status='CANCELLED'] {
+  color: var(--c-danger);
+  background: var(--c-danger-tint);
+}
+
+.status-pill[data-status='ARCHIVED'],
+.status-pill[data-status='EXPIRED'] {
+  color: var(--c-ink-muted);
+  background: var(--c-surface-hover);
+}
+
+/* ===================== Modal ===================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  // 原本是 100，比 header(800)／sidebar(1000)／admin-layout(1200) 都低，
+  // 導致這個共用 modal pattern（節慶檔期編輯、CSV 匯入等多處都在用）
+  // 實際渲染在頁首/側邊選單「下面」，使用者可以繞過遮罩點到背景的
+  // header/navside——不只是視覺上蓋到，遮罩本身在低層時滑鼠事件也會被
+  // 上層的 header/sidebar 攔截，等於背景仍然可以互動。
+  //
+  // 訂在 1500：比所有版面 chrome（最高到 admin-layout 的 1200）都高，
+  // 但保留在共用 DialogService 的 dialog-root（2000）之下——如果這類
+  // 本地 modal 開著時又觸發一次 DialogService 的 confirm/notify（例如
+  // 表單存檔前的確認），confirm 對話框應該疊在最上層，不能被這裡的
+  // modal 擋住。
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+  background: rgba(20, 36, 49, 0.55);
+}
+
+.modal-card {
+  width: min(620px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--s-5);
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-modal);
+}
+
+.modal-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: var(--t-xl);
+}
+
+.modal-card > footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+/* 關閉鈕：圓形、與內容明確分離，手機上也維持可點面積。 */
+.modal-close {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  border: 1px solid #d4dee6;
+  border-radius: 50%;
+  font-size: var(--t-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--c-surface-hover);
+}
+
+/* ===================== 響應式 ===================== */
+
+@media (max-width: 760px) {
+  .page-header,
+  .state-bar,
+  .panel > header,
+  .panel > footer,
+  .notice,
+  .success,
+  .alert {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid > .wide {
+    grid-column: auto;
+  }
+
+  .panel > footer .btn,
+  .panel > footer .btn-primary {
+    width: 100%;
+  }
+}
+
+/*
+ * 「返回上一頁」系列連結的統一樣式。
+ *
+ * 修正前：product-form.scss 裡同時存在兩份互相衝突的 .back-link 定義
+ * （一份綠色配 !important、一份藍色），綠色那份因為 !important 蓋過另一份，
+ * 導致「返回品項管理」按鈕變成跟全站主色（藍色 #1c5286）不一致的綠色——
+ * 這是遺留的樣式衝突，不是刻意設計。另外 product-detail.html／
+ * review-detail.html 的返回連結完全沒有套用 .back-link class，只是
+ * 沒有樣式的裸連結，導致同一種功能在不同頁面大小、樣式都不一致。
+ *
+ * 這次統一移到全域樣式，顏色對齊全站主色，所有「返回」連結改套用
+ * 同一個 class，不再各自為政。
+ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 0.8rem;
+  padding: 0.55rem 0.9rem;
+  color: #1c5286;
+  background: #eaf3fb;
+  border: 1px solid #b7d3ea;
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.back-link:hover {
+  background: #dcebf7;
+}
+.back-link:focus-visible {
+  outline: 3px solid rgba(28, 82, 134, 0.3);
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .back-link {
+    width: 100%;
+    justify-content: center;
+  }
+}

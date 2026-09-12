@@ -33,12 +33,21 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, of } from 'rxjs';
+import { catchError, debounceTime, filter, startWith, switchMap } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { joinCampaignTags } from '../../../core/domain/labels';
+import {
+  PackageSizeTier,
+  PackingType,
+  ShelfLifeTier,
+  SupplierLeadTimeTier,
+  TemperatureZone,
+} from '../../../core/domain/enums';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
+import { SimilarProductCandidatePayload } from '../api/product-api.contract';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
@@ -75,6 +84,28 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 const MOCK_CAMPAIGN_TAGS = ['bbq', 'gift', 'family', 'daily', 'summer', 'winter'] as const;
+
+/** Mock 版的相似商品候選，供 RESALE 挑選小工具 demo 用，不呼叫任何網路請求。 */
+const MOCK_SIMILAR_CANDIDATES: readonly SimilarProductCandidatePayload[] = [
+  {
+    productId: 501,
+    name: '中秋炭烤海陸組合禮盒（去年款）',
+    supplierName: '潮港鮮物有限公司',
+    pricingType: 'RESALE',
+    nameSimilarity: 0.86,
+    supplierSimilarity: 1,
+    combinedScore: 0.9,
+  },
+  {
+    productId: 502,
+    name: '海陸雙拼烤肉禮盒',
+    supplierName: '潮港鮮物有限公司',
+    pricingType: 'RESALE',
+    nameSimilarity: 0.62,
+    supplierSimilarity: 1,
+    combinedScore: 0.7,
+  },
+];
 
 function nonBlank(control: AbstractControl): ValidationErrors | null {
   return typeof control.value === 'string' && control.value.trim().length > 0
@@ -236,6 +267,16 @@ export class ProductForm implements OnInit {
     // 表單維持 0–100（%）輸入，實際送出時要換算成後端要的 0–1 小數
     // （見 toEstimatedPurchaseRateDecimal()）。
     estimatedPurchaseRate: [50, [Validators.required, Validators.min(0), Validators.max(100)]],
+    // 以下 8 個欄位供 Gate 判定使用，全部選填——不加 Validators.required，
+    // 留空時後端 Gate 判定會依三層繼承規則改用品類層的預設屬性。
+    temperatureZone: [null as TemperatureZone | null],
+    shelfLifeTier: [null as ShelfLifeTier | null],
+    supplierLeadTimeTier: [null as SupplierLeadTimeTier | null],
+    packageSizeTier: [null as PackageSizeTier | null],
+    packingType: [null as PackingType | null],
+    handlingFlags: ['', Validators.maxLength(200)],
+    certificationFlags: ['', Validators.maxLength(200)],
+    supplierMaxCapacity: [null as number | null, Validators.min(0)],
   });
 
   /**
@@ -253,11 +294,126 @@ export class ProductForm implements OnInit {
     return this.form.controls.pricingType.value === 'RESALE';
   }
 
+  // ===================== RESALE 相似商品參考 =====================
+
+  /**
+   * 使用者選定的參考商品。送出時填入 ProductCreateRequestPayload／
+   * ProductUpdateRequestPayload 的 resaleReferenceProductId。
+   *
+   * ⚠️ **編輯模式下無法回填目前已設定的參考商品**——ProductResponse
+   * 沒有回傳這個欄位（後端 GET 端點沒有這個欄位，非前端疏漏）。編輯既有
+   * RESALE 商品時這裡永遠從空白開始；若使用者沒有重新搜尋選擇就直接送出，
+   * 會把 resaleReferenceProductId 送成 null，等於清空原本的設定。
+   * 這是後端目前的限制，樣板上必須用提示文字讓使用者知道。
+   */
+  readonly resaleReferenceProductId = signal<number | null>(null);
+  readonly resaleReferenceName = signal<string | null>(null);
+
+  readonly similarCandidates = signal<SimilarProductCandidatePayload[]>([]);
+  readonly isSearchingSimilar = signal(false);
+  readonly similarSearchError = signal('');
+
+  /**
+   * 監看「商品名稱」欄位，debounce 後即時查詢相似商品，不需要另外的搜尋框
+   * ——RESALE 商品本來就必填商品名稱，重複開一個查詢欄位只會讓使用者
+   * 打兩次幾乎一樣的字。真實模式才打 API；Mock 模式用固定清單本地過濾。
+   *
+   * ⚠️ 只有 productTypeId 已選、名稱至少 2 個字時才查，避免打出全域搜尋
+   * 般的無意義請求（後端 name 是必填參數，沒有 productTypeId 會是 400）。
+   */
+  private wireSimilarCandidateSearch(): void {
+    this.form.controls.name.valueChanges
+      .pipe(
+        startWith(this.form.controls.name.value),
+        debounceTime(400),
+        filter(() => this.isResale()),
+        switchMap((name): Observable<SimilarProductCandidatePayload[]> => {
+          const trimmedName = (name ?? '').trim();
+          const productTypeId = this.form.controls.productTypeId.value;
+
+          if (this.useMockData) {
+            if (trimmedName.length < 2) return of([]);
+            return of(
+              MOCK_SIMILAR_CANDIDATES.filter((c) =>
+                c.name.includes(trimmedName.slice(0, 2)),
+              ),
+            );
+          }
+
+          if (!productTypeId || trimmedName.length < 2) return of([]);
+
+          this.isSearchingSimilar.set(true);
+          this.similarSearchError.set('');
+          return this.api
+            .findSimilarCandidates({
+              productTypeId,
+              name: trimmedName,
+              supplierName: this.form.controls.supplierName.value.trim() || undefined,
+              excludeId: this.productId ? Number(this.productId) : undefined,
+            })
+            .pipe(
+              catchError((err: unknown) => {
+                this.similarSearchError.set(toApiError(err).message);
+                return of([]);
+              }),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((candidates) => {
+        this.isSearchingSimilar.set(false);
+        this.similarCandidates.set(candidates);
+      });
+  }
+
+  selectResaleReference(candidate: SimilarProductCandidatePayload): void {
+    this.resaleReferenceProductId.set(candidate.productId);
+    this.resaleReferenceName.set(candidate.name);
+    // 選定後收起候選清單，避免使用者誤以為還要再選一次。
+    this.similarCandidates.set([]);
+  }
+
+  clearResaleReference(): void {
+    this.resaleReferenceProductId.set(null);
+    this.resaleReferenceName.set(null);
+  }
+
+  /** 供樣板顯示百分比：後端回傳 0~1 的小數（Jaro-Winkler），畫面顯示需要 ×100。 */
+  toSimilarityPercent(value: number | null): string {
+    return value === null ? '—' : `${Math.round(value * 100)}%`;
+  }
+
+  /**
+   * 編輯模式下，回填目前已設定的參考商品。
+   *
+   * 後端 GET 端點這次補上了 resaleReferenceProductId，但只回 id、沒有名稱
+   * （ProductResponse 沒有巢狀展開參考商品的完整資料，避免遞迴查詢），
+   * 所以這裡另外呼叫一次 getProduct() 換取名稱給畫面顯示；查詢失敗
+   * （例如參考商品後來被刪除）不視為表單載入失敗，只是顯示「#id」代替。
+   */
+  private loadExistingResaleReference(referenceId: number | null): void {
+    if (referenceId === null) return;
+
+    this.resaleReferenceProductId.set(referenceId);
+    this.resaleReferenceName.set(`#${referenceId}`);
+
+    this.api
+      .getProduct(referenceId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (product) => this.resaleReferenceName.set(product.name),
+        // 查不到名稱不影響表單載入，維持 `#id` 顯示即可。
+        error: () => undefined,
+      });
+  }
+
   ngOnInit(): void {
     if (!this.useMockData) {
       this.loadProductTypes();
       this.loadCampaignTags();
     }
+    // 兩種模式都要，Mock 模式走本地過濾（見 wireSimilarCandidateSearch 內判斷）。
+    this.wireSimilarCandidateSearch();
 
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
 
@@ -294,6 +450,14 @@ export class ProductForm implements OnInit {
             priceCompetitiveness: model.core.priceCompetitiveness ?? 2.5,
             targetCustomer: model.core.targetCustomerDescription,
             estimatedPurchaseRate: Math.round((model.core.estimatedPurchaseRate ?? 0.5) * 100),
+            temperatureZone: model.core.temperatureZone,
+            shelfLifeTier: model.core.shelfLifeTier,
+            supplierLeadTimeTier: model.core.supplierLeadTimeTier,
+            packageSizeTier: model.core.packageSizeTier,
+            packingType: model.core.packingType,
+            handlingFlags: model.core.handlingFlags,
+            certificationFlags: model.core.certificationFlags,
+            supplierMaxCapacity: model.core.supplierMaxCapacity,
           });
           this.currentImageUrl.set(model.base.imageUrl || null);
           if (model.base.imageUrl) {
@@ -304,6 +468,7 @@ export class ProductForm implements OnInit {
           this.isApproved.set(model.actions.isCoreLocked);
           this.isRejected.set(model.reviewStatus === 'REJECTED');
           if (model.actions.isCoreLocked) this.lockCoreFields();
+          this.loadExistingResaleReference(model.core.resaleReferenceProductId);
           this.pageState.set('default');
         },
         error: (err) => {
@@ -460,6 +625,16 @@ export class ProductForm implements OnInit {
       priceCompetitiveness: raw.priceCompetitiveness,
       targetCustomerDescription: raw.targetCustomer.trim() || null,
       estimatedPurchaseRate: this.toEstimatedPurchaseRateDecimal(),
+      // 非 RESALE 一律送 null，避免使用者切換訂價分流後殘留舊選擇。
+      resaleReferenceProductId: isResale ? this.resaleReferenceProductId() : null,
+      temperatureZone: raw.temperatureZone,
+      shelfLifeTier: raw.shelfLifeTier,
+      supplierLeadTimeTier: raw.supplierLeadTimeTier,
+      packageSizeTier: raw.packageSizeTier,
+      packingType: raw.packingType,
+      handlingFlags: raw.handlingFlags.trim() || null,
+      certificationFlags: raw.certificationFlags.trim() || null,
+      supplierMaxCapacity: raw.supplierMaxCapacity,
     };
 
     const save$ = this.isEditMode

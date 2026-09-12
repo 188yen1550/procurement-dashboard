@@ -48,7 +48,7 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
 .lock-note { margin-top:.35rem; color:#81631d; }
 .pricing-badge { width:max-content; max-width:100%; margin-top:.3rem; padding:.2rem .42rem; color:#375c78; background:#eaf3fb; border-radius:.35rem; font-size:.65rem; font-weight:800; }
 .pricing-badge[data-type='NEW'] { color:#6a4b87; background:#f2eafa; }
-.score { color:#1c5286; font-size:1rem; }
+.score{display:block;color:#1c5286;font-size:1.55rem;font-weight:800;text-align:center;}
 .score.unavailable { color:#8795a1; }
 .score-note { margin-top:.2rem; color:#8a6a29; }
 .completeness-cell > div:first-child { display:flex; justify-content:space-between; gap:.4rem; }
@@ -96,3 +96,28 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
 @keyframes spin { to { transform:rotate(360deg); } }
 @keyframes shimmer { to { background-position:-200% 0; } }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+/* ===== 全站審核狀態分布圖表（chart.js）===== */
+.status-chart-panel {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e8ee;
+  border-radius: 0.8rem;
+  box-shadow: 0 8px 24px rgba(29, 54, 78, 0.05);
+}
+
+.status-chart-wrap {
+  position: relative;
+  height: 160px;
+  margin-top: 0.5rem;
+}
+
+.status-chart-panel .panel-header {
+  margin-bottom: 0.3rem;
+}
+.status-chart-panel .panel-header h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1rem;
+  color: #243447;
+}

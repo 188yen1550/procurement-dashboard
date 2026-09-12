@@ -17,8 +17,8 @@ export const USER_API = {
   list: '/api/users',
   create: '/api/users',
   disable: (id: number | string) => `/api/users/${id}/disable`,
-  /** ⚠️ 同上，後端目前沒有這支端點，只是先把前端呼叫路徑準備好。 */
-  restore: (id: number | string) => `/api/users/${id}/restore`,
+  /** 對應 UserController.enableUser()。畫面上稱「復用」，端點是 /enable。 */
+  enable: (id: number | string) => `/api/users/${id}/enable`,
 } as const;
 
 /**

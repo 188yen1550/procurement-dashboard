@@ -49,6 +49,11 @@
       AI 建議清單
     </a>
 
+    <a routerLink="/group-buy" routerLinkActive="active" (click)="closeRequested.emit()">
+      <span class="nav-icon" aria-hidden="true">📋</span>
+      歷史銷售紀錄
+    </a>
+
     @if (isManager) {
       <a routerLink="/review" routerLinkActive="active" (click)="closeRequested.emit()">
         <span class="nav-icon" aria-hidden="true">✓</span>

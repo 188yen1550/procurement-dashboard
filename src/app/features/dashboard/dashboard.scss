@@ -132,9 +132,10 @@ button:focus-visible {
 .stat-card,
 .skeleton-card {
   position: relative;
-  min-height: 135px;
-  padding: 1rem 1.1rem;
+  min-height: 150px;
+  padding: 1.1rem 1.1rem 1.3rem;
   overflow: hidden;
+  text-align: center;
   background: #fff;
   border: 1px solid #e0e8ee;
   border-radius: 0.8rem;
@@ -167,9 +168,11 @@ button:focus-visible {
 }
 .stat-card strong {
   display: block;
-  margin: 0.55rem 0 0.25rem;
+  margin: 0.6rem 0 0.25rem;
   color: #1e3448;
-  font-size: 2rem;
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.1;
 }
 .stat-card small {
   font-size: 0.72rem;
@@ -580,5 +583,28 @@ td {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* ===== 審核狀態分布圖表（chart.js）===== */
+.status-chart-panel {
+  margin-bottom: 1rem;
+}
+
+.status-chart-wrap {
+  position: relative;
+  height: 220px;
+  margin-top: 0.5rem;
+}
+
+/* 操作層沒有風險提示面板，側欄只剩轉換率一張卡，
+   把主欄與側欄的比例拉近，避免側欄顯得空洞。 */
+.content-grid.operator-view {
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+}
+
+@media (max-width: 900px) {
+  .content-grid.operator-view {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

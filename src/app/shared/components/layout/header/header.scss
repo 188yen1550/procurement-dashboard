@@ -126,3 +126,25 @@ button:focus-visible {
     display: none;
   }
 }
+
+/*
+ * 使用者名稱＋角色徽章整塊做成個人資料的連結。
+ * hover／focus 時給一個淡底色，讓它看起來可點——沒有這個回饋的話，
+ * 使用者不會發現自己的名字是連結。
+ */
+.user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--r-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.user-link:hover,
+.user-link:focus-visible,
+.user-link.active {
+  background: rgba(255, 255, 255, 0.12);
+}

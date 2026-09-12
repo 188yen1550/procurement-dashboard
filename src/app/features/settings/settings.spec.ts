@@ -14,6 +14,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
+import { DialogService } from '../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import { SettingsApiService } from './api/settings-api.service';
@@ -95,6 +96,7 @@ const MOCK_ACCOUNTS = [
 describe('Settings', () => {
   let fixture: ComponentFixture<Settings>;
   let component: Settings;
+  let dialog: DialogService;
 
   const settingsApi = {
     getEvaluationModes: vi.fn(() => of(MOCK_MODES.map((m) => ({ ...m })))),
@@ -176,6 +178,7 @@ describe('Settings', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(Settings);
     component = fixture.componentInstance;
+    dialog = TestBed.inject(DialogService);
     fixture.detectChanges();
   });
 
@@ -260,7 +263,16 @@ describe('Settings', () => {
 
     // ⚠️ 後端 ProductTypeResponse 沒有「使用品項數」欄位，前端無從事先判斷，
     // 一律送出刪除請求，由後端的 409 擋下——這是真實模式下唯一的判斷依據。
+    //
+    // 刪除是不可復原操作，現在會先跳確認框，這裡先驗證確認框正確覆誦了
+    // 要刪除的品類名稱，且此時 API 還沒被呼叫，接著模擬使用者確認。
     component.removeProductType('食品／生鮮');
+    const confirmState = dialog.state();
+    expect(confirmState?.variant).toBe('confirm');
+    expect(confirmState?.messages[0]).toContain('食品／生鮮');
+    expect(settingsApi.deleteProductType).not.toHaveBeenCalled();
+
+    dialog.handleConfirm();
 
     expect(settingsApi.deleteProductType).toHaveBeenCalled();
     expect(component.productTypes().some((item) => item.name === '食品／生鮮')).toBe(true);

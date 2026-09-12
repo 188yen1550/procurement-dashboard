@@ -3,13 +3,20 @@ import {
   DataSource,
   FestiveCampaignStatus,
   FestiveCategory,
+  GateCode,
+  GateStatus,
   ItemStatus,
+  PackageSizeTier,
+  PackingType,
   PricingStatus,
   PricingType,
   PriceSensitivity,
   ReviewDecision,
   ReviewStatus,
+  ShelfLifeTier,
+  SupplierLeadTimeTier,
   TagMatchTier,
+  TemperatureZone,
   TrendDirection,
   UserRole,
 } from './enums';
@@ -170,3 +177,52 @@ export function splitKeywords(keywords: string | null | undefined): string[] {
     .map((keyword) => keyword.trim())
     .filter((keyword) => keyword.length > 0);
 }
+
+export const TEMPERATURE_ZONE_LABEL: Record<TemperatureZone, string> = {
+  NORMAL: '常溫',
+  CHILLED: '冷藏',
+  FROZEN: '冷凍',
+};
+
+export const SHELF_LIFE_TIER_LABEL: Record<ShelfLifeTier, string> = {
+  D7: '7天內',
+  D8_30: '8-30天',
+  D31_90: '31-90天',
+  D90_PLUS: '90天以上',
+  NA: '不適用',
+};
+
+export const SUPPLIER_LEAD_TIME_TIER_LABEL: Record<SupplierLeadTimeTier, string> = {
+  D3: '3天內',
+  D4_7: '4-7天',
+  D8_14: '8-14天',
+  D15_PLUS: '15天以上',
+};
+
+export const PACKAGE_SIZE_TIER_LABEL: Record<PackageSizeTier, string> = {
+  XS: '極小（可放信封）',
+  S: '小（單手可拿）',
+  M: '中（一般紙箱）',
+  L: '大（需兩人搬）',
+};
+
+export const PACKING_TYPE_LABEL: Record<PackingType, string> = {
+  WHOLE_CARTON: '原箱直出',
+  REPACK: '需拆箱分裝',
+};
+
+export const GATE_STATUS_LABEL: Record<GateStatus, string> = {
+  PASSED: '通過',
+  FAILED: '不通過',
+  INSUFFICIENT_DATA: '資料不足，無法判斷',
+  NOT_APPLICABLE: '不適用',
+};
+
+/** 對應後端 GateEvaluationService 的五個 Gate，畫面顯示用名稱。 */
+export const GATE_CODE_LABEL: Record<GateCode, string> = {
+  GATE_MOQ_FEASIBILITY: 'MOQ 可行性',
+  GATE_LEAD_TIME: '備貨前置期',
+  GATE_SHELF_LIFE: '效期門檻',
+  GATE_TEMPERATURE_ZONE: '溫層支援',
+  GATE_DATA_COMPLETENESS: '資料完整度',
+};

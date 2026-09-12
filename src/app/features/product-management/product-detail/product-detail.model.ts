@@ -22,8 +22,16 @@
 import {
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
+  GateResultSummaryPayload,
   ProductResponsePayload,
 } from '../api/product-api.contract';
+import {
+  PackageSizeTier,
+  PackingType,
+  ShelfLifeTier,
+  SupplierLeadTimeTier,
+  TemperatureZone,
+} from '../../../core/domain/enums';
 
 export type DetailState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -74,6 +82,25 @@ export interface DetailProduct {
   risks: string[];
   description: string;
   imageUrl: string | null;
+  /**
+   * 以下 9 個欄位供 Gate 判定使用，語意見 ProductResponsePayload 同名欄位
+   * 的註解。詳情頁純顯示，不提供編輯——編輯要到品項編輯表單進行。
+   */
+  temperatureZone: TemperatureZone | null;
+  shelfLifeTier: ShelfLifeTier | null;
+  supplierLeadTimeTier: SupplierLeadTimeTier | null;
+  packageSizeTier: PackageSizeTier | null;
+  packingType: PackingType | null;
+  handlingFlags: string | null;
+  certificationFlags: string | null;
+  supplierMaxCapacity: number | null;
+  /**
+   * ⚠️ 後端只有單筆詳情（GET /api/products/{id}）才會回傳，undefined 代表
+   * 這個商品的 Gate 判定還沒被計算過（理論上不會發生，因為 detail 頁
+   * 本身就是靠這支端點取得資料）——保留 undefined 分支純粹是型別上的
+   * 防禦，畫面遇到時顯示「尚無 Gate 判定資料」而不是報錯。
+   */
+  gateResults: GateResultSummaryPayload | null;
 }
 
 /**
@@ -152,5 +179,14 @@ export function toDetailProduct(
     risks: [],
     description: product.description ?? '',
     imageUrl: product.imageUrl,
+    temperatureZone: product.temperatureZone,
+    shelfLifeTier: product.shelfLifeTier,
+    supplierLeadTimeTier: product.supplierLeadTimeTier,
+    packageSizeTier: product.packageSizeTier,
+    packingType: product.packingType,
+    handlingFlags: product.handlingFlags,
+    certificationFlags: product.certificationFlags,
+    supplierMaxCapacity: product.supplierMaxCapacity,
+    gateResults: product.gateResults ?? null,
   };
 }

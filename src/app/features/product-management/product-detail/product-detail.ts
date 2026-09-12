@@ -11,7 +11,16 @@ import { APP_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { DialogService } from '../../../core/dialog/dialog.service';
-import { REVIEW_STATUS_LABEL } from '../../../core/domain/labels';
+import {
+  GATE_CODE_LABEL,
+  GATE_STATUS_LABEL,
+  PACKAGE_SIZE_TIER_LABEL,
+  PACKING_TYPE_LABEL,
+  REVIEW_STATUS_LABEL,
+  SHELF_LIFE_TIER_LABEL,
+  SUPPLIER_LEAD_TIME_TIER_LABEL,
+  TEMPERATURE_ZONE_LABEL,
+} from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
 import { AiAnalysisModel } from '../api/product.mapper';
@@ -89,6 +98,27 @@ const APPROVED: DetailProduct = {
   risks: ['MOQ 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
   description: '適合中秋家庭與企業團購的海陸烤肉組合。',
   imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"%3E%3Crect width="800" height="600" fill="%23e8f2ed"/%3E%3Ccircle cx="400" cy="270" r="150" fill="%2339735c"/%3E%3Cpath d="M290 300h220l-35 125H325z" fill="%23fff"/%3E%3Ctext x="400" y="510" text-anchor="middle" font-family="sans-serif" font-size="38" fill="%23243447"%3EProduct Mock%3C/text%3E%3C/svg%3E',
+  temperatureZone: 'FROZEN',
+  shelfLifeTier: 'D90_PLUS',
+  supplierLeadTimeTier: 'D4_7',
+  packageSizeTier: 'M',
+  packingType: 'WHOLE_CARTON',
+  handlingFlags: null,
+  certificationFlags: null,
+  supplierMaxCapacity: 300,
+  gateResults: {
+    results: [
+      { gateCode: 'GATE_MOQ_FEASIBILITY', status: 'PASSED', reason: '解析後 MOQ 50 組，低於該品類 P75 基準 80 組。', riskCategory: null },
+      { gateCode: 'GATE_LEAD_TIME', status: 'PASSED', reason: '前置期 4-7 天，距中秋檔期尚有 18 天，備貨充裕。', riskCategory: null },
+      { gateCode: 'GATE_SHELF_LIFE', status: 'PASSED', reason: '效期 90 天以上，高於品類門檻 21 天。', riskCategory: null },
+      { gateCode: 'GATE_TEMPERATURE_ZONE', status: 'PASSED', reason: '冷凍溫層在通路支援範圍內。', riskCategory: null },
+      { gateCode: 'GATE_DATA_COMPLETENESS', status: 'PASSED', reason: '資料完整度 96%，高於 60% 門檻。', riskCategory: null },
+    ],
+    passedCount: 5,
+    failedCount: 0,
+    insufficientDataCount: 0,
+    notApplicableCount: 0,
+  },
 };
 const INCOMPLETE: DetailProduct = {
   ...APPROVED,
@@ -119,6 +149,15 @@ const INCOMPLETE: DetailProduct = {
   risks: [],
   description: '商品資料尚未補齊，目前僅供編輯與查看。',
   imageUrl: null,
+  temperatureZone: null,
+  shelfLifeTier: null,
+  supplierLeadTimeTier: null,
+  packageSizeTier: null,
+  packingType: null,
+  handlingFlags: null,
+  certificationFlags: null,
+  supplierMaxCapacity: null,
+  gateResults: null,
 };
 
 @Component({
@@ -136,6 +175,13 @@ export class ProductDetail implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly useMockData = APP_CONFIG.useMockData;
+  readonly gateCodeLabel = GATE_CODE_LABEL;
+  readonly gateStatusLabel = GATE_STATUS_LABEL;
+  readonly temperatureZoneLabel = TEMPERATURE_ZONE_LABEL;
+  readonly shelfLifeTierLabel = SHELF_LIFE_TIER_LABEL;
+  readonly supplierLeadTimeTierLabel = SUPPLIER_LEAD_TIME_TIER_LABEL;
+  readonly packageSizeTierLabel = PACKAGE_SIZE_TIER_LABEL;
+  readonly packingTypeLabel = PACKING_TYPE_LABEL;
   readonly stateOptions: readonly DetailState[] = [
     'default',
     'locked',
