@@ -28,7 +28,7 @@
         </div>
       </div></section>
       <section aria-labelledby="core-title" [class.is-core-locked]="isCoreLocked()"><header><span>02</span><div><h2 id="core-title">選品核心資料</h2><p>影響評分、排行與審核的條件。</p></div></header><div class="form-grid">
-        <label>商品分類 <em>*</em><select formControlName="productTypeId"><option [value]="null">請選擇</option>@for (type of productTypeOptions(); track type.id) { <option [value]="type.id">{{ type.name }}</option> }</select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品分類。</small> }</label>
+        <label>商品分類 <em>*</em><select formControlName="productTypeId"><option [value]="null">請選擇</option>@for (group of productTypeGroups(); track group.majorName) { <optgroup [label]="group.majorName">@for (minor of group.minors; track minor.id) { <option [value]="minor.id">{{ minor.name }}</option> }</optgroup> }</select>@if (fieldInvalid('productTypeId')) { <small role="alert">請選擇商品分類。</small> }</label>
         <fieldset><legend>訂價分流 <em>*</em></legend><div class="choice-row"><label><input type="radio" formControlName="pricingType" value="NEW" /> 新品 NEW</label><label><input type="radio" formControlName="pricingType" value="RESALE" /> 再販售 RESALE</label></div><small>{{ isResale() ? '再販售需填寫價格與市價比較。' : '新品尚未定價，建立後標示為待訂價。' }}</small></fieldset>
         <label class="wide"
           >節慶標籤（選填/可複選）
@@ -48,6 +48,11 @@
           </div>
         </label>
         @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div>
+          @if (priceAboveMarketWarning()) {
+            <p class="wide price-warning" role="alert">
+              ⚠ 預計售價高於市售價，團購通常會比市價便宜，請確認數字沒有填反或打錯。這不會阻擋送出。
+            </p>
+          }
           <!-- ===== RESALE 相似商品參考 ===== -->
           <div class="wide resale-reference" aria-labelledby="resale-reference-title">
             <div class="resale-reference-heading">

@@ -133,10 +133,36 @@
             [disabled]="isLoading()"
           >
             <option value="ALL">全部分類</option>
-            @for (type of productTypes(); track type) {
-              <option [value]="type">{{ type }}</option>
+            @for (group of groupedProductTypes(); track group.major.id) {
+              <optgroup [label]="group.major.name">
+                @for (minor of group.minors; track minor.id) {
+                  <option [value]="minor.name">{{ minor.name }}</option>
+                }
+              </optgroup>
             }
           </select>
+        </div>
+        <div class="field">
+          <label for="updated-from">修改時間（起）</label
+          ><input
+            id="updated-from"
+            type="date"
+            [ngModel]="updatedFromDraft()"
+            (ngModelChange)="updateUpdatedFrom($event)"
+            [disabled]="isLoading()"
+            [max]="updatedToDraft() || undefined"
+          />
+        </div>
+        <div class="field">
+          <label for="updated-to">修改時間（訖）</label
+          ><input
+            id="updated-to"
+            type="date"
+            [ngModel]="updatedToDraft()"
+            (ngModelChange)="updateUpdatedTo($event)"
+            [disabled]="isLoading()"
+            [min]="updatedFromDraft() || undefined"
+          />
         </div>
         <div class="field">
           <label for="sort-select">排序</label
@@ -210,7 +236,21 @@
             </caption>
             <thead>
               <tr>
-                <th scope="col">商品名稱</th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleNameSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'name_asc' ? '商品名稱，目前正序，點擊改為倒序' : '商品名稱，點擊排序'
+                    "
+                  >
+                    商品名稱
+                    <span class="sort-arrow" aria-hidden="true">{{
+                      sortOption() === 'name_asc' ? '▲' : sortOption() === 'name_desc' ? '▼' : '⇅'
+                    }}</span>
+                  </button>
+                </th>
                 <th scope="col">實際分類／訂價分流</th>
                 <th scope="col">供應商</th>
                 <th scope="col">最終分數</th>
@@ -236,7 +276,18 @@
                     }
                   </td>
                   <td>
-                    <strong>{{ product.productTypeName }}</strong
+                    <!-- 懸停 1 秒以上才顯示品類說明（純 CSS transition-delay 實現，
+                         不用 JS 計時器）；沒有說明文字的品類不會渲染這個提示框，
+                         不是顯示一個空白的框。tabindex 讓鍵盤使用者也能透過
+                         focus 觸發，不是只有滑鼠使用者才看得到說明。 -->
+                    <strong
+                      class="type-hover"
+                      [class.has-tooltip]="productTypeDescriptions().has(product.productTypeId ?? -1)"
+                      [attr.tabindex]="productTypeDescriptions().has(product.productTypeId ?? -1) ? 0 : null"
+                      >{{ product.productTypeName
+                      }}@if (productTypeDescriptions().has(product.productTypeId ?? -1)) {
+                        <span class="type-tooltip">{{ productTypeDescriptions().get(product.productTypeId ?? -1) }}</span>
+                      }</strong
                     ><span class="pricing-badge" [attr.data-type]="product.pricingType">{{
                       pricingTypeLabel(product.pricingType)
                     }}</span>

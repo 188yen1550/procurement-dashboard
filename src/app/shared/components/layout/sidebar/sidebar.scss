@@ -55,6 +55,12 @@
   border: 0;
   font-size: 1.75rem;
   cursor: pointer;
+  border-radius: 0.3rem;
+}
+
+.close-button:focus-visible {
+  outline: 3px solid rgba(0, 180, 216, 0.45);
+  outline-offset: 2px;
 }
 
 .navigation {

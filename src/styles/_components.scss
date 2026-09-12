@@ -244,7 +244,15 @@
 .field textarea,
 .form-grid textarea,
 .modal-card textarea {
-  resize: vertical;
+  /*
+   * 原本是 resize: vertical，允許使用者自由拖曳拉伸高度——拉伸後的
+   * textarea 會撐開整個版面，跟其他欄位的排版節奏不一致，長文字內容
+   * 也可能把使用者拖出畫面可視範圍之外。改成固定高度＋內部捲動：
+   * 高度不會變動，內容超過高度就在文字框「內部」捲動，不影響外層版面。
+   */
+  resize: none;
+  max-height: 9.5rem;
+  overflow-y: auto;
 }
 
 /* 必填標記。既有樣板用 <em> 承載，維持不變。 */

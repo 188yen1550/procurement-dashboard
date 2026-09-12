@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { catchError, map, shareReplay } from 'rxjs/operators';
 import { SettingsApiService } from './settings-api.service';
+import { ProductTypeResponsePayload } from './settings-api.contract';
 
 /**
  * 商品類型的 id → 名稱對照。
@@ -30,6 +31,62 @@ export class ProductTypeLookupService {
 
   /** null 代表尚未載入過；載入後持有 shareReplay 過的 Observable。 */
   private cache$: Observable<Map<number, string>> | null = null;
+  private raw$: Observable<ProductTypeResponsePayload[]> | null = null;
+
+  /**
+   * 取得依大類分組的階層結構，供畫面用 <optgroup> 或縮排呈現「大類底下
+   * 有哪些小類」，不要再把 30 個小類攤平成一條長長的清單——使用者要從
+   * 扁平清單裡找到「海鮮水產」屬於哪個大類，得先記住或用猜的。
+   *
+   * 只回傳未停用（isActive !== false）的項目——停用的品類不該出現在
+   * 新增／篩選這種「往前看」的操作情境，那是設定頁管理列表才需要看到的。
+   */
+  getGroupedOptions(): Observable<{ major: ProductTypeResponsePayload; minors: ProductTypeResponsePayload[] }[]> {
+    return this.getRaw().pipe(
+      map((types) => {
+        const actives = types.filter((t) => t.isActive !== false);
+        const majors = actives.filter((t) => t.level === 1).sort((a, b) => a.id - b.id);
+        const minorsByParent = new Map<number, ProductTypeResponsePayload[]>();
+        for (const t of actives) {
+          if (t.level !== 2 || t.parentId === null) continue;
+          const arr = minorsByParent.get(t.parentId) ?? [];
+          arr.push(t);
+          minorsByParent.set(t.parentId, arr);
+        }
+        return majors.map((major) => ({
+          major,
+          minors: (minorsByParent.get(major.id) ?? []).sort((a, b) => a.id - b.id),
+        }));
+      }),
+    );
+  }
+
+  private getRaw(): Observable<ProductTypeResponsePayload[]> {
+    if (!this.raw$) {
+      this.raw$ = this.api.getProductTypes().pipe(
+        catchError(() => of([] as ProductTypeResponsePayload[])),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    }
+    return this.raw$;
+  }
+
+  /**
+   * 取得 id → 說明文字的 Map，供品類名稱懸停顯示用。說明是選填欄位，
+   * 沒填的品類不會出現在這個 Map 裡（呼叫端用 Map.get() 拿到 undefined，
+   * 據此判斷不要顯示提示框，而不是顯示一個空白的提示框）。
+   */
+  getDescriptionMap(): Observable<Map<number, string>> {
+    return this.getRaw().pipe(
+      map((types) => {
+        const entries: [number, string][] = [];
+        for (const t of types) {
+          if (t.description && t.description.trim()) entries.push([t.id, t.description.trim()]);
+        }
+        return new Map(entries);
+      }),
+    );
+  }
 
   /**
    * 取得 id → 名稱的 Map。
@@ -64,5 +121,6 @@ export class ProductTypeLookupService {
    */
   invalidate(): void {
     this.cache$ = null;
+    this.raw$ = null;
   }
 }

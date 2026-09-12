@@ -46,7 +46,13 @@ import { DashboardApiService } from '../dashboard/api/dashboard-api.service';
 import { DashboardStatisticsResponsePayload } from '../dashboard/api/dashboard-api.contract';
 
 export type PageState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
-export type SortOption = 'updatedAt_desc' | 'updatedAt_asc' | 'finalScore_desc' | 'finalScore_asc';
+export type SortOption =
+  | 'updatedAt_desc'
+  | 'updatedAt_asc'
+  | 'finalScore_desc'
+  | 'finalScore_asc'
+  | 'name_asc'
+  | 'name_desc';
 
 /** 本地 Mock：欄位形狀與 ProductListItem 一致，切換模式時樣板不用改。 */
 function mockItem(
@@ -131,6 +137,20 @@ export class ProductManagement implements OnInit, OnDestroy {
   readonly reviewFilter = signal<ReviewStatus | 'ALL'>(this.auth.isManager() ? 'ALL' : 'PENDING');
   readonly itemFilter = signal<ItemStatus | 'ALL'>('ALL');
   readonly productTypeFilter = signal('ALL');
+  // date input 原生格式是 'YYYY-MM-DD'，送給後端前補上時分秒——起始日補
+  // 00:00:00、結束日補 23:59:59，這樣「選同一天」才會真的涵蓋當天全部
+  // 範圍，不是後端拿到年月日相同的兩個時間點做 >= / <= 比對後篩出 0 筆。
+  readonly updatedFromDraft = signal('');
+  readonly updatedToDraft = signal('');
+
+  updateUpdatedFrom(value: string): void {
+    this.updatedFromDraft.set(value);
+    this.applyFilterChange();
+  }
+  updateUpdatedTo(value: string): void {
+    this.updatedToDraft.set(value);
+    this.applyFilterChange();
+  }
   /**
    * 排序。
    *
@@ -158,7 +178,7 @@ export class ProductManagement implements OnInit, OnDestroy {
     // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
     // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
-    if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadStatistics(); });
+    if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadStatistics(); this.loadProductTypes(); });
   }
 
   /** 分頁狀態。後端 @PageableDefault(size = 20)，前端沿用同一個預設值。 */
@@ -167,9 +187,30 @@ export class ProductManagement implements OnInit, OnDestroy {
   readonly totalElements = signal(0);
   readonly totalPages = signal(0);
 
-  readonly productTypes = computed(() =>
-    [...new Set(this.products().map((p) => p.productTypeName))].sort(),
-  );
+  /**
+   * 商品分類篩選選項——依大類分組的完整清單，跟目前頁面顯示的商品完全
+   * 無關。原本這裡是從「目前這一頁的商品裡有出現過的分類名稱」動態算出來
+   * 的，代表某個分類如果剛好在目前頁面／篩選條件下沒有任何商品，篩選
+   * 選單裡就不會出現這個選項——使用者想篩選一個目前查無資料的分類，
+   * 卻連選項都選不到，本末倒置。改成直接載入完整的品類清單，
+   * 篩選選項應該要能涵蓋「所有存在的分類」，不是「剛好正在顯示的分類」。
+   */
+  readonly groupedProductTypes = signal<
+    { major: { id: number; name: string }; minors: { id: number; name: string }[] }[]
+  >([]);
+  /** id → 說明文字，供品類名稱懸停顯示用（見 #23：懸停 1 秒以上才顯示，沒有說明則不顯示）。 */
+  readonly productTypeDescriptions = signal<Map<number, string>>(new Map());
+
+  private loadProductTypes(): void {
+    this.productTypeLookup
+      .getGroupedOptions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((groups) => this.groupedProductTypes.set(groups));
+    this.productTypeLookup
+      .getDescriptionMap()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((map) => this.productTypeDescriptions.set(map));
+  }
 
   /**
    * 主清單只顯示 CANDIDATE。
@@ -239,8 +280,24 @@ export class ProductManagement implements OnInit, OnDestroy {
         return at - bt;
       });
     }
+    // name 排序在真實模式下由後端 Pageable/Sort 處理，這裡的分支只服務
+    // Mock 模式（本地固定陣列，沒有後端可以幫忙排序）。
+    if ((sort === 'name_asc' || sort === 'name_desc') && this.useMockData) {
+      const direction = sort === 'name_asc' ? 1 : -1;
+      return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant') * direction);
+    }
     return list;
   });
+
+  /**
+   * 商品名稱欄位的排序箭頭——點擊直接在正序/倒序間切換，不用另外選單
+   * 選擇「商品名稱（A→Z）」再選「商品名稱（Z→A）」兩個選項，欄位本身
+   * 就是排序目標，箭頭只是方向切換，操作路徑更短。
+   */
+  toggleNameSort(): void {
+    const next: SortOption = this.sortOption() === 'name_asc' ? 'name_desc' : 'name_asc';
+    this.updateSort(next);
+  }
 
   // ----- 狀態分布圖表：重用 dashboard 的統計端點，跟品項清單本身的篩選
   // 及分頁無關，永遠顯示全站總覽，讓使用者在篩選清單的同時看得到
@@ -299,6 +356,7 @@ export class ProductManagement implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.load();
     this.loadStatistics();
+    this.loadProductTypes();
   }
 
   // ----- 載入 -----
@@ -317,10 +375,20 @@ export class ProductManagement implements OnInit, OnDestroy {
     const reviewStatus = this.reviewFilter();
     const itemStatus = this.itemFilter();
     // finalScore 排序不是合法的後端 sort 欄位（見 sortOption 說明），
-    // 這兩個選項一律退回後端預設的 updatedAt,desc，實際的分數排序
+    // 這個選項一律退回後端預設的 updatedAt,desc，實際的分數排序
     // 交給 sortedProducts() 在前端對目前頁面做。
-    const sort =
-      this.sortOption() === 'updatedAt_asc' ? 'updatedAt,asc' : 'updatedAt,desc';
+    // name 則是 Product entity 的真實欄位，Spring Data 的 Pageable/Sort
+    // 機制原生支援，不需要額外的後端程式碼就能直接送 name,asc / name,desc。
+    let sort: string;
+    if (this.sortOption() === 'updatedAt_asc') {
+      sort = 'updatedAt,asc';
+    } else if (this.sortOption() === 'name_asc') {
+      sort = 'name,asc';
+    } else if (this.sortOption() === 'name_desc') {
+      sort = 'name,desc';
+    } else {
+      sort = 'updatedAt,desc';
+    }
 
     // ⚠️ 修正：「商品實際分類」篩選之前完全沒有送給後端，選了任何分類都
     // 等同沒選——filteredProducts() 在真實模式下直接回傳 list（假設篩選
@@ -344,6 +412,8 @@ export class ProductManagement implements OnInit, OnDestroy {
             reviewStatus: reviewStatus === 'ALL' ? undefined : reviewStatus,
             itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
             productTypeId,
+            updatedFrom: this.updatedFromDraft() ? `${this.updatedFromDraft()}T00:00:00` : undefined,
+            updatedTo: this.updatedToDraft() ? `${this.updatedToDraft()}T23:59:59` : undefined,
             page: this.pageNumber(),
             size: this.pageSize(),
             sort,
@@ -424,6 +494,8 @@ export class ProductManagement implements OnInit, OnDestroy {
     this.reviewFilter.set('ALL');
     this.itemFilter.set('ALL');
     this.productTypeFilter.set('ALL');
+    this.updatedFromDraft.set('');
+    this.updatedToDraft.set('');
     this.statusMessageState.show('已清除所有搜尋與篩選條件。');
     this.applyFilterChange();
   }

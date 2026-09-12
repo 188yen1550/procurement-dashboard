@@ -427,3 +427,146 @@ tr.is-editing select {
     width: 100%;
   }
 }
+
+/* ===== 商品分類階層顯示（大類/小類） ===== */
+.type-major-row td {
+  background: #f4f7f9;
+  border-top: 2px solid #d7e0e6;
+}
+.type-minor-row .type-minor-name {
+  padding-left: 2rem;
+  color: #38536a;
+}
+.type-minor-row .type-minor-name::before {
+  content: '└ ';
+  color: #9aabb8;
+}
+
+/* ===== 評估模式卡片：擴大點擊範圍 ===== */
+.mode-grid article.is-selectable {
+  cursor: pointer;
+}
+.mode-grid article.is-selectable:hover {
+  border-color: #9db8cc;
+  box-shadow: 0 4px 14px rgba(28, 82, 134, 0.1);
+}
+
+/* ===== 風險關鍵字標籤區塊化（chip） ===== */
+.keyword-chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: #fff;
+  border: 1px solid #d4dee6;
+  border-radius: 0.4rem;
+}
+.keyword-chip-input input {
+  flex: 1;
+  min-width: 8rem;
+  padding: 0.3rem 0.2rem;
+  border: none;
+  outline: none;
+}
+.keyword-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.keyword-chip-list.readonly {
+  margin-top: 0.2rem;
+}
+.keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  color: #1c5286;
+  background: #eaf3fb;
+  border: 1px solid #b7d3ea;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.keyword-chip.readonly {
+  color: #38536a;
+  background: #f0f4f7;
+  border-color: #dbe4ea;
+}
+.keyword-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.keyword-chip-remove:hover {
+  color: #b23b3b;
+}
+
+/* ===== 節慶標籤選擇 dialog（#2） ===== */
+.tag-picker-modal {
+  width: min(480px, 100%);
+}
+.tag-picker-search input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #d4dee6;
+  border-radius: 0.45rem;
+  font-size: 0.85rem;
+}
+.tag-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 12rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  overflow-y: auto;
+  background: #f8fafc;
+  border: 1px solid #e0e8ee;
+  border-radius: 0.5rem;
+}
+.tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tag-picker-option:hover {
+  background: #eaf3fb;
+}
+.tag-picker-add-new {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
+.tag-tier-advanced {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #dbe4ea;
+}
+.tag-tier-advanced summary {
+  color: #526677;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tag-tier-advanced .tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+}

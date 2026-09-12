@@ -17,9 +17,9 @@ import {
 } from './review.mapper';
 
 const RISK_OPTIONS: RiskOptionResponsePayload[] = [
-  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
-  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
-  { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true },
+  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true, alertKeywords: '缺貨、斷貨' },
+  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true, alertKeywords: '瑕疵、客訴' },
+  { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true, alertKeywords: null },
 ];
 
 function makeForm(overrides: Partial<ReviewFormModel> = {}): ReviewFormModel {

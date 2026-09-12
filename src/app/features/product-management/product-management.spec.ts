@@ -144,6 +144,25 @@ describe('ProductManagement (formal API mode)', () => {
         ]),
       ),
     ),
+    // product-management.ts 的 loadProductTypes() 會呼叫這個方法取得依大類
+    // 分組的篩選選項——跟 getNameMap 用同一組假資料，維持測試裡的 id
+    // 對應關係一致（美妝保養＝5，用在下面「解析選中的分類名稱」測試）。
+    getGroupedOptions: vi.fn(() =>
+      of([
+        {
+          major: { id: 1, name: '食品' },
+          minors: [{ id: 1, name: '食品／生鮮' }],
+        },
+        {
+          major: { id: 5, name: '美妝' },
+          minors: [{ id: 5, name: '美妝保養' }],
+        },
+      ]),
+    ),
+    // product-management.ts 的 loadProductTypes() 也會呼叫這個方法取得
+    // 品類說明文字（供懸停提示用）——回傳空 Map 即可，這份測試套件不驗證
+    // 提示框內容，只需要方法存在、不拋錯。
+    getDescriptionMap: vi.fn(() => of(new Map<number, string>())),
   };
 
   beforeEach(async () => {

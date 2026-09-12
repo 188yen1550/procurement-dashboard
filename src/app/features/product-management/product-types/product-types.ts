@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SettingsApiService } from '../features/settings/api/settings-api.service';
-import { ProductTypeResponsePayload } from '../features/settings/api/settings-api.contract';
+import { SettingsApiService } from '../../settings/api/settings-api.service';
+import { ProductTypeResponsePayload } from '../../settings/settings-api.contract';
 
 @Component({
   selector: 'app-product-types',

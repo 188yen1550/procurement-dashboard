@@ -135,7 +135,6 @@ interface ScoreBandVM {
 interface RiskOptionVM {
   id: number | null;
   name: string;
-  /** ⚠️ 真實模式恆為 NOT_PROVIDED：GET 端點沒有這個欄位。 */
   keywords: string;
   isSystemDefault: boolean;
 }
@@ -144,9 +143,17 @@ interface ProductTypeVM {
   id: number | null;
   name: string;
   system: boolean;
-  /** ⚠️ 真實模式恆為 null：後端沒有這個統計。 */
-  used: number | null;
+  used: number;
   active: boolean;
+  /** 兩層階層：1=大類、2=小類，null 代表舊資料或載入失敗時的降級狀態。 */
+  parentId: number | null;
+  level: number | null;
+}
+
+/** 設定頁品類管理列表的顯示分組：大類本身＋底下的小類清單。 */
+interface ProductTypeGroupVM {
+  major: ProductTypeVM;
+  minors: ProductTypeVM[];
 }
 
 interface CampaignVM {
@@ -168,8 +175,6 @@ interface AccountVM {
   role: UserRole;
   active: boolean;
 }
-
-const NOT_PROVIDED = '（後端未提供）';
 
 /** 固定三套模式的展示殼；真實模式的 weights 另外呼叫 factors 端點補上。 */
 const MODE_SHELLS: readonly { code: string; name: string; description: string }[] = [
@@ -322,15 +327,18 @@ const MOCK_RISK_OPTIONS: readonly RiskOptionVM[] = [
 ];
 
 const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
-  { id: 1, name: '食品／生鮮', system: true, used: 12, active: true },
-  { id: 2, name: '日用品', system: true, used: 8, active: true },
-  { id: 3, name: '3C／家電', system: true, used: 6, active: true },
-  { id: 4, name: '生活雜貨', system: true, used: 4, active: true },
-  { id: 5, name: '美妝保養', system: true, used: 3, active: true },
-  { id: 6, name: '服飾配件', system: true, used: 0, active: true },
-  { id: 7, name: '寢具家用', system: true, used: 2, active: true },
-  { id: 8, name: '精品禮盒', system: true, used: 1, active: true },
-  { id: 9, name: '其他', system: true, used: 0, active: true },
+  { id: 100, name: '食品', system: true, used: 0, active: true, parentId: null, level: 1 },
+  { id: 1, name: '食品／生鮮', system: true, used: 12, active: true, parentId: 100, level: 2 },
+  { id: 9, name: '食品／其他', system: true, used: 0, active: true, parentId: 100, level: 2 },
+  { id: 200, name: '生活用品', system: true, used: 0, active: true, parentId: null, level: 1 },
+  { id: 2, name: '日用品', system: true, used: 8, active: true, parentId: 200, level: 2 },
+  { id: 4, name: '生活雜貨', system: true, used: 4, active: true, parentId: 200, level: 2 },
+  { id: 7, name: '寢具家用', system: true, used: 2, active: true, parentId: 200, level: 2 },
+  { id: 8, name: '精品禮盒', system: true, used: 1, active: true, parentId: 200, level: 2 },
+  { id: 300, name: '時尚科技', system: true, used: 0, active: true, parentId: null, level: 1 },
+  { id: 3, name: '3C／家電', system: true, used: 6, active: true, parentId: 300, level: 2 },
+  { id: 5, name: '美妝保養', system: true, used: 3, active: true, parentId: 300, level: 2 },
+  { id: 6, name: '服飾配件', system: true, used: 0, active: true, parentId: 300, level: 2 },
 ];
 
 const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
@@ -440,6 +448,48 @@ export class Settings implements OnInit {
   readonly selectedCampaign = signal('');
   readonly draftName = signal('');
   readonly draftKeywords = signal('');
+
+  /**
+   * 人工風險選項的重新命名／關鍵字編輯——原本 updateRiskOption() 這支
+   * API 早就存在（後端方法上的中文說明直接寫著「重新命名 & 關鍵字修改」），
+   * 卻從來沒有被畫面呼叫過，整份設定頁只有「新增」，沒有「編輯」。
+   *
+   * null 代表目前是新增模式；有值代表正在編輯這個 id 的既有選項。
+   */
+  readonly editingRiskOptionId = signal<number | null>(null);
+
+  /**
+   * 關鍵字改用陣列＋逐一輸入的方式管理，畫面上呈現成一顆一顆可個別刪除
+   * 的標籤（chip），不是一個逗號分隔的長字串塞進 textarea 讓使用者自己
+   * 分段——那種寫法看不出「目前到底存了幾個關鍵字、各自是什麼」，
+   * 編輯時也容易不小心打錯逗號位置把兩個關鍵字黏在一起。
+   */
+  readonly draftKeywordChips = signal<string[]>([]);
+  readonly draftKeywordInput = signal('');
+
+  /** Enter 送出目前輸入的文字，加進標籤清單；重複或空白不處理。 */
+  addDraftKeyword(): void {
+    const value = this.draftKeywordInput().trim();
+    if (!value) return;
+    if (this.draftKeywordChips().includes(value)) {
+      this.draftKeywordInput.set('');
+      return;
+    }
+    this.draftKeywordChips.update((chips) => [...chips, value]);
+    this.draftKeywordInput.set('');
+  }
+
+  removeDraftKeyword(index: number): void {
+    this.draftKeywordChips.update((chips) => chips.filter((_, i) => i !== index));
+  }
+
+  /** 唯讀顯示用：把後端存的分隔字串拆回一顆一顆標籤。 */
+  splitKeywords(raw: string): string[] {
+    return raw
+      .split(/[、,，]/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+  }
   readonly draftUsername = signal('');
   readonly draftRole = signal<UserRole>('PURCHASER');
   readonly draftPassword = signal('');
@@ -448,6 +498,77 @@ export class Settings implements OnInit {
   readonly draftEnd = signal('');
   readonly draftLeadDays = signal(30);
   readonly draftTags = signal<FestiveCampaignTagPayload[]>([{ tag: '', matchTier: 'CORE' }]);
+
+  // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
+  // 原本的標籤編輯是每一列自由輸入文字＋選等級，容易打錯字（跟其他檔期
+  // 已經在用的標籤名稱不一致，AI 比對命中率就會受影響），也沒辦法一眼
+  //看出系統裡已經有哪些標籤在用。改成搜尋＋勾選既有標籤為主，等級歸類
+  // 屬於進階設定，不放在第一層互動裡。
+  readonly tagPickerOpen = signal(false);
+  readonly tagPickerSearch = signal('');
+  readonly tagPickerSelected = signal<Set<string>>(new Set());
+
+  /** 全站目前所有檔期用過的標籤，去重排序——不是憑空編造的固定清單。 */
+  readonly knownTags = computed(() =>
+    [...new Set(this.campaigns().flatMap((c) => c.tags.map((t) => t.tag).filter(Boolean)))].sort(),
+  );
+
+  readonly filteredKnownTags = computed(() => {
+    const keyword = this.tagPickerSearch().trim().toLocaleLowerCase('zh-Hant');
+    if (!keyword) return this.knownTags();
+    return this.knownTags().filter((t) => t.toLocaleLowerCase('zh-Hant').includes(keyword));
+  });
+
+  /** 搜尋文字本身不在已知清單裡時，允許直接新增這個新標籤。 */
+  readonly canAddNewTag = computed(() => {
+    const keyword = this.tagPickerSearch().trim();
+    return !!keyword && !this.knownTags().includes(keyword);
+  });
+
+  /** 目前草稿裡實際有效（非空字串）的標籤數量，供「已選 N 項」跟顯示邏輯共用判斷。 */
+  readonly selectedTagRows = computed(() => this.draftTags().filter((r) => r.tag));
+
+  openTagPicker(): void {
+    this.tagPickerSelected.set(new Set(this.draftTags().map((r) => r.tag).filter(Boolean)));
+    this.tagPickerSearch.set('');
+    this.tagPickerOpen.set(true);
+  }
+
+  closeTagPicker(): void {
+    this.tagPickerOpen.set(false);
+  }
+
+  toggleTagPickerSelection(tag: string): void {
+    this.tagPickerSelected.update((set) => {
+      const next = new Set(set);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  }
+
+  addNewTagFromSearch(): void {
+    const tag = this.tagPickerSearch().trim();
+    if (!tag) return;
+    this.tagPickerSelected.update((set) => new Set(set).add(tag));
+    this.tagPickerSearch.set('');
+  }
+
+  /**
+   * 確認選擇：新勾選的標籤預設等級為「一般」（GENERAL）——等級歸類是
+   * 進階設定，第一次選標籤時不該強迫使用者馬上決定；已經存在的標籤
+   * 維持原本設定過的等級，不會因為重新打開這個 dialog 就被重置。
+   */
+  confirmTagPicker(): void {
+    const selected = this.tagPickerSelected();
+    const existing = new Map(this.draftTags().map((r) => [r.tag, r.matchTier]));
+    const merged: FestiveCampaignTagPayload[] = [...selected].map((tag) => ({
+      tag,
+      matchTier: existing.get(tag) ?? 'GENERAL',
+    }));
+    this.draftTags.set(merged.length > 0 ? merged : [{ tag: '', matchTier: 'CORE' }]);
+    this.tagPickerOpen.set(false);
+  }
   readonly draftStatus = signal('ACTIVE');
   readonly isSaving = signal(false);
 
@@ -479,7 +600,9 @@ export class Settings implements OnInit {
       return;
     }
     this.activeTab.set(tab);
-    // this.statusMessageState.show('已切換設定分類。');
+    // 切換分頁本身不需要提示訊息——分頁內容切換的視覺回饋已經很明顯
+    // （分頁按鈕的 active 樣式、內容區塊整個換掉），額外跳一句「已切換
+    // 設定分類」只是雜訊，不會幫助使用者理解發生了什麼事。
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);
   }
 
@@ -801,8 +924,10 @@ export class Settings implements OnInit {
               id: item.id,
               name: item.name,
               system: item.isSystemDefault ?? false,
-              used: null,
+              used: item.usedCount,
               active: item.isActive ?? true,
+              parentId: item.parentId,
+              level: item.level,
             })),
           );
           this.markLoaded('productTypes');
@@ -810,6 +935,30 @@ export class Settings implements OnInit {
         error: (err) => this.handleLoadError(err),
       });
   }
+
+  /**
+   * 依大類分組，畫面用這個結構呈現「大類底下有哪些小類」，不要再把
+   * 大類跟小類攤平顯示在同一條清單裡。
+   *
+   * level 為 null（理論上不會發生，除非後端回應格式異常）的項目不會
+   * 出現在任何分組裡——寧可讓這種異常資料在畫面上「消失不見」，也不要
+   * 因為型別防呆不足而讓它被誤判成大類或小類、跑進不該出現的分組。
+   */
+  readonly productTypeGroups = computed<ProductTypeGroupVM[]>(() => {
+    const all = this.productTypes();
+    const majors = all.filter((t) => t.level === 1);
+    const minorsByParent = new Map<number, ProductTypeVM[]>();
+    for (const t of all) {
+      if (t.level !== 2 || t.parentId === null) continue;
+      const arr = minorsByParent.get(t.parentId) ?? [];
+      arr.push(t);
+      minorsByParent.set(t.parentId, arr);
+    }
+    return majors.map((major) => ({
+      major,
+      minors: minorsByParent.get(major.id ?? -1) ?? [],
+    }));
+  });
 
   /**
    * 刪除是不可復原的破壞性操作——這是真正的 DELETE，不是像帳號／風險選項
@@ -1401,6 +1550,15 @@ export class Settings implements OnInit {
     this.modal.set(type);
   }
 
+  /** 開啟風險選項編輯：把既有名稱與關鍵字回填進草稿狀態。 */
+  openRiskEditModal(item: RiskOptionVM): void {
+    this.editingRiskOptionId.set(item.id);
+    this.draftName.set(item.name);
+    this.draftKeywordChips.set(item.keywords ? this.splitKeywords(item.keywords) : []);
+    this.draftKeywordInput.set('');
+    this.modal.set('risk');
+  }
+
   closeModal(): void {
     this.modal.set(null);
     this.draftName.set('');
@@ -1408,14 +1566,11 @@ export class Settings implements OnInit {
     this.draftUsername.set('');
     this.draftPassword.set('');
     this.draftTags.set([{ tag: '', matchTier: 'CORE' }]);
-  }
-
-  addTagRow(): void {
-    this.draftTags.update((rows) => [...rows, { tag: '', matchTier: 'GENERAL' }]);
-  }
-
-  removeTagRow(index: number): void {
-    this.draftTags.update((rows) => rows.filter((_, i) => i !== index));
+    this.tagPickerSearch.set('');
+    this.tagPickerSelected.set(new Set());
+    this.editingRiskOptionId.set(null);
+    this.draftKeywordChips.set([]);
+    this.draftKeywordInput.set('');
   }
 
   saveModal(): void {
@@ -1429,15 +1584,25 @@ export class Settings implements OnInit {
   }
 
   private saveModalMock(type: ReturnType<typeof this.modal>): void {
-    if (type === 'risk' && this.draftName().trim() && this.draftKeywords().trim()) {
-      this.riskOptions.update((items) => [
-        ...items,
-        { id: null, name: this.draftName().trim(), keywords: this.draftKeywords().trim(), isSystemDefault: false },
-      ]);
+    if (type === 'risk' && this.draftName().trim() && this.draftKeywordChips().length > 0) {
+      const keywords = this.draftKeywordChips().join('、');
+      const editingId = this.editingRiskOptionId();
+      if (editingId !== null) {
+        this.riskOptions.update((items) =>
+          items.map((item) =>
+            item.id === editingId ? { ...item, name: this.draftName().trim(), keywords } : item,
+          ),
+        );
+      } else {
+        this.riskOptions.update((items) => [
+          ...items,
+          { id: null, name: this.draftName().trim(), keywords, isSystemDefault: false },
+        ]);
+      }
     } else if (type === 'productType' && this.draftName().trim()) {
       this.productTypes.update((items) => [
         ...items,
-        { id: null, name: this.draftName().trim(), system: false, used: 0, active: true },
+        { id: null, name: this.draftName().trim(), system: false, used: 0, active: true, parentId: null, level: null },
       ]);
     } else if (
       type === 'campaign' &&
@@ -1486,12 +1651,33 @@ export class Settings implements OnInit {
 
   private saveModalReal(type: ReturnType<typeof this.modal>): void {
     if (type === 'risk') {
-      if (!this.draftName().trim() || !this.draftKeywords().trim()) {
+      const keywords = this.draftKeywordChips().join('、');
+      if (!this.draftName().trim() || this.draftKeywordChips().length === 0) {
         this.statusMessageState.show('請完整填寫必填欄位。');
         return;
       }
+
+      const editingId = this.editingRiskOptionId();
+      if (editingId !== null) {
+        this.api
+          .updateRiskOption(editingId, { name: this.draftName().trim(), alertKeywords: keywords })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (updated) => {
+              this.riskOptions.update((items) =>
+                items.map((item) => (item.id === editingId ? toRiskOptionVM(updated) : item)),
+              );
+              this.riskOptionLookup.invalidate();
+              this.statusMessageState.show('已更新風險選項。');
+              this.closeModal();
+            },
+            error: (err) => this.statusMessageState.show(toApiError(err).message),
+          });
+        return;
+      }
+
       this.api
-        .createRiskOption({ name: this.draftName().trim(), alertKeywords: this.draftKeywords().trim() })
+        .createRiskOption({ name: this.draftName().trim(), alertKeywords: keywords })
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (created) => {
@@ -1517,7 +1703,7 @@ export class Settings implements OnInit {
           next: (created) => {
             this.productTypes.update((items) => [
               ...items,
-              { id: created.id, name: created.name, system: false, used: null, active: true },
+              { id: created.id, name: created.name, system: false, used: 0, active: true, parentId: created.parentId, level: created.level },
             ]);
             this.productTypeLookup.invalidate();
             this.statusMessageState.show('已新增商品類型。');
@@ -1716,8 +1902,7 @@ function toRiskOptionVM(payload: RiskOptionResponsePayload): RiskOptionVM {
   return {
     id: payload.id,
     name: payload.name,
-    // GET 端點沒有 alertKeywords，誠實顯示未提供，不去猜測內容。
-    keywords: NOT_PROVIDED,
+    keywords: payload.alertKeywords ?? '',
     isSystemDefault: payload.isSystemDefault ?? false,
   };
 }

@@ -333,6 +333,14 @@ export interface ProductListQuery extends PageQuery {
   itemStatus?: ItemStatus;
   candidateStatus?: CandidateStatus;
   productTypeId?: number;
+  /**
+   * 依「商品修改時間」篩選（後端 Product.updatedAt），不是建立時間——
+   * 新增當下兩者相同，之後每次編輯都會更新 updatedAt，篩選出來的才會是
+   * 「最近有異動」的商品，不是「最早建立」的。ISO 8601 格式字串，
+   * 例如 '2026-01-01T00:00:00'，兩者皆選填、可只帶一邊，皆為閉區間。
+   */
+  updatedFrom?: string;
+  updatedTo?: string;
 }
 
 /**

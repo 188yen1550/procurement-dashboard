@@ -148,3 +148,12 @@ button:focus-visible {
 .user-link.active {
   background: rgba(255, 255, 255, 0.12);
 }
+
+/* 跟側邊選單一致：滑鼠 hover 用淡底色，鍵盤 focus 額外加一圈外框——
+   兩者共用同一種底色變化的話，鍵盤使用者跟滑鼠使用者看到的視覺回饋
+   會一模一樣，沒辦法從畫面上分辨「這是我剛剛用 Tab 移過來的」還是
+   「滑鼠剛好經過」，這裡跟全站其他導覽項目的處理方式統一。 */
+.user-link:focus-visible {
+  outline: 3px solid rgba(28, 82, 134, 0.35);
+  outline-offset: 2px;
+}

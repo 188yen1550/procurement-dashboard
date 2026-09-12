@@ -217,6 +217,59 @@
         }
       </section>
 
+      <!-- AI 摘要／推薦原因：原本排在整頁第 11 個面板（節慶、Gate、供應屬性、
+           商業條件、好幾個分數面板、價格比較、趨勢……都排在它前面），對於
+           要判斷「這件商品該不該過」的審核者來說，這其實是最先想看的
+           資訊之一，卻被埋在很後面。搬到 Gate 判定之後、其餘細節資料
+           之前，並且加強視覺樣式（獨立底色、主要按鈕），讓它在原本一片
+           素色面板裡明顯跳出來。 -->
+      <section class="panel ai ai-prominent">
+        <header>
+          <div>
+            <h2>AI 摘要／推薦原因</h2>
+          </div>
+          <span>AI 僅輔助分析</span>
+        </header>
+        @if (p.aiSummary) {
+          <p>{{ p.aiSummary }}</p>
+          <ul>
+            @for (reason of p.aiReasons; track reason) {
+              <li>{{ reason }}</li>
+            }
+          </ul>
+          @if (!useMockData) {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="isGeneratingAi()"
+              (click)="generateAiAnalysis()"
+            >
+              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
+            </button>
+            @if (aiError()) {
+              <p class="form-error" role="alert">{{ aiError() }}</p>
+            }
+          }
+        } @else {
+          <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
+               文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
+          <div class="no-data">尚未產生 AI 分析。</div>
+          @if (!useMockData) {
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="isGeneratingAi()"
+              (click)="generateAiAnalysis()"
+            >
+              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '✦ 產生 AI 分析' }}
+            </button>
+            @if (aiError()) {
+              <p class="form-error" role="alert">{{ aiError() }}</p>
+            }
+          }
+        }
+      </section>
+
       <!-- 供應與物流屬性：純唯讀展示，全部選填欄位——留空代表這件商品
            自己沒填，Gate 判定會改用品類層的預設屬性繼承，不代表資料缺漏。
            要修改請到品項編輯表單，這裡不提供編輯。 -->
@@ -361,53 +414,6 @@
       }
     </section>
     <div class="content-grid">
-      <section class="panel ai">
-        <header>
-          <div>
-            
-            <h2>AI 摘要／推薦原因</h2>
-          </div>
-          <span>AI 僅輔助分析</span>
-        </header>
-        @if (p.aiSummary) {
-          <p>{{ p.aiSummary }}</p>
-          <ul>
-            @for (reason of p.aiReasons; track reason) {
-              <li>{{ reason }}</li>
-            }
-          </ul>
-          @if (!useMockData) {
-            <button
-              type="button"
-              class="secondary"
-              [disabled]="isGeneratingAi()"
-              (click)="generateAiAnalysis()"
-            >
-              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
-            </button>
-            @if (aiError()) {
-              <p class="form-error" role="alert">{{ aiError() }}</p>
-            }
-          }
-        } @else {
-          <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
-               文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
-          <div class="no-data">尚未產生 AI 分析。</div>
-          @if (!useMockData) {
-            <button
-              type="button"
-              class="secondary"
-              [disabled]="isGeneratingAi()"
-              (click)="generateAiAnalysis()"
-            >
-              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '產生 AI 分析' }}
-            </button>
-            @if (aiError()) {
-              <p class="form-error" role="alert">{{ aiError() }}</p>
-            }
-          }
-        }
-      </section>
       <section class="panel risks">
         <header><h2>風險提示</h2></header>
         @if (p.risks.length) {

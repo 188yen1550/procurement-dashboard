@@ -23,8 +23,10 @@ describe('ProductForm', () => {
   let dialog: DialogService;
 
   const productTypes = [
-    { id: 1, name: '食品／生鮮', description: null, isSystemDefault: true, isActive: true },
-    { id: 2, name: '日用品', description: null, isSystemDefault: true, isActive: true },
+    { id: 100, name: '食品', description: null, isSystemDefault: true, isActive: true, parentId: null, level: 1 },
+    { id: 1, name: '食品／生鮮', description: null, isSystemDefault: true, isActive: true, parentId: 100, level: 2 },
+    { id: 200, name: '日用', description: null, isSystemDefault: true, isActive: true, parentId: null, level: 1 },
+    { id: 2, name: '日用品', description: null, isSystemDefault: true, isActive: true, parentId: 200, level: 2 },
   ];
 
   const api = {

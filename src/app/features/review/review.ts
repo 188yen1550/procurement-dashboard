@@ -149,6 +149,52 @@ export class ReviewComponent implements OnInit {
   readonly pageState = signal<ReviewState>('default');
   readonly items = signal<ReviewItem[]>([]);
   readonly records = signal<DecisionRecordRow[]>([]);
+
+  // ----- 歷次決策紀錄：搜尋／篩選／排序 -----
+  // 原本這個分頁完全沒有任何互動控制，只是把 API 回來的資料原樣攤平成
+  // 一張表——資料量一多，要從裡面找特定商品或特定結果的紀錄只能用瀏覽器
+  // 內建的 Ctrl+F，體驗跟「待審核清單」分頁（已經有搜尋/篩選）完全不對稱。
+  readonly recordSearch = signal('');
+  readonly recordResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>('ALL');
+  readonly recordSort = signal<'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'>('date_desc');
+
+  readonly filteredRecords = computed(() => {
+    const keyword = this.recordSearch().trim().toLocaleLowerCase('zh-Hant');
+    const resultFilter = this.recordResultFilter();
+    const list = this.records().filter(
+      (r) =>
+        (!keyword || r.name.toLocaleLowerCase('zh-Hant').includes(keyword)) &&
+        (resultFilter === 'ALL' || r.result === resultFilter),
+    );
+
+    const sort = this.recordSort();
+    const sorted = [...list];
+    if (sort === 'date_desc' || sort === 'date_asc') {
+      const direction = sort === 'date_desc' ? -1 : 1;
+      sorted.sort((a, b) => {
+        const at = a.date ? new Date(a.date).getTime() : 0;
+        const bt = b.date ? new Date(b.date).getTime() : 0;
+        return (at - bt) * direction;
+      });
+    } else {
+      const direction = sort === 'score_desc' ? -1 : 1;
+      sorted.sort((a, b) => {
+        // 沒有分數的紀錄一律排到最後，不管排序方向，語意跟
+        // product-management.ts 的 finalScore 排序保持一致。
+        if (a.score === null && b.score === null) return 0;
+        if (a.score === null) return 1;
+        if (b.score === null) return -1;
+        return (a.score - b.score) * direction;
+      });
+    }
+    return sorted;
+  });
+
+  clearRecordFilters(): void {
+    this.recordSearch.set('');
+    this.recordResultFilter.set('ALL');
+    this.recordSort.set('date_desc');
+  }
   readonly query = signal('');
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
   readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');

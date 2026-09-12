@@ -48,8 +48,8 @@ function makeWeights(modeCode: string) {
 }
 
 const MOCK_RISK_OPTIONS = [
-  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
-  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
+  { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true, alertKeywords: '缺貨、斷貨' },
+  { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true, alertKeywords: '瑕疵、客訴' },
 ];
 
 const MOCK_AUDIENCE_PROFILE = {
@@ -108,8 +108,11 @@ describe('Settings', () => {
       of({ ...MOCK_MODES.find((m) => m.id === id)! }),
     ),
     getRiskOptions: vi.fn(() => of(MOCK_RISK_OPTIONS.map((r) => ({ ...r })))),
-    createRiskOption: vi.fn((body: { name: string }) =>
-      of({ id: 99, name: body.name, description: null, isSystemDefault: false }),
+    createRiskOption: vi.fn((body: { name: string; alertKeywords?: string | null }) =>
+      of({ id: 99, name: body.name, description: null, isSystemDefault: false, alertKeywords: body.alertKeywords ?? null }),
+    ),
+    updateRiskOption: vi.fn((id: number, body: { name: string; alertKeywords?: string | null }) =>
+      of({ id, name: body.name, description: null, isSystemDefault: false, alertKeywords: body.alertKeywords ?? null }),
     ),
     getAudienceProfile: vi.fn(() => of({ ...MOCK_AUDIENCE_PROFILE })),
     updateAudienceProfile: vi.fn((body: unknown) => of({ ...MOCK_AUDIENCE_PROFILE, ...(body as object) })),
@@ -240,13 +243,25 @@ describe('Settings', () => {
   it('creates a risk option through modal state', () => {
     component.openModal('risk');
     component.draftName.set('測試風險');
-    component.draftKeywords.set('測試關鍵字');
+    component.draftKeywordChips.set(['測試關鍵字']);
     component.saveModal();
     expect(settingsApi.createRiskOption).toHaveBeenCalledWith({
       name: '測試風險',
       alertKeywords: '測試關鍵字',
     });
     expect(component.riskOptions().some((item) => item.name === '測試風險')).toBe(true);
+  });
+
+  it('edits an existing risk option and calls update instead of create', () => {
+    component.setTab('risks');
+    const existing = component.riskOptions()[0];
+    component.openRiskEditModal(existing);
+    expect(component.draftName()).toBe(existing.name);
+    component.draftName.set('改過的名稱');
+    component.draftKeywordChips.set([...component.draftKeywordChips(), '新關鍵字']);
+    component.saveModal();
+    expect(settingsApi.updateRiskOption).toHaveBeenCalled();
+    expect(settingsApi.createRiskOption).not.toHaveBeenCalled();
   });
 
   it('lets the backend 409 decide whether a product type is in use', () => {

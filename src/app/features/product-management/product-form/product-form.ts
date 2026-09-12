@@ -32,8 +32,8 @@ import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal }
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Observable, of } from 'rxjs';
-import { catchError, debounceTime, filter, startWith, switchMap } from 'rxjs/operators';
+import { Observable, combineLatest, of } from 'rxjs';
+import { catchError, debounceTime, filter, map, startWith, switchMap } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
@@ -49,6 +49,7 @@ import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
 import { SimilarProductCandidatePayload } from '../api/product-api.contract';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
+import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
 type ImageState = 'empty' | 'loading' | 'ready' | 'error';
@@ -60,6 +61,11 @@ interface ImageInfo {
 interface ProductTypeOption {
   id: number;
   name: string;
+}
+
+interface ProductTypeOptionGroup {
+  majorName: string;
+  minors: ProductTypeOption[];
 }
 
 /** 送出驗證失敗時，用來把 FormControl 名稱轉成使用者看得懂的欄位標籤。 */
@@ -197,6 +203,7 @@ export class ProductForm implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ProductApiService);
   private readonly settingsApi = inject(SettingsApiService);
+  private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -219,6 +226,9 @@ export class ProductForm implements OnInit {
   readonly productTypeOptions = signal<readonly ProductTypeOption[]>(
     this.useMockData ? MOCK_PRODUCT_TYPES : [],
   );
+  /** 依大類分組後的選項，畫面用 <optgroup> 呈現，不是 productTypeOptions 那條扁平清單。 */
+  readonly productTypeGroups = signal<readonly ProductTypeOptionGroup[]>([]);
+  readonly priceAboveMarketWarning = signal(false);
   readonly campaignTagOptions = signal<readonly string[]>(
     this.useMockData ? MOCK_CAMPAIGN_TAGS : [],
   );
@@ -321,6 +331,24 @@ export class ProductForm implements OnInit {
    * ⚠️ 只有 productTypeId 已選、名稱至少 2 個字時才查，避免打出全域搜尋
    * 般的無意義請求（後端 name 是必填參數，沒有 productTypeId 會是 400）。
    */
+  /**
+   * 團購售價高於市價：不阻擋送出（可能是刻意的行銷策略、市價本身滯後
+   * 未更新等合理情境，不該由系統武斷認定這是錯誤），但要提醒使用者
+   * 注意——這種組合在「團購應該比市價便宜」的一般認知下算是反常，
+   * 提醒一下讓使用者能確認這是不是自己打錯了數字，而不是默默放行。
+   */
+  private wirePriceAboveMarketWarning(): void {
+    combineLatest([
+      this.form.controls.salePrice.valueChanges.pipe(startWith(this.form.controls.salePrice.value)),
+      this.form.controls.marketPrice.valueChanges.pipe(startWith(this.form.controls.marketPrice.value)),
+    ])
+      .pipe(
+        map(([sale, market]) => this.isResale() && !!sale && !!market && sale > market),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((isAbove) => this.priceAboveMarketWarning.set(isAbove));
+  }
+
   private wireSimilarCandidateSearch(): void {
     this.form.controls.name.valueChanges
       .pipe(
@@ -414,6 +442,7 @@ export class ProductForm implements OnInit {
     }
     // 兩種模式都要，Mock 模式走本地過濾（見 wireSimilarCandidateSearch 內判斷）。
     this.wireSimilarCandidateSearch();
+    this.wirePriceAboveMarketWarning();
 
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
 
@@ -479,17 +508,34 @@ export class ProductForm implements OnInit {
   }
 
   private loadProductTypes(): void {
-    this.settingsApi
-      .getProductTypes()
+    // 改用 ProductTypeLookupService 而非直接呼叫 settingsApi.getProductTypes()：
+    // 一來這個服務有 shareReplay 快取，跟其他頁面共用同一份結果；二來
+    // getGroupedOptions() 已經處理好「只留小類可被選、依大類分組」的邏輯，
+    // 不用在這裡重新寫一次篩選規則。
+    //
+    // 商品只能掛在小類（level=2），原本這裡把大類也一併塞進同一條扁平
+    // 清單，使用者理論上可以選到大類本身——這批一併修正，productTypeOptions
+    // 現在只保留小類。
+    this.productTypeLookup
+      .getGroupedOptions()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (types) => {
-          this.productTypeOptions.set(
-            types.filter((t) => t.isActive !== false).map((t) => ({ id: t.id, name: t.name })),
+        next: (groups) => {
+          this.productTypeGroups.set(
+            groups
+              .filter((g) => g.minors.length > 0)
+              .map((g) => ({
+                majorName: g.major.name,
+                minors: g.minors.map((m) => ({ id: m.id, name: m.name })),
+              })),
           );
+          this.productTypeOptions.set(groups.flatMap((g) => g.minors.map((m) => ({ id: m.id, name: m.name }))));
         },
         // 分類清單載入失敗不影響其餘表單，下拉維持空白，使用者仍可看到既有值（若編輯模式已回填 id）。
-        error: () => this.productTypeOptions.set([]),
+        error: () => {
+          this.productTypeGroups.set([]);
+          this.productTypeOptions.set([]);
+        },
       });
   }
 

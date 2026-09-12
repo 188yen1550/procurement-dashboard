@@ -79,10 +79,10 @@ function mockDetail(productId: string): ReviewDetailModel {
       reasons: '節慶標籤命中、客群契合度高，但供應穩定性評分偏低需留意。',
     },
     availableRiskOptions: [
-      { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
-      { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true },
-      { id: 3, name: '市場不確定性與需求變動風險', description: null, isSystemDefault: true },
-      { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true },
+      { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true, alertKeywords: '缺貨、斷貨' },
+      { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true, alertKeywords: '瑕疵、客訴' },
+      { id: 3, name: '市場不確定性與需求變動風險', description: null, isSystemDefault: true, alertKeywords: '退燒、競品' },
+      { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true, alertKeywords: null },
     ],
   };
 }

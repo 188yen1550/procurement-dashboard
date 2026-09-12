@@ -121,3 +121,70 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
   font-size: 1rem;
   color: #243447;
 }
+
+/* ===== 商品名稱欄位排序箭頭 ===== */
+.sort-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.3rem;
+  color: inherit;
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  border-radius: 0.3rem;
+}
+.sort-header-btn:hover {
+  background: rgba(28, 82, 134, 0.08);
+}
+.sort-header-btn:focus-visible {
+  outline: 2px solid #1c5286;
+  outline-offset: 1px;
+}
+.sort-arrow {
+  font-size: 0.7rem;
+  color: #6c7a89;
+}
+
+/* ===== 品類名稱懸停說明（#23）===== */
+.type-hover {
+  position: relative;
+}
+.type-hover.has-tooltip {
+  cursor: help;
+  border-bottom: 1px dashed #9db3c4;
+}
+.type-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 50;
+  width: max-content;
+  max-width: 16rem;
+  margin-bottom: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  color: #fff;
+  background: #243447;
+  border-radius: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /*
+   * 關鍵在這裡：預設（隱藏方向）沒有 transition-delay，滑鼠一離開就
+   * 立刻消失；只有在 :hover / :focus-visible（顯示方向）才加上 1 秒
+   * 延遲，這樣才會是「懸停超過 1 秒才跳出」而不是「滑過去就馬上跳出」。
+   * 純 CSS 實現，不需要額外的 JS 計時器跟事件監聽。
+   */
+  transition: opacity 0.15s ease, visibility 0s 0.15s;
+}
+.type-hover.has-tooltip:hover .type-tooltip,
+.type-hover.has-tooltip:focus-visible .type-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.15s ease 1s, visibility 0s 1s;
+}

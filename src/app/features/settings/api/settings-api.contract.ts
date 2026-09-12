@@ -119,6 +119,8 @@ export interface RiskOptionResponsePayload {
   name: string;
   description: string | null;
   isSystemDefault: boolean | null;
+  /** 觸發 AI 風險提示用的關鍵字，逗號分隔。先前這支 DTO 從未回傳過。 */
+  alertKeywords: string | null;
 }
 
 /**
@@ -191,6 +193,19 @@ export interface ProductTypeResponsePayload {
   isSystemDefault: boolean | null;
   /** 停用的要用灰階或標籤區隔。 */
   isActive: boolean | null;
+  /**
+   * 兩層階層：level=1 是大類（parentId 為 null）、level=2 是小類
+   * （parentId 指向所屬大類的 id）。先前這兩欄完全沒有回傳過，畫面
+   * 只能顯示扁平清單——這批補上，各處顯示商品分類的地方都應該依大類
+   * 分組顯示小類，不要再攤平成一整條清單。
+   */
+  parentId: number | null;
+  level: number | null;
+  /**
+   * 使用這個品類的商品數量，由後端 GROUP BY 統計算出，不再是先前的
+   * 「後端沒有這個統計」恆為 null 的狀態。
+   */
+  usedCount: number;
 }
 
 /** 對應後端 ProductTypeCreateRequest.java。 */

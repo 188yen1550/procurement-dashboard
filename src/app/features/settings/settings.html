@@ -170,6 +170,7 @@
             <th>選項名稱</th>
             <th>AI 風險關鍵字</th>
             <th>狀態</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -178,11 +179,24 @@
               <td>
                 <strong>{{ item.name }}</strong>
               </td>
-              <td>{{ item.keywords }}</td>
+              <td>
+                @if (item.keywords) {
+                  <div class="keyword-chip-list readonly">
+                    @for (kw of splitKeywords(item.keywords); track kw) {
+                      <span class="keyword-chip readonly">{{ kw }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="helper">未設定</span>
+                }
+              </td>
               <!-- ⚠️ 這支 API 本身只回啟用中的選項（WHERE is_active=true），
                    清單裡出現的每一筆依定義都是啟用中，不需要判斷。
                    已停用的選項後端目前沒有任何端點能看到，是已知缺口。 -->
               <td>啟用</td>
+              <td class="row-actions">
+                <button type="button" class="btn" (click)="openRiskEditModal(item)">編輯</button>
+              </td>
             </tr>
           }
         </tbody>
@@ -192,7 +206,13 @@
     <section class="management-head">
       <div>
         <h2>商品類型設定</h2>
-        <p>系統預設與自訂類型；已被品項使用時不可刪除。</p>
+        <!-- 原本這裡有一句「系統預設與自訂類型；已被品項使用時不可刪除。」
+             ——後半句「已被品項使用時不可刪除」跟實際嘗試刪除時跳出的
+             錯誤訊息（見 performRemoveProductType()：「此類型已被品項
+             使用，不可刪除，請改為停用。」）內容重複，使用者會在同一件事
+             上看到兩次幾乎一樣的文字，一次在動手前、一次在失敗當下——
+             拿掉這句提前告知，讓「嘗試刪除時的錯誤訊息」自己承擔說明
+             這件事的責任即可，不需要在標題底下再講一次。 -->
       </div>
       <button
         type="button"
@@ -214,28 +234,47 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of productTypes(); track item.name) {
-            <tr>
-              <td>
-                <strong>{{ item.name }}</strong>
-              </td>
-              <td>{{ item.system ? '系統預設' : '自訂' }}</td>
-              <td>{{ item.used === null ? '—' : item.used }}</td>
+          @for (group of productTypeGroups(); track group.major.id) {
+            <tr class="type-major-row">
+              <td><strong>{{ group.major.name }}</strong></td>
+              <td>{{ group.major.system ? '系統預設' : '自訂' }}</td>
+              <td>{{ group.major.used }}</td>
               <td class="row-actions">
-                <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
+                <span class="status-text">{{ group.major.active ? '啟用' : '已停用' }}</span>
                 <button
                   type="button"
                   class="btn"
-                  [class.is-restore]="!item.active"
-                  (click)="toggleProductTypeActive(item.name)"
+                  [class.is-restore]="!group.major.active"
+                  (click)="toggleProductTypeActive(group.major.name)"
                 >
-                  {{ item.active ? '停用' : '復用' }}
+                  {{ group.major.active ? '停用' : '復用' }}
                 </button>
-                <button type="button" class="btn danger" (click)="removeProductType(item.name)">
+                <button type="button" class="btn danger" (click)="removeProductType(group.major.name)">
                   刪除
                 </button>
               </td>
             </tr>
+            @for (item of group.minors; track item.name) {
+              <tr class="type-minor-row">
+                <td class="type-minor-name">{{ item.name }}</td>
+                <td>{{ item.system ? '系統預設' : '自訂' }}</td>
+                <td>{{ item.used }}</td>
+                <td class="row-actions">
+                  <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
+                  <button
+                    type="button"
+                    class="btn"
+                    [class.is-restore]="!item.active"
+                    (click)="toggleProductTypeActive(item.name)"
+                  >
+                    {{ item.active ? '停用' : '復用' }}
+                  </button>
+                  <button type="button" class="btn danger" (click)="removeProductType(item.name)">
+                    刪除
+                  </button>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>
@@ -713,7 +752,11 @@
     </section>
     <div class="mode-grid">
       @for (mode of modes(); track mode.code) {
-        <article [class.active]="activeMode() === mode.code">
+        <article
+          [class.active]="activeMode() === mode.code"
+          [class.is-selectable]="activeMode() !== mode.code"
+          (click)="activeMode() !== mode.code && selectMode(mode.code)"
+        >
           <header>
             <div>
               <span>{{ mode.code }}</span>
@@ -726,6 +769,7 @@
               [checked]="activeMode() === mode.code"
               [disabled]="pageState() === 'disabled'"
               [attr.aria-label]="'切換至' + mode.name"
+              (click)="$event.stopPropagation()"
               (change)="selectMode(mode.code)"
             />
           </header>
@@ -811,7 +855,7 @@
           <h2>
             {{
               modal() === 'risk'
-                ? '新增人工風險'
+                ? (editingRiskOptionId() !== null ? '編輯人工風險' : '新增人工風險')
                 : modal() === 'productType'
                   ? '新增商品類型'
                   : modal() === 'campaign'
@@ -831,14 +875,41 @@
               [ngModel]="draftName()"
               (ngModelChange)="draftName.set($event)"
               name="riskName" /></label
-          ><label
-            >風險關鍵字
-            <textarea
-              required
-              [ngModel]="draftKeywords()"
-              (ngModelChange)="draftKeywords.set($event)"
-              name="keywords"
-            ></textarea>
+          ><label>
+            風險關鍵字
+            <!-- 標籤區塊化：Enter 送出目前輸入的文字變成一顆標籤，每顆
+                 標籤右側的 × 可以個別刪除，不用像編輯一整段逗號分隔字串
+                 那樣擔心改錯位置、字元被切壞。目前已有的標籤直接顯示
+                 出來，不是編輯時才會看到——這是 #21 的核心要求：修改
+                 關鍵字前，要先看得到「現在到底存了什麼」。 -->
+            <div class="keyword-chip-input">
+              <div class="keyword-chip-list">
+                @for (kw of draftKeywordChips(); track kw; let i = $index) {
+                  <span class="keyword-chip"
+                    >{{ kw }}
+                    <button
+                      type="button"
+                      class="keyword-chip-remove"
+                      (click)="removeDraftKeyword(i)"
+                      [attr.aria-label]="'刪除關鍵字 ' + kw"
+                    >
+                      ×
+                    </button></span
+                  >
+                }
+              </div>
+              <input
+                type="text"
+                placeholder="輸入後按 Enter 新增關鍵字"
+                [ngModel]="draftKeywordInput()"
+                (ngModelChange)="draftKeywordInput.set($event)"
+                (keydown.enter)="$event.preventDefault(); addDraftKeyword()"
+                name="keywordInput"
+              />
+            </div>
+            @if (draftKeywordChips().length === 0) {
+              <small class="helper">至少需要一個關鍵字，輸入文字後按 Enter 新增。</small>
+            }
           </label>
         }
         @if (modal() === 'productType') {
@@ -930,33 +1001,49 @@
               name="leadDays"
           /></label>
           <fieldset>
-            <legend>命中標籤與等級</legend>
-            @for (row of draftTags(); track $index) {
-              <div class="tag-row">
-                <input
-                  placeholder="標籤"
-                  [ngModel]="row.tag"
-                  (ngModelChange)="row.tag = $event"
-                  [name]="'tag' + $index"
-                /><select
-                  [ngModel]="row.matchTier"
-                  (ngModelChange)="row.matchTier = $event"
-                  [name]="'tier' + $index"
+            <legend>節慶標籤（選填）</legend>
+            <!-- 主要互動：開啟獨立的搜尋+勾選 dialog 選標籤，不在這裡自由
+                 輸入文字——避免手誤打錯字導致跟其他檔期已經在用的標籤
+                 名稱不一致，AI 比對命中率因此受影響。 -->
+            <button type="button" class="btn" (click)="openTagPicker()">🔍 選擇標籤</button>
+            <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
+            <div class="keyword-chip-list">
+              @for (row of selectedTagRows(); track row.tag) {
+                <span class="keyword-chip"
+                  >{{ row.tag }}
+                  <button
+                    type="button"
+                    class="keyword-chip-remove"
+                    (click)="draftTags.set(draftTags().filter((r) => r.tag !== row.tag))"
+                    [attr.aria-label]="'移除標籤 ' + row.tag"
+                  >
+                    ×
+                  </button></span
                 >
-                  <option value="CORE">核心</option>
-                  <option value="GENERAL">一般</option>
-                  <option value="WEAK">弱</option></select
-                ><button
-                  type="button"
-                  class="btn danger"
-                  (click)="removeTagRow($index)"
-                  [disabled]="draftTags().length === 1"
-                >
-                  刪除
-                </button>
-              </div>
+              }
+            </div>
+
+            <!-- 進階：等級歸類——選標籤當下不強迫決定，新選的標籤預設是
+                 「一般」，這裡才是真的要調整比對權重時才展開的區塊。 -->
+            @if (selectedTagRows().length > 0) {
+              <details class="tag-tier-advanced">
+                <summary>進階：調整比對等級</summary>
+                @for (row of selectedTagRows(); track row.tag) {
+                  <div class="tag-row">
+                    <span>{{ row.tag }}</span>
+                    <select
+                      [ngModel]="row.matchTier"
+                      (ngModelChange)="row.matchTier = $event"
+                      [name]="'tier-' + row.tag"
+                    >
+                      <option value="CORE">核心</option>
+                      <option value="GENERAL">一般</option>
+                      <option value="WEAK">弱</option>
+                    </select>
+                  </div>
+                }
+              </details>
             }
-            <button type="button" class="btn" (click)="addTagRow()">＋ 增列</button>
           </fieldset>
         }
         @if (modal() === 'campaignStatus') {
@@ -983,6 +1070,73 @@
           ><button type="submit" class="btn-primary" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
         </footer>
       </form>
+    </div>
+  }
+
+  <!-- 節慶標籤選擇：獨立 dialog，跟主要的新增/編輯檔期 modal 分開——
+       搜尋 + 勾選是主要互動，等級歸類另外收在主表單的「進階」摺疊區塊，
+       這裡只負責「選出哪些標籤」這一件事。 -->
+  @if (tagPickerOpen()) {
+    <div class="modal-backdrop" (click)="closeTagPicker()">
+      <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
+        <header>
+          <h2>節慶標籤（選填）</h2>
+          <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉">×</button>
+        </header>
+
+        <label class="tag-picker-search">
+          <input
+            type="text"
+            placeholder="🔍 搜尋標籤，例如：gift、sale..."
+            [ngModel]="tagPickerSearch()"
+            (ngModelChange)="tagPickerSearch.set($event)"
+          />
+        </label>
+
+        <p class="helper">已選 {{ tagPickerSelected().size }} 項</p>
+        @if (tagPickerSelected().size > 0) {
+          <div class="keyword-chip-list">
+            @for (tag of tagPickerSelected(); track tag) {
+              <span class="keyword-chip"
+                >{{ tag }}
+                <button
+                  type="button"
+                  class="keyword-chip-remove"
+                  (click)="toggleTagPickerSelection(tag)"
+                  [attr.aria-label]="'取消選取 ' + tag"
+                >
+                  ×
+                </button></span
+              >
+            }
+          </div>
+        }
+
+        <div class="tag-picker-list" role="listbox" aria-label="可選擇的標籤">
+          @for (tag of filteredKnownTags(); track tag) {
+            <label class="tag-picker-option">
+              <input
+                type="checkbox"
+                [checked]="tagPickerSelected().has(tag)"
+                (change)="toggleTagPickerSelection(tag)"
+              />
+              {{ tag }}
+            </label>
+          } @empty {
+            <p class="helper">沒有符合的既有標籤。</p>
+          }
+          @if (canAddNewTag()) {
+            <button type="button" class="btn tag-picker-add-new" (click)="addNewTagFromSearch()">
+              ＋ 新增標籤「{{ tagPickerSearch().trim() }}」
+            </button>
+          }
+        </div>
+
+        <footer>
+          <button type="button" class="btn" (click)="closeTagPicker()">取消</button
+          ><button type="button" class="btn-primary" (click)="confirmTagPicker()">確定</button>
+        </footer>
+      </div>
     </div>
   }
 </main>
