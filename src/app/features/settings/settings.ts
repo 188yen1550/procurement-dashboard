@@ -596,7 +596,7 @@ export class Settings implements OnInit {
   }
   readonly draftStatus = signal('ACTIVE');
   /**
-   * 「手動切換狀態」modal 用：true＝手動指定狀態（is_manual_override 開啟），
+   * 「切換狀態」modal 用：true＝手動指定狀態（is_manual_override 開啟），
    * false＝恢復自動判斷（is_manual_override 關閉）。原本這裡沒有反向路徑，
    * overrideEnabled 送出時永遠是 true，一旦手動覆蓋就再也回不去，
    * 這個 signal 補上「恢復自動判斷」這個選項。
@@ -1647,7 +1647,7 @@ export class Settings implements OnInit {
   }
 
   /**
-   * 開啟「手動切換狀態」modal：把該檔期目前的狀態回填進草稿，
+   * 開啟「切換狀態」modal：把該檔期目前的狀態回填進草稿，
    * 並預設為「手動指定狀態」——這是按鈕原本唯一支援的行為，
    * 「恢復自動判斷」是使用者在 modal 內再另外選的次要選項。
    */

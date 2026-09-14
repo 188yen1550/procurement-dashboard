@@ -90,8 +90,8 @@
 }
 
 .mode-intro h2 {
-  margin: 0.15rem 0;
-  font-size: var(--t-lg);
+  margin: 0 0 0.25rem;
+  font-size: var(--t-xl);
 }
 
 .mode-intro p {
@@ -113,7 +113,7 @@
 
 .mode-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--s-4);
 }
 
@@ -261,7 +261,7 @@
   margin-top: var(--s-2);
 }
 
-/* 手動切換狀態 modal：手動指定 vs 恢復自動判斷 二選一。 */
+/* 切換狀態 modal：手動指定 vs 恢復自動判斷 二選一。 */
 .campaign-status-mode {
   display: flex;
   gap: var(--s-4);
@@ -274,6 +274,10 @@
   align-items: center;
   gap: var(--s-1);
   font-weight: normal;
+}
+
+.edit-change-stage{
+  margin-right: .5rem;
 }
 
 /* ===================== 目標區間 ===================== */
@@ -626,8 +630,8 @@ tr.is-editing select {
    是多少」這個關鍵數字時最重要的資訊，應該放大加粗，不是等同於旁邊
    的輔助說明。 */
 .system-setting-value {
-  font-size: 1.3rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 650;
   color: var(--c-brand, #1c5286);
 }
 .unit {
