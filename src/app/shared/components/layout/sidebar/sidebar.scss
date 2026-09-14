@@ -102,7 +102,7 @@
   margin: 0 0 0.5rem;
   padding: 0 0.9rem;
   color: #7894aa;
-  font-size: 0.68rem;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -117,6 +117,10 @@
   width: 1.4rem;
   place-items: center;
   font-size: 1rem;
+}
+
+.nav-icon img{
+  height: 15px;
 }
 
 .sidebar-footer {

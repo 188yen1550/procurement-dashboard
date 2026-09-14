@@ -4,7 +4,6 @@
     <span class="brand-mark" aria-hidden="true">◆</span>
     <div>
       <strong>選品決策</strong>
-      <span>Procurement AI</span>
     </div>
 
     <button
@@ -26,7 +25,7 @@
       [routerLinkActiveOptions]="{ exact: true }"
       (click)="closeRequested.emit()"
     >
-      <span class="nav-icon" aria-hidden="true">▦</span>
+      <span class="nav-icon" aria-hidden="true"><img src="/icons/search.png" alt="overview"></span>
       儀表板
     </a>
 
@@ -36,7 +35,7 @@
       [routerLinkActiveOptions]="{ exact: true }"
       (click)="closeRequested.emit()"
     >
-      <span class="nav-icon" aria-hidden="true">▤</span>
+      <span class="nav-icon" aria-hidden="true"><img src="/icons/product.png" alt="manage"></span>
       品項管理
     </a>
 
@@ -45,25 +44,25 @@
       routerLinkActive="active"
       (click)="closeRequested.emit()"
     >
-      <span class="nav-icon" aria-hidden="true">✦</span>
+      <span class="nav-icon" aria-hidden="true"><img src="/icons/star.png" alt="AI"></span>
       AI 建議清單
     </a>
 
     <a routerLink="/group-buy" routerLinkActive="active" (click)="closeRequested.emit()">
-      <span class="nav-icon" aria-hidden="true">📋</span>
+      <span class="nav-icon" aria-hidden="true"><img src="/icons/to-do-list.png" alt="lsit"></span>
       歷史銷售紀錄
     </a>
 
     @if (isManager) {
       <a routerLink="/review" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon" aria-hidden="true">✓</span>
+        <span class="nav-icon" aria-hidden="true"><img src="/icons/correct.png" alt="lsit"></span>
         選品審核
       </a>
 
       <p class="nav-label nav-label-spaced">管理</p>
 
       <a routerLink="/settings" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon" aria-hidden="true">⚙</span>
+        <span class="nav-icon" aria-hidden="true"><img src="/icons/setting.png" alt=""></span>
         系統設定
       </a>
     }
@@ -76,3 +75,8 @@
     </div>
   }
 </aside>
+
+
+<div> Icons made by <a href="https://www.flaticon.com/authors/magnific" title="Magnific"> Magnific </a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com'</a></div>
+<a href="https://www.flaticon.com/free-icons/settings" title="settings icons">Settings icons created by Google - Flaticon</a>
+<a href="https://www.flaticon.com/free-icons/excellence" title="Excellence icons">Excellence icons created by meaicon - Flaticon</a>

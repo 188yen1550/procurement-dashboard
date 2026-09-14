@@ -5,7 +5,7 @@
 <main class="page-shell settings-page" aria-labelledby="settings-title">
   <header class="page-header">
     <div>
-      
+
       <h1 id="settings-title">系統設定</h1>
     </div>
   </header>
@@ -103,7 +103,7 @@
     <form class="panel" [formGroup]="form" (ngSubmit)="saveAudience()" novalidate>
       <header>
         <div>
-          
+
           <h2>核心客群設定</h2>
           <p>作為品項客群匹配度的計算依據。</p>
         </div>
@@ -711,11 +711,11 @@
       <table>
         <thead>
           <tr>
-            <th>Username</th>
+            <th>使用者帳號</th>
             <th>姓名</th>
-            <th>角色</th>
+            <th>角色權限</th>
             <th>狀態</th>
-            <th>操作</th>
+            <th>停用/復用帳號</th>
           </tr>
         </thead>
         <tbody>
@@ -746,9 +746,8 @@
   } @else {
     <section class="mode-intro">
       <div>
-        
+
         <h2>評估模式與權重</h2>
-        <p>三套固定模式唯讀；自訂模式可調整七項因子權重，加總須為 100。</p>
       </div>
     </section>
     <div class="mode-grid">
@@ -1076,7 +1075,7 @@
               <option value="EXPIRED">已結束</option>
             </select></label
           >
-          <p>儲存後 is_manual_override 會設為 true。</p>
+          <p>儲存後「是否手動覆蓋」將改為「是」。</p>
         }
         <footer>
           <button type="button" class="btn" (click)="closeModal()">取消</button
