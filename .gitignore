@@ -42,3 +42,15 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Picture
+*.png
+*jpeg
+*.jpe
+*.wepb
+
+*.pptx
+
+.deck-build/
+
+
