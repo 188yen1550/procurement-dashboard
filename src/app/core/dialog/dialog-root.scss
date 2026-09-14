@@ -4,17 +4,31 @@
  * .dialog-icon 慣例（間距、字級、陰影），只是換個命名空間跟名稱，
  * 讓全站每一處確認／提示都長一樣，不要每頁各自一套配色跟間距。
  */
+
 .app-dialog-backdrop {
-  position: fixed;
-  z-index: 2000;
   inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  background: transparent;
+  border: 0;
+}
+.app-dialog-backdrop[open] {
   display: grid;
   place-items: center;
-  padding: 1rem;
+}
+.app-dialog-backdrop::backdrop {
   background: rgba(15, 35, 55, 0.58);
 }
+
 .app-dialog {
   width: min(420px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
   padding: 1.5rem;
   text-align: center;
   background: #fff;
@@ -75,6 +89,7 @@
 }
 .app-dialog-confirm,
 .app-dialog-cancel {
+  min-height: 44px;
   padding: 0.55rem 1rem;
   border-radius: 0.5rem;
   font: inherit;
