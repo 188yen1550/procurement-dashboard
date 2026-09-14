@@ -113,7 +113,7 @@
 
 .mode-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s-4);
 }
 
@@ -261,6 +261,21 @@
   margin-top: var(--s-2);
 }
 
+/* 手動切換狀態 modal：手動指定 vs 恢復自動判斷 二選一。 */
+.campaign-status-mode {
+  display: flex;
+  gap: var(--s-4);
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--s-3);
+}
+.campaign-status-mode .radio-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-weight: normal;
+}
+
 /* ===================== 目標區間 ===================== */
 
 .score-band-group + .score-band-group {
@@ -300,7 +315,8 @@
   font-weight: 700;
 }
 
-.score-band-edit-grid input {
+.score-band-edit-grid input,
+.score-band-edit-grid select {
   display: block;
   width: 100%;
   margin-top: var(--s-1);
@@ -440,6 +456,38 @@ tr.is-editing select {
 .type-minor-row .type-minor-name::before {
   content: '└ ';
   color: #9aabb8;
+}
+
+/* 大類展開／收合按鈕：預設收合，點擊切換該大類底下的小類是否顯示。 */
+.type-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.type-toggle:disabled {
+  cursor: default;
+}
+.type-toggle-caret {
+  display: inline-block;
+  font-size: 0.7em;
+  color: #6b8299;
+  transition: transform 0.15s ease;
+}
+.type-toggle.is-expanded .type-toggle-caret {
+  transform: rotate(90deg);
+}
+.type-toggle:disabled .type-toggle-caret {
+  visibility: hidden;
+}
+.type-toggle-count {
+  color: #6b8299;
+  font-weight: normal;
 }
 
 /* ===== 評估模式卡片：擴大點擊範圍 ===== */

@@ -237,7 +237,22 @@
         <tbody>
           @for (group of productTypeGroups(); track group.major.id) {
             <tr class="type-major-row">
-              <td><strong>{{ group.major.name }}</strong></td>
+              <td>
+                <button
+                  type="button"
+                  class="type-toggle"
+                  [class.is-expanded]="isProductTypeGroupExpanded(group.major.id)"
+                  [attr.aria-expanded]="isProductTypeGroupExpanded(group.major.id)"
+                  [disabled]="group.minors.length === 0"
+                  (click)="toggleProductTypeGroup(group.major.id)"
+                >
+                  <span class="type-toggle-caret" aria-hidden="true">▶</span>
+                  <strong>{{ group.major.name }}</strong>
+                  @if (group.minors.length > 0) {
+                    <span class="type-toggle-count">（{{ group.minors.length }}）</span>
+                  }
+                </button>
+              </td>
               <td>{{ group.major.system ? '系統預設' : '自訂' }}</td>
               <td>{{ group.major.used }}</td>
               <td class="row-actions">
@@ -255,26 +270,28 @@
                 </button>
               </td>
             </tr>
-            @for (item of group.minors; track item.name) {
-              <tr class="type-minor-row">
-                <td class="type-minor-name">{{ item.name }}</td>
-                <td>{{ item.system ? '系統預設' : '自訂' }}</td>
-                <td>{{ item.used }}</td>
-                <td class="row-actions">
-                  <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
-                  <button
-                    type="button"
-                    class="btn"
-                    [class.is-restore]="!item.active"
-                    (click)="toggleProductTypeActive(item.name)"
-                  >
-                    {{ item.active ? '停用' : '復用' }}
-                  </button>
-                  <button type="button" class="btn danger" (click)="removeProductType(item.name)">
-                    刪除
-                  </button>
-                </td>
-              </tr>
+            @if (isProductTypeGroupExpanded(group.major.id)) {
+              @for (item of group.minors; track item.name) {
+                <tr class="type-minor-row">
+                  <td class="type-minor-name">{{ item.name }}</td>
+                  <td>{{ item.system ? '系統預設' : '自訂' }}</td>
+                  <td>{{ item.used }}</td>
+                  <td class="row-actions">
+                    <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
+                    <button
+                      type="button"
+                      class="btn"
+                      [class.is-restore]="!item.active"
+                      (click)="toggleProductTypeActive(item.name)"
+                    >
+                      {{ item.active ? '停用' : '復用' }}
+                    </button>
+                    <button type="button" class="btn danger" (click)="removeProductType(item.name)">
+                      刪除
+                    </button>
+                  </td>
+                </tr>
+              }
             }
           }
         </tbody>
@@ -316,7 +333,7 @@
               <td>{{ item.override ? '是' : '否' }}</td>
               <td>
                 <button type="button" class="btn" (click)="editCampaign(item.name)">編輯</button>
-                <button type="button" class="btn" (click)="openModal('campaignStatus', item.name)">
+                <button type="button" class="btn" (click)="openCampaignStatusModal(item)">
                   手動切換狀態
                 </button>
               </td>
@@ -344,7 +361,6 @@
               <th>因子</th>
               <th class="num">下界</th>
               <th class="num">上界</th>
-              <th>來源模式</th>
               <th></th>
             </tr>
           </thead>
@@ -375,16 +391,17 @@
                           (ngModelChange)="scoreBandDraftUpper.set($event)"
                         />
                       </label>
+                      <label
+                        >來源模式
+                        <select
+                          [ngModel]="scoreBandDraftMode()"
+                          (ngModelChange)="scoreBandDraftMode.set($event)"
+                        >
+                          <option value="MANUAL">手動填入</option>
+                          <option value="HISTORICAL">依歷史紀錄計算</option>
+                        </select>
+                      </label>
                     </div>
-                  </td>
-                  <td>
-                    <select
-                      [ngModel]="scoreBandDraftMode()"
-                      (ngModelChange)="scoreBandDraftMode.set($event)"
-                    >
-                      <option value="MANUAL">手動填入</option>
-                      <option value="HISTORICAL">依歷史紀錄計算</option>
-                    </select>
                     @if (scoreBandDraftMode() === 'HISTORICAL') {
                       <span class="helper">儲存後由系統依歷史開團紀錄重新計算並凍結，上方輸入值不會生效。</span>
                     }
@@ -403,12 +420,6 @@
                   <td>{{ band.factorLabel }}</td>
                   <td class="num">{{ band.lowerBound }}</td>
                   <td class="num">{{ band.upperBound }}</td>
-                  <td>
-                    {{ band.sourceMode === 'MANUAL' ? '手動填入' : '依歷史紀錄計算' }}
-                    @if (band.sourceMode === 'HISTORICAL' && band.sampleSize !== null) {
-                      <span class="helper">樣本數 {{ band.sampleSize }}</span>
-                    }
-                  </td>
                   <td class="row-actions">
                     <button
                       type="button"
@@ -513,7 +524,6 @@
                 <th>因子</th>
                 <th class="num">下界</th>
                 <th class="num">上界</th>
-                <th>來源模式</th>
                 <th></th>
               </tr>
             </thead>
@@ -545,16 +555,17 @@
                             (ngModelChange)="scoreBandDraftUpper.set($event)"
                           />
                         </label>
+                        <label
+                          >來源模式
+                          <select
+                            [ngModel]="scoreBandDraftMode()"
+                            (ngModelChange)="scoreBandDraftMode.set($event)"
+                          >
+                            <option value="MANUAL">手動填入</option>
+                            <option value="HISTORICAL">依歷史紀錄計算</option>
+                          </select>
+                        </label>
                       </div>
-                    </td>
-                    <td>
-                      <select
-                        [ngModel]="scoreBandDraftMode()"
-                        (ngModelChange)="scoreBandDraftMode.set($event)"
-                      >
-                        <option value="MANUAL">手動填入</option>
-                        <option value="HISTORICAL">依歷史紀錄計算</option>
-                      </select>
                     </td>
                     <td class="row-actions">
                       <button type="button" class="btn" [disabled]="isSavingScoreBand()" (click)="cancelScoreBandEdit()">
@@ -571,7 +582,6 @@
                     <td>{{ band.factorLabel }}</td>
                     <td class="num">{{ band.lowerBound }}</td>
                     <td class="num">{{ band.upperBound }}</td>
-                    <td>{{ band.sourceMode === 'MANUAL' ? '手動填入' : '依歷史紀錄計算' }}</td>
                     <td class="row-actions">
                       <button
                         type="button"
@@ -748,6 +758,7 @@
       <div>
 
         <h2>評估模式與權重</h2>
+        <p>三套固定模式唯讀；自訂模式可調整七項因子權重，加總須為 100。</p>
       </div>
     </section>
     <div class="mode-grid">
@@ -1062,20 +1073,45 @@
           <p>
             檔期：<strong>{{ selectedCampaign() }}</strong>
           </p>
-          <label
-            >目標狀態
-            <select
-              [ngModel]="draftStatus()"
-              (ngModelChange)="draftStatus.set($event)"
-              name="status"
+          <fieldset class="campaign-status-mode">
+            <label class="radio-option">
+              <input
+                type="radio"
+                name="campaignStatusMode"
+                [checked]="draftManualOverride()"
+                (change)="draftManualOverride.set(true)"
+              />
+              手動指定狀態
+            </label>
+            <label class="radio-option">
+              <input
+                type="radio"
+                name="campaignStatusMode"
+                [checked]="!draftManualOverride()"
+                (change)="draftManualOverride.set(false)"
+              />
+              恢復自動判斷
+            </label>
+          </fieldset>
+
+          @if (draftManualOverride()) {
+            <label
+              >目標狀態
+              <select
+                [ngModel]="draftStatus()"
+                (ngModelChange)="draftStatus.set($event)"
+                name="status"
+              >
+                <option value="UPCOMING">即將開始</option>
+                <option value="PREPARING">準備期</option>
+                <option value="ACTIVE">進行中</option>
+                <option value="EXPIRED">已結束</option>
+              </select></label
             >
-              <option value="UPCOMING">即將開始</option>
-              <option value="PREPARING">準備期</option>
-              <option value="ACTIVE">進行中</option>
-              <option value="EXPIRED">已結束</option>
-            </select></label
-          >
-          <p>儲存後「是否手動覆蓋」將改為「是」。</p>
+            <p>儲存後「是否手動覆蓋」將改為「是」。</p>
+          } @else {
+            <p>儲存後「是否手動覆蓋」將改為「否」，交由系統自動判斷狀態。</p>
+          }
         }
         <footer>
           <button type="button" class="btn" (click)="closeModal()">取消</button

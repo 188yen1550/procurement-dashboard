@@ -442,6 +442,11 @@ export class Settings implements OnInit {
   readonly productTypes = signal<ProductTypeVM[]>(
     this.useMockData ? [...MOCK_PRODUCT_TYPES] : [],
   );
+  /**
+   * 展開中的大類 id 集合。預設全部收合（id 不在集合裡＝收合），
+   * 避免品類一多，畫面一開就是一長串攤平的小類清單。
+   */
+  readonly expandedMajorIds = signal<Set<number>>(new Set());
   readonly campaigns = signal<CampaignVM[]>(this.useMockData ? [...MOCK_CAMPAIGNS] : []);
   readonly accounts = signal<AccountVM[]>(this.useMockData ? [...MOCK_ACCOUNTS] : []);
   readonly scoreBands = signal<ScoreBandVM[]>(this.useMockData ? [...MOCK_SCORE_BANDS] : []);
@@ -590,6 +595,13 @@ export class Settings implements OnInit {
     this.tagPickerOpen.set(false);
   }
   readonly draftStatus = signal('ACTIVE');
+  /**
+   * 「手動切換狀態」modal 用：true＝手動指定狀態（is_manual_override 開啟），
+   * false＝恢復自動判斷（is_manual_override 關閉）。原本這裡沒有反向路徑，
+   * overrideEnabled 送出時永遠是 true，一旦手動覆蓋就再也回不去，
+   * 這個 signal 補上「恢復自動判斷」這個選項。
+   */
+  readonly draftManualOverride = signal(true);
   readonly isSaving = signal(false);
 
   readonly form = this.fb().nonNullable.group({
@@ -979,6 +991,25 @@ export class Settings implements OnInit {
       minors: minorsByParent.get(major.id ?? -1) ?? [],
     }));
   });
+
+  /** 該大類目前是否展開。id 為 null（異常資料）一律視為收合。 */
+  isProductTypeGroupExpanded(majorId: number | null): boolean {
+    return majorId !== null && this.expandedMajorIds().has(majorId);
+  }
+
+  /** 切換單一大類的展開／收合狀態。 */
+  toggleProductTypeGroup(majorId: number | null): void {
+    if (majorId === null) return;
+    this.expandedMajorIds.update((current) => {
+      const next = new Set(current);
+      if (next.has(majorId)) {
+        next.delete(majorId);
+      } else {
+        next.add(majorId);
+      }
+      return next;
+    });
+  }
 
   /**
    * 刪除是不可復原的破壞性操作——這是真正的 DELETE，不是像帳號／風險選項
@@ -1615,6 +1646,18 @@ export class Settings implements OnInit {
     this.modal.set(type);
   }
 
+  /**
+   * 開啟「手動切換狀態」modal：把該檔期目前的狀態回填進草稿，
+   * 並預設為「手動指定狀態」——這是按鈕原本唯一支援的行為，
+   * 「恢復自動判斷」是使用者在 modal 內再另外選的次要選項。
+   */
+  openCampaignStatusModal(item: CampaignVM): void {
+    this.selectedCampaign.set(item.name);
+    this.draftStatus.set(item.status);
+    this.draftManualOverride.set(true);
+    this.modal.set('campaignStatus');
+  }
+
   /** 開啟風險選項編輯：把既有名稱與關鍵字回填進草稿狀態。 */
   openRiskEditModal(item: RiskOptionVM): void {
     this.editingRiskOptionId.set(item.id);
@@ -1637,6 +1680,7 @@ export class Settings implements OnInit {
     this.draftKeywordChips.set([]);
     this.draftKeywordInput.set('');
     this.draftCampaignCode.set('');
+    this.draftManualOverride.set(true);
   }
 
   saveModal(): void {
@@ -1875,16 +1919,25 @@ export class Settings implements OnInit {
     }
   }
 
+  /**
+   * 手動切換檔期狀態，或恢復自動判斷。
+   *
+   * ⚠️ 恢復自動判斷時（draftManualOverride() === false）不送使用者在下拉選單
+   * 上選的狀態，一律送 target 目前的狀態——「恢復自動判斷」的語意是關掉
+   * is_manual_override 這個開關，不是順便再手動指定一次新狀態，這兩件事要
+   * 分開，否則使用者會以為選了下拉選單的值也會一併生效。
+   */
   applyCampaignStatus(): void {
     const target = this.campaigns().find((item) => item.name === this.selectedCampaign());
     if (!target) return;
 
+    const overrideEnabled = this.draftManualOverride();
+    const status = overrideEnabled ? this.draftStatus() : target.status;
+
     if (this.useMockData) {
       this.campaigns.update((items) =>
         items.map((item) =>
-          item.name === this.selectedCampaign()
-            ? { ...item, status: this.draftStatus(), override: true }
-            : item,
+          item.name === this.selectedCampaign() ? { ...item, status, override: overrideEnabled } : item,
         ),
       );
       this.modal.set(null);
@@ -1894,8 +1947,8 @@ export class Settings implements OnInit {
     if (!target.id) return;
     this.api
       .switchFestiveCampaignStatus(target.id, {
-        status: this.draftStatus() as 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED',
-        overrideEnabled: true,
+        status: status as 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED',
+        overrideEnabled,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -1903,7 +1956,7 @@ export class Settings implements OnInit {
           this.campaigns.update((items) =>
             items.map((item) => (item.id === updated.id ? toCampaignVM(updated) : item)),
           );
-          this.statusMessageState.show('已手動切換檔期狀態。');
+          this.statusMessageState.show(overrideEnabled ? '已手動切換檔期狀態。' : '已恢復自動判斷。');
           this.modal.set(null);
         },
         error: (err) => this.statusMessageState.show(toApiError(err).message),
