@@ -1,29 +1,7 @@
 /**
- * 檔案用途：品項編輯頁。一般基本資料永遠可編輯，選品核心資料在 APPROVED 時鎖定；
- * 同時提供刪除／封存／復用三個生命週期操作與評估分數區塊。
- *
- * ## 這次改寫修掉的四個問題
- *
- * 1. **封存／復用打到不存在的端點**
- *    舊碼是 `PATCH /api/products/{id}/item-status`，後端沒有這支，必定 404。
- *    正確是 `POST /api/products/{id}/archive` 與 `.../restore`。
- *
- * 2. **canDelete 永遠是 false**
- *    舊碼判斷 `reviewStatus === 'DRAFT'`，但系統的 ReviewStatus 只有
- *    PENDING／APPROVED／REJECTED，沒有 DRAFT。刪除按鈕在真實資料下不會出現。
- *
- * 3. **自訂的 ProductEvaluation 介面與後端對不上**
- *    舊碼的 marketPotentialScore／costCompetitivenessScore／isFrozenSnapshot
- *    後端 EvaluationResponse 完全沒有。已改用 contract 的型別，
- *    isFrozenSnapshot 對應到真實的 `dataSource === 'SNAPSHOT'`。
- *
- * 4. **大量 any 與缺少拆殼**
- *    `http.get<any>` 讓整頁沒有型別保護，且沒拆 ApiResponse 外殼，
- *    實際拿到的是 { success, message, data } 而不是商品本身。
- *
- * ## 保留
- * editForm / coreForm 兩組表單的切分維持不變——那個設計是對的，
- * APPROVED 只鎖核心那一組，基本資料仍可編輯。
+ * 檔案用途：品項編輯、刪除、封存、復用與評估分數顯示。
+ * APPROVED 商品只鎖定核心表單，一般基本資料仍可編輯；生命週期操作透過
+ * ProductApiService 呼叫對應端點。
  */
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';

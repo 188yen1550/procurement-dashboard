@@ -21,8 +21,7 @@
     </div>
   </section>
   }
-  <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，一般使用者看不到
-       任何操作結果的回饋，見 product-management.html 的說明。 -->
+  <!-- 同時提供螢幕閱讀器通知與可見的操作結果。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
   <p class="scope-notice status-toast" role="status">{{ statusMessage() }}</p>
@@ -84,8 +83,7 @@
       <div>
         <span class="category">{{ item.category }}</span>
         <h2>{{ item.name }}</h2>
-        <!-- submittedBy 恆為 null：ProductResponse 只有 createdBy 編號，
-                   後端沒有 id 轉姓名的端點。null 時不顯示「由 null 送審」。 -->
+        <!-- createdByName 由待審清單 API 提供；有值時才顯示送審人。 -->
         <p>
           @if (item.submittedBy) {
           由 {{ item.submittedBy }} 送審 ·

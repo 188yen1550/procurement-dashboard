@@ -1,25 +1,7 @@
 /**
  * 檔案用途：呈現 AI_SUGGESTED 商品並提供人工加入 CANDIDATE 的操作。
- * 只有人工轉為 CANDIDATE 後才可進入評分、Top 10 與審核；AI 不會自行核准商品。
- *
- * ## 這次接上真實 API 做了什麼
- *
- * 1. Mock 模式完全保留——固定的三筆展示資料、UI 狀態切換器都不動。
- *
- * 2. 真實模式呼叫 `ProductApiService.listAiSuggested()`。
- *
- * ## ⚠️ 真實模式下的資料落差（誠實顯示，不假造）
- *
- * `GET /api/products/ai-suggested` 回的還是 `ProductResponse`，跟正式候選清單
- * 同一個 DTO，**完全沒有** `trend`／`direction`／`audienceMatch`／`risk`／`reason`
- * 這些欄位——那些原本就是 Mock 資料自己編的展示內容，不是真的有 API 對應。
- * 真實模式下這些欄位一律為 null，樣板改成有資料才顯示對應區塊，
- * 不顯示假的「上升／穩定」箭頭或編造的風險提示文字。
- *
- * 若要讓這頁真正有這些資訊，需要後端要嘛在這支端點併帶 TrendSnapshot／
- * AI 分析摘要，要嘛前端逐筆呼叫 /trend/sync 與 /ai-analysis——後者是
- * N+1，且 /trend/sync 有外部呼叫成本，不能在頁面載入時自動觸發，
- * 這頁不會這樣做。
+ * 真實 API 提供推薦理由；趨勢、客群匹配與風險沒有清單欄位，因此只在資料
+ * 存在時顯示。商品必須由人工加入 CANDIDATE，AI 不會自行核准。
  */
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -44,10 +26,10 @@ interface Suggestion {
   name: string;
   category: string;
   supplier: string;
-  /** ⚠️ 真實模式恆為 null：後端這支端點沒有趨勢資料。 */
+  /** 展示資料可提供；真實清單 API 目前沒有趨勢資料。 */
   trend: number | null;
   direction: 'UP' | 'STABLE' | null;
-  /** ⚠️ 真實模式恆為 null：後端沒有「為什麼推薦」這段文字。 */
+  /** 真實模式讀取 AI 建議端點的 suggestionReason。 */
   reason: string | null;
   audienceMatch: number | null;
   risk: string | null;
@@ -97,7 +79,7 @@ const SUGGESTIONS: readonly Suggestion[] = [
   },
 ];
 
-/** 後端 ProductListItem → 這頁的顯示模型；trend/reason/audienceMatch/risk 一律 null。 */
+/** 後端 ProductListItem → 這頁的顯示模型。 */
 function toSuggestion(item: ProductListItem): Suggestion {
   return {
     id: item.id,
@@ -106,8 +88,7 @@ function toSuggestion(item: ProductListItem): Suggestion {
     supplier: item.supplierName,
     trend: null,
     direction: null,
-    // 後端已經補上這個欄位（GET /api/products/ai-suggested 專屬），
-    // 用跟批次判定完全相同的門檻即時重算，不再是恆為 null 的死欄位。
+    // suggestionReason 為 GET /api/products/ai-suggested 專屬欄位。
     reason: item.suggestionReason ?? null,
     audienceMatch: null,
     risk: null,

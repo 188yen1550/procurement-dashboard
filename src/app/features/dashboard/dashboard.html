@@ -165,10 +165,7 @@
       </article>
     </section>
 
-    <!-- 圓餅圖跟選品轉換率原本分散在頁面兩處（圖表獨立佔一整排在最上方，
-         轉換率被埋在側欄跟高風險提示擠在一起），兩者都是「一眼看全站
-         概況」的小卡片，放在同一排比較符合閱讀動線，也讓側欄專注在
-         「高風險提示」這件需要管理層採取行動的事情上。 -->
+    <!-- 審核狀態與核准率共同呈現整體選品概況。 -->
     <section class="chart-row">
       <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
         <header class="panel-header">
@@ -237,9 +234,7 @@
                     }
                   </td>
                   <td>
-                    <!-- ⚠️ 一定要先判斷 hasCompleteness()。completeness 真實模式
-                         恆為 null，而 JS 裡 null < 60 是 true，直接比較會讓每一列
-                         都誤報「資料待補」。 -->
+                    <!-- 尚無評估紀錄時完整度為 null，需先判斷再套用門檻。 -->
                     @if (!hasCompleteness(item)) {
                       <span class="unavailable">—</span>
                     } @else {

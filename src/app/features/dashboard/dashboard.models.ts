@@ -1,24 +1,7 @@
 /**
  * 檔案用途：Dashboard 畫面模型。
- * PENDING 是未審核、APPROVED 僅代表選品審核通過、REJECTED 是未通過；APPROVED 不等於已銷售。
- *
- * ⚠️ 接上真實 API 的過程中，Top10 項目的欄位可用性分成三種情況，不要混為一談：
- *
- * - `category`：後端這次補上 productTypeId，前端對照 GET /api/settings/product-types
- *   取得分類名稱；對照不到才顯示「—」
- * - `completeness`：後端這次補上，來自與 finalScore 同一次查出的 ProductEvaluation；
- *   該商品若尚無評估紀錄，仍可能是 null
- * - `reviewStatus`：**不是**後端欄位，是前端固定寫死 'PENDING'——
- *   因為後端 `DashboardService.getRecommendations()` 呼叫查詢時
- *   reviewStatus 參數本來就寫死傳入 PENDING，這份清單裡的每一筆
- *   審核狀態保證恆為 PENDING，不是「後端提供了這個值」
- *
- * `DashboardRiskAlert.level`（風險嚴重度）目前仍然沒有對應後端欄位，
- * 後端只有命中關鍵字陣列與 AI 分析全文，HIGH/MEDIUM 是 Mock 自行假設的分類，
- * 真實模式維持 null。
- *
- * Mock 資料（dashboard.mock-data.ts）完全不受影響——本來就都填了值，
- * 只是型別放寬不影響既有資料。
+ * 分類名稱由 productTypeId 對照取得；尚無評估紀錄時完整度可為 null。
+ * 推薦清單只包含待審商品。風險 API 未提供嚴重度時，level 保持 null。
  */
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type DashboardUiState = 'default' | 'locked' | 'loading' | 'edge';

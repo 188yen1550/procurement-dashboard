@@ -1,30 +1,7 @@
 /**
  * 檔案用途：Dashboard 的統計卡片、Top 10、風險與轉換率。
- * AI 推薦只提供排序與理由，永遠不會在此元件自動把商品核准。
- *
- * ## 這次接上真實 API 做了什麼
- *
- * 1. Mock 模式完全不動——`uiState` 的四個示範狀態（一般／鎖定／載入／例外）
- *    是給 PM／利害關係人展示畫面樣貌用的，跟真實資料無關，繼續保留。
- *
- * 2. 真實模式走一條獨立的載入流程（`realLoadState`），呼叫
- *    `DashboardApiService.loadAll()` 後，把四支 API 的結果組成
- *    跟 Mock 同一個形狀（`DashboardMockData`），這樣樣板幾乎不用改——
- *    只需要在後端真的沒有的欄位（category／completeness／reviewStatus／level）
- *    補上 null 的安全判斷。
- *
- * 3. `retry()` 在真實模式下改成真的重新呼叫 API，不是原本純本地的
- *    setTimeout 模擬。
- *
- * ## ⚠️ 真實模式下的資料落差（已知限制，非本次能修正）
- *
- * 後端 DashboardRecommendationItem／DashboardRiskAlertItem 遠比 Mock 單薄：
- * - Top10 項目沒有 productTypeId、dataCompleteness、reviewStatus
- * - 風險項目沒有 HIGH/MEDIUM 分級，只有命中關鍵字與 AI 全文
- *
- * 這些欄位在真實模式下一律顯示為「—」或隱藏對應的樣式判斷，
- * 不去猜測或假造數值。若要補齊，需要後端在對應 DTO 加欄位——
- * 例如 productTypeId 這種其他端點已有的欄位，遷移成本應該很低。
+ * 真實模式合併統計、推薦、風險與轉換率 API；展示模式提供本地狀態預覽。
+ * AI 推薦只提供決策資訊，不會自動核准商品。
  */
 import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, afterRenderEffect, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -298,7 +275,7 @@ function toDashboardPageData(
       id: item.productId,
       rank: index + 1,
       name: item.productName,
-      // 後端這次補上 productTypeId，對照設定 API 取得中文分類名稱；
+      // 以 productTypeId 對照設定 API 取得中文分類名稱；
       // 對照不到（例如分類被刪除）才顯示 NOT_PROVIDED。
       category:
         item.productTypeId === null
@@ -311,13 +288,10 @@ function toDashboardPageData(
       // 狀態商品才會出現在推薦清單裡」），查詢條件本身保證這份清單裡
       // 每一筆的審核狀態一定是 PENDING，不需要後端額外提供這個欄位。
       reviewStatus: 'PENDING',
-      // 後端這次補上：dataCompleteness 與 finalScore 來自同一個已查出的
+      // dataCompleteness 與 finalScore 來自同一筆已查出的
       // ProductEvaluation，沒有額外查詢成本。找不到評估紀錄時仍可能是 null。
       completeness: item.dataCompleteness,
-      // ⚠️ 後端沒有「為什麼推薦」這段文字欄位。之前一度誤用
-      // lastRejectionComment 頂替，但那是「上次被拒絕的原因」，
-      // 語意完全不同，繼續沿用會讓使用者誤以為系統在說明推薦理由，
-      // 實際上讀到的是拒絕理由。誠實顯示沒有資料即可。
+      // Dashboard 推薦端點未提供推薦理由；拒絕留言保留給重新送審提示。
       aiReason: NOT_PROVIDED,
       submissionCount: item.submissionCount,
       previousRejectionSummary: item.isReentry ? item.lastRejectionComment : undefined,
