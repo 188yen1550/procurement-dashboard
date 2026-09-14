@@ -7,7 +7,7 @@
  * 到「審核」為止，不負責審核之後的開團執行。開團結果由外部系統產生後
  * 批次匯入，在本系統內是**唯讀的參考資料**。
  *
- * 只有兩種寫入路徑：整批匯入、整批回退。兩者都是批次級別，
+ * 只有兩種寫入路徑：整批匯入、整批退回。兩者都是批次級別，
  * 這樣每一筆資料的來源永遠可以追溯到某一次匯入。
  *
  * ⚠️ 請勿為了「補齊 CRUD」而在前端做出單筆新增／編輯／刪除的 UI，
@@ -24,7 +24,7 @@ export const GROUP_BUY_API = {
   list: '/api/group-buy-records',
   /** POST [僅管理]：CSV 匯入，multipart/form-data，欄位名固定 file。 */
   import: '/api/group-buy-records/import',
-  /** DELETE [僅管理]：整批回退。 */
+  /** DELETE [僅管理]：整批退回。 */
   deleteBatch: (batchId: string) => `/api/group-buy-records/batch/${encodeURIComponent(batchId)}`,
 } as const;
 
@@ -91,7 +91,7 @@ export interface GroupBuyRecordResponsePayload {
   returnCount: number | null;
   /** true = 模擬資料，非真實開團績效。畫面必須標示。 */
   isSimulated: boolean | null;
-  /** 所屬匯入批次，整批回退時要用這個值。 */
+  /** 所屬匯入批次，整批退回時要用這個值。 */
   importBatchId: string | null;
   importedAt: IsoDateTime | null;
 }
@@ -111,7 +111,7 @@ export interface GroupBuyRecordResponsePayload {
 export interface GroupBuyImportResultPayload {
   /** ⚠️ 判斷成敗看這裡，不是看 HTTP 狀態碼。 */
   success: boolean;
-  /** 成功時才有值；失敗時為 null。整批回退要用它。 */
+  /** 成功時才有值；失敗時為 null。整批退回要用它。 */
   importBatchId: string | null;
   totalRows: number;
   /** 失敗時為 0（全有或全無）。 */

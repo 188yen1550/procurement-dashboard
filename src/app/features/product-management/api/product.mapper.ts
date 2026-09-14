@@ -108,7 +108,7 @@ export interface ProductListItem {
  *
  * | 操作   | ProductService 拋 409 的條件                                    |
  * |--------|-----------------------------------------------------------------|
- * | 重新送審 | 非 REJECTED／已封存（"請先復用後再重新送審"）                    |
+ * | 重審 | 非 REJECTED／已封存（"請先復用後再重審"）                    |
  * | 封存   | 非 APPROVED 也非 REJECTED／非 ACTIVE                            |
  * | 復用   | 非 APPROVED 也非 REJECTED／非 ARCHIVED                          |
  * | 加入候選 | 非 AI_SUGGESTED                                                |
@@ -116,7 +116,7 @@ export interface ProductListItem {
  *
  * ⚠️ 兩個最容易漏掉的條件：
  * 1. **PENDING 商品不能封存也不能復用**——必須先有審核結果
- * 2. **已封存商品不能直接重新送審**——要先復用回 ACTIVE
+ * 2. **已封存商品不能直接重審**——要先復用回 ACTIVE
  *
  * ⚠️ restore 的條件是 APPROVED **或** REJECTED，不是只有 APPROVED。
  * 舊版前端寫成只有 APPROVED 可復用，會讓被拒絕又封存的商品永遠救不回來。

@@ -3,15 +3,15 @@
   基本資料與圖片在核准後仍可改；核心資料依 APPROVED 鎖定。aria-live／alert／status 宣告非同步與錯誤狀態。
 -->
 <main class="form-page" aria-labelledby="form-title">
-  <header class="page-header"><div><a routerLink="/products" class="back-link">← 返回品項管理</a><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。') }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
+  <header class="page-header"><div><a routerLink="/products" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '已通過選品審核：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。') }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
   @if (useMockData) { <section class="state-bar"><div><strong>UI 狀態</strong><span>不呼叫後端</span></div><div role="group" aria-label="切換表單狀態">@for (state of stateOptions; track state) { <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state" (click)="setState(state)">{{ state }}</button> }</div></section> }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage() && !saved()) { <div class="feedback-toast" [attr.role]="pageState() === 'error' || imageState() === 'error' ? 'alert' : 'status'">{{ statusMessage() }}</div> }
   @if (pageState() === 'error') { <section class="notice error" role="alert"><div><strong>無法讀取表單資料</strong><span>{{ useMockData ? '這是本地錯誤狀態模擬。' : statusMessage() }}</span></div><button type="button" (click)="retry()">重試</button></section> }
   @else if (pageState() === 'loading') { <section class="form-card skeleton" role="status"><span class="spinner"></span>正在載入品項表單… @for (line of [1,2,3,4,5,6]; track line) { <i></i> }</section> }
   @else {
-    @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong>🔒 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
-    @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重新送審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
+    @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
+    @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
     <!-- 儲存成功／失敗一律用 DialogService 呈現，不在這裡重複顯示第二層提示。 -->
     <form class="form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <section aria-labelledby="basic-title"><header><span>01</span><div><h2 id="basic-title">商品基本資料</h2><p>通過審核後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
@@ -119,7 +119,7 @@
           </div>
         </fieldset>
       </div></section>
-      <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
+      <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
     </form>
   }
   <!-- 離頁確認、驗證錯誤、儲存成功／失敗全部改由 DialogService 統一呈現

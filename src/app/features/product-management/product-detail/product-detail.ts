@@ -23,6 +23,7 @@ import {
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
+import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { AiAnalysisModel } from '../api/product.mapper';
 import {
@@ -163,7 +164,7 @@ const INCOMPLETE: DetailProduct = {
 
 @Component({
   selector: 'app-product-detail',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, Icon],
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })

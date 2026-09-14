@@ -130,8 +130,8 @@
  */
 
 /*
- * .text-action：表格列內的輕量文字操作連結（編輯／查看／重新送審／
- * 回退整批），不是實心按鈕——表格一列裡塞好幾個操作，全部用 .btn
+ * .text-action：表格列內的輕量文字操作連結（編輯／查看／重審／
+ * 整批退回），不是實心按鈕——表格一列裡塞好幾個操作，全部用 .btn
  * 那種有底色有邊框的樣式會太搶眼、互相打架。原本這裡只有一句
  * 「沿用既有 .text-action 風格」的註解，實際規則從來沒寫出來，
  * 導致 group-buy／product-management 兩個頁面共 6 處引用這個 class
@@ -611,6 +611,7 @@
 .back-link {
   display: inline-flex;
   align-items: center;
+  gap: 0.4rem;
   min-height: 44px;
   margin-bottom: 0.8rem;
   padding: 0.55rem 0.9rem;
@@ -618,7 +619,7 @@
   background: #eaf3fb;
   border: 1px solid #b7d3ea;
   border-radius: 0.5rem;
-  font-size: 0.82rem;
+  font-size: var(--t-sm);
   font-weight: 700;
   text-decoration: none;
 }

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { defer, finalize } from 'rxjs';
 import { Auth, MockUsername } from '../../core/auth/auth';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { Icon } from '../../shared/components/icon/icon';
 
 interface LoginErrorLike {
   status?: number;
@@ -13,7 +14,7 @@ interface LoginErrorLike {
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Icon],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })

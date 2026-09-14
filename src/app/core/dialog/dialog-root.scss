@@ -44,7 +44,7 @@
   color: #fff;
   background: #1c5286;
   border-radius: 50%;
-  font-size: 1.25rem;
+  font-size: var(--t-xl);
   font-weight: 900;
 }
 .app-dialog.variant-success .app-dialog-icon {
@@ -58,13 +58,13 @@
 }
 .app-dialog h2 {
   margin: 0.7rem 0 0;
-  font-size: 1rem;
+  font-size: var(--t-base);
   color: #243447;
 }
 .app-dialog p {
   margin: 0.5rem 0 0;
   color: #637483;
-  font-size: 0.82rem;
+  font-size: var(--t-sm);
   line-height: 1.6;
 }
 /* 多則訊息（例如表單驗證一次列出所有錯誤欄位）改用清單，左對齊比較好讀，
@@ -73,7 +73,7 @@
   margin: 0.6rem 0 0;
   padding-left: 1.2rem;
   color: #637483;
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
   line-height: 1.7;
   text-align: left;
 }
@@ -93,7 +93,7 @@
   padding: 0.55rem 1rem;
   border-radius: 0.5rem;
   font: inherit;
-  font-size: 0.76rem;
+  font-size: var(--t-xs);
   font-weight: 700;
   cursor: pointer;
   transition: filter 0.15s ease;

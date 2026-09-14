@@ -26,7 +26,7 @@
  * 不去猜測或假造數值。若要補齊，需要後端在對應 DTO 加欄位——
  * 例如 productTypeId 這種其他端點已有的欄位，遷移成本應該很低。
  */
-import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, afterRenderEffect, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -108,11 +108,25 @@ export class Dashboard implements OnInit, OnDestroy {
 
   /**
    * 用 effect() 而非在 load() 成功回呼裡手動畫圖，是因為 Mock 模式完全
-   * 不會呼叫 load()——用 effect() 讓圖表跟著 data() 這個 computed signal
-   * 走，不論資料從哪個管道更新（Mock 常數／真實 API／使用者切換示範
-   * 狀態）都會自動重繪，不需要在每個資料來源各自呼叫一次畫圖方法。
+   * 不會呼叫 load()——讓圖表跟著 data() 這個 computed signal 走，不論
+   * 資料從哪個管道更新（Mock 常數／真實 API／使用者切換示範狀態）都會
+   * 自動重繪，不需要在每個資料來源各自呼叫一次畫圖方法。
+   *
+   * ⚠️ 原本這裡用一般的 effect()，實際會有「第一次進頁面圖表是空白的，
+   * 要切到別的分頁再切回來才畫得出來」的問題：real 模式下 data() 是在
+   * HttpClient 的 subscribe 回呼裡才變成有值，這個時間點跟 Angular 把
+   * 樣板從 skeleton 換成正式內容（canvas 元素這時才存在於 DOM 裡）不是
+   * 同一個時機——effect() 的排程可能搶在 change detection 真的把 canvas
+   * 掛上 DOM、@ViewChild 更新完成「之前」就先跑一次，讀到的 canvas 還是
+   * undefined，於是整次被跳過；之後沒有其他事件會再次觸發它，圖表就一直
+   * 空著，直到元件被整個銷毀重建（離開頁面再回來）才「湊巧」重新對上。
+   *
+   * afterRenderEffect() 是 Angular 專門為了這種「effect 內要安全讀 DOM／
+   * ViewChild」設計的 API：保證在每次畫面實際渲染「之後」才執行，不會有
+   * 上述的競態。專案裡 core/dialog/modal-surface.ts 處理 focus 也是靠同一
+   * 家族的 afterNextRender／afterEveryRender，這裡沿用一致的做法。
    */
-  private readonly renderStatusChartEffect = effect(() => {
+  private readonly renderStatusChartEffect = afterRenderEffect(() => {
     // 讀取 data() 建立依賴——待審／通過／未通過三個數字任一變動，
     // 圖表都要重新畫。canvas 在 skeleton／empty／error 狀態下不存在，
     // ViewChild 拿到 undefined 時直接跳過，不強行畫圖到不存在的元素上。
@@ -141,6 +155,14 @@ export class Dashboard implements OnInit, OnDestroy {
       type: 'doughnut',
       data: chartData,
       options: {
+        // ⚠️ maintainAspectRatio 預設是 true，會強迫 canvas 維持固定長寬比，
+        // 跟 .status-chart-wrap 用 CSS 明確指定 height: 260px、寬度卻吃滿
+        // 較寬的 grid 欄位互相打架——結果是圖只長到跟高度一樣的正方形，
+        // 卡在容器左側，右邊留一大塊空白（「明顯偏左」的成因）。容器已經
+        // 用 CSS 決定好寬高時，這裡要關掉 maintainAspectRatio，讓 Chart.js
+        // 直接吃滿 .status-chart-wrap 的實際框，甜甜圈才會置中。
+        responsive: true,
+        maintainAspectRatio: false,
         cutout: '68%',
         plugins: {
           legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },

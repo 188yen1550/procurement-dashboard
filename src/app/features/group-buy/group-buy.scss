@@ -25,7 +25,7 @@
 }
 
 .stat-label {
-  font-size: 0.85rem;
+  font-size: var(--t-sm);
   color: #6b7280;
   margin: 0 0 0.35rem;
 }
@@ -38,14 +38,14 @@
 }
 
 .stat-hint {
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   color: #9ca3af;
   margin: 0.35rem 0 0;
 }
 
 .csv-headers {
   margin: 0.75rem 0;
-  font-size: 0.85rem;
+  font-size: var(--t-sm);
 
   summary {
     cursor: pointer;
@@ -59,7 +59,7 @@
     background: #f3f4f6;
     border-radius: 6px;
     word-break: break-all;
-    font-size: 0.8rem;
+    font-size: var(--t-xs);
   }
 }
 
@@ -71,7 +71,7 @@
 }
 
 .helper {
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
   color: #6b7280;
 }
 
@@ -85,7 +85,7 @@
   background: #eef4f8;
   border: 1px solid #dce6ed;
   border-radius: 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
 }
 
 .spinner {
@@ -126,7 +126,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
-    font-size: 0.78rem;
+    font-size: var(--t-xs);
     font-weight: 700;
     color: #38536a;
   }
@@ -135,12 +135,12 @@
     padding: 0.5rem 0.7rem;
     border: 1px solid #d4dee6;
     border-radius: 0.4rem;
-    font-size: 0.85rem;
+    font-size: var(--t-sm);
   }
 
   .helper {
     align-self: center;
     color: #6c7a89;
-    font-size: 0.72rem;
+    font-size: var(--t-xs);
   }
 }

@@ -538,7 +538,7 @@ tr.is-editing select {
   background: #eaf3fb;
   border: 1px solid #b7d3ea;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: var(--t-xs);
   white-space: nowrap;
 }
 .keyword-chip.readonly {
@@ -557,7 +557,7 @@ tr.is-editing select {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--t-sm);
   line-height: 1;
 }
 .keyword-chip-remove:hover {
@@ -573,7 +573,7 @@ tr.is-editing select {
   padding: 0.6rem 0.75rem;
   border: 1px solid #d4dee6;
   border-radius: 0.45rem;
-  font-size: 0.85rem;
+  font-size: var(--t-sm);
 }
 .tag-picker-list {
   display: flex;
@@ -593,7 +593,7 @@ tr.is-editing select {
   gap: 0.5rem;
   padding: 0.35rem 0.4rem;
   border-radius: 0.35rem;
-  font-size: 0.82rem;
+  font-size: var(--t-sm);
   cursor: pointer;
 }
 .tag-picker-option:hover {
@@ -611,7 +611,7 @@ tr.is-editing select {
 }
 .tag-tier-advanced summary {
   color: #526677;
-  font-size: 0.78rem;
+  font-size: var(--t-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -630,14 +630,14 @@ tr.is-editing select {
    是多少」這個關鍵數字時最重要的資訊，應該放大加粗，不是等同於旁邊
    的輔助說明。 */
 .system-setting-value {
-  font-size: 1.25rem;
+  font-size: var(--t-xl);
   font-weight: 650;
   color: var(--c-brand, #1c5286);
 }
 .unit {
   margin-left: 0.3rem;
   color: #6c7a89;
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
 }
 .system-setting-edit-field {
   display: flex;

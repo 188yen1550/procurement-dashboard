@@ -28,7 +28,7 @@
 
 .page-header a {
   color: #1c5286;
-  font-size: .72rem;
+  font-size: var(--t-xs);
   font-weight: 700;
   text-decoration: none
 }
@@ -46,7 +46,7 @@
 .eyebrow {
   margin: 0 !important;
   color: #39735c !important;
-  font-size: .68rem !important;
+  font-size: var(--t-xs) !important;
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase
@@ -63,7 +63,7 @@
   border: 1px solid #cbd9e3;
   border-radius: .42rem;
   font: inherit;
-  font-size: .72rem;
+  font-size: var(--t-xs);
   font-weight: 700;
   cursor: pointer
 }
@@ -83,8 +83,7 @@
 }
 
 .scope span {
-  font-size: .72rem
-}
+  font-size: var(--t-xs);}
 
 .state-bar {
   margin-bottom: 1rem;
@@ -97,8 +96,7 @@
 .state-bar span {
   display: block;
   color: #6c7a89;
-  font-size: .68rem
-}
+  font-size: var(--t-xs);}
 
 .state-bar>div:last-child {
   display: flex;
@@ -121,8 +119,7 @@
 }
 
 .resubmit span {
-  font-size: .7rem
-}
+  font-size: var(--t-xs);}
 
 .panel,
 .empty,
@@ -142,12 +139,11 @@
 
 .panel h2 {
   margin: .15rem 0;
-  font-size: 1rem
-}
+  font-size: var(--t-base);}
 
 .summary header span {
   color: #39735c;
-  font-size: .68rem;
+  font-size: var(--t-xs);
   font-weight: 800
 }
 
@@ -168,8 +164,7 @@
 .scores span {
   display: block;
   color: #6c7a89;
-  font-size: .62rem
-}
+  font-size: var(--t-xs);}
 
 .scores strong {
   display: block;
@@ -200,8 +195,7 @@
 .weights span,
 .weights small {
   color: #5b6d7c;
-  font-size: .67rem
-}
+  font-size: var(--t-xs);}
 
 .weights small {
   margin-left: auto
@@ -209,14 +203,14 @@
 
 .ai>header>span {
   color: #725510;
-  font-size: .66rem;
+  font-size: var(--t-xs);
   font-weight: 800
 }
 
 .ai>p {
   padding: 0 1.2rem 1rem;
   color: #526677;
-  font-size: .74rem;
+  font-size: var(--t-xs);
   line-height: 1.6
 }
 
@@ -229,7 +223,7 @@
 
 .form legend {
   padding-top: 1rem;
-  font-size: .78rem;
+  font-size: var(--t-xs);
   font-weight: 800
 }
 
@@ -250,8 +244,7 @@
   background: #f8fafc;
   border: 1px solid #dce4ea;
   border-radius: .5rem;
-  font-size: .72rem
-}
+  font-size: var(--t-xs);}
 
 .risk-grid input,
 .decision input {
@@ -262,7 +255,7 @@
   display: block;
   margin-top: .7rem;
   color: #526677;
-  font-size: .7rem;
+  font-size: var(--t-xs);
   font-weight: 700
 }
 
@@ -288,8 +281,7 @@
 
 .form footer span {
   color: #6c7a89;
-  font-size: .67rem
-}
+  font-size: var(--t-xs);}
 
 .form footer button {
   color: #fff;
@@ -308,8 +300,7 @@
   color: #8d3733;
   background: #fff0ef;
   border-radius: .45rem;
-  font-size: .72rem
-}
+  font-size: var(--t-xs);}
 
 .success {
   padding: 1rem;
@@ -320,16 +311,14 @@
 
 .success h2 {
   margin: 0;
-  font-size: 1rem
-}
+  font-size: var(--t-base);}
 
 .success p {
-  font-size: .74rem
-}
+  font-size: var(--t-xs);}
 
 .success a {
   color: #21694f;
-  font-size: .72rem;
+  font-size: var(--t-xs);
   font-weight: 800
 }
 
@@ -388,12 +377,11 @@
 }
 
 .dialog h2 {
-  font-size: 1.05rem
-}
+  font-size: var(--t-base);}
 
 .dialog p {
   color: #637483;
-  font-size: .78rem;
+  font-size: var(--t-xs);
   line-height: 1.6
 }
 
@@ -481,5 +469,4 @@ textarea:focus-visible {
   background: #eef4f8;
   border: 1px solid #dce6ed;
   border-radius: .65rem;
-  font-size: .76rem
-}
+  font-size: var(--t-xs);}

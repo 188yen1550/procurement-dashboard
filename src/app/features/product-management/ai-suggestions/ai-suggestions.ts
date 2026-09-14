@@ -35,6 +35,7 @@ import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductListItem } from '../api/product.mapper';
+import { Icon } from '../../../shared/components/icon/icon';
 
 type AiState = 'default' | 'disabled' | 'loading' | 'empty' | 'error';
 
@@ -117,7 +118,7 @@ function toSuggestion(item: ProductListItem): Suggestion {
 
 @Component({
   selector: 'app-ai-suggestions',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './ai-suggestions.html',
   styleUrl: './ai-suggestions.scss',
 })

@@ -5,7 +5,7 @@
 <main class="detail-page" aria-labelledby="detail-title">
   <header class="page-header">
     <div>
-      <a routerLink="/products" class="back-link">← 返回品項管理</a>
+      <a routerLink="/products" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a>
 
       <h1 id="detail-title">{{ product()?.name ?? '品項詳情' }}</h1>
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
@@ -68,7 +68,7 @@
     @let p = product()!;
     @if (p.reviewStatus === 'APPROVED') {
       <section class="notice locked">
-        <strong>🔒 核心選品資料已鎖定</strong
+        <strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong
         ><span
           >一般基本資料仍可編輯，選品核心資料禁止修改。通過審核不代表已上架、已銷售、已簽約或已產生營收。</span
         >

@@ -50,6 +50,7 @@ import { ProductApiService } from '../api/product-api.service';
 import { SimilarProductCandidatePayload } from '../api/product-api.contract';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import { Icon } from '../../../shared/components/icon/icon';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
 type ImageState = 'empty' | 'loading' | 'ready' | 'error';
@@ -193,7 +194,7 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
 
 @Component({
   selector: 'app-product-form',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, Icon],
   templateUrl: './product-form.html',
   styleUrls: ['./product-form.scss', './product-image.scss'],
 })
@@ -587,7 +588,7 @@ export class ProductForm implements OnInit {
 
   /**
    * 驗證並送出表單；`resubmit` 為 true 時，儲存成功後會接著呼叫
-   * POST /api/products/{id}/resubmit 真的觸發重新送審（見
+   * POST /api/products/{id}/resubmit 真的觸發重審（見
    * maybeResubmitThenFinish()），不是只改顯示文字。
    *
    * 驗證錯誤一律用 dialog 列出「所有」無效欄位，不是只顯示
@@ -632,7 +633,7 @@ export class ProductForm implements OnInit {
       this.submitCount.update((count) => count + 1);
       this.form.markAsPristine();
       this.imageDirty.set(false);
-      const message = resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。';
+      const message = resubmit ? '已在本地模擬儲存並重審。' : '已儲存本地 Mock 品項。';
       window.setTimeout(() => {
         this.isSubmitting.set(false);
         this.saved.set(true);
@@ -734,7 +735,7 @@ export class ProductForm implements OnInit {
   }
 
   /**
-   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重新送審」按鈕的顯示文字，
+   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重審」按鈕的顯示文字，
    * 從來沒有真的呼叫過 POST /api/products/{id}/resubmit——編輯 REJECTED
    * 商品後點下去，欄位確實存了，但 reviewStatus 不會變回 PENDING，
    * 因為改欄位（PUT）跟送審（POST /resubmit）是後端兩支獨立的操作，
@@ -750,7 +751,7 @@ export class ProductForm implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         // ⚠️ 之前這裡直接丟棄回應內容，只用「有沒有出錯」判斷成功與否。
-        // 回報過「重新送審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
+        // 回報過「重審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
         // 都對照過確認沒有錯，但既然回應裡就有真正最新的 submissionCount，
         // 直接秀在這次的成功訊息裡，讓使用者當下就能看到次數真的變了，
         // 不用跳去別的頁面、也不用擔心那邊的畫面剛好沒重新整理才看起來
@@ -761,11 +762,11 @@ export class ProductForm implements OnInit {
           // 整個操作都沒發生——維持 saved=true，讓使用者知道要重新
           // 觸發送審，而不是重新輸入一次資料。
           this.isSubmitting.set(false);
-          const message = `品項資料已儲存，但重新送審失敗：${toApiError(err).message}`;
+          const message = `品項資料已儲存，但重審失敗：${toApiError(err).message}`;
           this.saved.set(true);
           this.form.markAsPristine();
           this.statusMessageState.show(message);
-          this.dialog.notify('error', '重新送審失敗', [message]).subscribe();
+          this.dialog.notify('error', '重審失敗', [message]).subscribe();
         },
       });
   }
@@ -779,9 +780,9 @@ export class ProductForm implements OnInit {
     this.selectedImageFile = null;
     const message =
       resubmit && newSubmissionCount != null
-        ? `已儲存並重新送審（第 ${newSubmissionCount} 次送審）。`
+        ? `已儲存並重審（第 ${newSubmissionCount} 次送審）。`
         : resubmit
-          ? '已儲存並重新送審。'
+          ? '已儲存並重審。'
           : '已儲存品項資料。';
     this.statusMessageState.show(message);
 

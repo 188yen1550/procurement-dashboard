@@ -64,7 +64,7 @@
 
             <div class="input-wrapper">
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
-              <span class="input-icon" aria-hidden="true"> 👤 </span>
+              <app-icon name="user" size="sm" class="input-icon" />
 
               <input id="username" #usernameInput type="text" formControlName="username" placeholder="請輸入帳號或電子郵件"
                 autocomplete="username" [readOnly]="isLoading()" [attr.aria-invalid]="
@@ -96,7 +96,7 @@
 
             <div class="input-wrapper">
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
-              <span class="input-icon" aria-hidden="true"> 🔒 </span>
+              <app-icon name="lock" size="sm" class="input-icon" />
 
               <input id="password" type="password" formControlName="password" placeholder="請輸入密碼"
                 autocomplete="current-password" [readOnly]="isLoading()" [attr.aria-invalid]="

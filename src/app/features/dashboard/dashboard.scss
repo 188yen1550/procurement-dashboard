@@ -34,7 +34,7 @@
 .eyebrow {
   margin: 0;
   color: #39735c;
-  font-size: 0.7rem;
+  font-size: var(--t-xs);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -45,7 +45,7 @@
   background: #fff;
   border: 1px solid #dfe7ee;
   border-radius: 0.6rem;
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   white-space: nowrap;
 }
 .data-time span {
@@ -66,7 +66,7 @@
 .state-preview span {
   margin-top: 0.15rem;
   color: #6c7a89;
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
 }
 .state-actions {
   display: flex;
@@ -84,7 +84,7 @@
   border: 1px solid #cbd9e3;
   border-radius: 0.45rem;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -102,7 +102,7 @@ button:focus-visible {
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
   border-radius: 0.65rem;
-  font-size: 0.82rem;
+  font-size: var(--t-sm);
 }
 .notice strong {
   display: block;
@@ -175,7 +175,7 @@ button:focus-visible {
   line-height: 1.1;
 }
 .stat-card small {
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
 }
 
 .content-grid {
@@ -206,14 +206,14 @@ button:focus-visible {
 .incomplete-card h2,
 .alert-dialog h2 {
   margin: 0.2rem 0 0;
-  font-size: 1rem;
+  font-size: var(--t-base);
 }
 .helper-text {
   padding: 0.35rem 0.55rem;
   color: #735d1d;
   background: #fff8dc;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: var(--t-xs);
 }
 .table-wrap {
   width: 100%;
@@ -235,11 +235,11 @@ td {
 th {
   color: #6c7a89;
   background: #f8fafc;
-  font-size: 0.68rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.04em;
 }
 td {
-  font-size: 0.76rem;
+  font-size: var(--t-xs);
 }
 .rank {
   display: grid;
@@ -262,7 +262,7 @@ td {
 .product-cell > span {
   margin-top: 0.15rem;
   color: #7b8a96;
-  font-size: 0.68rem;
+  font-size: var(--t-xs);
 }
 .product-cell p {
   margin: 0.35rem 0;
@@ -283,13 +283,13 @@ td {
 }
 .score {
   color: #1c5286;
-  font-size: 1rem;
+  font-size: var(--t-base);
 }
 .status {
   display: inline-block;
   padding: 0.28rem 0.45rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: var(--t-xs);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -333,14 +333,14 @@ td {
   --rate: 0%;
   display: grid;
   flex: 0 0 auto;
-  width: 132px;
-  height: 132px;
+  width: 220px;
+  height: 220px;
   place-content: center;
   text-align: center;
   background:
     radial-gradient(circle, #fff 62%, transparent 64%),
     conic-gradient(#379773 var(--rate), #e6ecef 0);
-  border-radius: 50%;
+  border-radius: 100%;
 }
 .conversion-ring strong,
 .conversion-ring span {
@@ -352,14 +352,14 @@ td {
 }
 .conversion-ring span {
   color: #6c7a89;
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
 }
 .conversion-panel > div:last-child {
   min-width: 0;
 }
 .conversion-panel p:last-child {
   margin-top: 0.4rem;
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
   line-height: 1.5;
 }
 .risk-count {
@@ -370,7 +370,7 @@ td {
   color: #fff;
   background: #b94d47;
   border-radius: 50%;
-  font-size: 0.75rem;
+  font-size: var(--t-xs);
   font-weight: 800;
 }
 .risk-list {
@@ -394,18 +394,18 @@ td {
 }
 .risk-item span {
   color: #a24640;
-  font-size: 0.65rem;
+  font-size: var(--t-xs);
   font-weight: 800;
 }
 .risk-item p {
   margin: 0.4rem 0;
   color: #526677;
-  font-size: 0.73rem;
+  font-size: var(--t-xs);
   line-height: 1.45;
 }
 .risk-item small {
   color: #7b8a96;
-  font-size: 0.65rem;
+  font-size: var(--t-xs);
 }
 
 .incomplete-card {
@@ -421,7 +421,7 @@ td {
 .incomplete-card p {
   margin: 0.3rem 0 0;
   color: #6c6a5c;
-  font-size: 0.78rem;
+  font-size: var(--t-xs);
 }
 .completeness {
   display: grid;
@@ -436,7 +436,7 @@ td {
 }
 .warning-badge {
   color: #9c5f18;
-  font-size: 0.68rem;
+  font-size: var(--t-xs);
   font-weight: 800;
 }
 .loading-status {
@@ -445,7 +445,7 @@ td {
   gap: 0.6rem;
   margin-bottom: 1rem;
   color: #526677;
-  font-size: 0.8rem;
+  font-size: var(--t-xs);
 }
 .spinner {
   width: 1rem;
@@ -514,12 +514,12 @@ td {
   color: #fff;
   background: #b94d47;
   border-radius: 50%;
-  font-size: 1.35rem;
+  font-size: var(--t-xl);
   font-weight: 900;
 }
 .alert-dialog p {
   color: #637483;
-  font-size: 0.82rem;
+  font-size: var(--t-sm);
   line-height: 1.6;
 }
 .alert-dialog button {
