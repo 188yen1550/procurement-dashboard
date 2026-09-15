@@ -112,7 +112,13 @@
             @if (item.trend !== null) {
               <div class="trend">
                 <strong>{{ item.trend }}</strong
-                ><span>{{ item.direction === 'UP' ? '↗ 連續上升' : '→ 穩定' }}</span>
+                ><span>
+                  @if (item.direction === 'UP') {
+                    <app-icon name="trending-up" size="sm" /> 連續上升
+                  } @else {
+                    <app-icon name="trending-flat" size="sm" /> 穩定
+                  }
+                </span>
               </div>
             }
             @if (item.reason) {

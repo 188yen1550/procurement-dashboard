@@ -12,6 +12,7 @@ import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
+import { Icon } from '../../../shared/components/icon/icon';
 import {
   OTHER_RISK_OPTION_NAME,
   ReviewDetailModel,
@@ -70,7 +71,7 @@ const MOCK_PREVIOUS_COMMENT = '上次因備援供應方案不足而未通過，�
 
 @Component({
   selector: 'app-review-detail',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './review-detail.html',
   styleUrl: './review-detail.scss',
 })
@@ -241,7 +242,7 @@ export class ReviewDetail implements OnInit {
           this.showSubmittedDialog(
             this.decision() === 'APPROVED'
               ? '已通過選品審核，但不代表已銷售。'
-              : '未通過，後續可修改品項後重審。',
+              : '未通過，後續可修改品項後重新送審。',
           );
         },
         error: (err) => {
@@ -263,7 +264,7 @@ export class ReviewDetail implements OnInit {
 
   /**
    * 審核送出成功一律跳出 dialog 呈現，不再是內嵌卡片＋要手動點的連結
-   * ——跟 product-form.ts「儲存並重審」成功後的樣式與流程統一：
+   * ——跟 product-form.ts「儲存並重新送審」成功後的樣式與流程統一：
    * 都是 dialog、都是使用者按下確定後才導頁離開，不是送出當下就直接跳轉。
    */
   private showSubmittedDialog(message: string): void {

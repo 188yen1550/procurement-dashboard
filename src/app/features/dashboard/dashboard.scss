@@ -333,14 +333,14 @@ td {
   --rate: 0%;
   display: grid;
   flex: 0 0 auto;
-  width: 220px;
-  height: 220px;
+  width: 132px;
+  height: 132px;
   place-content: center;
   text-align: center;
   background:
     radial-gradient(circle, #fff 62%, transparent 64%),
     conic-gradient(#379773 var(--rate), #e6ecef 0);
-  border-radius: 100%;
+  border-radius: 50%;
 }
 .conversion-ring strong,
 .conversion-ring span {

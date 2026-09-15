@@ -11,6 +11,7 @@ import {
   PricingStatus,
   PricingType,
   ReviewStatus,
+  ScoreLevel,
   ShelfLifeTier,
   SupplierLeadTimeTier,
   TemperatureZone,
@@ -85,10 +86,10 @@ export interface ProductResponsePayload {
   /** ⚠️ 半形逗號分隔字串，非陣列。用 splitCampaignTags() 處理。 */
   campaignTags: string | null;
   moq: number | null;
-  /** 0–5 的評分，不是百分比。 */
-  supplyStability: Decimal;
-  /** 0–5 的評分，不是百分比。 */
-  priceCompetitiveness: Decimal;
+  /** ⚠️ 後端 V6 migration 已改成 1–5 整數等級，不再是 0–5 分制小數。null 代表尚未設定。 */
+  supplyStability: ScoreLevel | null;
+  /** ⚠️ 後端 V6 migration 已改成 1–5 整數等級，不再是 0–5 分制小數。null 代表尚未設定。 */
+  priceCompetitiveness: ScoreLevel | null;
   targetCustomerDescription: string | null;
   /** ⚠️ 0–1 的小數（0.8 代表 80%），顯示時要 ×100。 */
   estimatedPurchaseRate: Decimal;
@@ -285,8 +286,10 @@ export interface ProductCreateRequestPayload {
   marketPrice?: number | null;
   campaignTags?: string | null;
   moq?: number | null;
-  supplyStability?: number | null;
-  priceCompetitiveness?: number | null;
+  /** ⚠️ 1–5 整數等級，送小數或超出範圍後端會以 400 擋下（@Min(1) @Max(5)）。 */
+  supplyStability?: ScoreLevel | null;
+  /** ⚠️ 1–5 整數等級，送小數或超出範圍後端會以 400 擋下（@Min(1) @Max(5)）。 */
+  priceCompetitiveness?: ScoreLevel | null;
   targetCustomerDescription?: string | null;
   estimatedPurchaseRate?: number | null;
   /**
@@ -318,7 +321,11 @@ export interface ProductCreateRequestPayload {
  *
  * ⚠️ reviewStatus === 'APPROVED' 的商品若異動下列任一「選品核心資料」，後端回 409：
  * productTypeId／pricingType／costPrice／salePrice／campaignTags／moq／
- * supplyStability／priceCompetitiveness／targetCustomerDescription／estimatedPurchaseRate
+ * supplyStability／priceCompetitiveness／targetCustomerDescription／
+ * estimatedPurchaseRate，以及以下 8 個 Gate 判定屬性（併入同一組的原因見
+ * ProductResponsePayload 同名欄位註解）：temperatureZone／shelfLifeTier／
+ * supplierLeadTimeTier／packageSizeTier／packingType／handlingFlags／
+ * certificationFlags／supplierMaxCapacity。
  * 前端應把這些欄位設為唯讀，而不是等使用者送出才吃 409。
  */
 export type ProductUpdateRequestPayload = ProductCreateRequestPayload;

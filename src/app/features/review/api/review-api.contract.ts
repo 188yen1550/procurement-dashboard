@@ -1,6 +1,6 @@
 import { Decimal, IsoDateTime } from '../../../core/api/api-envelope';
 import { PageQuery } from '../../../core/api/unwrap';
-import { ReviewDecision } from '../../../core/domain/enums';
+import { ReviewDecision, ScoreLevel } from '../../../core/domain/enums';
 import {
   MatchedCampaignPayload,
   ProductResponsePayload,
@@ -112,8 +112,10 @@ export interface ProductSnapshotPayload {
   salePrice: Decimal;
   campaignTags: string | null;
   moq: number | null;
-  supplyStability: Decimal;
-  priceCompetitiveness: Decimal;
+  /** ⚠️ 後端 V6 migration 已改成 1–5 整數等級，不再是 0–5 分制小數。 */
+  supplyStability: ScoreLevel | null;
+  /** ⚠️ 後端 V6 migration 已改成 1–5 整數等級，不再是 0–5 分制小數。 */
+  priceCompetitiveness: ScoreLevel | null;
   targetCustomerDescription: string | null;
   estimatedPurchaseRate: Decimal;
 }

@@ -120,7 +120,7 @@ describe('ReviewDetail', () => {
     fixture.detectChanges();
     expect(api.submit).toHaveBeenCalled();
     expect(component.submitted()).toBe(true);
-    // 送出成功一律用 DialogService 呈現，跟 product-form.ts「儲存並重審」
+    // 送出成功一律用 DialogService 呈現，跟 product-form.ts「儲存並重新送審」
     // 同一套樣式與流程：dialog、按確定才導頁，不是送出當下就直接跳轉。
     const state = dialog.state();
     expect(state?.variant).toBe('success');

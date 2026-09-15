@@ -1,7 +1,11 @@
-<!-- 檔案用途：歷史開團紀錄頁面樣板。唯讀查詢對操作＋管理層開放，匯入／整批退回僅管理層。 -->
+<!-- 檔案用途：歷史開團紀錄頁面樣板。唯讀查詢對操作＋管理層開放，匯入／整批回退僅管理層。 -->
 <section class="page-header">
   <div>
     <h1>歷史銷售紀錄</h1>
+    <p>
+      外部系統開團結果的唯讀參考資料，是「歷史成團率」這個計分因子的資料來源。
+      本頁不提供單筆新增／編輯／刪除——只有「整批匯入」與「整批回退」兩種寫入路徑。
+    </p>
   </div>
   @if (isManager()) {
     <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
@@ -56,7 +60,7 @@
         —
       }
     </p>
-    <p class="stat-hint">不含「取消」</p>
+    <p class="stat-hint">分母不含「取消開團」，與後端計分邏輯一致</p>
   </article>
 </section>
 
@@ -132,7 +136,7 @@
             <td class="row-actions">
               @if (isManager() && r.importBatchId) {
                 <button type="button" class="text-action danger" (click)="confirmDeleteBatch(r.importBatchId)">
-                  整批退回
+                  回退整批
                 </button>
               }
             </td>

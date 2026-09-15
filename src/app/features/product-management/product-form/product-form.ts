@@ -13,10 +13,15 @@ import { catchError, debounceTime, filter, map, startWith, switchMap } from 'rxj
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
-import { joinCampaignTags } from '../../../core/domain/labels';
+import {
+  joinCampaignTags,
+  PRICE_COMPETITIVENESS_LEVEL_LABEL,
+  SUPPLY_STABILITY_LEVEL_LABEL,
+} from '../../../core/domain/labels';
 import {
   PackageSizeTier,
   PackingType,
+  ScoreLevel,
   ShelfLifeTier,
   SupplierLeadTimeTier,
   TemperatureZone,
@@ -120,17 +125,18 @@ interface EditMockEntry {
   salePrice: number;
   marketPrice: number;
   moq: number;
-  supplyStability: number;
-  priceCompetitiveness: number;
+  supplyStability: ScoreLevel;
+  priceCompetitiveness: ScoreLevel;
   targetCustomer: string;
   estimatedPurchaseRate: number;
   reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
-// supplyStability／priceCompetitiveness 是後端 0–5 分制（ScoringService 內部
-// 直接 ×20 換算成 0–100 分數）。estimatedPurchaseRate 表單維持 0–100（%）
-// 給使用者輸入比較直覺，送出前由 toEstimatedPurchaseRateDecimal() 換算成
-// 後端要的 0–1 小數，見 ProductService/ScoringService。
+// ⚠️ supplyStability／priceCompetitiveness 是後端 V6 migration 之後的 1–5
+// 整數等級（見 ScoreLevel），不再是 0–5 分制小數。estimatedPurchaseRate
+// 表單維持 0–100（%）給使用者輸入比較直覺，送出前由
+// toEstimatedPurchaseRateDecimal() 換算成後端要的 0–1 小數，見
+// ProductService/ScoringService。
 const EDIT_DATA: Record<string, EditMockEntry> = {
   '101': {
     name: '中秋炭烤海陸組合禮盒',
@@ -143,8 +149,8 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
     salePrice: 1190,
     marketPrice: 1490,
     moq: 50,
-    supplyStability: 4.6,
-    priceCompetitiveness: 4.4,
+    supplyStability: 5,
+    priceCompetitiveness: 4,
     targetCustomer: '25–45 歲家庭與公司團購',
     estimatedPurchaseRate: 76,
     reviewStatus: 'APPROVED',
@@ -160,8 +166,8 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
     salePrice: 299,
     marketPrice: 359,
     moq: 100,
-    supplyStability: 3.2,
-    priceCompetitiveness: 3.6,
+    supplyStability: 3,
+    priceCompetitiveness: 4,
     targetCustomer: '重視成分與收納便利的家庭',
     estimatedPurchaseRate: 58,
     reviewStatus: 'REJECTED',
@@ -195,6 +201,11 @@ export class ProductForm implements OnInit {
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
   readonly stateOptions: readonly FormPageState[] = ['default', 'locked', 'loading', 'error'];
+
+  /** 供應穩定性／價格競爭力的 <select> 選項來源，畫面只顯示文字，不顯示數字。 */
+  readonly scoreLevels: readonly ScoreLevel[] = [1, 2, 3, 4, 5];
+  readonly supplyStabilityLevelLabel = SUPPLY_STABILITY_LEVEL_LABEL;
+  readonly priceCompetitivenessLevelLabel = PRICE_COMPETITIVENESS_LEVEL_LABEL;
 
   constructor() {
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
@@ -246,10 +257,12 @@ export class ProductForm implements OnInit {
     salePrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     marketPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     moq: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
-    // 後端 Product.supplyStability / priceCompetitiveness 是 0–5 分制
-    // （precision=5, scale=2），不是 0–100。
-    supplyStability: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
-    priceCompetitiveness: [2.5, [Validators.required, Validators.min(0), Validators.max(5)]],
+    // ⚠️ 後端 V6 migration 已改成 1–5 整數等級（@Min(1) @Max(5)），不再是
+    // 0–5 分制小數。用 <select> 而非數字輸入框，選項本身已經限制在 1~5，
+    // 不需要再疊加 min/max/pattern validator；預設值 3（普通）是中性起點，
+    // 不代表系統預先假設商品供應穩定或價格具競爭力。
+    supplyStability: [3 as ScoreLevel, Validators.required],
+    priceCompetitiveness: [3 as ScoreLevel, Validators.required],
     targetCustomer: ['', [Validators.required, nonBlank, Validators.maxLength(500)]],
     // 表單維持 0–100（%）輸入，實際送出時要換算成後端要的 0–1 小數
     // （見 toEstimatedPurchaseRateDecimal()）。
@@ -443,8 +456,8 @@ export class ProductForm implements OnInit {
             salePrice: model.core.salePrice ?? 0,
             marketPrice: model.core.marketPrice ?? 0,
             moq: model.core.moq ?? 1,
-            supplyStability: model.core.supplyStability ?? 2.5,
-            priceCompetitiveness: model.core.priceCompetitiveness ?? 2.5,
+            supplyStability: model.core.supplyStability ?? 3,
+            priceCompetitiveness: model.core.priceCompetitiveness ?? 3,
             targetCustomer: model.core.targetCustomerDescription,
             estimatedPurchaseRate: Math.round((model.core.estimatedPurchaseRate ?? 0.5) * 100),
             temperatureZone: model.core.temperatureZone,
@@ -555,7 +568,7 @@ export class ProductForm implements OnInit {
 
   /**
    * 驗證並送出表單；`resubmit` 為 true 時，儲存成功後會接著呼叫
-   * POST /api/products/{id}/resubmit 真的觸發重審（見
+   * POST /api/products/{id}/resubmit 真的觸發重新送審（見
    * maybeResubmitThenFinish()），不是只改顯示文字。
    *
    * 驗證錯誤一律用 dialog 列出「所有」無效欄位，不是只顯示
@@ -600,7 +613,7 @@ export class ProductForm implements OnInit {
       this.submitCount.update((count) => count + 1);
       this.form.markAsPristine();
       this.imageDirty.set(false);
-      const message = resubmit ? '已在本地模擬儲存並重審。' : '已儲存本地 Mock 品項。';
+      const message = resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。';
       window.setTimeout(() => {
         this.isSubmitting.set(false);
         this.saved.set(true);
@@ -702,7 +715,7 @@ export class ProductForm implements OnInit {
   }
 
   /**
-   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重審」按鈕的顯示文字，
+   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重新送審」按鈕的顯示文字，
    * 從來沒有真的呼叫過 POST /api/products/{id}/resubmit——編輯 REJECTED
    * 商品後點下去，欄位確實存了，但 reviewStatus 不會變回 PENDING，
    * 因為改欄位（PUT）跟送審（POST /resubmit）是後端兩支獨立的操作，
@@ -718,7 +731,7 @@ export class ProductForm implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         // ⚠️ 之前這裡直接丟棄回應內容，只用「有沒有出錯」判斷成功與否。
-        // 回報過「重審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
+        // 回報過「重新送審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
         // 都對照過確認沒有錯，但既然回應裡就有真正最新的 submissionCount，
         // 直接秀在這次的成功訊息裡，讓使用者當下就能看到次數真的變了，
         // 不用跳去別的頁面、也不用擔心那邊的畫面剛好沒重新整理才看起來
@@ -729,11 +742,11 @@ export class ProductForm implements OnInit {
           // 整個操作都沒發生——維持 saved=true，讓使用者知道要重新
           // 觸發送審，而不是重新輸入一次資料。
           this.isSubmitting.set(false);
-          const message = `品項資料已儲存，但重審失敗：${toApiError(err).message}`;
+          const message = `品項資料已儲存，但重新送審失敗：${toApiError(err).message}`;
           this.saved.set(true);
           this.form.markAsPristine();
           this.statusMessageState.show(message);
-          this.dialog.notify('error', '重審失敗', [message]).subscribe();
+          this.dialog.notify('error', '重新送審失敗', [message]).subscribe();
         },
       });
   }
@@ -747,9 +760,9 @@ export class ProductForm implements OnInit {
     this.selectedImageFile = null;
     const message =
       resubmit && newSubmissionCount != null
-        ? `已儲存並重審（第 ${newSubmissionCount} 次送審）。`
+        ? `已儲存並重新送審（第 ${newSubmissionCount} 次送審）。`
         : resubmit
-          ? '已儲存並重審。'
+          ? '已儲存並重新送審。'
           : '已儲存品項資料。';
     this.statusMessageState.show(message);
 
@@ -929,6 +942,14 @@ export class ProductForm implements OnInit {
     this.statusMessageState.show(message);
   }
 
+  /**
+   * APPROVED 商品鎖定選品核心資料。⚠️ 這 11 個欄位之外，另外加上 8 個 Gate
+   * 判定屬性一併鎖定——後端 assertCoreDataUnchanged()（ProductService.java）
+   * 這次把這 8 欄併入同一組核心資料，APPROVED 後異動會整包被 409 拒絕。
+   * 若這裡不同步鎖，畫面會讓使用者以為能改溫層／效期級距等屬性，
+   * 送出時才發現連同其他有效變更一起被打回，且錯誤訊息不會指出是哪個
+   * 欄位造成的（見 onSubmit() 的 409 訊息只有一句通用文案）。
+   */
   private lockCoreFields(): void {
     const names: (keyof typeof this.form.controls)[] = [
       'productTypeId',
@@ -942,6 +963,14 @@ export class ProductForm implements OnInit {
       'priceCompetitiveness',
       'targetCustomer',
       'estimatedPurchaseRate',
+      'temperatureZone',
+      'shelfLifeTier',
+      'supplierLeadTimeTier',
+      'packageSizeTier',
+      'packingType',
+      'handlingFlags',
+      'certificationFlags',
+      'supplierMaxCapacity',
     ];
     names.forEach((name) => this.form.controls[name].disable());
   }

@@ -11,19 +11,19 @@
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
     </div>
     @if (product()) {
-      <div class="header-actions">
-        <!-- ⚠️ 修正：這顆按鈕之前沒有依 useMockData 判斷，在真實模式下點下去
+    <div class="header-actions">
+      <!-- ⚠️ 修正：這顆按鈕之前沒有依 useMockData 判斷，在真實模式下點下去
              會直接用寫死的假資料蓋掉剛載入的真實商品，等於把畫面弄壞。
              純粹是 Mock 展示用，真實串接 API 時不需要、也不該出現。 -->
-        @if (useMockData) {
-          <button type="button" (click)="showIncomplete()">資料待補範例</button>
-        }
-        @if (isLocked()) {
-          <button type="button" disabled title="已封存或目前為鎖定預覽">編輯品項</button>
-        } @else {
-          <a [routerLink]="['/products', product()!.id, 'edit']">編輯品項</a>
-        }
-      </div>
+      @if (useMockData) {
+      <button type="button" (click)="showIncomplete()">資料待補範例</button>
+      }
+      @if (isLocked()) {
+      <button type="button" disabled title="已封存或目前為鎖定預覽">編輯品項</button>
+      } @else {
+      <a [routerLink]="['/products', product()!.id, 'edit']">編輯品項</a>
+      }
+    </div>
     }
   </header>
   @if (useMockData) {
@@ -31,451 +31,438 @@
     <div><strong>UI 狀態預覽</strong><span>本地 Mock 評估與趨勢資料</span></div>
     <div role="group" aria-label="切換詳情頁狀態">
       @for (state of stateOptions; track state) {
-        <button
-          type="button"
-          [class.active]="pageState() === state"
-          [attr.aria-pressed]="pageState() === state"
-          (click)="setState(state)"
-        >
-          {{ state }}
-        </button>
+      <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
+        (click)="setState(state)">
+        {{ state }}
+      </button>
       }
     </div>
   </section>
   }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (pageState() === 'error') {
-    <section class="empty error" role="alert">
-      <h2>無法載入品項詳情</h2>
-      <p>{{ useMockData ? '這是本地錯誤狀態模擬，未呼叫 API。' : statusMessage() }}</p>
-      <button type="button" (click)="restoreDemo()">重試</button>
-    </section>
+  <section class="empty error" role="alert">
+    <h2>無法載入品項詳情</h2>
+    <p>{{ useMockData ? '這是本地錯誤狀態模擬，未呼叫 API。' : statusMessage() }}</p>
+    <button type="button" (click)="restoreDemo()">重試</button>
+  </section>
   } @else if (pageState() === 'loading') {
-    <section class="skeleton" role="status">
-      正在載入品項詳情…
-      <span class="image-skeleton" aria-hidden="true"></span>
-      @for (line of [1, 2, 3, 4, 5, 6]; track line) {
-        <span></span>
-      }
-    </section>
+  <section class="skeleton" role="status">
+    正在載入品項詳情…
+    <span class="image-skeleton" aria-hidden="true"></span>
+    @for (line of [1, 2, 3, 4, 5, 6]; track line) {
+    <span></span>
+    }
+  </section>
   } @else if (!product()) {
-    <section class="empty">
-      <h2>找不到品項資料</h2>
-      <p>此品項可能已移除，或目前 Demo 資料為空。</p>
-      <button type="button" (click)="restoreDemo()">恢復 Demo 資料</button>
-    </section>
+  <section class="empty">
+    <h2>找不到品項資料</h2>
+    <p>此品項可能已移除，或目前 Demo 資料為空。</p>
+    <button type="button" (click)="restoreDemo()">恢復 Demo 資料</button>
+  </section>
   } @else {
-    @let p = product()!;
-    @if (p.reviewStatus === 'APPROVED') {
-      <section class="notice locked">
-        <strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong
-        ><span
-          >一般基本資料仍可編輯，選品核心資料禁止修改。通過審核不代表已上架、已銷售、已簽約或已產生營收。</span
-        >
-      </section>
-    }
-    @if (incomplete()) {
-      <section class="notice incomplete">
-        <strong>資料待補 · {{ p.completeness }}%</strong
-        ><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span
-        ><a [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
-      </section>
-    }
-    <section class="product-media panel" aria-labelledby="product-image-title">
-      <header><div><h2 id="product-image-title">商品主圖</h2></div><span>一般基本資料 · 可於編輯頁更換</span></header>
-      @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'" (error)="handleImageError()" /> }
-      @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><span aria-hidden="true">🖼️</span><div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong><p>{{ imageLoadFailed() ? '其他品項資訊仍可正常閱覽，可前往編輯頁重新選擇。' : '圖片為選填資料，不影響評分或審核。' }}</p></div></div> }
-    </section>
-    <section class="summary panel">
+  @let p = product()!;
+  @if (p.reviewStatus === 'APPROVED') {
+  <section class="notice locked">
+    <strong><app-icon name="lock" size="sm" />
+      核心選品資料已鎖定</strong><span>一般基本資料仍可編輯，選品核心資料禁止修改。通過審核不代表已上架、已銷售、已簽約或已產生營收。</span>
+  </section>
+  }
+  @if (incomplete()) {
+  <section class="notice incomplete">
+    <strong>資料待補 · {{ p.completeness }}%</strong><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span><a
+      [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
+  </section>
+  }
+  <section class="product-media panel" aria-labelledby="product-image-title">
+    <header>
       <div>
-        <span class="status" [attr.data-status]="p.reviewStatus">{{
-          reviewLabel(p.reviewStatus)
-        }}</span
-        ><span>{{ p.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
+        <h2 id="product-image-title">商品主圖</h2>
+      </div><span>一般基本資料 · 可於編輯頁更換</span>
+    </header>
+    @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'"
+      (error)="handleImageError()" /> }
+    @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><app-icon name="image" />
+      <div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong>
       </div>
-      <dl>
-        <div>
-          <dt>實際分類</dt>
-          <dd>{{ p.category }}</dd>
-        </div>
-        <div>
-          <dt>訂價分流</dt>
-          <dd>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</dd>
-        </div>
-        <div>
-          <dt>供應商</dt>
-          <dd>{{ p.supplier }}</dd>
-        </div>
-        <div>
-          <dt>資料完整度</dt>
-          <dd>{{ p.completeness }}%</dd>
-        </div>
-      </dl>
-    </section>
-    <section class="score-grid" aria-label="評估分數">
-      <article>
-        <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}</strong
-        ><small>綜合加權分數</small>
-      </article>
-      <article>
-        <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong
-        ><small>{{ p.campaign ?? '未命中檔期' }}</small>
-      </article>
-      <article class="final">
-        <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong
-        ><small
-          >dataSource:
-          {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small
-        >
-      </article>
-    </section>
-    <section class="panel campaign">
-      <header>
-        <div>
+    </div> }
+  </section>
+  <section class="summary panel">
+    <div>
+      <span class="status" [attr.data-status]="p.reviewStatus">{{
+        reviewLabel(p.reviewStatus)
+        }}</span><span>{{ p.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
+    </div>
+    <dl>
+      <div>
+        <dt>實際分類</dt>
+        <dd>{{ p.category }}</dd>
+      </div>
+      <div>
+        <dt>訂價分流</dt>
+        <dd>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</dd>
+      </div>
+      <div>
+        <dt>供應商</dt>
+        <dd>{{ p.supplier }}</dd>
+      </div>
+      <div>
+        <dt>資料完整度</dt>
+        <dd>{{ p.completeness }}%</dd>
+      </div>
+    </dl>
+  </section>
+  <section class="score-grid" aria-label="評估分數">
+    <article>
+      <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}</strong><small>綜合加權分數</small>
+    </article>
+    <article>
+      <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
+    </article>
+    <article class="final">
+      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
+        {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
+    </article>
+  </section>
+  <section class="panel campaign">
+    <header>
+      <div>
 
-          <h2>目前評估模式</h2>
-        </div>
-        <span>{{ p.evaluationModeName }}</span>
-      </header>
-      <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預估購買／市場趨勢 25%</p>
-      <small>參考項目：毛利、最低訂購量、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
-    </section>
-    @if (p.campaign) {
-      <section class="panel campaign">
-        <header>
-          <div>
-            <p class="eyebrow">節慶分數</p>
-            <h2>節慶加成明細</h2>
-          </div>
-          <span>{{ p.campaign }}</span>
-        </header>
-        <p>
-          命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
-        </p>
-        <dl class="metrics boost-breakdown">
-          <div>
-            <dt>標籤命中程度</dt>
-            <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
-          </div>
-          <div>
-            <dt>檔期急迫程度</dt>
-            <dd>
-              {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
-            </dd>
-          </div>
-          <div class="boost-result">
-            <dt>本次節慶加成</dt>
-            <dd>+{{ p.festivalBoost }} 分</dd>
-          </div>
-        </dl>
-        <p class="boost-hint">
-          加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
-          離檔期開始越近，加成分數越高。
-        </p>
-        <details class="formula-detail">
-          <summary>查看詳細計算方式</summary>
-          <div class="formula">
-            標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
-            加成上限 {{ festivalBoostCap }} 分 =
-            <strong>{{ p.festivalBoost }} 分</strong>
-          </div>
-        </details>
-      </section>
-    }
-    <div class="content-grid">
-      <!-- Gate 判定：只問「做不做得到」，跟加權分數是完全獨立的兩套機制——
+        <h2>目前評估模式</h2>
+      </div>
+      <span>{{ p.evaluationModeName }}</span>
+    </header>
+    <p>固定加權（唯讀）：商業條件 25% · 核心客群 25% · 歷史銷售 25% · 預估購買／市場趨勢 25%</p>
+    <small>參考項目：毛利、最低訂購量、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
+  </section>
+  @if (p.campaign) {
+  <section class="panel campaign">
+    <header>
+      <div>
+        <p class="eyebrow">節慶分數</p>
+        <h2>節慶加成明細</h2>
+      </div>
+      <span>{{ p.campaign }}</span>
+    </header>
+    <p>
+      命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
+    </p>
+    <dl class="metrics boost-breakdown">
+      <div>
+        <dt>標籤命中程度</dt>
+        <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
+      </div>
+      <div>
+        <dt>檔期急迫程度</dt>
+        <dd>
+          {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
+        </dd>
+      </div>
+      <div class="boost-result">
+        <dt>本次節慶加成</dt>
+        <dd>+{{ p.festivalBoost }} 分</dd>
+      </div>
+    </dl>
+    <p class="boost-hint">
+      加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
+      離檔期開始越近，加成分數越高。
+    </p>
+    <details class="formula-detail">
+      <summary>查看詳細計算方式</summary>
+      <div class="formula">
+        標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
+        加成上限 {{ festivalBoostCap }} 分 =
+        <strong>{{ p.festivalBoost }} 分</strong>
+      </div>
+    </details>
+  </section>
+  }
+  <div class="content-grid">
+    <!-- Gate 判定：只問「做不做得到」，跟加權分數是完全獨立的兩套機制——
            分數再高，Gate 不通過一樣要被主管特別留意。四態刻意分開顯示，
            不通過(FAILED)、資料不足(INSUFFICIENT_DATA)、不適用(NOT_APPLICABLE)
            三者處理方式完全不同，不能用同一種視覺語言混在一起。 -->
-      <section class="panel gate-panel">
-        <header>
-          <h2>可行性判定</h2>
-          @if (p.gateResults; as gate) {
-            <span class="gate-summary-badge" [class.has-failed]="gate.failedCount > 0">
-              @if (gate.failedCount > 0) {
-                {{ gate.failedCount }} 項不通過
-              } @else {
-                全數通過或不適用
-              }
-            </span>
-          }
-        </header>
+    <section class="panel gate-panel">
+      <header>
+        <h2>可行性判定</h2>
         @if (p.gateResults; as gate) {
-          <ul class="gate-list">
-            @for (result of gate.results; track result.gateCode) {
-              <li [attr.data-gate-status]="result.status">
-                <span class="gate-name">{{ gateCodeLabel[result.gateCode] }}</span>
-                <span class="gate-status-badge" [attr.data-gate-status]="result.status">{{
-                  gateStatusLabel[result.status]
-                }}</span>
-                <p class="gate-reason">{{ result.reason }}</p>
-              </li>
-            }
-          </ul>
-        } @else {
-          <p class="helper">尚無 Gate 判定資料。</p>
+        <span class="gate-summary-badge" [class.has-failed]="gate.failedCount > 0">
+          @if (gate.failedCount > 0) {
+          {{ gate.failedCount }} 項不通過
+          } @else {
+          全數通過或不適用
+          }
+        </span>
         }
-      </section>
+      </header>
+      @if (p.gateResults; as gate) {
+      <ul class="gate-list">
+        @for (result of gate.results; track result.gateCode) {
+        <li [attr.data-gate-status]="result.status">
+          <span class="gate-name">{{ gateCodeLabel[result.gateCode] }}</span>
+          <span class="gate-status-badge" [attr.data-gate-status]="result.status">{{
+            gateStatusLabel[result.status]
+            }}</span>
+          <p class="gate-reason">{{ result.reason }}</p>
+        </li>
+        }
+      </ul>
+      } @else {
+      <p class="helper">尚無 Gate 判定資料。</p>
+      }
+    </section>
 
-      <!-- AI 摘要／推薦原因：原本排在整頁第 11 個面板（節慶、Gate、供應屬性、
+    <!-- AI 摘要／推薦原因：原本排在整頁第 11 個面板（節慶、Gate、供應屬性、
            商業條件、好幾個分數面板、價格比較、趨勢……都排在它前面），對於
            要判斷「這件商品該不該過」的審核者來說，這其實是最先想看的
            資訊之一，卻被埋在很後面。搬到 Gate 判定之後、其餘細節資料
            之前，並且加強視覺樣式（獨立底色、主要按鈕），讓它在原本一片
            素色面板裡明顯跳出來。 -->
-      <section class="panel ai ai-prominent">
-        <header>
-          <div>
-            <h2>AI 摘要／推薦原因</h2>
-          </div>
-          <span>AI 僅輔助分析</span>
-        </header>
-        @if (p.aiSummary) {
-          <p>{{ p.aiSummary }}</p>
-          <ul>
-            @for (reason of p.aiReasons; track reason) {
-              <li>{{ reason }}</li>
-            }
-          </ul>
-          @if (!useMockData) {
-            <button
-              type="button"
-              class="secondary"
-              [disabled]="isGeneratingAi()"
-              (click)="generateAiAnalysis()"
-            >
-              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
-            </button>
-            @if (aiError()) {
-              <p class="form-error" role="alert">{{ aiError() }}</p>
-            }
-          }
-        } @else {
-          <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
-               文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
-          <div class="no-data">尚未產生 AI 分析。</div>
-          @if (!useMockData) {
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="isGeneratingAi()"
-              (click)="generateAiAnalysis()"
-            >
-              {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '✦ 產生 AI 分析' }}
-            </button>
-            @if (aiError()) {
-              <p class="form-error" role="alert">{{ aiError() }}</p>
-            }
-          }
-        }
-      </section>
-
-      <!-- 供應與物流屬性：純唯讀展示，全部選填欄位——留空代表這件商品
-           自己沒填，Gate 判定會改用品類層的預設屬性繼承，不代表資料缺漏。
-           要修改請到品項編輯表單，這裡不提供編輯。 -->
-      <section class="panel">
-        <header><h2>供應與物流屬性</h2></header>
-        <dl class="metrics gate-attr-metrics">
-          <div>
-            <dt>溫層</dt>
-            <dd>{{ p.temperatureZone ? temperatureZoneLabel[p.temperatureZone] : '未設定（依品類繼承）' }}</dd>
-          </div>
-          <div>
-            <dt>效期級距</dt>
-            <dd>{{ p.shelfLifeTier ? shelfLifeTierLabel[p.shelfLifeTier] : '未設定（依品類繼承）' }}</dd>
-          </div>
-          <div>
-            <dt>供應商前置期</dt>
-            <dd>{{ p.supplierLeadTimeTier ? supplierLeadTimeTierLabel[p.supplierLeadTimeTier] : '未設定（依品類繼承）' }}</dd>
-          </div>
-          <div>
-            <dt>材積級距</dt>
-            <dd>{{ p.packageSizeTier ? packageSizeTierLabel[p.packageSizeTier] : '未設定' }}</dd>
-          </div>
-          <div>
-            <dt>分裝方式</dt>
-            <dd>{{ p.packingType ? packingTypeLabel[p.packingType] : '未設定' }}</dd>
-          </div>
-          <div>
-            <dt>供應商產能上限</dt>
-            <dd>{{ p.supplierMaxCapacity ?? '不限制' }}</dd>
-          </div>
-          <div class="wide">
-            <dt>處理注意事項</dt>
-            <dd>{{ p.handlingFlags || '—' }}</dd>
-          </div>
-          <div class="wide">
-            <dt>認證狀態</dt>
-            <dd>{{ p.certificationFlags || '—' }}</dd>
-          </div>
-        </dl>
-      </section>
-      <section class="panel">
-        <header><h2>商品商業條件</h2></header>
-        <dl class="metrics">
-          <div>
-            <dt>毛利率</dt>
-            <dd>{{ marginRate(p) === null ? '待訂價' : marginRate(p) + '%' }}</dd>
-          </div>
-          <div>
-            <dt>最低訂購量</dt>
-            <dd>{{ p.moq }} 組</dd>
-          </div>
-          <div>
-            <dt>供應穩定性</dt>
-            <dd>{{ p.supplyStability }}/5</dd>
-          </div>
-          <div>
-            <dt>價格競爭力</dt>
-            <dd>{{ p.priceCompetitiveness }}/5</dd>
-          </div>
-        </dl>
-      </section>
-      <section class="panel">
-        <header>
-          <h2>核心客群匹配</h2>
-          <strong>{{ p.audienceScore || '—' }}</strong>
-        </header>
-        <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
-      </section>
-      <section class="panel">
-        <header>
-          <h2>歷史銷售資料</h2>
-          <strong>{{ p.historicalScore || '—' }}</strong>
-        </header>
-        <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
-      </section>
-      <section class="panel">
-        <header>
-          <h2>預估購買</h2>
-          <strong>{{ p.purchaseScore || '—' }}</strong>
-        </header>
-        <p>
-          {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
-        </p>
-      </section>
-    </div>
-    @if (p.pricingType === 'RESALE') {
-      <section class="panel price-compare">
-        <div>
-
-          <h2>市價與團購價比較</h2>
-        </div>
-        <div>
-          <span
-            >市售價 <s>NT$ {{ p.marketPrice }}</s></span
-          ><strong>團購價 NT$ {{ p.salePrice }}</strong
-          ><em>約省 {{ discountRate(p) }}%</em>
-        </div>
-        <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
-      </section>
-    }
-    <section class="panel trend">
+    <section class="panel ai ai-prominent">
       <header>
         <div>
-
-          <h2>市場趨勢／熱門度</h2>
+          <h2>AI 摘要／推薦原因</h2>
         </div>
-        <button
-          type="button"
-          (click)="syncTrend()"
-          [disabled]="syncState() === 'syncing' || incomplete()"
-        >
-          {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
-        </button>
+        <span>AI 僅輔助分析</span>
       </header>
-      <div class="trend-score">
-        <strong>{{ p.trendScore || '—' }}</strong
-        ><span>{{
-          p.trendDirection === 'UP'
-            ? '↗ 趨勢上升'
-            : p.trendDirection === 'DOWN'
-              ? '↘ 趨勢下降'
-              : '→ 趨勢持平'
-        }}</span>
-      </div>
-      <p>最後同步：{{ p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
-      @if (syncState() === 'syncing') {
-        @if (useMockData) {
-          <div class="sync-actions">
-            <button type="button" (click)="completeSync(true)">模擬成功</button
-            ><button type="button" (click)="completeSync(false)">模擬失敗</button>
-          </div>
-        } @else {
-          <p class="sync-loading" role="status">
-            <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
-          </p>
+      @if (p.aiSummary) {
+      <p>{{ p.aiSummary }}</p>
+      <ul>
+        @for (reason of p.aiReasons; track reason) {
+        <li>{{ reason }}</li>
         }
+      </ul>
+      @if (!useMockData) {
+      <button type="button" class="secondary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
+        {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
+      </button>
+      @if (aiError()) {
+      <p class="form-error" role="alert">{{ aiError() }}</p>
       }
-      @if (syncState() === 'error') {
-        <p class="inline-error" role="alert">
-          {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
-        </p>
+      }
+      } @else {
+      <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
+               文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
+      <div class="no-data">尚未產生 AI 分析。</div>
+      @if (!useMockData) {
+      <button type="button" class="btn-primary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
+        @if (isGeneratingAi()) {
+        產生中…（呼叫 LLM，請稍候）
+        } @else {
+        <app-icon name="sparkles" size="sm" /> 產生 AI 分析
+        }
+      </button>
+      @if (aiError()) {
+      <p class="form-error" role="alert">{{ aiError() }}</p>
+      }
+      }
       }
     </section>
-    <div class="content-grid">
-      <section class="panel risks">
-        <header><h2>風險提示</h2></header>
-        @if (p.risks.length) {
-          <ul>
-            @for (risk of p.risks; track risk) {
-              <li>{{ risk }}</li>
-            }
-          </ul>
-        } @else {
-          <div class="no-data">目前無足夠資料進行風險提示。</div>
-        }
-      </section>
+
+    <!-- 供應與物流屬性：純唯讀展示，全部選填欄位——留空代表這件商品
+           自己沒填，Gate 判定會改用品類層的預設屬性繼承，不代表資料缺漏。
+           要修改請到品項編輯表單，這裡不提供編輯。 -->
+    <section class="panel">
+      <header>
+        <h2>供應與物流屬性</h2>
+      </header>
+      <dl class="metrics gate-attr-metrics">
+        <div>
+          <dt>溫層</dt>
+          <dd>{{ p.temperatureZone ? temperatureZoneLabel[p.temperatureZone] : '未設定（依品類繼承）' }}</dd>
+        </div>
+        <div>
+          <dt>效期級距</dt>
+          <dd>{{ p.shelfLifeTier ? shelfLifeTierLabel[p.shelfLifeTier] : '未設定（依品類繼承）' }}</dd>
+        </div>
+        <div>
+          <dt>供應商前置期</dt>
+          <dd>{{ p.supplierLeadTimeTier ? supplierLeadTimeTierLabel[p.supplierLeadTimeTier] : '未設定（依品類繼承）' }}</dd>
+        </div>
+        <div>
+          <dt>材積級距</dt>
+          <dd>{{ p.packageSizeTier ? packageSizeTierLabel[p.packageSizeTier] : '未設定' }}</dd>
+        </div>
+        <div>
+          <dt>分裝方式</dt>
+          <dd>{{ p.packingType ? packingTypeLabel[p.packingType] : '未設定' }}</dd>
+        </div>
+        <div>
+          <dt>供應商產能上限</dt>
+          <dd>{{ p.supplierMaxCapacity ?? '不限制' }}</dd>
+        </div>
+        <div class="wide">
+          <dt>處理注意事項</dt>
+          <dd>{{ p.handlingFlags || '—' }}</dd>
+        </div>
+        <div class="wide">
+          <dt>認證狀態</dt>
+          <dd>{{ p.certificationFlags || '—' }}</dd>
+        </div>
+      </dl>
+    </section>
+    <section class="panel">
+      <header>
+        <h2>商品商業條件</h2>
+      </header>
+      <dl class="metrics">
+        <div>
+          <dt>毛利率</dt>
+          <dd>{{ marginRate(p) === null ? '待訂價' : marginRate(p) + '%' }}</dd>
+        </div>
+        <div>
+          <dt>最低訂購量</dt>
+          <dd>{{ p.moq }} 組</dd>
+        </div>
+        <div>
+          <dt>供應穩定性</dt>
+          <dd>{{ p.supplyStability ? supplyStabilityLevelLabel[p.supplyStability] : '未設定' }}</dd>
+        </div>
+        <div>
+          <dt>價格競爭力</dt>
+          <dd>{{ p.priceCompetitiveness ? priceCompetitivenessLevelLabel[p.priceCompetitiveness] : '未設定' }}</dd>
+        </div>
+      </dl>
+    </section>
+    <section class="panel">
+      <header>
+        <h2>核心客群匹配</h2>
+        <strong>{{ p.audienceScore || '—' }}</strong>
+      </header>
+      <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
+    </section>
+    <section class="panel">
+      <header>
+        <h2>歷史銷售資料</h2>
+        <strong>{{ p.historicalScore || '—' }}</strong>
+      </header>
+      <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
+    </section>
+    <section class="panel">
+      <header>
+        <h2>預估購買</h2>
+        <strong>{{ p.purchaseScore || '—' }}</strong>
+      </header>
+      <p>
+        {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
+      </p>
+    </section>
+  </div>
+  @if (p.pricingType === 'RESALE') {
+  <section class="panel price-compare">
+    <div>
+
+      <h2>市價與團購價比較</h2>
     </div>
-    <!-- 這件商品自己的歷次審核紀錄——原本這支 API 完全沒被呼叫過，想知道
+    <div>
+      <span>市售價 <s>NT$ {{ p.marketPrice }}</s></span><strong>團購價 NT$ {{ p.salePrice }}</strong><em>約省 {{ discountRate(p)
+        }}%</em>
+    </div>
+    <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
+  </section>
+  }
+  <section class="panel trend">
+    <header>
+      <div>
+
+        <h2>市場趨勢／熱門度</h2>
+      </div>
+      <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
+        {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
+      </button>
+    </header>
+    <div class="trend-score">
+      <strong>{{ p.trendScore || '—' }}</strong><span>
+        @if (p.trendDirection === 'UP') {
+        <app-icon name="trending-up" size="sm" /> 趨勢上升
+        } @else if (p.trendDirection === 'DOWN') {
+        <app-icon name="trending-down" size="sm" /> 趨勢下降
+        } @else {
+        <app-icon name="trending-flat" size="sm" /> 趨勢持平
+        }
+      </span>
+    </div>
+    <p>最後同步：{{ p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+    @if (syncState() === 'syncing') {
+    @if (useMockData) {
+    <div class="sync-actions">
+      <button type="button" (click)="completeSync(true)">模擬成功</button><button type="button"
+        (click)="completeSync(false)">模擬失敗</button>
+    </div>
+    } @else {
+    <p class="sync-loading" role="status">
+      <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
+    </p>
+    }
+    }
+    @if (syncState() === 'error') {
+    <p class="inline-error" role="alert">
+      {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
+    </p>
+    }
+  </section>
+  <div class="content-grid">
+    <section class="panel risks">
+      <header>
+        <h2>風險提示</h2>
+      </header>
+      @if (p.risks.length) {
+      <ul>
+        @for (risk of p.risks; track risk) {
+        <li>{{ risk }}</li>
+        }
+      </ul>
+      } @else {
+      <div class="no-data">目前無足夠資料進行風險提示。</div>
+      }
+    </section>
+  </div>
+  <!-- 這件商品自己的歷次審核紀錄——原本這支 API 完全沒被呼叫過，想知道
          「這件商品上次為什麼被拒」只能去問管理層或翻全站的決策紀錄分頁
          自己找，現在直接顯示在商品自己的詳情頁上。 -->
-    @if (reviewHistory().length > 0) {
-      <section class="panel review-history">
-        <header><h2>歷次審核紀錄</h2></header>
-        <ul class="review-history-list">
-          @for (record of reviewHistory(); track record.id) {
-            <li [attr.data-result]="record.reviewStatus">
-              <div class="review-history-head">
-                <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>
-                <span class="review-history-badge" [attr.data-result]="record.reviewStatus">{{
-                  record.reviewStatus === 'APPROVED' ? '通過' : '未通過'
-                }}</span>
-                @if (record.reviewedAt) {
-                  <span class="review-history-date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
-                }
-              </div>
-              @if (record.reviewComment) {
-                <p class="review-history-comment">{{ record.reviewComment }}</p>
-              }
-            </li>
+  @if (reviewHistory().length > 0) {
+  <section class="panel review-history">
+    <header>
+      <h2>歷次審核紀錄</h2>
+    </header>
+    <ul class="review-history-list">
+      @for (record of reviewHistory(); track record.id) {
+      <li [attr.data-result]="record.reviewStatus">
+        <div class="review-history-head">
+          <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>
+          <span class="review-history-badge" [attr.data-result]="record.reviewStatus">{{
+            record.reviewStatus === 'APPROVED' ? '通過' : '未通過'
+            }}</span>
+          @if (record.reviewedAt) {
+          <span class="review-history-date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           }
-        </ul>
-      </section>
-    }
+        </div>
+        @if (record.reviewComment) {
+        <p class="review-history-comment">{{ record.reviewComment }}</p>
+        }
+      </li>
+      }
+    </ul>
+  </section>
+  }
 
-    <section class="panel lifecycle">
-      <div>
-        <h2>品項狀態操作</h2>
-        <p>封存不等於刪除；已通過或未通過皆可封存，但僅已通過且已封存者可復用。</p>
-      </div>
-      <button
-        type="button"
-        (click)="toggleArchive()"
-        [disabled]="
+  <section class="panel lifecycle">
+    <div>
+      <h2>品項狀態操作</h2>
+      <p>封存不等於刪除；已通過或未通過皆可封存，但僅已通過且已封存者可復用。</p>
+    </div>
+    <button type="button" (click)="toggleArchive()" [disabled]="
           p.reviewStatus === 'PENDING' ||
           (p.itemStatus === 'ARCHIVED' && p.reviewStatus !== 'APPROVED')
-        "
-        [title]="
+        " [title]="
           p.reviewStatus === 'PENDING'
             ? '未審核品項不可封存'
             : p.itemStatus === 'ARCHIVED' && p.reviewStatus !== 'APPROVED'
               ? '未通過品項封存後不可復用'
               : ''
-        "
-      >
-        {{ p.itemStatus === 'ACTIVE' ? '封存品項' : '復用品項' }}
-      </button>
-    </section>
+        ">
+      {{ p.itemStatus === 'ACTIVE' ? '封存品項' : '復用品項' }}
+    </button>
+  </section>
   }
 </main>

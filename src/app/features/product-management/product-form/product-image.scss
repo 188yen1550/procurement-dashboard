@@ -9,7 +9,7 @@
 .image-picker.is-disabled span { color: #8c969e; background: #edf0f2; cursor: not-allowed; }
 .image-empty, .image-loading, .image-error, .image-preview { margin-top: .8rem; padding: 1rem; background: #fff; border: 1px dashed #c6d4de; border-radius: .55rem; }
 .image-empty { justify-content: flex-start; }
-.image-empty > span { font-size: 2rem; }
+.image-empty > span, .image-empty app-icon { --icon-size-override: 2rem; color: #8a969f; }
 .image-loading { color: #526677; }
 .image-error { color: #8d3733; background: #fff0ef; border-style: solid; border-color: #efc1be; }
 .image-error span { display: block; margin-top: .2rem; font-size: var(--t-xs); }

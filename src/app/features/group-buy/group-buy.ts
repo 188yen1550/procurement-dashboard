@@ -1,10 +1,10 @@
 /**
- * 檔案用途：歷史開團紀錄頁面——唯讀查詢（操作+管理）、CSV 匯入與整批退回
+ * 檔案用途：歷史開團紀錄頁面——唯讀查詢（操作+管理）、CSV 匯入與整批回退
  * （僅管理）。這個模組先前只有 API 合約與 Service，完全沒有頁面，是「歷史
  * 銷售紀錄沒有實質作用」這個問題的直接成因，這支檔案補上缺的那一半。
  *
  * 職責邊界（對照後端 GroupBuyRecordController 的既有限制）：沒有單筆
- * CRUD，只有「整批匯入」「整批退回」兩種寫入路徑——不要因為使用者想改
+ * CRUD，只有「整批匯入」「整批回退」兩種寫入路徑——不要因為使用者想改
  * 一筆資料就在這裡加編輯功能，那不是這個系統的職責範圍。
  */
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
@@ -45,7 +45,7 @@ export class GroupBuy implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
-  /** 匯入／整批退回僅管理層可操作；操作層看得到清單但看不到這兩顆按鈕。 */
+  /** 匯入／整批回退僅管理層可操作；操作層看得到清單但看不到這兩顆按鈕。 */
   readonly isManager = computed(() => this.auth.isManager());
 
   readonly pageState = signal<PageState>('default');
@@ -197,11 +197,11 @@ export class GroupBuy implements OnInit {
       });
   }
 
-  // ----- 整批退回 -----
+  // ----- 整批回退 -----
   readonly isDeletingBatch = signal(false);
 
   /**
-   * 整批退回是不可復原的破壞性操作，且影響範圍可能是上百筆——確認訊息
+   * 整批回退是不可復原的破壞性操作，且影響範圍可能是上百筆——確認訊息
    * 裡明確寫出這個批次目前有幾筆資料，不是只顯示一個 batchId 讓使用者
    * 自己猜範圍多大。
    */
@@ -211,7 +211,7 @@ export class GroupBuy implements OnInit {
 
     this.dialog
       .confirm(
-        '整批退回確認',
+        '整批回退確認',
         [
           `即將刪除批次「${batchId}」，共 ${count} 筆歷史開團紀錄。`,
           '此操作無法復原，刪除後這批資料在系統內將完全消失。',
@@ -239,7 +239,7 @@ export class GroupBuy implements OnInit {
       });
   }
 
-  /** 目前清單裡出現過的匯入批次，供「整批退回」下拉選單使用。 */
+  /** 目前清單裡出現過的匯入批次，供「整批回退」下拉選單使用。 */
   readonly availableBatches = computed(() => {
     const seen = new Map<string, number>();
     for (const r of this.records()) {

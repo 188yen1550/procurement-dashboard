@@ -11,7 +11,7 @@
   @else if (pageState() === 'loading') { <section class="form-card skeleton" role="status"><span class="spinner"></span>正在載入品項表單… @for (line of [1,2,3,4,5,6]; track line) { <i></i> }</section> }
   @else {
     @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
-    @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
+    @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次未通過審核</strong><span>可修改後「儲存並重新送審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
     <!-- 儲存成功／失敗一律用 DialogService 呈現，不在這裡重複顯示第二層提示。 -->
     <form class="form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <section aria-labelledby="basic-title"><header><span>01</span><div><h2 id="basic-title">商品基本資料</h2><p>通過審核後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
@@ -23,7 +23,7 @@
           @if (imageState() === 'loading') { <div class="image-loading" role="status"><span class="spinner"></span>正在建立圖片預覽…</div> }
           @else if (imageState() === 'error') { <div class="image-error" role="alert"><strong>圖片無法使用</strong><span>{{ imageError() }}</span></div> }
           @else if (imageState() === 'ready' && imagePreviewUrl(); as preview) { <div class="image-preview"><img [src]="preview" [alt]="form.controls.name.value ? form.controls.name.value + ' 商品圖片預覽' : '商品圖片預覽'" /><div>@if (imageInfo(); as info) { <strong>{{ info.name }}</strong><span>{{ info.type }} · {{ formatFileSize(info.size) }}</span> }<small>本地預覽 · 尚未儲存</small><button type="button" class="remove-image" [disabled]="pageState() === 'locked'" (click)="removeImage()">移除圖片</button></div></div> }
-          @else { <div class="image-empty"><span aria-hidden="true">🖼️</span><div><strong>尚未選擇圖片</strong><small>圖片為選填的一般基本資料，不影響建立與送審。</small></div></div> }
+          @else { <div class="image-empty"><app-icon name="image" /><div><strong>尚未選擇圖片</strong><small>圖片為選填的一般基本資料，不影響建立與送審。</small></div></div> }
           @if (pageState() === 'locked') { <p class="image-disabled-note">圖片選擇目前已停用。已核准品項在一般編輯狀態下仍可更換圖片。</p> }
         </div>
       </div></section>
@@ -100,8 +100,8 @@
         }
         @else { <div class="pending-pricing wide"><strong>待訂價</strong><span>新品此階段不要求成本價與售價。</span></div> }
         <label>最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
-        <label>供應穩定性<input type="number" min="0" max="5" step="0.1" formControlName="supplyStability" /></label>
-        <label>價格競爭力<input type="number" min="0" max="5" step="0.1" formControlName="priceCompetitiveness" /></label>
+        <label>供應穩定性<select formControlName="supplyStability">@for (level of scoreLevels; track level) { <option [value]="level">{{ supplyStabilityLevelLabel[level] }}</option> }</select></label>
+        <label>價格競爭力<select formControlName="priceCompetitiveness">@for (level of scoreLevels; track level) { <option [value]="level">{{ priceCompetitivenessLevelLabel[level] }}</option> }</select></label>
         <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>
         <label class="wide">目標客群描述 <em>*</em><textarea rows="3" formControlName="targetCustomer"></textarea>@if (fieldInvalid('targetCustomer')) { <small role="alert">請輸入 500 字以內的目標客群描述，不能只有空格。</small> }</label>
 
@@ -119,7 +119,7 @@
           </div>
         </fieldset>
       </div></section>
-      <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
+      <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重新送審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
     </form>
   }
   <!-- 離頁確認、驗證錯誤、儲存成功／失敗全部改由 DialogService 統一呈現

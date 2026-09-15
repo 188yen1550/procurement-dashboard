@@ -6,8 +6,8 @@
 <main class="detail" aria-labelledby="title">
   <header class="page-header">
     <div>
-      <a routerLink="/review" class="back-link">← 返回待審核清單</a>
-
+      <a routerLink="/review" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回待審核清單</a>
+      
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
     </div>
     @if (useMockData) {
@@ -100,7 +100,7 @@
     <section class="panel ai">
       <header>
         <div>
-
+          
           <h2>AI 推薦摘要</h2>
         </div>
         <span>AI 不會自動核准</span>
@@ -188,7 +188,7 @@
       </footer>
     </form>
     <!-- 驗證錯誤、送出成功都改由 DialogService 統一呈現（跟 product-form.ts
-         的「儲存並重審」同一套樣式與流程），不在這裡重複顯示第二層。 -->
+         的「儲存並重新送審」同一套樣式與流程），不在這裡重複顯示第二層。 -->
   }
 
   @if (conflictOpen()) {

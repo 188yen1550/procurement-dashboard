@@ -8,363 +8,475 @@
 
       <h1 id="page-title">品項管理</h1>
     </div>
-    <a class="primary-action" routerLink="/products/new"><span aria-hidden="true">＋</span> 新增品項</a>
+    <a class="primary-action" routerLink="/products/new"
+      ><span aria-hidden="true">＋</span> 新增品項</a
+    >
   </header>
 
   @if (useMockData) {
   <section class="state-preview" aria-labelledby="state-title">
     <div>
-      <strong id="state-title">UI 狀態預覽</strong><span>用於 Demo 驗證四大狀態，不會呼叫後端。</span>
+      <strong id="state-title">UI 狀態預覽</strong
+      ><span>用於 Demo 驗證四大狀態，不會呼叫後端。</span>
     </div>
     <div class="state-actions" role="group" aria-label="切換 UI 狀態">
       @for (state of stateOptions; track state) {
-      <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
-        (click)="setPageState(state)">
-        {{
-        state === 'locked'
-        ? 'Disabled／Locked'
-        : state === 'loading'
-        ? 'Loading／Pending'
-        : state
-        }}
-      </button>
+        <button
+          type="button"
+          [class.active]="pageState() === state"
+          [attr.aria-pressed]="pageState() === state"
+          (click)="setPageState(state)"
+        >
+          {{
+            state === 'locked'
+              ? 'Disabled／Locked'
+              : state === 'loading'
+                ? 'Loading／Pending'
+                : state
+          }}
+        </button>
       }
     </div>
   </section>
   }
   <!--
     ⚠️ 修正：原本只用 aria-live 的隱藏元素承載 statusMessage()，
-    CSS 的 .sr-status 是視覺完全隱藏的樣式，代表刪除／重審等操作
+    CSS 的 .sr-status 是視覺完全隱藏的樣式，代表刪除／重新送審等操作
     不管成功或失敗，一般使用者完全看不到任何回饋——這正是「點擊確認
     但看起來沒反應」的根本原因：不是操作沒執行，是執行結果沒有可見提示。
     保留 aria-live 給螢幕閱讀器，另外加一個看得到的提示同時存在。
   -->
   <p class="sr-status" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+    <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
   }
 
   @if (hasLoadError()) {
-  <section class="notice error-notice" role="alert">
-    <div>
-      <strong>無法載入品項資料</strong>
-      <span>{{
-        useMockData ? '這是本地 UI 錯誤狀態，未發送網路請求。' : statusMessage()
+    <section class="notice error-notice" role="alert">
+      <div>
+        <strong>無法載入品項資料</strong>
+        <span>{{
+          useMockData ? '這是本地 UI 錯誤狀態，未發送網路請求。' : statusMessage()
         }}</span>
-    </div>
-    <button type="button" (click)="retryLoad()">重試</button>
-  </section>
+      </div>
+      <button type="button" (click)="retryLoad()">重試</button>
+    </section>
   } @else {
-  <section class="filter-panel" aria-labelledby="filter-title">
-    <div class="filter-heading">
-      <div>
-        <h2 id="filter-title">搜尋與篩選</h2>
+    <section class="filter-panel" aria-labelledby="filter-title">
+      <div class="filter-heading">
+        <div>
+          <h2 id="filter-title">搜尋與篩選</h2>
+        </div>
       </div>
-    </div>
-    <div class="filter-grid">
-      <div class="field search-field">
-        <label for="product-search">關鍵字搜尋</label><input id="product-search" type="search" placeholder="搜尋商品或供應商名稱"
-          [ngModel]="searchTerm()" (ngModelChange)="updateSearch($event)" [disabled]="isLoading()" />
-      </div>
-      <div class="field">
-        <label for="review-filter">審核狀態</label><select id="review-filter" [ngModel]="reviewFilter()"
-          (ngModelChange)="updateReviewFilter($event)" [disabled]="isLoading()">
-          <option value="ALL">全部</option>
-          <option value="PENDING">未審核</option>
-          <option value="APPROVED">已通過選品審核</option>
-          <option value="REJECTED">未通過</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="item-filter">品項狀態</label><select id="item-filter" [ngModel]="itemFilter()"
-          (ngModelChange)="updateItemFilter($event)" [disabled]="isLoading()">
-          <option value="ALL">全部</option>
-          <option value="ACTIVE">使用中</option>
-          <option value="ARCHIVED">已封存</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="type-filter">商品分類</label><select id="type-filter" [ngModel]="productTypeFilter()"
-          (ngModelChange)="updateProductTypeFilter($event)" [disabled]="isLoading()">
-          <option value="ALL">全部分類</option>
-          @for (group of groupedProductTypes(); track group.major.id) {
-          <optgroup [label]="group.major.name">
-            @for (minor of group.minors; track minor.id) {
-            <option [value]="minor.name">{{ minor.name }}</option>
+      <div class="filter-grid">
+        <div class="field search-field">
+          <label for="product-search">關鍵字搜尋</label
+          ><input
+            id="product-search"
+            type="search"
+            placeholder="搜尋商品或供應商名稱"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="updateSearch($event)"
+            [disabled]="isLoading()"
+          />
+        </div>
+        <div class="field">
+          <label for="review-filter">審核狀態</label
+          ><select
+            id="review-filter"
+            [ngModel]="reviewFilter()"
+            (ngModelChange)="updateReviewFilter($event)"
+            [disabled]="isLoading()"
+          >
+            <option value="ALL">全部</option>
+            <option value="PENDING">未審核</option>
+            <option value="APPROVED">已通過選品審核</option>
+            <option value="REJECTED">未通過</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="item-filter">品項狀態</label
+          ><select
+            id="item-filter"
+            [ngModel]="itemFilter()"
+            (ngModelChange)="updateItemFilter($event)"
+            [disabled]="isLoading()"
+          >
+            <option value="ALL">全部</option>
+            <option value="ACTIVE">使用中</option>
+            <option value="ARCHIVED">已封存</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="type-filter">商品分類</label
+          ><select
+            id="type-filter"
+            [ngModel]="productTypeFilter()"
+            (ngModelChange)="updateProductTypeFilter($event)"
+            [disabled]="isLoading()"
+          >
+            <option value="ALL">全部分類</option>
+            @for (group of groupedProductTypes(); track group.major.id) {
+              <optgroup [label]="group.major.name">
+                @for (minor of group.minors; track minor.id) {
+                  <option [value]="minor.name">{{ minor.name }}</option>
+                }
+              </optgroup>
             }
-          </optgroup>
-          }
-        </select>
+          </select>
+        </div>
+        <div class="field">
+          <label for="updated-from">修改時間（起）</label
+          ><input
+            id="updated-from"
+            type="date"
+            [ngModel]="updatedFromDraft()"
+            (ngModelChange)="updateUpdatedFrom($event)"
+            [disabled]="isLoading()"
+            [max]="updatedToDraft() || undefined"
+          />
+        </div>
+        <div class="field">
+          <label for="updated-to">修改時間（訖）</label
+          ><input
+            id="updated-to"
+            type="date"
+            [ngModel]="updatedToDraft()"
+            (ngModelChange)="updateUpdatedTo($event)"
+            [disabled]="isLoading()"
+            [min]="updatedFromDraft() || undefined"
+          />
+        </div>
+        <button
+          type="button"
+          class="clear-button"
+          (click)="clearFilters()"
+          [disabled]="!hasActiveFilters() || isLoading()"
+        >
+          清除篩選
+        </button>
       </div>
-      <div class="field">
-        <label for="updated-from">修改時間（起）</label><input id="updated-from" type="date" [ngModel]="updatedFromDraft()"
-          (ngModelChange)="updateUpdatedFrom($event)" [disabled]="isLoading()" [max]="updatedToDraft() || undefined" />
-      </div>
-      <div class="field">
-        <label for="updated-to">修改時間（訖）</label><input id="updated-to" type="date" [ngModel]="updatedToDraft()"
-          (ngModelChange)="updateUpdatedTo($event)" [disabled]="isLoading()" [min]="updatedFromDraft() || undefined" />
-      </div>
-      <button type="button" class="clear-button" (click)="clearFilters()"
-        [disabled]="!hasActiveFilters() || isLoading()">
-        清除篩選
-      </button>
-    </div>
-  </section>
+    </section>
 
-  <section class="list-panel" aria-labelledby="list-title" [attr.aria-busy]="isLoading()">
-    <header class="list-header">
-      <div>
-        <h2 id="list-title">正式候選品項</h2>
-        <p aria-live="polite">
-          顯示 <strong>{{ isLoading() ? '—' : sortedProducts().length }}</strong> 筆／共
-          <strong>{{ candidateProducts().length }}</strong> 筆
-        </p>
-      </div>
-    </header>
-    @if (isLoading()) {
-    <div class="loading-status" role="status" aria-live="polite">
-      <span class="spinner" aria-hidden="true"></span>正在載入品項資料…
-    </div>
-    <div class="skeleton-table" aria-hidden="true">
-      @for (row of [1, 2, 3, 4, 5]; track row) {
-      <div class="skeleton-row">
-        @for (cell of [1, 2, 3, 4, 5, 6]; track cell) {
-        <span></span>
-        }
-      </div>
-      }
-    </div>
-    } @else if (candidateProducts().length === 0) {
-    <div class="empty-state">
-      <span aria-hidden="true">▦</span>
-      <h3>目前沒有正式候選品項</h3>
-      <p>可新增品項，或從獨立 AI 建議清單加入候選。</p>
-      <button type="button" (click)="retryLoad()">恢復 Demo 資料</button>
-    </div>
-    } @else if (filteredProducts().length === 0) {
-    <div class="empty-state no-results">
-      <span aria-hidden="true">⌕</span>
-      <h3>找不到符合條件的品項</h3>
-      <p>請調整搜尋或篩選條件。</p>
-      <button type="button" (click)="clearFilters()">清除篩選</button>
-    </div>
-    } @else {
-    <div class="table-wrap" tabindex="0" aria-label="正式候選商品清單，可水平捲動">
-      <table>
-        <caption class="visually-hidden">
-          正式候選商品清單
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">
-              <button type="button" class="sort-header-btn" (click)="toggleNameSort()" [attr.aria-label]="
-                      sortOption() === 'name_asc' ? '商品名稱，目前正序，點擊改為倒序' : '商品名稱，點擊排序'
-                    ">
-                商品名稱
-                <span class="sort-arrow">
-                  @if (sortOption() === 'name_asc') {
-                  <app-icon name="chevron-up" size="sm" />
-                  } @else if (sortOption() === 'name_desc') {
-                  <app-icon name="chevron-down" size="sm" />
-                  } @else {
-                  <app-icon name="chevrons-up-down" size="sm" />
-                  }
-                </span>
-              </button>
-            </th>
-            <th scope="col">實際分類／訂價分流</th>
-            <th scope="col">供應商</th>
-            <th scope="col">
-              <button type="button" class="sort-header-btn" (click)="toggleFinalScoreSort()" [attr.aria-label]="
-                      sortOption() === 'finalScore_desc' ? '最終分數，目前高到低，點擊改為低到高' : '最終分數，點擊排序'
-                    ">
-                最終分數
-                <span class="sort-arrow">
-                  @if (sortOption() === 'finalScore_desc') {
-                  <app-icon name="chevron-down" size="sm" />
-                  } @else if (sortOption() === 'finalScore_asc') {
-                  <app-icon name="chevron-up" size="sm" />
-                  } @else {
-                  <app-icon name="chevrons-up-down" size="sm" />
-                  }
-                </span>
-              </button>
-            </th>
-            <th scope="col">資料完整度</th>
-            <th scope="col">審核／品項狀態</th>
-            <th scope="col">
-              <button type="button" class="sort-header-btn" (click)="toggleUpdatedAtSort()" [attr.aria-label]="
-                      sortOption() === 'updatedAt_desc' ? '更新時間，目前新到舊，點擊改為舊到新' : '更新時間，點擊排序'
-                    ">
-                更新時間
-                <span class="sort-arrow">
-                  @if (sortOption() === 'updatedAt_desc') {
-                  <app-icon name="chevron-down" size="sm" />
-                  } @else if (sortOption() === 'updatedAt_asc') {
-                  <app-icon name="chevron-up" size="sm" />
-                  } @else {
-                  <app-icon name="chevrons-up-down" size="sm" />
-                  }
-                </span>
-              </button>
-            </th>
-            <th scope="col" class="actions-column">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (product of sortedProducts(); track product.id) {
-          <tr [class.locked-row]="product.reviewStatus === 'APPROVED'"
-            [class.archived-row]="product.itemStatus === 'ARCHIVED'">
-            <td class="product-cell">
-              <strong [title]="product.name">{{ product.name }}</strong><span>#{{ product.id }}</span>
-              @if (product.reviewStatus === 'APPROVED') {
-              <small class="lock-note"><app-icon name="lock" size="sm" /></small>
+    <section class="list-panel" aria-labelledby="list-title" [attr.aria-busy]="isLoading()">
+      <header class="list-header">
+        <div>
+          <h2 id="list-title">正式候選品項</h2>
+          <p aria-live="polite">
+            顯示 <strong>{{ isLoading() ? '—' : sortedProducts().length }}</strong> 筆／共
+            <strong>{{ candidateProducts().length }}</strong> 筆
+          </p>
+        </div>
+      </header>
+      @if (isLoading()) {
+        <div class="loading-status" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>正在載入品項資料…
+        </div>
+        <div class="skeleton-table" aria-hidden="true">
+          @for (row of [1, 2, 3, 4, 5]; track row) {
+            <div class="skeleton-row">
+              @for (cell of [1, 2, 3, 4, 5, 6]; track cell) {
+                <span></span>
               }
-            </td>
-            <td>
-              <!-- 懸停 1 秒以上才顯示品類說明（純 CSS transition-delay 實現，
+            </div>
+          }
+        </div>
+      } @else if (candidateProducts().length === 0) {
+        <div class="empty-state">
+          <app-icon name="inbox" />
+          <h3>目前沒有正式候選品項</h3>
+          <p>可新增品項，或從獨立 AI 建議清單加入候選。</p>
+          <button type="button" (click)="retryLoad()">恢復 Demo 資料</button>
+        </div>
+      } @else if (filteredProducts().length === 0) {
+        <div class="empty-state no-results">
+          <app-icon name="search" />
+          <h3>找不到符合條件的品項</h3>
+          <p>請調整搜尋或篩選條件。</p>
+          <button type="button" (click)="clearFilters()">清除篩選</button>
+        </div>
+      } @else {
+        <div class="table-wrap" tabindex="0" aria-label="正式候選商品清單，可水平捲動">
+          <table>
+            <caption class="visually-hidden">
+              正式候選商品清單
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleNameSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'name_asc' ? '商品名稱，目前正序，點擊改為倒序' : '商品名稱，點擊排序'
+                    "
+                  >
+                    商品名稱
+                    <span class="sort-arrow">
+                      @if (sortOption() === 'name_asc') {
+                        <app-icon name="chevron-up" size="sm" />
+                      } @else if (sortOption() === 'name_desc') {
+                        <app-icon name="chevron-down" size="sm" />
+                      } @else {
+                        <app-icon name="chevrons-up-down" size="sm" />
+                      }
+                    </span>
+                  </button>
+                </th>
+                <th scope="col">實際分類／訂價分流</th>
+                <th scope="col">供應商</th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleFinalScoreSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'finalScore_desc' ? '最終分數，目前高到低，點擊改為低到高' : '最終分數，點擊排序'
+                    "
+                  >
+                    最終分數
+                    <span class="sort-arrow">
+                      @if (sortOption() === 'finalScore_desc') {
+                        <app-icon name="chevron-down" size="sm" />
+                      } @else if (sortOption() === 'finalScore_asc') {
+                        <app-icon name="chevron-up" size="sm" />
+                      } @else {
+                        <app-icon name="chevrons-up-down" size="sm" />
+                      }
+                    </span>
+                  </button>
+                </th>
+                <th scope="col">資料完整度</th>
+                <th scope="col">審核／品項狀態</th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    class="sort-header-btn"
+                    (click)="toggleUpdatedAtSort()"
+                    [attr.aria-label]="
+                      sortOption() === 'updatedAt_desc' ? '更新時間，目前新到舊，點擊改為舊到新' : '更新時間，點擊排序'
+                    "
+                  >
+                    更新時間
+                    <span class="sort-arrow">
+                      @if (sortOption() === 'updatedAt_desc') {
+                        <app-icon name="chevron-down" size="sm" />
+                      } @else if (sortOption() === 'updatedAt_asc') {
+                        <app-icon name="chevron-up" size="sm" />
+                      } @else {
+                        <app-icon name="chevrons-up-down" size="sm" />
+                      }
+                    </span>
+                  </button>
+                </th>
+                <th scope="col" class="actions-column">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (product of sortedProducts(); track product.id) {
+                <tr
+                  [class.locked-row]="product.reviewStatus === 'APPROVED'"
+                  [class.archived-row]="product.itemStatus === 'ARCHIVED'"
+                >
+                  <td class="product-cell">
+                    <strong [title]="product.name">{{ product.name }}</strong
+                    ><span>#{{ product.id }}</span>
+                    @if (product.reviewStatus === 'APPROVED') {
+                      <small class="lock-note"
+                        ><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</small
+                      >
+                    }
+                  </td>
+                  <td>
+                    <!-- 懸停 1 秒以上才顯示品類說明（純 CSS transition-delay 實現，
                          不用 JS 計時器）；沒有說明文字的品類不會渲染這個提示框，
                          不是顯示一個空白的框。tabindex 讓鍵盤使用者也能透過
                          focus 觸發，不是只有滑鼠使用者才看得到說明。 -->
-              <strong class="type-hover"
-                [class.has-tooltip]="productTypeDescriptions().has(product.productTypeId ?? -1)"
-                [attr.tabindex]="productTypeDescriptions().has(product.productTypeId ?? -1) ? 0 : null">{{
-                product.productTypeName
-                }}@if (productTypeDescriptions().has(product.productTypeId ?? -1)) {
-                <span class="type-tooltip">{{ productTypeDescriptions().get(product.productTypeId ?? -1) }}</span>
-                }</strong><span class="pricing-badge" [attr.data-type]="product.pricingType">{{
-                pricingTypeLabel(product.pricingType)
-                }}</span>
-            </td>
-            <td class="supplier-cell" [title]="product.supplierName">
-              {{ product.supplierName }}
-            </td>
-            <td>
-              <!-- ⚠️ 一定要先判斷 hasScore()：這是「後端有沒有提供欄位」，
+                    <strong
+                      class="type-hover"
+                      [class.has-tooltip]="productTypeDescriptions().has(product.productTypeId ?? -1)"
+                      [attr.tabindex]="productTypeDescriptions().has(product.productTypeId ?? -1) ? 0 : null"
+                      >{{ product.productTypeName
+                      }}@if (productTypeDescriptions().has(product.productTypeId ?? -1)) {
+                        <span class="type-tooltip">{{ productTypeDescriptions().get(product.productTypeId ?? -1) }}</span>
+                      }</strong
+                    ><span class="pricing-badge" [attr.data-type]="product.pricingType">{{
+                      pricingTypeLabel(product.pricingType)
+                    }}</span>
+                  </td>
+                  <td class="supplier-cell" [title]="product.supplierName">
+                    {{ product.supplierName }}
+                  </td>
+                  <td>
+                    <!-- ⚠️ 一定要先判斷 hasScore()：這是「後端有沒有提供欄位」，
                          不是「這筆商品有沒有分數」。後端已在清單端點併帶
                          finalScore/dataCompleteness，但某筆商品若尚無評估紀錄，
                          兩者仍可能是 null——isDataIncomplete() 內部已對 null
                          做過防呆（回傳 false），不會誤報「資料待補」。 -->
-              @if (!hasScore(product)) {
-              <span class="score unavailable">—</span><small class="score-note">清單未提供分數</small>
-              } @else if (product.finalScore === null) {
-              <span class="score unavailable">—</span><small class="score-note">尚無評估紀錄</small>
-              } @else if (isIncomplete(product)) {
-              <span class="score unavailable">—</span><small class="score-note">待補齊後評分</small>
-              } @else {
-              <strong class="score">{{ product.finalScore }}</strong>
-              }
-            </td>
-            <td>
-              @if (!hasScore(product) || product.dataCompleteness === null) {
-              <!-- product.dataCompleteness === null：欄位存在但這筆商品
+                    @if (!hasScore(product)) {
+                      <span class="score unavailable">—</span
+                      ><small class="score-note">清單未提供分數</small>
+                    } @else if (product.finalScore === null) {
+                      <span class="score unavailable">—</span
+                      ><small class="score-note">尚無評估紀錄</small>
+                    } @else if (isIncomplete(product)) {
+                      <span class="score unavailable">—</span
+                      ><small class="score-note">待補齊後評分</small>
+                    } @else {
+                      <strong class="score">{{ product.finalScore }}</strong>
+                    }
+                  </td>
+                  <td>
+                    @if (!hasScore(product) || product.dataCompleteness === null) {
+                      <!-- product.dataCompleteness === null：欄位存在但這筆商品
                            尚無評估紀錄，不能顯示成「null%」，維持「—」。 -->
-              <span class="unavailable">—</span>
-              } @else {
-              <div class="completeness-cell" [class.incomplete]="isIncomplete(product)">
-                <div>
-                  <strong>{{ product.dataCompleteness }}%</strong><span>{{ isIncomplete(product) ? '資料待補' : '資料完整'
-                    }}</span>
-                </div>
-                <div class="progress-track" role="progressbar" aria-label="資料完整度" aria-valuemin="0" aria-valuemax="100"
-                  [attr.aria-valuenow]="product.dataCompleteness">
-                  <span [style.width.%]="product.dataCompleteness"></span>
-                </div>
-                @if (isIncomplete(product)) {
-                <small>不進入評估計分與 AI 推薦</small>
-                }
-              </div>
-              }
-            </td>
-            <td class="status-column">
-              <div class="status-stack">
-                <span class="status" [attr.data-status]="product.reviewStatus"><i aria-hidden="true"></i>{{
-                  reviewStatusLabel(product.reviewStatus) }}</span><span class="item-status">{{
-                  itemStatusLabel(product.itemStatus) }}</span>
-                @if (product.reviewStatus === 'APPROVED') {
-                }
-              </div>
-            </td>
-            <td class="date-cell">
-              {{ product.updatedAt | date: 'yyyy/MM/dd'
-              }}<span>{{ product.updatedAt | date: 'HH:mm' }}</span>
-            </td>
-            <td class="actions-column">
-              <div class="action-group">
-                <!-- REJECTED 且必須 ACTIVE：已封存的要先復用，後端會以 409 擋下 -->
-                @if (product.actions.canResubmit) {
-                <a class="text-action resubmit" [routerLink]="['/products', product.id, 'edit']">重審</a>
-                } @else if (product.itemStatus === 'ARCHIVED') {
-                <button type="button" class="text-action" disabled title="已封存品項須先復用">
-                  編輯
-                </button>
-                } @else {
-                <a class="text-action" [routerLink]="['/products', product.id, 'edit']">編輯</a>
-                }
-                <a class="text-action" [routerLink]="['/products', product.id]">查看</a>
-                <button type="button" class="text-action danger" [disabled]="!product.actions.canDelete" [title]="
+                      <span class="unavailable">—</span>
+                    } @else {
+                    <div class="completeness-cell" [class.incomplete]="isIncomplete(product)">
+                      <div>
+                        <strong>{{ product.dataCompleteness }}%</strong
+                        ><span>{{ isIncomplete(product) ? '資料待補' : '資料完整' }}</span>
+                      </div>
+                      <div
+                        class="progress-track"
+                        role="progressbar"
+                        aria-label="資料完整度"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        [attr.aria-valuenow]="product.dataCompleteness"
+                      >
+                        <span [style.width.%]="product.dataCompleteness"></span>
+                      </div>
+                      @if (isIncomplete(product)) {
+                        <small>不進入評估計分與 AI 推薦</small>
+                      }
+                    </div>
+                    }
+                  </td>
+                  <td class="status-column">
+                    <div class="status-stack">
+                      <span class="status" [attr.data-status]="product.reviewStatus"
+                        ><i aria-hidden="true"></i
+                        >{{ reviewStatusLabel(product.reviewStatus) }}</span
+                      ><span class="item-status">{{ itemStatusLabel(product.itemStatus) }}</span>
+                      @if (product.reviewStatus === 'APPROVED') {
+                      }
+                    </div>
+                  </td>
+                  <td class="date-cell">
+                    {{ product.updatedAt | date: 'yyyy/MM/dd'
+                    }}<span>{{ product.updatedAt | date: 'HH:mm' }}</span>
+                  </td>
+                  <td class="actions-column">
+                    <div class="action-group">
+                      <!-- REJECTED 且必須 ACTIVE：已封存的要先復用，後端會以 409 擋下 -->
+                      @if (product.actions.canResubmit) {
+                        <a
+                          class="text-action resubmit"
+                          [routerLink]="['/products', product.id, 'edit']"
+                          >重新送審</a
+                        >
+                      } @else if (product.itemStatus === 'ARCHIVED') {
+                        <button
+                          type="button"
+                          class="text-action"
+                          disabled
+                          title="已封存品項須先復用"
+                        >
+                          編輯
+                        </button>
+                      } @else {
+                        <a class="text-action" [routerLink]="['/products', product.id, 'edit']"
+                          >編輯</a
+                        >
+                      }
+                      <a class="text-action" [routerLink]="['/products', product.id]">查看</a>
+                      <button
+                        type="button"
+                        class="text-action danger"
+                        [disabled]="!product.actions.canDelete"
+                        [title]="
                           product.actions.canDelete
                             ? (useMockData ? '從本地 Mock 清單刪除' : '刪除此品項')
                             : deleteDisabledReason(product)
-                        " [attr.aria-label]="
+                        "
+                        [attr.aria-label]="
                           product.actions.canDelete
                             ? '刪除' + product.name
                             : '無法刪除' + product.name + '：' + deleteDisabledReason(product)
-                        " (click)="requestDelete(product)">
-                  刪除
-                </button>
-                @if (!product.actions.canDelete) {
-                <small class="disabled-reason">{{ deleteDisabledReason(product) }}</small>
-                }
-              </div>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    }
-  </section>
+                        "
+                        (click)="requestDelete(product)"
+                      >
+                        刪除
+                      </button>
+                      @if (!product.actions.canDelete) {
+                        <small class="disabled-reason">{{ deleteDisabledReason(product) }}</small>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
   }
 
   @if (dialogMode()) {
-  <div class="dialog-backdrop" (click)="closeDialog()" role="presentation">
-    <section class="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"
-      (click)="$event.stopPropagation()">
-      <span class="dialog-icon" aria-hidden="true">{{
-        dialogMode() === 'delete' ? '!' : dialogMode() === 'resubmit' ? '↻' : 'i'
-        }}</span>
-      <h2 id="dialog-title">
-        {{
-        dialogMode() === 'delete'
-        ? (useMockData ? '確認移除 Mock 品項？' : '確認刪除此品項？')
-        : dialogMode() === 'resubmit'
-        ? (useMockData ? '模擬編輯並重審？' : '確認重審？')
-        : '功能範圍提示'
-        }}
-      </h2>
-      <p>
-        {{
-        dialogMode() === 'notice'
-        ? statusMessage()
-        : useMockData
-        ? '這項操作只會更新本地 Mock 資料，不會呼叫後端 API。'
-        : dialogMode() === 'delete'
-        ? '刪除後無法復原，確定要刪除這筆品項嗎？'
-        : '確認後會將此品項狀態改回未審核，需要重新走一次選品審核流程。'
-        }}
-      </p>
-      <div class="dialog-actions">
-        @if (dialogMode() !== 'notice') {
-        <button type="button" class="secondary-action" (click)="closeDialog()">取消</button><button type="button"
-          class="confirm-action" (click)="dialogMode() === 'delete' ? confirmDelete() : confirmResubmit()">
-          確認
-        </button>
-        } @else {
-        <button type="button" class="confirm-action" (click)="closeDialog()">我知道了</button>
-        }
-      </div>
-    </section>
-  </div>
+    <div class="dialog-backdrop" (click)="closeDialog()" role="presentation">
+      <section
+        class="alert-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <span class="dialog-icon" aria-hidden="true">
+          @if (dialogMode() === 'delete') {
+            <app-icon name="alert-triangle" />
+          } @else if (dialogMode() === 'resubmit') {
+            <app-icon name="refresh-cw" />
+          } @else {
+            <app-icon name="info" />
+          }
+        </span>
+        <h2 id="dialog-title">
+          {{
+            dialogMode() === 'delete'
+              ? (useMockData ? '確認移除 Mock 品項？' : '確認刪除此品項？')
+              : dialogMode() === 'resubmit'
+                ? (useMockData ? '模擬編輯並重新送審？' : '確認重新送審？')
+                : '功能範圍提示'
+          }}
+        </h2>
+        <p>
+          {{
+            dialogMode() === 'notice'
+              ? statusMessage()
+              : useMockData
+                ? '這項操作只會更新本地 Mock 資料，不會呼叫後端 API。'
+                : dialogMode() === 'delete'
+                  ? '刪除後無法復原，確定要刪除這筆品項嗎？'
+                  : '確認後會將此品項狀態改回未審核，需要重新走一次選品審核流程。'
+          }}
+        </p>
+        <div class="dialog-actions">
+          @if (dialogMode() !== 'notice') {
+            <button type="button" class="secondary-action" (click)="closeDialog()">取消</button
+            ><button
+              type="button"
+              class="confirm-action"
+              (click)="dialogMode() === 'delete' ? confirmDelete() : confirmResubmit()"
+            >
+              確認
+            </button>
+          } @else {
+            <button type="button" class="confirm-action" (click)="closeDialog()">我知道了</button>
+          }
+        </div>
+      </section>
+    </div>
   }
 </main>

@@ -49,7 +49,12 @@ Thumbs.db
 *.jpe
 *.wepb
 
-*.pptx
+# Archive
+*.rar
+*.zip
+*.7z
 
+# Other
+*.pptx
 .deck-build/
 

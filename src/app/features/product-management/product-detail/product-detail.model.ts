@@ -28,6 +28,7 @@ import {
 import {
   PackageSizeTier,
   PackingType,
+  ScoreLevel,
   ShelfLifeTier,
   SupplierLeadTimeTier,
   TemperatureZone,
@@ -67,8 +68,10 @@ export interface DetailProduct {
   salePrice: number | null;
   marketPrice: number | null;
   moq: number;
-  supplyStability: number;
-  priceCompetitiveness: number;
+  /** ⚠️ 1–5 整數等級，非百分比。null 代表尚未設定，畫面顯示「未設定」。 */
+  supplyStability: ScoreLevel | null;
+  /** ⚠️ 1–5 整數等級，非百分比。null 代表尚未設定，畫面顯示「未設定」。 */
+  priceCompetitiveness: ScoreLevel | null;
   audienceScore: number;
   audience: string;
   historicalScore: number;
@@ -159,9 +162,11 @@ export function toDetailProduct(
     // ⚠️ 僅 RESALE 有值；NEW 商品後端會拒絕寫入市價。
     marketPrice: product.marketPrice,
     moq: product.moq ?? 0,
-    // ⚠️ 0–5 分制，不是百分比。樣板若當成 % 顯示會變成「5%」這種錯誤數字。
-    supplyStability: product.supplyStability ?? 0,
-    priceCompetitiveness: product.priceCompetitiveness ?? 0,
+    // ⚠️ 1–5 整數等級，不是百分比也不是 0–5 分制小數。這裡不補 0 這種
+    // fallback——0 不是合法等級，跟「尚未設定」意義不同，null 直接
+    // 原封傳給樣板，由樣板顯示「未設定」（見 product-detail.html）。
+    supplyStability: product.supplyStability,
+    priceCompetitiveness: product.priceCompetitiveness,
     audienceScore: evaluation?.audienceScore ?? 0,
     audience: product.targetCustomerDescription ?? NOT_PROVIDED,
     historicalScore: evaluation?.historicalScore ?? 0,

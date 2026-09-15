@@ -27,6 +27,7 @@ import { SettingsApiService } from './api/settings-api.service';
 import { UserApiService } from '../user-management/api/user-api.service';
 import { UserAccountResponsePayload } from '../user-management/api/user-api.contract';
 import { WeightFactorPayload } from '../product-management/api/product-api.contract';
+import { Icon } from '../../shared/components/icon/icon';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
 type SettingsTab =
@@ -377,7 +378,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, ReactiveFormsModule, DatePipe],
+  imports: [FormsModule, ReactiveFormsModule, DatePipe, Icon],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })

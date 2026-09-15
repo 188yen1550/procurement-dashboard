@@ -48,7 +48,7 @@ export const routes: Routes = [
       {
         /**
          * 歷史開團紀錄。不加 managerGuard——查詢對操作＋管理層都開放，
-         * 匯入／整批退回僅管理層可操作，那是畫面內部依 isManager() 決定
+         * 匯入／整批回退僅管理層可操作，那是畫面內部依 isManager() 決定
          * 按鈕要不要出現，不是整頁層級的權限管制，詳見 group-buy.routes.ts。
          */
         path: 'group-buy',

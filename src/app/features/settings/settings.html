@@ -708,7 +708,7 @@
           : '新增帳號'
           }}
         </h2>
-        <button type="button" class="modal-close" (click)="closeModal()" aria-label="關閉">×</button>
+        <button type="button" class="modal-close" (click)="closeModal()" aria-label="關閉"><app-icon name="x" /></button>
       </header>
       @if (modal() === 'risk') {
       <label>選項名稱
@@ -726,7 +726,7 @@
             <span class="keyword-chip">{{ kw }}
               <button type="button" class="keyword-chip-remove" (click)="removeDraftKeyword(i)"
                 [attr.aria-label]="'刪除關鍵字 ' + kw">
-                ×
+                <app-icon name="x" size="sm" />
               </button></span>
             }
           </div>
@@ -785,7 +785,7 @@
         <!-- 主要互動：開啟獨立的搜尋+勾選 dialog 選標籤，不在這裡自由
                  輸入文字——避免手誤打錯字導致跟其他檔期已經在用的標籤
                  名稱不一致，AI 比對命中率因此受影響。 -->
-        <button type="button" class="btn" (click)="openTagPicker()">🔍 選擇標籤</button>
+        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" /> 選擇標籤</button>
         <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
         <div class="keyword-chip-list">
           @for (row of selectedTagRows(); track row.tag) {
@@ -793,7 +793,7 @@
             <button type="button" class="keyword-chip-remove"
               (click)="draftTags.set(draftTags().filter((r) => r.tag !== row.tag))"
               [attr.aria-label]="'移除標籤 ' + row.tag">
-              ×
+              <app-icon name="x" size="sm" />
             </button></span>
           }
         </div>
@@ -842,7 +842,6 @@
           <option value="ACTIVE">進行中</option>
           <option value="EXPIRED">已結束</option>
         </select></label>
-      <p>儲存後「是否手動覆蓋」將改為「是」。</p>
       } @else {
       <p>儲存後「是否手動覆蓋」將改為「否」，交由系統自動判斷狀態。</p>
       }
@@ -863,7 +862,7 @@
     <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
       <header>
         <h2>節慶標籤（選填）</h2>
-        <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉">×</button>
+        <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉"><app-icon name="x" /></button>
       </header>
 
       <label class="tag-picker-search">
@@ -878,7 +877,7 @@
         <span class="keyword-chip">{{ tag }}
           <button type="button" class="keyword-chip-remove" (click)="toggleTagPickerSelection(tag)"
             [attr.aria-label]="'取消選取 ' + tag">
-            ×
+            <app-icon name="x" size="sm" />
           </button></span>
         }
       </div>

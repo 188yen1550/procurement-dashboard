@@ -13,6 +13,7 @@ import {
   PriceSensitivity,
   ReviewDecision,
   ReviewStatus,
+  ScoreLevel,
   ShelfLifeTier,
   SupplierLeadTimeTier,
   TagMatchTier,
@@ -209,6 +210,28 @@ export const PACKAGE_SIZE_TIER_LABEL: Record<PackageSizeTier, string> = {
 export const PACKING_TYPE_LABEL: Record<PackingType, string> = {
   WHOLE_CARTON: '原箱直出',
   REPACK: '需拆箱分裝',
+};
+
+/**
+ * Product.supplyStability 的等級文案。文字逐字對照後端 V6 migration
+ * （V6__supply_price_tier_as_integer.sql）COMMENT 裡的敘述，未來要改文案
+ * 時兩邊一起改，避免資料庫註解與畫面顯示各說各話。
+ */
+export const SUPPLY_STABILITY_LEVEL_LABEL: Record<ScoreLevel, string> = {
+  1: '嚴重缺貨',
+  2: '暫時缺貨',
+  3: '供應普通',
+  4: '供應穩定',
+  5: '供應充足',
+};
+
+/** Product.priceCompetitiveness 的等級文案，來源同上（同一支 V6 migration）。 */
+export const PRICE_COMPETITIVENESS_LEVEL_LABEL: Record<ScoreLevel, string> = {
+  1: '價格缺乏競爭力',
+  2: '價格偏高',
+  3: '價格普通',
+  4: '具價格競爭力',
+  5: '高度具競爭力',
 };
 
 export const GATE_STATUS_LABEL: Record<GateStatus, string> = {
