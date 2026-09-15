@@ -18,6 +18,8 @@ import {
   ProductListQuery,
   ProductResponsePayload,
   ProductUpdateRequestPayload,
+  ResaleReferenceOptionPayload,
+  ResaleReferenceProductQuery,
   SimilarCandidateQuery,
   SimilarProductCandidatePayload,
   TrendSnapshotPayload,
@@ -181,6 +183,41 @@ export class ProductApiService {
         params: buildParams({
           productTypeId: query.productTypeId,
           name: query.name,
+          supplierName: query.supplierName,
+          excludeId: query.excludeId,
+        }),
+      })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 13b. GET /api/products/resale-reference/suppliers：逐層過濾參考商品第一層。
+   *
+   * 取代 findSimilarCandidates() 在品項表單的用途（見 PRODUCT_API.similarCandidates
+   * 註解）：不再依賴打字模糊比對，改成先選品類、再從這支端點列出的供應商裡選一個，
+   * 最後呼叫 findResaleReferenceProducts() 列出商品名稱。
+   */
+  listResaleReferenceSuppliers(productTypeId: number): Observable<string[]> {
+    return this.http
+      .get<ApiEnvelope<string[]>>(PRODUCT_API.resaleReferenceSuppliers, {
+        params: buildParams({ productTypeId }),
+      })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 13c. GET /api/products/resale-reference/products：逐層過濾參考商品第二層。
+   *
+   * ⚠️ 回傳的是精簡選項（僅 id／name），選定之後要另外呼叫 getProduct(id)
+   * 取得完整資料做表單預填，這支端點本身不含 description／campaignTags 等欄位。
+   */
+  listResaleReferenceProducts(
+    query: ResaleReferenceProductQuery,
+  ): Observable<ResaleReferenceOptionPayload[]> {
+    return this.http
+      .get<ApiEnvelope<ResaleReferenceOptionPayload[]>>(PRODUCT_API.resaleReferenceProducts, {
+        params: buildParams({
+          productTypeId: query.productTypeId,
           supplierName: query.supplierName,
           excludeId: query.excludeId,
         }),

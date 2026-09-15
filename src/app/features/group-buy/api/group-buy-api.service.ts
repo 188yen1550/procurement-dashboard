@@ -12,10 +12,13 @@ import { ApiEnvelope } from '../../../core/api/api-envelope';
 import { buildParams } from '../../../core/api/http-params';
 import { unwrapData } from '../../../core/api/unwrap';
 import {
+  ClaimGroupBuyRecordsPayload,
   GROUP_BUY_API,
+  GroupBuyClaimCandidatePayload,
   GroupBuyImportResultPayload,
   GroupBuyRecordListQuery,
   GroupBuyRecordResponsePayload,
+  UnlinkedGroupBuyCandidateQuery,
 } from './group-buy-api.contract';
 
 @Injectable({ providedIn: 'root' })
@@ -78,6 +81,37 @@ export class GroupBuyApiService {
   deleteBatch(batchId: string): Observable<void> {
     return this.http
       .delete<ApiEnvelope<null>>(GROUP_BUY_API.deleteBatch(batchId))
+      .pipe(map(() => undefined));
+  }
+
+  /**
+   * 4. GET /api/group-buy-records/unlinked-candidates [操作+管理]
+   *
+   * 唯讀查詢，不修改任何資料。回傳 product_id 為 null 的歷史紀錄候選，
+   * 供新增／編輯商品時「認領歷史紀錄」使用——系統只排序建議，**不做自動
+   * 連結判定**，選定的 id 要交給使用者人工核對後，再呼叫 claim() 送出。
+   */
+  searchUnlinkedCandidates(query: UnlinkedGroupBuyCandidateQuery): Observable<GroupBuyClaimCandidatePayload[]> {
+    return this.http
+      .get<ApiEnvelope<GroupBuyClaimCandidatePayload[]>>(GROUP_BUY_API.unlinkedCandidates, {
+        params: buildParams({
+          productTypeId: query.productTypeId,
+          name: query.name,
+          supplierName: query.supplierName,
+        }),
+      })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 5. POST /api/group-buy-records/claim [操作+管理]
+   *
+   * ⚠️ 全有全無：只要有一筆驗證失敗（例如已經被別人認領過），整批都不會
+   * 連結，不會出現「連了一半」的狀態。後端回 data: null，這裡不回傳內容。
+   */
+  claim(payload: ClaimGroupBuyRecordsPayload): Observable<void> {
+    return this.http
+      .post<ApiEnvelope<null>>(GROUP_BUY_API.claim, payload)
       .pipe(map(() => undefined));
   }
 }

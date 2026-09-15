@@ -47,8 +47,14 @@ export const PRODUCT_API = {
   archive: (id: number | string) => `/api/products/${id}/archive`,
   restore: (id: number | string) => `/api/products/${id}/restore`,
   promote: (id: number | string) => `/api/products/${id}/promote-to-candidate`,
-  /** GET：RESALE 商品搜尋相似參考商品。唯讀查詢，不會修改任何資料。 */
+  /** GET：RESALE 商品搜尋相似參考商品。唯讀查詢，不會修改任何資料。
+   * ⚠️ 品項表單已改用逐層過濾（resaleReferenceSuppliers／resaleReferenceProducts），
+   * 這支端點保留在後端但目前沒有畫面呼叫，見團隊決議。 */
   similarCandidates: '/api/products/similar-candidates',
+  /** GET：RESALE 逐層過濾參考商品第一層，列出指定品類下有供貨紀錄的供應商。 */
+  resaleReferenceSuppliers: '/api/products/resale-reference/suppliers',
+  /** GET：逐層過濾參考商品第二層，列出指定品類＋供應商下可選的商品。 */
+  resaleReferenceProducts: '/api/products/resale-reference/products',
   /** POST [僅管理]：手動觸發 AI 主動選品批次。 */
   aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
 } as const;
@@ -371,6 +377,28 @@ export interface SimilarCandidateQuery {
   name: string;
   supplierName?: string;
   excludeId?: number;
+}
+
+/**
+ * GET /api/products/resale-reference/products 的 query 參數。
+ * 對應 ProductController.listResaleReferenceProducts() 的三個 @RequestParam。
+ */
+export interface ResaleReferenceProductQuery {
+  productTypeId: number;
+  supplierName: string;
+  excludeId?: number;
+}
+
+/**
+ * 對應後端 ResaleReferenceOptionResponse.java。
+ *
+ * ⚠️ 刻意只有 id／name 兩個欄位——這一層只負責「列出可選項」，選定之後
+ * 呼叫既有的 getProduct(id) 取得完整資料做表單預填，不要期待這裡有
+ * description／campaignTags 等欄位。
+ */
+export interface ResaleReferenceOptionPayload {
+  productId: number;
+  name: string;
 }
 
 /**

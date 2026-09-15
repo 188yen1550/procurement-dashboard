@@ -152,7 +152,7 @@ describe('ProductForm', () => {
 
   it('calls POST /resubmit after saving when resubmit is true, not just relabels the toast', () => {
     // ⚠️ 這是這次修正的重點：resubmit=true 之前只換一句顯示文字，
-    // 從來沒有真的呼叫過重新送審這支端點。
+    // 從來沒有真的呼叫過重審這支端點。
     component.form.patchValue({
       name: '測試商品',
       supplierName: '測試供應商',
@@ -165,12 +165,12 @@ describe('ProductForm', () => {
     expect(api.create).toHaveBeenCalled();
     expect(api.resubmit).toHaveBeenCalledWith(201);
     expect(component.saved()).toBe(true);
-    expect(dialog.state()?.messages[0]).toContain('已儲存並重新送審');
+    expect(dialog.state()?.messages[0]).toContain('已儲存並重審');
   });
 
   it('keeps the saved state and shows a dialog when resubmit itself fails after a successful save', () => {
     api.resubmit.mockReturnValueOnce(
-      throwError(() => ({ error: { message: '此商品狀態已變更，無法重新送審' } })),
+      throwError(() => ({ error: { message: '此商品狀態已變更，無法重審' } })),
     );
     component.form.patchValue({
       name: '測試商品',
@@ -184,7 +184,7 @@ describe('ProductForm', () => {
     // 欄位已經存檔成功，不能因為送審這一步失敗就讓使用者以為整筆都沒存到。
     expect(component.saved()).toBe(true);
     const state = dialog.state();
-    expect(state?.title).toBe('重新送審失敗');
+    expect(state?.title).toBe('重審失敗');
     expect(state?.messages[0]).toContain('此商品狀態已變更');
   });
 

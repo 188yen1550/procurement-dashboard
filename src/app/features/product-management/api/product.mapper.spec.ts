@@ -87,7 +87,7 @@ describe('toProductActionAvailability', () => {
     expect(actions.canDelete).toBe(false);
   });
 
-  it('REJECTED 且 ACTIVE：可重新送審、可封存', () => {
+  it('REJECTED 且 ACTIVE：可重審、可封存', () => {
     const actions = toProductActionAvailability({
       reviewStatus: 'REJECTED',
       itemStatus: 'ACTIVE',
@@ -99,7 +99,7 @@ describe('toProductActionAvailability', () => {
     expect(actions.canArchive).toBe(true);
   });
 
-  it('REJECTED 但已封存：不可直接重新送審，要先復用', () => {
+  it('REJECTED 但已封存：不可直接重審，要先復用', () => {
     const actions = toProductActionAvailability({
       reviewStatus: 'REJECTED',
       itemStatus: 'ARCHIVED',
@@ -107,7 +107,7 @@ describe('toProductActionAvailability', () => {
       submissionCount: 1,
     });
 
-    // 這條規則在後端是 "商品目前已封存，請先復用後再重新送審"。
+    // 這條規則在後端是 "商品目前已封存，請先復用後再重審"。
     expect(actions.canResubmit).toBe(false);
     expect(actions.canRestore).toBe(true);
   });

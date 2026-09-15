@@ -26,6 +26,10 @@ export const GROUP_BUY_API = {
   import: '/api/group-buy-records/import',
   /** DELETE [僅管理]：整批回退。 */
   deleteBatch: (batchId: string) => `/api/group-buy-records/batch/${encodeURIComponent(batchId)}`,
+  /** GET [操作+管理]：認領歷史紀錄的候選查詢，唯讀。 */
+  unlinkedCandidates: '/api/group-buy-records/unlinked-candidates',
+  /** POST [操作+管理]：把選定的歷史紀錄連結到指定商品。 */
+  claim: '/api/group-buy-records/claim',
 } as const;
 
 /**
@@ -139,7 +143,7 @@ export interface GroupBuyImportRowErrorPayload {
  * 比送出去等後端回錯誤快得多。
  */
 export const GROUP_BUY_CSV_REQUIRED_HEADERS: readonly string[] = [
-  'product_type_id',
+  'product_type_name',
   'external_product_name',
   'campaign_start_date',
   'campaign_end_date',
@@ -153,7 +157,7 @@ export const GROUP_BUY_CSV_REQUIRED_HEADERS: readonly string[] = [
  */
 export const GROUP_BUY_CSV_KNOWN_HEADERS: readonly string[] = [
   'product_id',
-  'product_type_id',
+  'product_type_name',
   'external_product_name',
   'supplier_name',
   'campaign_start_date',
@@ -170,3 +174,43 @@ export const GROUP_BUY_CSV_KNOWN_HEADERS: readonly string[] = [
   'return_count',
   'is_simulated',
 ];
+
+/**
+ * GET /api/group-buy-records/unlinked-candidates 的 query 參數。
+ * 對應 GroupBuyRecordController.searchUnlinkedCandidates() 的三個 @RequestParam。
+ */
+export interface UnlinkedGroupBuyCandidateQuery {
+  productTypeId: number;
+  name: string;
+  supplierName?: string;
+}
+
+/**
+ * 對應後端 GroupBuyRecordClaimCandidateResponse.java。
+ *
+ * 比對邏輯與欄位形狀比照 product-management 模組的
+ * SimilarProductCandidatePayload：分項相似度而非只給綜合分數，
+ * nameSimilarity／supplierSimilarity 都是 0~1，畫面顯示需要 ×100。
+ * supplierSimilarity 任一邊供應商名稱為空時是 null，不是 0。
+ */
+export interface GroupBuyClaimCandidatePayload {
+  id: number;
+  externalProductName: string;
+  supplierName: string | null;
+  campaignStartDate: IsoDate;
+  campaignEndDate: IsoDate;
+  actualQuantity: number | null;
+  result: GroupBuyResultCode;
+  nameSimilarity: Decimal;
+  supplierSimilarity: Decimal | null;
+  combinedScore: Decimal;
+}
+
+/**
+ * POST /api/group-buy-records/claim 的 Request Body。
+ * 對應後端 ClaimGroupBuyRecordsRequest.java。
+ */
+export interface ClaimGroupBuyRecordsPayload {
+  productId: number;
+  groupBuyRecordIds: number[];
+}
