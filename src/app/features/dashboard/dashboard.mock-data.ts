@@ -1,6 +1,6 @@
 /**
  * 檔案用途：提供 Dashboard 的固定本地 Mock 資料與特殊情境。
- * 內容包含低完整度、重審、高風險與 Top 10 範例，不呼叫 API 且不得視為即時營運數據。
+ * 內容包含低完整度、重新送審、高風險與 Top 10 範例，不呼叫 API 且不得視為即時營運數據。
  */
 import { DashboardMockData, DashboardRecommendation } from './dashboard.models';
 
@@ -95,7 +95,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
       80.9,
       'REJECTED',
       72,
-      '季節性強，補齊尺寸退換貨方案後可重審。',
+      '季節性強，補齊尺寸退換貨方案後可重新送審。',
       3,
       '上次因尺寸退換貨風險未通過。',
     ),

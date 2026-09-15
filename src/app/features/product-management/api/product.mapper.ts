@@ -7,6 +7,7 @@ import {
   PricingStatus,
   PricingType,
   ReviewStatus,
+  ScoreLevel,
   ShelfLifeTier,
   SupplierLeadTimeTier,
   TemperatureZone,
@@ -108,7 +109,7 @@ export interface ProductListItem {
  *
  * | 操作   | ProductService 拋 409 的條件                                    |
  * |--------|-----------------------------------------------------------------|
- * | 重審 | 非 REJECTED／已封存（"請先復用後再重審"）                    |
+ * | 重新送審 | 非 REJECTED／已封存（"請先復用後再重新送審"）                    |
  * | 封存   | 非 APPROVED 也非 REJECTED／非 ACTIVE                            |
  * | 復用   | 非 APPROVED 也非 REJECTED／非 ARCHIVED                          |
  * | 加入候選 | 非 AI_SUGGESTED                                                |
@@ -116,7 +117,7 @@ export interface ProductListItem {
  *
  * ⚠️ 兩個最容易漏掉的條件：
  * 1. **PENDING 商品不能封存也不能復用**——必須先有審核結果
- * 2. **已封存商品不能直接重審**——要先復用回 ACTIVE
+ * 2. **已封存商品不能直接重新送審**——要先復用回 ACTIVE
  *
  * ⚠️ restore 的條件是 APPROVED **或** REJECTED，不是只有 APPROVED。
  * 舊版前端寫成只有 APPROVED 可復用，會讓被拒絕又封存的商品永遠救不回來。
@@ -216,8 +217,10 @@ export interface ProductFormModel {
     /** 表單以標籤陣列操作，送出前才 join 成逗號字串。 */
     campaignTags: string[];
     moq: number | null;
-    supplyStability: number | null;
-    priceCompetitiveness: number | null;
+    /** ⚠️ 1–5 整數等級，非百分比或 0–5 分制小數，見 ScoreLevel。 */
+    supplyStability: ScoreLevel | null;
+    /** ⚠️ 1–5 整數等級，非百分比或 0–5 分制小數，見 ScoreLevel。 */
+    priceCompetitiveness: ScoreLevel | null;
     targetCustomerDescription: string;
     /** ⚠️ 表單存 0–1 小數（與後端一致），顯示層才 ×100。 */
     estimatedPurchaseRate: number | null;

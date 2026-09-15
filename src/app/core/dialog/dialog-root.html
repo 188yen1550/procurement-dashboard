@@ -10,15 +10,17 @@
       [class]="'variant-' + state.variant"
       (click)="$event.stopPropagation()"
     >
-      <span class="app-dialog-icon" aria-hidden="true">{{
-        state.variant === 'success'
-          ? '✓'
-          : state.variant === 'error'
-            ? '!'
-            : state.variant === 'confirm'
-              ? '?'
-              : 'i'
-      }}</span>
+      <span class="app-dialog-icon" aria-hidden="true">
+        @if (state.variant === 'success') {
+          <app-icon name="check-circle" />
+        } @else if (state.variant === 'error') {
+          <app-icon name="alert-triangle" />
+        } @else if (state.variant === 'confirm') {
+          <app-icon name="help-circle" />
+        } @else {
+          <app-icon name="info" />
+        }
+      </span>
       <h2 id="app-dialog-title">{{ state.title }}</h2>
       @if (state.messages.length > 1) {
         <ol>

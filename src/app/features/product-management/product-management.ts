@@ -537,7 +537,7 @@ export class ProductManagement implements OnInit {
             : item,
         ),
       );
-      this.statusMessageState.show(`「${target.name}」已模擬重審，未呼叫 API。`);
+      this.statusMessageState.show(`「${target.name}」已模擬重新送審，未呼叫 API。`);
       this.closeDialog();
       return;
     }
@@ -547,7 +547,7 @@ export class ProductManagement implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.statusMessageState.show(`「${target.name}」已重審。`);
+          this.statusMessageState.show(`「${target.name}」已重新送審。`);
           this.closeDialog();
           this.load();
         },

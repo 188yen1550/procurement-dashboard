@@ -67,7 +67,7 @@ export class GroupBuyApiService {
   /**
    * 3. DELETE /api/group-buy-records/batch/{batchId} [僅管理]
    *
-   * 整批退回。匯入錯誤時使用，不需要逐筆刪除。
+   * 整批回退。匯入錯誤時使用，不需要逐筆刪除。
    *
    * ⚠️ 這是**不可復原**的破壞性操作，且影響範圍是整批（可能上百筆）。
    *    畫面上必須二次確認，並且在確認訊息裡寫清楚這個批次有幾筆資料，

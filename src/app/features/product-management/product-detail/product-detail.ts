@@ -16,9 +16,11 @@ import {
   GATE_STATUS_LABEL,
   PACKAGE_SIZE_TIER_LABEL,
   PACKING_TYPE_LABEL,
+  PRICE_COMPETITIVENESS_LEVEL_LABEL,
   REVIEW_STATUS_LABEL,
   SHELF_LIFE_TIER_LABEL,
   SUPPLIER_LEAD_TIME_TIER_LABEL,
+  SUPPLY_STABILITY_LEVEL_LABEL,
   TEMPERATURE_ZONE_LABEL,
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
@@ -85,8 +87,9 @@ const APPROVED: DetailProduct = {
   salePrice: 1190,
   marketPrice: 1490,
   moq: 50,
-  supplyStability: 4.6,
-  priceCompetitiveness: 4.4,
+  // ⚠️ 1–5 整數等級（見 ScoreLevel），不是 0–5 分制小數。
+  supplyStability: 5,
+  priceCompetitiveness: 4,
   audienceScore: 91,
   audience: '25–45 歲家庭與公司團購',
   historicalScore: 84,
@@ -186,6 +189,8 @@ export class ProductDetail implements OnInit {
   readonly supplierLeadTimeTierLabel = SUPPLIER_LEAD_TIME_TIER_LABEL;
   readonly packageSizeTierLabel = PACKAGE_SIZE_TIER_LABEL;
   readonly packingTypeLabel = PACKING_TYPE_LABEL;
+  readonly supplyStabilityLevelLabel = SUPPLY_STABILITY_LEVEL_LABEL;
+  readonly priceCompetitivenessLevelLabel = PRICE_COMPETITIVENESS_LEVEL_LABEL;
   readonly stateOptions: readonly DetailState[] = [
     'default',
     'locked',

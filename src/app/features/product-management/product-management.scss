@@ -80,7 +80,7 @@ th:nth-child(1){width:195px} th:nth-child(2){width:145px} th:nth-child(3){width:
 .skeleton-row { display:grid; grid-template-columns:1.4fr 1fr 1fr .6fr 1.2fr 1.1fr; gap:1rem; padding:1rem 0; border-bottom:1px solid #edf1f4; }
 .skeleton-row span { height:.8rem; background:linear-gradient(90deg,#edf1f4 25%,#f8fafb 50%,#edf1f4 75%); background-size:200% 100%; border-radius:.3rem; animation:shimmer 1.4s infinite; }
 .empty-state { padding:4rem 1rem; text-align:center; }
-.empty-state > span { display:block; color:#6d89a0; font-size:2.2rem; }
+.empty-state > span, .empty-state > app-icon { display: inline-grid; margin: 0 auto; --icon-size-override: 2.6rem; color:#6d89a0; }
 .empty-state h3 { margin:.65rem 0 .3rem; font-size: var(--t-base); }
 .empty-state p { margin:0 auto 1rem; max-width:480px; color:#6c7a89; font-size: var(--t-xs); }
 .notice { margin-bottom:1rem; padding:.9rem 1rem; color:#7a2927; background:#fff0ef; border:1px solid #efc1be; border-radius:.65rem; }

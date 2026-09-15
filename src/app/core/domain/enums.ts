@@ -88,6 +88,16 @@ export type PackageSizeTier = 'XS' | 'S' | 'M' | 'L';
 export type PackingType = 'WHOLE_CARTON' | 'REPACK';
 
 /**
+ * Product.supplyStability／Product.priceCompetitiveness 共用的等級型別。
+ *
+ * ⚠️ 後端 V6 migration 已把這兩欄從 0–5 分制小數改成 1–5 整數等級
+ * （@Min(1) @Max(5)），畫面只顯示對應文字敘述，數字本身只是儲存用的
+ * 代碼，不會直接出現在畫面上——見 SUPPLY_STABILITY_LEVEL_LABEL／
+ * PRICE_COMPETITIVENESS_LEVEL_LABEL（labels.ts）。
+ */
+export type ScoreLevel = 1 | 2 | 3 | 4 | 5;
+
+/**
  * enums/GateStatus.java。
  *
  * ⚠️ 只有 FAILED 算「明確擋下」，其餘三態都不阻擋送審——畫面上不要把
