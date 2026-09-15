@@ -2,7 +2,7 @@
 <main class="review-page" aria-labelledby="review-title">
   <header class="page-header">
     <div>
-      
+
       <h1 id="review-title">選品審核</h1>
     </div>
   </header>
@@ -115,31 +115,22 @@
       <p>保留每次送審快照與人工決策依據。</p>
     </header>
     <section class="toolbar">
-      <label
-        >搜尋商品名稱<input
-          type="search"
-          [ngModel]="recordSearch()"
-          (ngModelChange)="recordSearch.set($event)"
-      /></label>
-      <label
-        >審核結果<select [ngModel]="recordResultFilter()" (ngModelChange)="recordResultFilter.set($event)">
+      <label>搜尋商品名稱<input type="search" [ngModel]="recordSearch()" (ngModelChange)="recordSearch.set($event)" /></label>
+      <label>審核結果<select [ngModel]="recordResultFilter()" (ngModelChange)="recordResultFilter.set($event)">
           <option value="ALL">全部</option>
           <option value="APPROVED">已通過</option>
           <option value="REJECTED">未通過</option>
-        </select></label
-      >
-      <label
-        >排序<select [ngModel]="recordSort()" (ngModelChange)="recordSort.set($event)">
+        </select></label>
+      <label>排序<select [ngModel]="recordSort()" (ngModelChange)="recordSort.set($event)">
           <option value="date_desc">審核日期（新→舊）</option>
           <option value="date_asc">審核日期（舊→新）</option>
           <option value="score_desc">最終分數（高→低）</option>
           <option value="score_asc">最終分數（低→高）</option>
-        </select></label
-      >
+        </select></label>
       <button type="button" class="secondary-action" (click)="clearRecordFilters()">恢復預設</button>
     </section>
     @if (records().length > 0 && filteredRecords().length === 0) {
-      <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
+    <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
     }
     <div class="table-wrap">
       <table>

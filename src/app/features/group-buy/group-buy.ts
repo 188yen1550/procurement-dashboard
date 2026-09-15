@@ -31,6 +31,16 @@ interface GroupBuyRecordVM extends GroupBuyRecordResponsePayload {
   productTypeName: string;
 }
 
+interface ProductTypeFilterOption {
+  id: number;
+  name: string;
+}
+
+interface ProductTypeFilterGroup {
+  majorName: string;
+  minors: ProductTypeFilterOption[];
+}
+
 @Component({
   selector: 'app-group-buy',
   imports: [FormsModule],
@@ -54,20 +64,19 @@ export class GroupBuy implements OnInit {
   readonly statusMessage = this.statusMessageState.signal;
 
   // ----- 篩選 -----
-  // ⚠️ 後端判斷順序是 productId 優先，兩者都給時 productTypeId 會被忽略——
-  // 因此這裡刻意只讓使用者填其中一個，選了 productId 就清空 productTypeId
-  // 的篩選輸入框，避免使用者以為兩者可以同時生效。
+  // ⚠️ 原本這裡是兩個要求使用者自己輸入數字 ID 的欄位（品類 ID、商品 ID）
+  // ——一般使用者不會知道「生鮮食品」在資料庫裡是編號幾號，形同要求他們
+  // 先另外查過才能用這個篩選功能。這次改成品類名稱下拉選單；「商品 ID」
+  // 篩選直接移除，沒有好的名稱式替代方案（要嘛做一個商品名稱搜尋框，
+  // 但這個頁面拿不到「商品名稱」與「開團紀錄裡的商品」之間乾淨的對照
+  // 關係，勉強做只會做出另一個容易選錯的介面）。後端 API 本身仍支援
+  // productId 篩選（見 GroupBuyApiService.list()），保留給未來可能的
+  // 「從商品詳情頁連結過來，帶著 productId 查詢參數」這種情境使用。
   readonly filterProductTypeId = signal<number | null>(null);
-  readonly filterProductId = signal<number | null>(null);
+  readonly productTypeFilterGroups = signal<readonly ProductTypeFilterGroup[]>([]);
 
   setFilterProductTypeId(value: number | null): void {
     this.filterProductTypeId.set(value);
-    if (value !== null) this.filterProductId.set(null);
-  }
-
-  setFilterProductId(value: number | null): void {
-    this.filterProductId.set(value);
-    if (value !== null) this.filterProductTypeId.set(null);
   }
 
   applyFilter(): void {
@@ -76,7 +85,6 @@ export class GroupBuy implements OnInit {
 
   clearFilter(): void {
     this.filterProductTypeId.set(null);
-    this.filterProductId.set(null);
     this.load();
   }
 
@@ -100,7 +108,28 @@ export class GroupBuy implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadProductTypeFilterOptions();
     this.load();
+  }
+
+  private loadProductTypeFilterOptions(): void {
+    this.productTypeLookup
+      .getGroupedOptions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (groups) => {
+          this.productTypeFilterGroups.set(
+            groups
+              .filter((g) => g.minors.length > 0)
+              .map((g) => ({
+                majorName: g.major.name,
+                minors: g.minors.map((m) => ({ id: m.id, name: m.name })),
+              })),
+          );
+        },
+        // 篩選選單載入失敗不影響清單本身，下拉維持空白，使用者仍能看到未篩選的全部紀錄。
+        error: () => this.productTypeFilterGroups.set([]),
+      });
   }
 
   private load(): void {
@@ -112,7 +141,6 @@ export class GroupBuy implements OnInit {
         this.api
           .list({
             productTypeId: this.filterProductTypeId() ?? undefined,
-            productId: this.filterProductId() ?? undefined,
           })
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({

@@ -19,24 +19,21 @@
 <!-- ===== 篩選 ===== -->
 <section class="filter-panel">
   <label>
-    商品類型 ID
-    <input
-      type="number"
-      placeholder="不篩選則留空"
+    商品類型
+    <select
       [ngModel]="filterProductTypeId()"
       (ngModelChange)="setFilterProductTypeId($event)"
-    />
+    >
+      <option [ngValue]="null">不篩選（全部類型）</option>
+      @for (group of productTypeFilterGroups(); track group.majorName) {
+        <optgroup [label]="group.majorName">
+          @for (minor of group.minors; track minor.id) {
+            <option [ngValue]="minor.id">{{ minor.name }}</option>
+          }
+        </optgroup>
+      }
+    </select>
   </label>
-  <label>
-    商品 ID
-    <input
-      type="number"
-      placeholder="不篩選則留空"
-      [ngModel]="filterProductId()"
-      (ngModelChange)="setFilterProductId($event)"
-    />
-  </label>
-  <span class="helper">兩者同時填寫時，僅商品 ID 生效。</span>
   <button type="button" class="btn-primary" (click)="applyFilter()">套用篩選</button>
   <button type="button" class="btn" (click)="clearFilter()">清除篩選</button>
 </section>
@@ -153,7 +150,7 @@
     <div class="modal-card" (click)="$event.stopPropagation()">
       <h2>匯入歷史開團紀錄</h2>
       <p class="helper">
-        CSV 格式須含必要欄位（品類 ID、商品名稱、開團起訖日、實際成團量、結果），
+        CSV 格式須含必要欄位（品類名稱、商品名稱、開團起訖日、實際成團量、結果），
         任何一列格式錯誤會整批拒絕匯入。
       </p>
       <details class="csv-headers">

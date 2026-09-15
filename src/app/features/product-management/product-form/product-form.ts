@@ -6,16 +6,17 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, combineLatest, of } from 'rxjs';
-import { catchError, debounceTime, filter, map, startWith, switchMap } from 'rxjs/operators';
+import { catchError, debounceTime, map, startWith } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import {
   joinCampaignTags,
   PRICE_COMPETITIVENESS_LEVEL_LABEL,
+  splitCampaignTags,
   SUPPLY_STABILITY_LEVEL_LABEL,
 } from '../../../core/domain/labels';
 import {
@@ -28,9 +29,11 @@ import {
 } from '../../../core/domain/enums';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
-import { SimilarProductCandidatePayload } from '../api/product-api.contract';
+import { ProductResponsePayload, ResaleReferenceOptionPayload } from '../api/product-api.contract';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import { GroupBuyApiService } from '../../group-buy/api/group-buy-api.service';
+import { GROUP_BUY_RESULT_LABEL, GroupBuyClaimCandidatePayload } from '../../group-buy/api/group-buy-api.contract';
 import { Icon } from '../../../shared/components/icon/icon';
 
 type FormPageState = 'default' | 'locked' | 'loading' | 'error';
@@ -73,27 +76,25 @@ const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 const MOCK_CAMPAIGN_TAGS = ['bbq', 'gift', 'family', 'daily', 'summer', 'winter'] as const;
 
-/** Mock 版的相似商品候選，供 RESALE 挑選小工具 demo 用，不呼叫任何網路請求。 */
-const MOCK_SIMILAR_CANDIDATES: readonly SimilarProductCandidatePayload[] = [
-  {
-    productId: 501,
+/** Mock 版的逐層過濾參考商品資料，供 RESALE 挑選小工具 demo 用，不呼叫任何網路請求。 */
+const MOCK_RESALE_SUPPLIERS = ['潮港鮮物有限公司', '淨好生活實業'] as const;
+const MOCK_RESALE_CANDIDATES: Record<string, readonly ResaleReferenceOptionPayload[]> = {
+  '潮港鮮物有限公司': [
+    { productId: 501, name: '中秋炭烤海陸組合禮盒（去年款）' },
+    { productId: 502, name: '海陸雙拼烤肉禮盒' },
+  ],
+  '淨好生活實業': [{ productId: 503, name: '無香低敏濃縮洗衣紙補充組（舊版包裝）' }],
+};
+/** Mock 版：選定候選後回傳的完整商品資料，模擬 getProduct() 的回應供預填 demo。 */
+const MOCK_RESALE_REFERENCE_DETAIL: Record<number, Partial<ProductResponsePayload>> = {
+  501: {
     name: '中秋炭烤海陸組合禮盒（去年款）',
-    supplierName: '潮港鮮物有限公司',
-    pricingType: 'RESALE',
-    nameSimilarity: 0.86,
-    supplierSimilarity: 1,
-    combinedScore: 0.9,
+    description: '適合中秋團購的海陸烤肉組合，去年熱銷。',
+    campaignTags: 'bbq,gift',
+    supplyStability: 5,
+    targetCustomerDescription: '25–45 歲家庭與公司團購',
   },
-  {
-    productId: 502,
-    name: '海陸雙拼烤肉禮盒',
-    supplierName: '潮港鮮物有限公司',
-    pricingType: 'RESALE',
-    nameSimilarity: 0.62,
-    supplierSimilarity: 1,
-    combinedScore: 0.7,
-  },
-];
+};
 
 function nonBlank(control: AbstractControl): ValidationErrors | null {
   return typeof control.value === 'string' && control.value.trim().length > 0
@@ -176,7 +177,7 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
 
 @Component({
   selector: 'app-product-form',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, Icon],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, Icon],
   templateUrl: './product-form.html',
   styleUrls: ['./product-form.scss', './product-image.scss'],
 })
@@ -187,6 +188,7 @@ export class ProductForm implements OnInit {
   private readonly api = inject(ProductApiService);
   private readonly settingsApi = inject(SettingsApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
+  private readonly groupBuyApi = inject(GroupBuyApiService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -294,24 +296,32 @@ export class ProductForm implements OnInit {
     return this.form.controls.pricingType.value === 'RESALE';
   }
 
-  // ===================== RESALE 相似商品參考 =====================
-
-  /** 使用者選定的參考商品；編輯模式由 API 回填，並另外查詢顯示名稱。 */
-  readonly resaleReferenceProductId = signal<number | null>(null);
-  readonly resaleReferenceName = signal<string | null>(null);
-
-  readonly similarCandidates = signal<SimilarProductCandidatePayload[]>([]);
-  readonly isSearchingSimilar = signal(false);
-  readonly similarSearchError = signal('');
+  // ===================== RESALE 逐層過濾參考商品 =====================
+  // 取代原本「打字輸入商品名稱、系統模糊比對」的搜尋方式：那個機制把
+  // 「幫新商品取名字」跟「找出哪件舊商品是同一件」兩件事綁在同一個輸入框，
+  // 命名習慣跟舊商品不同時模糊比對分數過低會完全找不到候選，且無法在
+  // 沒有先打字的情況下瀏覽既有商品。改成三層下拉：商品分類（沿用選品核心
+  // 資料的 productTypeId 欄位，不重複開一個）→ 供應商（沿用 supplierName
+  // 欄位，選定後該欄位自然也是「一般基本資料」要送出的值，不用另外複製
+  // 一份）→ 商品名稱（獨立的 resaleReferenceProductId／resaleReferenceName
+  // signal，因為這一層選的是「參考的舊商品」，不是「這次新商品的名稱」）。
 
   /**
-   * 監看「商品名稱」欄位，debounce 後即時查詢相似商品，不需要另外的搜尋框
-   * ——RESALE 商品本來就必填商品名稱，重複開一個查詢欄位只會讓使用者
-   * 打兩次幾乎一樣的字。真實模式才打 API；Mock 模式用固定清單本地過濾。
-   *
-   * ⚠️ 只有 productTypeId 已選、名稱至少 2 個字時才查，避免打出全域搜尋
-   * 般的無意義請求（後端 name 是必填參數，沒有 productTypeId 會是 400）。
+   * 使用者選定的參考商品。送出時填入 ProductCreateRequestPayload／
+   * ProductUpdateRequestPayload 的 resaleReferenceProductId；編輯模式由 API 回填。
    */
+  readonly resaleReferenceProductId = signal<number | null>(null);
+  readonly resaleReferenceName = signal<string | null>(null);
+  readonly isLoadingReferenceDetail = signal(false);
+
+  readonly resaleSuppliers = signal<readonly string[]>([]);
+  readonly isLoadingResaleSuppliers = signal(false);
+  readonly resaleSupplierError = signal('');
+
+  readonly resaleCandidateProducts = signal<readonly ResaleReferenceOptionPayload[]>([]);
+  readonly isLoadingResaleCandidates = signal(false);
+  readonly resaleCandidateError = signal('');
+
   /**
    * 團購售價高於市價：不阻擋送出（可能是刻意的行銷策略、市價本身滯後
    * 未更新等合理情境，不該由系統武斷認定這是錯誤），但要提醒使用者
@@ -330,56 +340,120 @@ export class ProductForm implements OnInit {
       .subscribe((isAbove) => this.priceAboveMarketWarning.set(isAbove));
   }
 
-  private wireSimilarCandidateSearch(): void {
-    this.form.controls.name.valueChanges
-      .pipe(
-        startWith(this.form.controls.name.value),
-        debounceTime(400),
-        filter(() => this.isResale()),
-        switchMap((name): Observable<SimilarProductCandidatePayload[]> => {
-          const trimmedName = (name ?? '').trim();
-          const productTypeId = this.form.controls.productTypeId.value;
+  /**
+   * 監看「訂價分流」＋「商品分類」：切成 RESALE 且分類已選時載入第一層
+   * 供應商選單；分類改變、或切回 NEW 時，把後面三層（供應商候選、商品
+   * 候選、已選定的參考商品）全部重置——候選池是依分類查的，分類一變
+   * 舊的候選清單就不再有意義，留著只會讓使用者誤選。
+   */
+  private wireResaleReferenceCascade(): void {
+    combineLatest([
+      this.form.controls.pricingType.valueChanges.pipe(startWith(this.form.controls.pricingType.value)),
+      this.form.controls.productTypeId.valueChanges.pipe(startWith(this.form.controls.productTypeId.value)),
+    ])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([pricingType, productTypeId]) => {
+        this.resaleSuppliers.set([]);
+        this.resaleCandidateProducts.set([]);
+        this.clearResaleReference();
+        if (pricingType !== 'RESALE' || !productTypeId) return;
+        this.loadResaleSuppliers(productTypeId);
+      });
 
-          if (this.useMockData) {
-            if (trimmedName.length < 2) return of([]);
-            return of(
-              MOCK_SIMILAR_CANDIDATES.filter((c) =>
-                c.name.includes(trimmedName.slice(0, 2)),
-              ),
-            );
-          }
-
-          if (!productTypeId || trimmedName.length < 2) return of([]);
-
-          this.isSearchingSimilar.set(true);
-          this.similarSearchError.set('');
-          return this.api
-            .findSimilarCandidates({
-              productTypeId,
-              name: trimmedName,
-              supplierName: this.form.controls.supplierName.value.trim() || undefined,
-              excludeId: this.productId ? Number(this.productId) : undefined,
-            })
-            .pipe(
-              catchError((err: unknown) => {
-                this.similarSearchError.set(toApiError(err).message);
-                return of([]);
-              }),
-            );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((candidates) => {
-        this.isSearchingSimilar.set(false);
-        this.similarCandidates.set(candidates);
+    // 供應商欄位（section 03 的一般基本資料）跟這裡的第二層下拉共用同一個
+    // formControlName="supplierName"，選定或手動改動都會觸發重新查第三層。
+    // ⚠️ 這代表選定參考商品「之後」若又手動改了供應商名稱，已選定的參考
+    // 商品會被清空並重新載入候選——這是刻意的：參考商品是跟著「這個
+    // 供應商」查出來的，供應商換了，原本選定的那筆邏輯上也不再成立，
+    // 不該讓一筆跟舊供應商綁定的參考商品繼續掛著。
+    this.form.controls.supplierName.valueChanges
+      .pipe(startWith(this.form.controls.supplierName.value), debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe((supplierName) => {
+        this.resaleCandidateProducts.set([]);
+        this.clearResaleReference();
+        const trimmed = supplierName.trim();
+        const productTypeId = this.form.controls.productTypeId.value;
+        if (!this.isResale() || !trimmed || !productTypeId) return;
+        this.loadResaleCandidateProducts(productTypeId, trimmed);
       });
   }
 
-  selectResaleReference(candidate: SimilarProductCandidatePayload): void {
-    this.resaleReferenceProductId.set(candidate.productId);
-    this.resaleReferenceName.set(candidate.name);
-    // 選定後收起候選清單，避免使用者誤以為還要再選一次。
-    this.similarCandidates.set([]);
+  private loadResaleSuppliers(productTypeId: number): void {
+    this.isLoadingResaleSuppliers.set(true);
+    this.resaleSupplierError.set('');
+
+    const suppliers$ = this.useMockData
+      ? of(MOCK_RESALE_SUPPLIERS as readonly string[])
+      : this.api.listResaleReferenceSuppliers(productTypeId).pipe(
+          catchError((err: unknown) => {
+            this.resaleSupplierError.set(toApiError(err).message);
+            return of([] as readonly string[]);
+          }),
+        );
+
+    suppliers$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((suppliers) => {
+      this.isLoadingResaleSuppliers.set(false);
+      this.resaleSuppliers.set(suppliers);
+    });
+  }
+
+  private loadResaleCandidateProducts(productTypeId: number, supplierName: string): void {
+    this.isLoadingResaleCandidates.set(true);
+    this.resaleCandidateError.set('');
+
+    const candidates$ = this.useMockData
+      ? of((MOCK_RESALE_CANDIDATES[supplierName] ?? []) as readonly ResaleReferenceOptionPayload[])
+      : this.api
+          .listResaleReferenceProducts({
+            productTypeId,
+            supplierName,
+            excludeId: this.productId ? Number(this.productId) : undefined,
+          })
+          .pipe(
+            catchError((err: unknown) => {
+              this.resaleCandidateError.set(toApiError(err).message);
+              return of([] as readonly ResaleReferenceOptionPayload[]);
+            }),
+          );
+
+    candidates$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((candidates) => {
+      this.isLoadingResaleCandidates.set(false);
+      this.resaleCandidateProducts.set(candidates);
+    });
+  }
+
+  /**
+   * 第三層：選定商品名稱。設定 id／name 後立即呼叫既有的 getProduct()
+   * 取得完整資料做預填——這支端點回傳的候選選項刻意只有 id／name
+   * （見 ResaleReferenceOptionResponse 類別註解），完整資料要另外查。
+   */
+  onResaleCandidateSelected(productId: number | null): void {
+    if (productId === null) {
+      this.clearResaleReference();
+      return;
+    }
+    const option = this.resaleCandidateProducts().find((o) => o.productId === productId);
+    this.resaleReferenceProductId.set(productId);
+    this.resaleReferenceName.set(option?.name ?? null);
+
+    if (this.useMockData) {
+      const detail = MOCK_RESALE_REFERENCE_DETAIL[productId];
+      if (detail) this.prefillFromReference(detail);
+      return;
+    }
+
+    this.isLoadingReferenceDetail.set(true);
+    this.api
+      .getProduct(productId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (product) => {
+          this.isLoadingReferenceDetail.set(false);
+          this.prefillFromReference(product);
+        },
+        // 查不到完整資料不影響已經選定的參考商品，只是沒有預填效果。
+        error: () => this.isLoadingReferenceDetail.set(false),
+      });
   }
 
   clearResaleReference(): void {
@@ -387,32 +461,82 @@ export class ProductForm implements OnInit {
     this.resaleReferenceName.set(null);
   }
 
-  /** 供樣板顯示百分比：後端回傳 0~1 的小數（Jaro-Winkler），畫面顯示需要 ×100。 */
-  toSimilarityPercent(value: number | null): string {
-    return value === null ? '—' : `${Math.round(value * 100)}%`;
+  /**
+   * 選定參考商品後，依團隊決議的欄位清單預填：只預填「商品固有屬性」
+   * ——商品說明、節慶標籤、供貨穩定度、目標客群描述、8 個 Gate 判定屬性。
+   * 不預填名稱、成本價／售價／市價、最低訂購量、價格競爭力、預估購買率
+   * ——這些每次進貨成本、每次開團的市場預期都可能不同，照抄容易讓使用者
+   * 忘記改成這次真正的數字。
+   *
+   * 只覆蓋使用者「還沒自己動過」的欄位（controls.xxx.dirty 為 false）：
+   * 若使用者在選定參考商品之前已經手動填過商品說明，選定參考商品不該
+   * 無聲蓋掉他已經輸入的內容。patchValue() 本身不會設定 dirty，所以這個
+   * 判斷同時也涵蓋「編輯既有商品、載入時已經帶了資料」的情況——這是
+   * 刻意的：使用者在編輯模式下選了一個不同的參考商品，代表他明確想比照
+   * 那件商品的資料，預填覆蓋既有值是預期行為，不是副作用。
+   */
+  private prefillFromReference(product: Partial<ProductResponsePayload>): void {
+    const patch: Record<string, unknown> = {};
+    if (!this.form.controls.description.dirty && product.description) {
+      patch['description'] = product.description;
+    }
+    if (!this.form.controls.campaignTags.dirty && product.campaignTags) {
+      patch['campaignTags'] = splitCampaignTags(product.campaignTags);
+    }
+    if (!this.form.controls.supplyStability.dirty && product.supplyStability) {
+      patch['supplyStability'] = product.supplyStability;
+    }
+    if (!this.form.controls.targetCustomer.dirty && product.targetCustomerDescription) {
+      patch['targetCustomer'] = product.targetCustomerDescription;
+    }
+    if (!this.form.controls.temperatureZone.dirty && product.temperatureZone) {
+      patch['temperatureZone'] = product.temperatureZone;
+    }
+    if (!this.form.controls.shelfLifeTier.dirty && product.shelfLifeTier) {
+      patch['shelfLifeTier'] = product.shelfLifeTier;
+    }
+    if (!this.form.controls.supplierLeadTimeTier.dirty && product.supplierLeadTimeTier) {
+      patch['supplierLeadTimeTier'] = product.supplierLeadTimeTier;
+    }
+    if (!this.form.controls.packageSizeTier.dirty && product.packageSizeTier) {
+      patch['packageSizeTier'] = product.packageSizeTier;
+    }
+    if (!this.form.controls.packingType.dirty && product.packingType) {
+      patch['packingType'] = product.packingType;
+    }
+    if (!this.form.controls.handlingFlags.dirty && product.handlingFlags) {
+      patch['handlingFlags'] = product.handlingFlags;
+    }
+    if (!this.form.controls.certificationFlags.dirty && product.certificationFlags) {
+      patch['certificationFlags'] = product.certificationFlags;
+    }
+    if (!this.form.controls.supplierMaxCapacity.dirty && product.supplierMaxCapacity) {
+      patch['supplierMaxCapacity'] = product.supplierMaxCapacity;
+    }
+    this.form.patchValue(patch);
   }
 
   /**
    * 編輯模式下，回填目前已設定的參考商品。
    *
-   * 後端 GET 端點這次補上了 resaleReferenceProductId，但只回 id、沒有名稱
-   * （ProductResponse 沒有巢狀展開參考商品的完整資料，避免遞迴查詢），
+   * ProductResponse 這次已經補上 resaleReferenceProductId（見後端 Gate
+   * 判定接線交付），但只回 id、沒有名稱（避免巢狀展開造成遞迴查詢），
    * 所以這裡另外呼叫一次 getProduct() 換取名稱給畫面顯示；查詢失敗
-   * （例如參考商品後來被刪除）不視為表單載入失敗，只是顯示「#id」代替。
+   * （例如參考商品後來被刪除）不視為表單載入失敗，只是顯示「載入失敗」代替，
+   * 不再用 `#id` 這種原始編號當成暫時顯示內容。
    */
   private loadExistingResaleReference(referenceId: number | null): void {
     if (referenceId === null) return;
 
     this.resaleReferenceProductId.set(referenceId);
-    this.resaleReferenceName.set(`#${referenceId}`);
+    this.resaleReferenceName.set('載入中…');
 
     this.api
       .getProduct(referenceId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (product) => this.resaleReferenceName.set(product.name),
-        // 查不到名稱不影響表單載入，維持 `#id` 顯示即可。
-        error: () => undefined,
+        error: () => this.resaleReferenceName.set('（無法載入商品名稱，商品可能已被刪除）'),
       });
   }
 
@@ -421,8 +545,8 @@ export class ProductForm implements OnInit {
       this.loadProductTypes();
       this.loadCampaignTags();
     }
-    // 兩種模式都要，Mock 模式走本地過濾（見 wireSimilarCandidateSearch 內判斷）。
-    this.wireSimilarCandidateSearch();
+    // 兩種模式都要，Mock 模式走本地固定候選（見 loadResaleSuppliers／loadResaleCandidateProducts 內判斷）。
+    this.wireResaleReferenceCascade();
     this.wirePriceAboveMarketWarning();
 
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
@@ -468,7 +592,20 @@ export class ProductForm implements OnInit {
             handlingFlags: model.core.handlingFlags,
             certificationFlags: model.core.certificationFlags,
             supplierMaxCapacity: model.core.supplierMaxCapacity,
-          });
+          }, { emitEvent: false });
+          // ⚠️ emitEvent: false 是刻意的：這是「載入既有資料」而非「使用者
+          // 互動」，不該觸發 wireResaleReferenceCascade() 的連鎖反應——那組
+          // 監看是設計給使用者互動用的（切分類、切供應商），載入當下若照樣
+          // 觸發，第二層的 debounce（300ms）會在 loadExistingResaleReference()
+          // 剛設定好參考商品之後才跑完，把剛顯示好的參考商品又清空，兩者互相
+          // 競速。下面改成載入完成後才明確呼叫 loadResaleSuppliers()，讓下拉
+          // 選單有資料可選，但不觸碰目前已顯示的參考商品狀態。
+          if (model.core.pricingType === 'RESALE' && model.core.productTypeId) {
+            this.loadResaleSuppliers(model.core.productTypeId);
+            if (model.base.supplierName?.trim()) {
+              this.loadResaleCandidateProducts(model.core.productTypeId, model.base.supplierName.trim());
+            }
+          }
           this.currentImageUrl.set(model.base.imageUrl || null);
           if (model.base.imageUrl) {
             this.imagePreviewUrl.set(model.base.imageUrl);
@@ -568,7 +705,7 @@ export class ProductForm implements OnInit {
 
   /**
    * 驗證並送出表單；`resubmit` 為 true 時，儲存成功後會接著呼叫
-   * POST /api/products/{id}/resubmit 真的觸發重新送審（見
+   * POST /api/products/{id}/resubmit 真的觸發重審（見
    * maybeResubmitThenFinish()），不是只改顯示文字。
    *
    * 驗證錯誤一律用 dialog 列出「所有」無效欄位，不是只顯示
@@ -613,7 +750,7 @@ export class ProductForm implements OnInit {
       this.submitCount.update((count) => count + 1);
       this.form.markAsPristine();
       this.imageDirty.set(false);
-      const message = resubmit ? '已在本地模擬儲存並重新送審。' : '已儲存本地 Mock 品項。';
+      const message = resubmit ? '已在本地模擬儲存並重審。' : '已儲存本地 Mock 品項。';
       window.setTimeout(() => {
         this.isSubmitting.set(false);
         this.saved.set(true);
@@ -715,7 +852,7 @@ export class ProductForm implements OnInit {
   }
 
   /**
-   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重新送審」按鈕的顯示文字，
+   * ⚠️ 修正：resubmit=true 之前只影響「儲存並重審」按鈕的顯示文字，
    * 從來沒有真的呼叫過 POST /api/products/{id}/resubmit——編輯 REJECTED
    * 商品後點下去，欄位確實存了，但 reviewStatus 不會變回 PENDING，
    * 因為改欄位（PUT）跟送審（POST /resubmit）是後端兩支獨立的操作，
@@ -723,7 +860,7 @@ export class ProductForm implements OnInit {
    */
   private maybeResubmitThenFinish(productId: number, resubmit: boolean): void {
     if (!resubmit || this.useMockData) {
-      this.finishSubmit(resubmit);
+      this.finishSubmit(resubmit, undefined, productId);
       return;
     }
     this.api
@@ -731,27 +868,27 @@ export class ProductForm implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         // ⚠️ 之前這裡直接丟棄回應內容，只用「有沒有出錯」判斷成功與否。
-        // 回報過「重新送審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
+        // 回報過「重審後次數沒有更新」的問題——後端邏輯跟這支呼叫本身
         // 都對照過確認沒有錯，但既然回應裡就有真正最新的 submissionCount，
         // 直接秀在這次的成功訊息裡，讓使用者當下就能看到次數真的變了，
         // 不用跳去別的頁面、也不用擔心那邊的畫面剛好沒重新整理才看起來
         // 沒有變化。
-        next: (updated) => this.finishSubmit(true, updated.submissionCount),
+        next: (updated) => this.finishSubmit(true, updated.submissionCount, productId),
         error: (err) => {
           // 欄位已經存檔成功，只是送審這一步失敗，不能讓使用者以為
           // 整個操作都沒發生——維持 saved=true，讓使用者知道要重新
           // 觸發送審，而不是重新輸入一次資料。
           this.isSubmitting.set(false);
-          const message = `品項資料已儲存，但重新送審失敗：${toApiError(err).message}`;
+          const message = `品項資料已儲存，但重審失敗：${toApiError(err).message}`;
           this.saved.set(true);
           this.form.markAsPristine();
           this.statusMessageState.show(message);
-          this.dialog.notify('error', '重新送審失敗', [message]).subscribe();
+          this.dialog.notify('error', '重審失敗', [message]).subscribe();
         },
       });
   }
 
-  private finishSubmit(resubmit: boolean, newSubmissionCount?: number): void {
+  private finishSubmit(resubmit: boolean, newSubmissionCount?: number, productId?: number): void {
     this.isSubmitting.set(false);
     this.submitCount.update((count) => count + 1);
     this.saved.set(true);
@@ -760,19 +897,108 @@ export class ProductForm implements OnInit {
     this.selectedImageFile = null;
     const message =
       resubmit && newSubmissionCount != null
-        ? `已儲存並重新送審（第 ${newSubmissionCount} 次送審）。`
+        ? `已儲存並重審（第 ${newSubmissionCount} 次送審）。`
         : resubmit
-          ? '已儲存並重新送審。'
+          ? '已儲存並重審。'
           : '已儲存品項資料。';
     this.statusMessageState.show(message);
 
     // 儲存成功一律跳出 dialog 呈現，不分新增／編輯模式；使用者按下確定後
-    // 才返回品項管理主頁，不是存檔當下就直接跳轉，讓使用者能先看清楚
-    // 儲存結果再離開。
+    // 才進到「是否認領歷史紀錄」這一步（若有候選）或直接返回品項管理
+    // 主頁，不是存檔當下就直接跳轉，讓使用者能先看清楚儲存結果再離開。
     this.dialog.notify('success', '儲存成功', [message]).subscribe(() => {
-      void this.router.navigate(['/products']);
+      if (productId !== undefined) {
+        this.checkClaimCandidatesThenNavigate(productId);
+      } else {
+        void this.router.navigate(['/products']);
+      }
     });
   }
+
+  // ===================== 認領歷史紀錄（選填，不阻擋主流程） =====================
+  // 儲存成功後，若是 RESALE 商品，額外查一次有沒有 product_id 為 null 的
+  // 歷史開團紀錄跟這件商品名稱／供應商相似——這批紀錄匯入當下多半沒有
+  // 對應的系統商品（見 GroupBuyRecord 類別註解），而這張表刻意不提供
+  // 單筆編輯，匯入之後就沒有回頭補上連結的機會。新增商品的當下是使用者
+  // 最清楚「這是不是同一件舊商品」的時機，藉機把這批連結補上。
+  // 查詢失敗或沒有候選都不阻擋、不提示，直接照原本的流程導頁離開。
+
+  readonly claimCandidates = signal<readonly GroupBuyClaimCandidatePayload[]>([]);
+  readonly selectedClaimIds = signal<ReadonlySet<number>>(new Set());
+  readonly isClaiming = signal(false);
+  private claimTargetProductId: number | null = null;
+
+  private checkClaimCandidatesThenNavigate(productId: number): void {
+    const productTypeId = this.form.controls.productTypeId.value;
+    const name = this.form.controls.name.value.trim();
+    if (this.useMockData || !this.isResale() || !productTypeId || name.length < 2) {
+      void this.router.navigate(['/products']);
+      return;
+    }
+
+    this.claimTargetProductId = productId;
+    this.groupBuyApi
+      .searchUnlinkedCandidates({
+        productTypeId,
+        name,
+        supplierName: this.form.controls.supplierName.value.trim() || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (candidates) => {
+          if (candidates.length === 0) {
+            void this.router.navigate(['/products']);
+            return;
+          }
+          this.claimCandidates.set(candidates);
+        },
+        // 候選查詢失敗不影響已經成功的儲存，直接前往清單，不額外跳錯誤提示
+        // 打擾使用者——這是加值步驟，失敗了大不了少一個方便，不是問題。
+        error: () => void this.router.navigate(['/products']),
+      });
+  }
+
+  toggleClaimCandidate(id: number): void {
+    const next = new Set(this.selectedClaimIds());
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    this.selectedClaimIds.set(next);
+  }
+
+  skipClaim(): void {
+    void this.router.navigate(['/products']);
+  }
+
+  confirmClaim(): void {
+    const productId = this.claimTargetProductId;
+    const groupBuyRecordIds = [...this.selectedClaimIds()];
+    if (productId === null || groupBuyRecordIds.length === 0) {
+      void this.router.navigate(['/products']);
+      return;
+    }
+
+    this.isClaiming.set(true);
+    this.groupBuyApi
+      .claim({ productId, groupBuyRecordIds })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => void this.router.navigate(['/products']),
+        error: (err) => {
+          this.isClaiming.set(false);
+          this.dialog.notify('error', '認領歷史紀錄失敗', [toApiError(err).message]).subscribe();
+        },
+      });
+  }
+
+  /** 供樣板顯示百分比：後端回傳 0~1 的小數（Jaro-Winkler），畫面顯示需要 ×100。 */
+  toSimilarityPercent(value: number | null): string {
+    return value === null ? '—' : `${Math.round(value * 100)}%`;
+  }
+
+  readonly claimResultLabel = GROUP_BUY_RESULT_LABEL;
 
   /**
    * 驗證使用者選取的 JPG／PNG／WebP 與 5 MB 上限，並以 FileReader 建立本地
