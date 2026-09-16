@@ -115,9 +115,16 @@
     <header class="list-header">
       <div>
         <h2 id="list-title">正式候選品項</h2>
+        <!--
+          ⚠️ 修正：candidateProducts().length 只是「目前這一頁」的資料筆數
+          （真實模式下 load() 只把當頁 result.items 塞進 products signal，
+          上限就是 pageSize），不是後端回傳的真正總數 totalElements。
+          改讀 totalElements()，並在表格下方補上分頁控制項（見下方 totalPages()
+          區塊），否則使用者永遠只看得到第 1 頁、也無從得知真正總數。
+        -->
         <p aria-live="polite">
           顯示 <strong>{{ isLoading() ? '—' : sortedProducts().length }}</strong> 筆／共
-          <strong>{{ candidateProducts().length }}</strong> 筆
+          <strong>{{ isLoading() ? '—' : totalElements() }}</strong> 筆
         </p>
       </div>
     </header>
@@ -149,7 +156,6 @@
       <button type="button" (click)="clearFilters()">清除篩選</button>
     </div>
     } @else {
-    <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
     <app-list-sort class="mobile-table-sort" [sort]="productSort" [choices]="productSortChoices" label="品項管理" />
     <div class="table-wrap" tabindex="0" aria-label="正式候選商品清單，可水平捲動">
       <table>
@@ -280,6 +286,20 @@
         </tbody>
       </table>
     </div>
+    @if (totalPages() > 1) {
+    <!-- 分頁控制項：totalElements()／totalPages() 由 load() 正確設值，
+         但先前沒有任何畫面元素讀取，使用者完全無法翻頁，只看得到第 1 頁。 -->
+    <nav class="pagination" aria-label="分頁">
+      <button type="button" (click)="goToPage(pageNumber() - 1)" [disabled]="pageNumber() === 0 || isLoading()">
+        上一頁
+      </button>
+      <span aria-live="polite">第 {{ pageNumber() + 1 }} 頁／共 {{ totalPages() }} 頁</span>
+      <button type="button" (click)="goToPage(pageNumber() + 1)"
+        [disabled]="pageNumber() >= totalPages() - 1 || isLoading()">
+        下一頁
+      </button>
+    </nav>
+    }
     }
   </section>
   }

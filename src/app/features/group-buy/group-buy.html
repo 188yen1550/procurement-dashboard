@@ -8,12 +8,12 @@
     </p> -->
   </div>
   @if (isManager()) {
-    <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
+  <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
   }
 </section>
 
 @if (statusMessage()) {
-  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+<p class="notice status-toast" role="status">{{ statusMessage() }}</p>
 }
 
 <!-- ===== 篩選 ===== -->
@@ -21,29 +21,23 @@
 <section class="filter-panel">
   <label>
     商品類型
-    <select
-      [ngModel]="filterProductTypeId()"
-      (ngModelChange)="setFilterProductTypeId($event)"
-    >
+    <select [ngModel]="filterProductTypeId()" (ngModelChange)="setFilterProductTypeId($event)">
       <option [ngValue]="null">不篩選（全部類型）</option>
       @for (group of productTypeFilterGroups(); track group.majorName) {
-        <optgroup [label]="group.majorName">
-          @for (minor of group.minors; track minor.id) {
-            <option [ngValue]="minor.id">{{ minor.name }}</option>
-          }
-        </optgroup>
+      <optgroup [label]="group.majorName">
+        @for (minor of group.minors; track minor.id) {
+        <option [ngValue]="minor.id">{{ minor.name }}</option>
+        }
+      </optgroup>
       }
     </select>
   </label>
   <label>
     供應商
-    <select
-      [ngModel]="filterSupplierName()"
-      (ngModelChange)="setFilterSupplierName($event)"
-    >
+    <select [ngModel]="filterSupplierName()" (ngModelChange)="setFilterSupplierName($event)">
       <option [ngValue]="null">不篩選（全部供應商）</option>
       @for (supplier of supplierOptions(); track supplier) {
-        <option [ngValue]="supplier">{{ supplier }}</option>
+      <option [ngValue]="supplier">{{ supplier }}</option>
       }
     </select>
   </label>
@@ -52,34 +46,27 @@
 
 <!-- ===== 整批退回 ===== -->
 @if (isManager() && availableBatches().length > 0) {
-  <section class="batch-retract-panel">
-    <div class="batch-retract-panel__heading">
-      <h2>整批退回</h2>
-      <p>選擇匯入批次後即可整批刪除，此操作無法復原。</p>
-    </div>
-    <div class="batch-retract-panel__controls">
-      <label>
-        選擇批次
-        <select
-          [ngModel]="selectedBatchId()"
-          (ngModelChange)="setSelectedBatchId($event)"
-        >
-          <option [ngValue]="null">請選擇批次</option>
-          @for (batch of availableBatches(); track batch.batchId) {
-            <option [ngValue]="batch.batchId">{{ batch.batchId }}（共 {{ batch.count }} 筆）</option>
-          }
-        </select>
-      </label>
-      <button
-        type="button"
-        class="text-action danger"
-        [disabled]="!selectedBatchId() || isDeletingBatch()"
-        (click)="retractSelectedBatch()"
-      >
-        {{ isDeletingBatch() ? '回退中…' : '回退此批次' }}
-      </button>
-    </div>
-  </section>
+<section class="batch-retract-panel">
+  <div class="batch-retract-panel__heading">
+    <h2>整批退回</h2>
+    <p>選擇匯入批次後即可整批刪除，此操作無法復原。</p>
+  </div>
+  <div class="batch-retract-panel__controls">
+    <label>
+      選擇批次
+      <select [ngModel]="selectedBatchId()" (ngModelChange)="setSelectedBatchId($event)">
+        <option [ngValue]="null">請選擇批次</option>
+        @for (batch of availableBatches(); track batch.batchId) {
+        <option [ngValue]="batch.batchId">{{ batch.batchId }}（共 {{ batch.count }} 筆）</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="text-action danger" [disabled]="!selectedBatchId() || isDeletingBatch()"
+      (click)="retractSelectedBatch()">
+      {{ isDeletingBatch() ? '回退中…' : '回退此批次' }}
+    </button>
+  </div>
+</section>
 }
 
 <!-- ===== 成團率統計卡 ===== -->
@@ -96,9 +83,9 @@
     <p class="stat-label">成團率</p>
     <p class="stat-value">
       @if (fulfillmentRate() !== null) {
-        {{ fulfillmentRate() }}%
+      {{ fulfillmentRate() }}%
       } @else {
-        —
+      —
       }
     </p>
     <p class="stat-hint">分母不含「取消開團」</p>
@@ -106,141 +93,135 @@
 </section>
 
 @if (pageState() === 'error') {
-  <section class="empty error" role="alert">
-    <h2>無法載入資料</h2>
-    <p>{{ statusMessage() }}</p>
-  </section>
+<section class="empty error" role="alert">
+  <h2>無法載入資料</h2>
+  <p>{{ statusMessage() }}</p>
+</section>
 } @else if (pageState() === 'loading') {
-  <section class="empty">
-    <p>載入中…</p>
-  </section>
+<section class="empty">
+  <p>載入中…</p>
+</section>
 } @else if (filteredRecords().length === 0) {
-  <section class="empty">
-    <h2>目前沒有符合條件的紀錄</h2>
-    <p>
-      @if (isManager()) {
-        可以透過右上角「匯入 CSV」新增歷史開團紀錄。
-      } @else {
-        目前沒有歷史開團紀錄，或篩選條件沒有符合的資料。
-      }
-    </p>
-  </section>
+<section class="empty">
+  <h2>目前沒有符合條件的紀錄</h2>
+  <p>
+    @if (isManager()) {
+    可以透過右上角「匯入 CSV」新增歷史開團紀錄。
+    } @else {
+    目前沒有歷史開團紀錄，或篩選條件沒有符合的資料。
+    }
+  </p>
+</section>
 } @else {
-  <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
-        <section class="data-table">
-    <table>
-      <thead>
-        <tr>
-          <th class="col-name" appSortHeader="externalProductName" [sort]="recordSort">商品名稱</th>
-          <th class="col-type" appSortHeader="productTypeName" [sort]="recordSort">商品類型</th>
-          <th class="col-supplier" appSortHeader="supplierName" [sort]="recordSort">供應商</th>
-          <th class="col-campaign" appSortHeader="campaignStartDate:date|campaignEndDate:date" [sort]="recordSort">檔期</th>
-          <th class="num col-moq" appSortHeader="moqAtTime" [sort]="recordSort">最低訂購量</th>
-          <th class="num col-price" appSortHeader="salePriceAtTime" [sort]="recordSort">售價</th>
-          <th class="num col-cost" appSortHeader="costPriceAtTime" [sort]="recordSort">成本</th>
-          <th class="num col-market" appSortHeader="marketPriceAtTime" [sort]="recordSort">市價</th>
-          <th class="num col-quantity" appSortHeader="actualQuantity|targetQuantity" [sort]="recordSort">集單量</th>
-          <th class="col-result" appSortHeader="result" [sort]="recordSort">結果</th>
-          <th class="col-batch" appSortHeader="importBatchId" [sort]="recordSort">批次</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (r of filteredRecords() | sortRows: recordSort.state(); track r.id) {
-          <tr>
-            <td>{{ r.externalProductName }}</td>
-            <td>{{ r.productTypeName }}</td>
-            <td>{{ r.supplierName ?? '—' }}</td>
-            <td>
-              @if (r.campaignStartDate && r.campaignEndDate) {
-                {{ r.campaignStartDate }} ~ {{ r.campaignEndDate }}
-              } @else {
-                —
-              }
-            </td>
-            <td class="num">{{ r.moqAtTime ?? '—' }}</td>
-            <td class="num">{{ r.salePriceAtTime ?? '—' }}</td>
-            <td class="num">{{ r.costPriceAtTime ?? '—' }}</td>
-            <td class="num">{{ r.marketPriceAtTime ?? '—' }}</td>
-            <td class="num">{{ r.actualQuantity ?? '—' }} / {{ r.targetQuantity ?? '—' }}</td>
-            <td>
-              <span class="badge" [class]="resultBadgeClass(r.result)">{{ resultLabel[r.result] }}</span>
-            </td>
-            <td>{{ r.importBatchId ?? '—' }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </section>
+<section class="data-table">
+  <table>
+    <thead>
+      <tr>
+        <th class="col-name" appSortHeader="externalProductName" [sort]="recordSort">商品名稱</th>
+        <th class="col-type" appSortHeader="productTypeName" [sort]="recordSort">商品類型</th>
+        <th class="col-supplier" appSortHeader="supplierName" [sort]="recordSort">供應商</th>
+        <th class="col-campaign" appSortHeader="campaignStartDate:date|campaignEndDate:date" [sort]="recordSort">檔期</th>
+        <th class="num col-moq" appSortHeader="moqAtTime" [sort]="recordSort">最低訂購量</th>
+        <th class="num col-price" appSortHeader="salePriceAtTime" [sort]="recordSort">售價</th>
+        <th class="num col-cost" appSortHeader="costPriceAtTime" [sort]="recordSort">成本</th>
+        <th class="num col-market" appSortHeader="marketPriceAtTime" [sort]="recordSort">市價</th>
+        <th class="num col-quantity" appSortHeader="actualQuantity|targetQuantity" [sort]="recordSort">集單量</th>
+        <th class="col-result" appSortHeader="result" [sort]="recordSort">結果</th>
+        <th class="col-batch" appSortHeader="importBatchId" [sort]="recordSort">批次</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of filteredRecords() | sortRows: recordSort.state(); track r.id) {
+      <tr>
+        <td>{{ r.externalProductName }}</td>
+        <td>{{ r.productTypeName }}</td>
+        <td>{{ r.supplierName ?? '—' }}</td>
+        <td>
+          @if (r.campaignStartDate && r.campaignEndDate) {
+          {{ r.campaignStartDate }} ~ {{ r.campaignEndDate }}
+          } @else {
+          —
+          }
+        </td>
+        <td class="num">{{ r.moqAtTime ?? '—' }}</td>
+        <td class="num">{{ r.salePriceAtTime ?? '—' }}</td>
+        <td class="num">{{ r.costPriceAtTime ?? '—' }}</td>
+        <td class="num">{{ r.marketPriceAtTime ?? '—' }}</td>
+        <td class="num">{{ r.actualQuantity ?? '—' }} / {{ r.targetQuantity ?? '—' }}</td>
+        <td>
+          <span class="badge" [class]="resultBadgeClass(r.result)">{{ resultLabel[r.result] }}</span>
+        </td>
+        <td>{{ r.importBatchId ?? '—' }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</section>
 }
 
 <!-- ===== 匯入對話框 ===== -->
 @if (isImportDialogOpen()) {
-  <div class="modal-backdrop" (click)="closeImportDialog()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <h2>匯入歷史開團紀錄</h2>
-      <p class="helper">
-        CSV 格式須含必要欄位（品類名稱、商品名稱、開團起訖日、實際成團量、結果），
-        任何一列格式錯誤會整批拒絕匯入。
-      </p>
-      <details class="csv-headers">
-        <summary>CSV 可用欄位（點擊展開）</summary>
-        <code>{{ csvRequiredHeaders.join(', ') }}</code>
-      </details>
+<div class="modal-backdrop" (click)="closeImportDialog()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <h2>匯入歷史開團紀錄</h2>
+    <p class="helper">
+      CSV 格式須含必要欄位（品類名稱、商品名稱、開團起訖日、實際成團量、結果），
+      任何一列格式錯誤會整批拒絕匯入。
+    </p>
+    <details class="csv-headers">
+      <summary>CSV 可用欄位（點擊展開）</summary>
+      <code>{{ csvRequiredHeaders.join(', ') }}</code>
+    </details>
 
-      <input type="file" accept=".csv" (change)="onFileSelected($event)" [disabled]="isImporting()" />
+    <input type="file" accept=".csv" (change)="onFileSelected($event)" [disabled]="isImporting()" />
 
-      @if (isImporting()) {
-        <!-- 後端是「整批送出、同步驗證完才回應」的單次請求，中途沒有進度
+    @if (isImporting()) {
+    <!-- 後端是「整批送出、同步驗證完才回應」的單次請求，中途沒有進度
              可以回報——不假裝有精確進度（例如虛構「已檢查 N/M 筆」），
              用不確定進度動畫讓使用者知道系統還在處理、不是卡住了即可。
              檔案很大時這一步可能要等一段時間，純文字按鈕不夠明顯。 -->
-        <div class="importing-indicator" role="status" aria-live="polite">
-          <span class="spinner" aria-hidden="true"></span>
-          <span>檔案處理中，請稍候，時間視資料筆數而定…</span>
-        </div>
-      }
+    <div class="importing-indicator" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>檔案處理中，請稍候，時間視資料筆數而定…</span>
+    </div>
+    }
 
-      @if (importResult(); as result) {
-        @if (result.success) {
-          <p class="notice status-toast success">匯入成功，共 {{ result.importedRows }} 筆。</p>
-        } @else {
-          <p class="notice status-toast error">
-            匯入失敗，共 {{ result.totalRows }} 列中有 {{ result.errors.length }} 列格式錯誤，整批未寫入：
-          </p>
-          <div class="data-table">
-            <table>
-              <thead>
-                <tr>
-                  <th appSortHeader="rowNumber" [sort]="errorSort">列號</th>
-                  <th appSortHeader="field" [sort]="errorSort">欄位</th>
-                  <th appSortHeader="message" [sort]="errorSort">錯誤訊息</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (e of result.errors | sortRows: errorSort.state(); track $index) {
-                  <tr>
-                    <td>{{ e.rowNumber }}</td>
-                    <td>{{ e.field }}</td>
-                    <td>{{ e.message }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      }
+    @if (importResult(); as result) {
+    @if (result.success) {
+    <p class="notice status-toast success">匯入成功，共 {{ result.importedRows }} 筆。</p>
+    } @else {
+    <p class="notice status-toast error">
+      匯入失敗，共 {{ result.totalRows }} 列中有 {{ result.errors.length }} 列格式錯誤，整批未寫入：
+    </p>
+    <div class="data-table">
+      <table>
+        <thead>
+          <tr>
+            <th appSortHeader="rowNumber" [sort]="errorSort">列號</th>
+            <th appSortHeader="field" [sort]="errorSort">欄位</th>
+            <th appSortHeader="message" [sort]="errorSort">錯誤訊息</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of result.errors | sortRows: errorSort.state(); track $index) {
+          <tr>
+            <td>{{ e.rowNumber }}</td>
+            <td>{{ e.field }}</td>
+            <td>{{ e.message }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+    }
 
-      <div class="modal-actions">
-        <button type="button" class="btn" [disabled]="isImporting()" (click)="closeImportDialog()">關閉</button>
-        <button
-          type="button"
-          class="btn-primary"
-          [disabled]="!selectedFile() || isImporting()"
-          (click)="submitImport()"
-        >
-          {{ isImporting() ? '匯入中…' : '開始匯入' }}
-        </button>
-      </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" [disabled]="isImporting()" (click)="closeImportDialog()">關閉</button>
+      <button type="button" class="btn-primary" [disabled]="!selectedFile() || isImporting()" (click)="submitImport()">
+        {{ isImporting() ? '匯入中…' : '開始匯入' }}
+      </button>
     </div>
   </div>
+</div>
 }

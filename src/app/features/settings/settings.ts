@@ -13,8 +13,8 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { DialogService } from '../../core/dialog/dialog.service';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
-import { FestiveCategory, UserRole } from '../../core/domain/enums';
-import { joinCampaignTags, splitKeywords } from '../../core/domain/labels';
+import { FestiveCategory, TemperatureZone, UserRole } from '../../core/domain/enums';
+import { joinCampaignTags, splitKeywords, TEMPERATURE_ZONE_LABEL } from '../../core/domain/labels';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
@@ -1344,6 +1344,48 @@ export class Settings implements OnInit {
   readonly editingSystemSettingKey = signal<string | null>(null);
   readonly systemSettingDraftValue = signal('');
   readonly isSavingSystemSetting = signal(false);
+
+  /*
+   * 這四個分類採用滑桿操作——都是「在一個固定範圍內挑一個數字」的調參
+   * 情境（分位數、平滑常數、半衰期天數…），拖動滑桿比在小數字輸入框
+   * 裡打字更直覺，也不會不小心打出超出範圍的值。其餘分類（效期判定、
+   * 溫層判定、運費估算）不在此列：溫層判定是固定選項的複選，不是連續
+   * 數值；效期判定與運費估算則是使用者對「精確金額／天數」有明確預期
+   * 的欄位，滑桿的精細度反而不利於輸入一個心裡已經想好的準確數字。
+   */
+  readonly sliderCategories = new Set(['目標區間', '貝氏收縮', '趨勢分析', '最低訂購量(MOQ)判定']);
+
+  /*
+   * 通路支援溫層（supported_temperature_zones）是目前唯一的 STRING
+   * 型系統參數，值是逗號分隔的代碼字串，但實際上是「常溫／冷藏／冷凍
+   * 這三個固定選項裡，通路支援哪幾個」的複選題，不是自由文字。原本
+   * 用純文字輸入框讓使用者自己打逗號分隔字串，容易打錯字或打出不存在
+   * 的代碼，後端還要額外驗證——改成勾選方塊，選項就只會是這三個合法
+   * 值，從輸入端就避免掉這個問題。TEMPERATURE_ZONE_LABEL 跟商品表單
+   * 的溫層下拉共用同一份對照表，中文標籤不會兩邊各自維護一套。
+   */
+  readonly temperatureZoneOptions: readonly TemperatureZone[] = ['NORMAL', 'CHILLED', 'FROZEN'];
+  readonly temperatureZoneLabel = TEMPERATURE_ZONE_LABEL;
+
+  isTemperatureZoneSelected(zone: TemperatureZone): boolean {
+    return splitKeywords(this.systemSettingDraftValue()).includes(zone);
+  }
+
+  toggleTemperatureZone(zone: TemperatureZone): void {
+    const current = splitKeywords(this.systemSettingDraftValue());
+    const next = current.includes(zone) ? current.filter((z) => z !== zone) : [...current, zone];
+    this.systemSettingDraftValue.set(next.join(','));
+  }
+
+  /** 唯讀狀態下「目前值」的顯示文字——STRING 型別目前只有溫層判定這一筆，
+   *  把逗號分隔的英文代碼換成中文標籤；不認得的代碼（例如資料庫裡殘留
+   *  的舊值）原樣顯示，不讓畫面因為一個沒對應到的代碼而整段消失。 */
+  formatSystemSettingValue(setting: SystemSettingVM): string {
+    if (setting.key !== 'supported_temperature_zones') return setting.value;
+    return splitKeywords(setting.value)
+      .map((code) => this.temperatureZoneLabel[code as TemperatureZone] ?? code)
+      .join('、');
+  }
 
   openSystemSettingEditor(setting: SystemSettingVM): void {
     this.editingSystemSettingKey.set(setting.key);

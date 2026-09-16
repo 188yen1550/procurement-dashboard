@@ -172,8 +172,9 @@
         <span>未通過</span><strong>{{ data().statistics.rejectedProducts }}</strong>
       </article>
       <article class="stat-card ai-suggested">
-        <span>AI 建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
-        <a routerLink="/products/ai-suggestions">前往確認清單</a>
+        <a class="stat-card-link" routerLink="/products/ai-suggestions" aria-label="AI 建議待確認：前往確認清單">
+          <span>AI 建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
+        </a>
       </article>
     </section>
 

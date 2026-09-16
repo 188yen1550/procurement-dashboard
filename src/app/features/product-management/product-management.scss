@@ -128,6 +128,34 @@ select:focus-visible {
   border-color: #1c5286;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .9rem;
+  padding: .9rem 0 .2rem;
+}
+.pagination button {
+  padding: .48rem .9rem;
+  color: #38536a;
+  background: #fff;
+  border: 1px solid #cbd9e3;
+  border-radius: .45rem;
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+.pagination button:disabled {
+  color: #a9b7c2;
+  background: #f4f7f9;
+  border-color: #e0e8ee;
+  cursor: not-allowed;
+}
+.pagination span {
+  color: #6c7a89;
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
 button:disabled {
   opacity: .58;
   cursor: not-allowed;

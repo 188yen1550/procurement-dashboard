@@ -477,21 +477,17 @@ tr.is-editing select {
   width: 18%;
 }
 
-/* 商品類型設定 */
+/* 商品類型設定（「來源」欄已移除，空間分配給其餘三欄） */
 .type-col-name {
-  width: 30%;
-}
-
-.type-col-source {
-  width: 15%;
+  width: 35%;
 }
 
 .type-col-used {
-  width: 13%;
+  width: 15%;
 }
 
 .type-col-status-actions {
-  width: 42%;
+  width: 50%;
 }
 
 /* 節慶檔期管理 */
@@ -808,13 +804,27 @@ tr.is-editing select {
 /* 演算法參數分頁：目前數值的顯示，原本只是純文字，跟旁邊的說明文字
    字級一樣小，完全沒有視覺上的主次之分——這是使用者在讀「現在設定
    是多少」這個關鍵數字時最重要的資訊，應該放大加粗，不是等同於旁邊
-   的輔助說明。 */
+   的輔助說明。
+
+   ⚠️ 但這個放大加粗的設計，前提是「值很短」（門檻、權重這類數字）。
+   後端目前設定裡有一筆 dataType 是 STRING 的例外——通路支援溫層
+   （supported_temperature_zones），值是逗號分隔的清單「NORMAL,
+   CHILLED,FROZEN」，套同一種放大粗體會在窄欄位裡換成三行特大字，
+   比旁邊的參數名稱還搶眼，反而是本末倒置。用 dataType 區分（而不是
+   用字串長度這種容易因資料變動而飄移的判斷依據）：STRING 型別用
+   正常字級／字重顯示，其餘（INTEGER／DECIMAL）維持原本放大強調。
+   未來如果後端新增其他 STRING 型設定，會自動套用同一套處理，不用
+   再一一加特例。 */
 .system-setting-value {
   font-size: var(--t-lg);
   font-weight: 650;
   color: var(--c-brand, #1c5286);
 }
 
+.system-setting-value.is-text-value {
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
 
 .unit {
   margin-left: 0.3rem;
@@ -831,6 +841,60 @@ tr.is-editing select {
     padding: 0.45rem 0.6rem;
     border: 1px solid #d4dee6;
     border-radius: 0.4rem;
+  }
+}
+
+/* 目標區間／貝氏收縮／趨勢分析／MOQ判定 這四個分類的滑桿編輯欄位。 */
+.system-setting-slider-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 22rem;
+
+  input[type='range'] {
+    flex: 1;
+    accent-color: #1c5286;
+  }
+}
+
+.system-setting-slider-value {
+  min-width: 3.5rem;
+  color: #1c5286;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* 溫層判定：常溫／冷藏／冷凍三個固定選項的勾選方塊，跟關鍵字 chip
+   視覺呼應（都是「多選、可個別切換」的概念），但用 checkbox 而不是
+   自由輸入＋刪除鈕，因為選項是封閉集合，不需要新增/命名。 */
+.temperature-zone-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  color: #38536a;
+  background: #f0f4f7;
+  border: 1px solid #d4dee6;
+  border-radius: 999px;
+  font-size: var(--t-sm);
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    accent-color: #1c5286;
+  }
+
+  &:has(input:checked) {
+    color: #1c5286;
+    background: #eaf3fb;
+    border-color: #b7d3ea;
+    font-weight: 700;
   }
 }
 

@@ -151,7 +151,8 @@
           <td>{{ item.active ? '啟用' : '已停用' }}</td>
           <td class="row-actions">
             <button type="button" class="btn" (click)="openRiskEditModal(item)">編輯</button>
-            <button type="button" class="btn" [class.danger]="item.active" [class.is-restore]="!item.active" (click)="toggleRiskOptionActive(item)">{{ item.active ? '停用' : '重新啟用' }}</button>
+            <button type="button" class="btn" [class.danger]="item.active" [class.is-restore]="!item.active"
+              (click)="toggleRiskOptionActive(item)">{{ item.active ? '停用' : '重新啟用' }}</button>
           </td>
         </tr>
         }
@@ -180,7 +181,6 @@
       <thead>
         <tr>
           <th class="type-col-name" appSortHeader="name" [sort]="typeSort">類型名稱</th>
-          <th class="type-col-source" appSortHeader="system" [sort]="typeSort">來源</th>
           <th class="type-col-used" appSortHeader="used" [sort]="typeSort">使用品項</th>
           <th class="type-col-status-actions" appSortHeader="active" [sort]="typeSort">狀態／操作</th>
         </tr>
@@ -199,7 +199,6 @@
               }
             </button>
           </td>
-          <td>{{ group.major.system ? '系統預設' : '自訂' }}</td>
           <td>{{ group.major.used }}</td>
           <td class="row-actions">
             <span class="status-text">{{ group.major.active ? '啟用' : '已停用' }}</span>
@@ -216,7 +215,6 @@
         @for (item of group.minors | sortRows: typeSort.state(); track item.name) {
         <tr class="type-minor-row">
           <td class="type-minor-name">{{ item.name }}</td>
-          <td>{{ item.system ? '系統預設' : '自訂' }}</td>
           <td>{{ item.used }}</td>
           <td class="row-actions">
             <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
@@ -507,6 +505,29 @@
               <p class="helper">{{ setting.description }}</p>
             </td>
             <td colspan="2">
+              @if (setting.key === 'supported_temperature_zones') {
+              <div class="temperature-zone-checkboxes">
+                @for (zone of temperatureZoneOptions; track zone) {
+                <label class="checkbox-chip">
+                  <input type="checkbox" [checked]="isTemperatureZoneSelected(zone)"
+                    (change)="toggleTemperatureZone(zone)" />
+                  {{ temperatureZoneLabel[zone] }}
+                </label>
+                }
+              </div>
+              <span class="helper">至少需勾選一項；未勾選的溫層視為此通路不支援。</span>
+              } @else if (sliderCategories.has(group.category)) {
+              <div class="system-setting-slider-field">
+                <input type="range" [min]="setting.minValue" [max]="setting.maxValue"
+                  [step]="setting.dataType === 'INTEGER' ? 1 : 0.01" [ngModel]="systemSettingDraftValue()"
+                  (ngModelChange)="systemSettingDraftValue.set($event)" />
+                <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
+                    class="unit"> {{ setting.unit }}</span>}</span>
+              </div>
+              @if (setting.minValue !== null && setting.maxValue !== null) {
+              <span class="helper">合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}</span>
+              }
+              } @else {
               <label class="system-setting-edit-field">
                 <input [type]="setting.dataType === 'STRING' ? 'text' : 'number'"
                   [step]="setting.dataType === 'INTEGER' ? 1 : 0.01" [ngModel]="systemSettingDraftValue()"
@@ -517,6 +538,7 @@
               </label>
               @if (setting.minValue !== null && setting.maxValue !== null) {
               <span class="helper">合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}</span>
+              }
               }
             </td>
             <td class="row-actions">
@@ -540,7 +562,7 @@
               }
             </td>
             <td class="num">
-              <span class="system-setting-value">{{ setting.value }}</span>
+              <span class="system-setting-value" [class.is-text-value]="setting.dataType === 'STRING'">{{ formatSystemSettingValue(setting) }}</span>
               @if (setting.unit) {
               <span class="unit">{{ setting.unit }}</span>
               }
@@ -860,7 +882,8 @@
     <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
       <header>
         <h2>節慶標籤（選填）</h2>
-        <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉"><app-icon name="x" /></button>
+        <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉"><app-icon
+            name="x" /></button>
       </header>
 
       <label class="tag-picker-search">
