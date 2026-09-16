@@ -3,6 +3,7 @@
  * 真實 API 提供推薦理由；趨勢、客群匹配與風險沒有清單欄位，因此只在資料
  * 存在時顯示。商品必須由人工加入 CANDIDATE，AI 不會自行核准。
  */
+import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -99,11 +100,21 @@ function toSuggestion(item: ProductListItem): Suggestion {
 
 @Component({
   selector: 'app-ai-suggestions',
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [ListSortControls, SortRowsPipe, FormsModule, RouterLink, Icon],
   templateUrl: './ai-suggestions.html',
   styleUrl: './ai-suggestions.scss',
 })
 export class AiSuggestions implements OnInit {
+  readonly suggestionSort = new ListSort();
+  readonly suggestionSortChoices = [
+    { key: 'name', label: '商品名稱' },
+    { key: 'category', label: '分類' },
+    { key: 'supplier', label: '供應商' },
+    { key: 'trend', label: '趨勢' },
+    { key: 'audienceMatch', label: '客群匹配' },
+    { key: 'reason', label: '推薦理由' },
+    { key: 'risk', label: '風險提示' },
+  ];
   private readonly api = inject(ProductApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(Auth);

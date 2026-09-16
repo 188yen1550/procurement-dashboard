@@ -115,6 +115,8 @@ export type { WeightSnapshotPayload };
 
 /** 對應後端 RiskOptionResponse.java（審核頁用）／RiskOptionSettingResponse.java（設定頁用）共用的前端型別。 */
 export interface RiskOptionResponsePayload {
+  /** 管理清單的狀態；舊版未提供時視為啟用。 */
+  isActive?: boolean | null;
   id: number;
   name: string;
   description: string | null;

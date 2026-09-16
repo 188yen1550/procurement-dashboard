@@ -126,25 +126,26 @@
     </p>
   </section>
 } @else {
-  <section class="data-table">
+  <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
+        <section class="data-table">
     <table>
       <thead>
         <tr>
-          <th class="col-name">商品名稱</th>
-          <th class="col-type">商品類型</th>
-          <th class="col-supplier">供應商</th>
-          <th class="col-campaign">檔期</th>
-          <th class="num col-moq">最低訂購量</th>
-          <th class="num col-price">售價</th>
-          <th class="num col-cost">成本</th>
-          <th class="num col-market">市價</th>
-          <th class="num col-quantity">集單量</th>
-          <th class="col-result">結果</th>
-          <th class="col-batch">批次</th>
+          <th class="col-name" appSortHeader="externalProductName" [sort]="recordSort">商品名稱</th>
+          <th class="col-type" appSortHeader="productTypeName" [sort]="recordSort">商品類型</th>
+          <th class="col-supplier" appSortHeader="supplierName" [sort]="recordSort">供應商</th>
+          <th class="col-campaign" appSortHeader="campaignStartDate:date|campaignEndDate:date" [sort]="recordSort">檔期</th>
+          <th class="num col-moq" appSortHeader="moqAtTime" [sort]="recordSort">最低訂購量</th>
+          <th class="num col-price" appSortHeader="salePriceAtTime" [sort]="recordSort">售價</th>
+          <th class="num col-cost" appSortHeader="costPriceAtTime" [sort]="recordSort">成本</th>
+          <th class="num col-market" appSortHeader="marketPriceAtTime" [sort]="recordSort">市價</th>
+          <th class="num col-quantity" appSortHeader="actualQuantity|targetQuantity" [sort]="recordSort">集單量</th>
+          <th class="col-result" appSortHeader="result" [sort]="recordSort">結果</th>
+          <th class="col-batch" appSortHeader="importBatchId" [sort]="recordSort">批次</th>
         </tr>
       </thead>
       <tbody>
-        @for (r of filteredRecords(); track r.id) {
+        @for (r of filteredRecords() | sortRows: recordSort.state(); track r.id) {
           <tr>
             <td>{{ r.externalProductName }}</td>
             <td>{{ r.productTypeName }}</td>
@@ -210,13 +211,13 @@
             <table>
               <thead>
                 <tr>
-                  <th>列號</th>
-                  <th>欄位</th>
-                  <th>錯誤訊息</th>
+                  <th appSortHeader="rowNumber" [sort]="errorSort">列號</th>
+                  <th appSortHeader="field" [sort]="errorSort">欄位</th>
+                  <th appSortHeader="message" [sort]="errorSort">錯誤訊息</th>
                 </tr>
               </thead>
               <tbody>
-                @for (e of result.errors; track $index) {
+                @for (e of result.errors | sortRows: errorSort.state(); track $index) {
                   <tr>
                     <td>{{ e.rowNumber }}</td>
                     <td>{{ e.field }}</td>

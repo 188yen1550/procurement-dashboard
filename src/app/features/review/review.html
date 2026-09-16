@@ -74,8 +74,9 @@
     <button type="button" (click)="clearFilters()">恢復預設篩選</button>
   </section>
   } @else {
+  <app-list-sort [sort]="pendingSort" [choices]="pendingSortChoices" label="待審品項" />
   <section class="review-list">
-    @for (item of filtered(); track item.id) {
+    @for (item of filtered() | sortRows: pendingSort.state(); track item.id) {
     <article [class.disabled]="pageState() === 'disabled'">
       <div class="score">
         <strong>{{ item.finalScore ?? '—' }}</strong><span>最終分數</span>
@@ -121,32 +122,27 @@
           <option value="APPROVED">已通過</option>
           <option value="REJECTED">未通過</option>
         </select></label>
-      <label>排序<select [ngModel]="recordSort()" (ngModelChange)="recordSort.set($event)">
-          <option value="date_desc">審核日期（新→舊）</option>
-          <option value="date_asc">審核日期（舊→新）</option>
-          <option value="score_desc">最終分數（高→低）</option>
-          <option value="score_asc">最終分數（低→高）</option>
-        </select></label>
       <button type="button" class="secondary-action" (click)="clearRecordFilters()">恢復預設</button>
     </section>
     @if (records().length > 0 && filteredRecords().length === 0) {
     <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
     }
-    <div class="table-wrap">
+    <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
+        <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>商品</th>
-            <th>送審次數</th>
-            <th>結果</th>
-            <th>最終分數</th>
-            <th>審核人</th>
-            <th>日期</th>
-            <th>審核留言</th>
+            <th appSortHeader="name" [sort]="recordTableSort">商品</th>
+            <th appSortHeader="round" [sort]="recordTableSort">送審次數</th>
+            <th appSortHeader="result" [sort]="recordTableSort">結果</th>
+            <th appSortHeader="score" [sort]="recordTableSort">最終分數</th>
+            <th appSortHeader="reviewer" [sort]="recordTableSort">審核人</th>
+            <th appSortHeader="date:date" [sort]="recordTableSort">日期</th>
+            <th appSortHeader="comment" [sort]="recordTableSort">審核留言</th>
           </tr>
         </thead>
         <tbody>
-          @for (record of filteredRecords(); track record.id) {
+          @for (record of filteredRecords() | sortRows: recordTableSort.state(); track record.id) {
           <tr>
             <td>
               <a [routerLink]="['/products', record.productId]">{{ record.name }}</a>

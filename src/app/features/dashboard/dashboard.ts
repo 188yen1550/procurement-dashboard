@@ -3,6 +3,7 @@
  * 真實模式合併統計、推薦、風險與轉換率 API；展示模式提供本地狀態預覽。
  * AI 推薦只提供決策資訊，不會自動核准商品。
  */
+import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
 import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, afterRenderEffect, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -45,11 +46,25 @@ type RealLoadState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
 export class Dashboard implements OnInit, OnDestroy {
+  readonly riskListSort = new ListSort();
+  readonly riskListSortChoices = [
+    { key: 'productName', label: '商品名稱' },
+    { key: 'level', label: '風險等級' },
+    { key: 'message', label: '提示內容' },
+    { key: 'detectedKeyword', label: '命中關鍵字' },
+  ];
+  readonly recommendationSortChoices = [
+    { key: 'rank', label: '排名' },
+    { key: 'name|aiReason', label: '商品與推薦理由' },
+    { key: 'completeness', label: '完整度' },
+    { key: 'finalScore', label: '最終分數' },
+  ];
+  readonly recommendationSort = new ListSort();
   private readonly api = inject(DashboardApiService);
   private readonly productTypes = inject(ProductTypeLookupService);
   private readonly auth = inject(AuthService);

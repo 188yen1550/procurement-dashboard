@@ -217,19 +217,20 @@
             <h2 id="recommendations-title">AI 推薦 Top 10</h2>
           </div>
         </header>
+        <app-list-sort class="mobile-table-sort" [sort]="recommendationSort" [choices]="recommendationSortChoices" label="AI 推薦" />
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>排名</th>
-                <th>商品與推薦理由</th>
-                <th>完整度</th>
-                <th>最終分數</th>
+                <th appSortHeader="rank" [sort]="recommendationSort">排名</th>
+                <th appSortHeader="name|aiReason" [sort]="recommendationSort">商品與推薦理由</th>
+                <th appSortHeader="completeness" [sort]="recommendationSort">完整度</th>
+                <th appSortHeader="finalScore" [sort]="recommendationSort">最終分數</th>
                 <th class="actions-column">操作</th>
               </tr>
             </thead>
             <tbody>
-              @for (item of recommendations(); track item.id) {
+              @for (item of recommendations() | sortRows: recommendationSort.state(); track item.id) {
                 <tr>
                   <td>
                     <span class="rank">{{ item.rank }}</span>
@@ -291,8 +292,9 @@
               </div>
               <span class="risk-count">{{ data().riskAlerts.length }}</span>
             </header>
-            <div class="risk-list">
-              @for (risk of data().riskAlerts; track risk.id) {
+            <app-list-sort [sort]="riskListSort" [choices]="riskListSortChoices" label="高風險提示" />
+  <div class="risk-list">
+              @for (risk of data().riskAlerts | sortRows: riskListSort.state(); track risk.id) {
                 <article class="risk-item" [attr.data-level]="risk.level ?? 'UNKNOWN'">
                   <div>
                     <strong>{{ risk.productName }}</strong

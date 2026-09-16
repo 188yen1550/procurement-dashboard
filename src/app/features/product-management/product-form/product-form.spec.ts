@@ -12,6 +12,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductApiService } from '../api/product-api.service';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
@@ -31,6 +32,8 @@ describe('ProductForm', () => {
 
   const api = {
     getProductForm: vi.fn(),
+    listResaleReferenceSuppliers: vi.fn(() => of([])),
+    listResaleReferenceProducts: vi.fn(() => of([])),
     create: vi.fn((_payload: unknown) => of({ id: 201 })),
     update: vi.fn((_id: unknown, _payload: unknown) => of({ id: 201 })),
     uploadImage: vi.fn((_id: unknown, _file: unknown) => of({ id: 201 })),
@@ -170,7 +173,7 @@ describe('ProductForm', () => {
 
   it('keeps the saved state and shows a dialog when resubmit itself fails after a successful save', () => {
     api.resubmit.mockReturnValueOnce(
-      throwError(() => ({ error: { message: '此商品狀態已變更，無法重審' } })),
+      throwError(() => new HttpErrorResponse({ status: 409, error: { message: '此商品狀態已變更，無法重審' } })),
     );
     component.form.patchValue({
       name: '測試商品',
@@ -190,7 +193,7 @@ describe('ProductForm', () => {
 
   it('shows an error dialog and stays on the page when saving fails', () => {
     api.create.mockReturnValue(
-      throwError(() => ({ error: { message: '伺服器發生錯誤，請稍後再試' }, status: 500 })),
+      throwError(() => new HttpErrorResponse({ error: { message: '伺服器發生錯誤，請稍後再試' }, status: 500 })),
     );
     component.form.patchValue({
       name: '測試商品',

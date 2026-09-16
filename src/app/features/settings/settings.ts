@@ -3,6 +3,7 @@
  * 真實模式按分頁延遲載入資料。帳號可停用或復用；商品類型能否刪除由後端
  * 驗證引用關係；檔期內容編輯與狀態切換使用不同操作。
  */
+import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -115,6 +116,7 @@ interface ScoreBandVM {
 }
 
 interface RiskOptionVM {
+  active: boolean;
   id: number | null;
   name: string;
   keywords: string;
@@ -314,9 +316,9 @@ const MOCK_SCORE_BANDS: readonly ScoreBandVM[] = [
 ];
 
 const MOCK_RISK_OPTIONS: readonly RiskOptionVM[] = [
-  { id: 1, name: '實際供貨風險', keywords: '缺貨、延遲、供貨不穩', isSystemDefault: true },
-  { id: 2, name: '商品品質與客訴風險', keywords: '瑕疵、過敏、客訴', isSystemDefault: true },
-  { id: 3, name: '市場不確定性與需求變動風險', keywords: '熱度下降、需求波動、競品', isSystemDefault: true },
+  { id: 1, name: '實際供貨風險', keywords: '缺貨、延遲、供貨不穩', isSystemDefault: true, active: true },
+  { id: 2, name: '商品品質與客訴風險', keywords: '瑕疵、過敏、客訴', isSystemDefault: true, active: true },
+  { id: 3, name: '市場不確定性與需求變動風險', keywords: '熱度下降、需求波動、競品', isSystemDefault: true, active: true },
 ];
 
 const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
@@ -378,11 +380,24 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, ReactiveFormsModule, DatePipe, Icon],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, FormsModule, ReactiveFormsModule, DatePipe, Icon],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
+  readonly modeSort = new ListSort();
+  readonly modeSortChoices = [
+    { key: 'name', label: '模式名稱' },
+    { key: 'code', label: '代碼' },
+    { key: 'description', label: '說明' },
+  ];
+  readonly riskSort = new ListSort();
+  readonly typeSort = new ListSort();
+  readonly campaignSort = new ListSort();
+  readonly globalBandSort = new ListSort();
+  readonly overrideBandSort = new ListSort();
+  readonly parameterSort = new ListSort();
+  readonly accountSort = new ListSort();
   readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
   private readonly api = inject(SettingsApiService);
   private readonly dialog = inject(DialogService);
@@ -1019,49 +1034,39 @@ export class Settings implements OnInit {
       });
   }
 
-  /**
-   * 人工風險選項停用——原本這裡完全沒有任何停用機制，API 早就存在
-   * （後端方法上的中文說明直接寫著「復用」，代表停用/復用本來就是
-   * 一組對稱的功能），只是從沒接上畫面。
-   *
-   * ⚠️ 跟商品類型的停用/復用不同：這裡只做得到「停用」，做不到「復用」——
-   * GET /api/settings/risk-options 這支端點本身只回傳啟用中的選項
-   * （WHERE is_active=true），停用後這筆資料會直接從清單消失，沒有
-   * 任何畫面看得到已停用的選項，自然也無從點擊復用。這是資料可見性
-   * 本身的既有限制，不是這次能一併解決的，用確認框明確告知這個後果，
-   * 不要讓使用者在不知情的狀況下弄丟一個選項的可見性。
-   */
-  disableRiskOptionRow(item: RiskOptionVM): void {
-    this.dialog
-      .confirm(
-        '確認停用風險選項',
-        [
-          `即將停用「${item.name}」。`,
-          '⚠️ 停用後這個選項會從清單消失，目前沒有畫面可以看到已停用的選項、也無法從這裡復用，請確認這是你要的結果。',
-        ],
-        '確定停用',
-        '取消',
-      )
-      .subscribe((confirmed) => {
-        if (!confirmed) return;
-        if (this.useMockData) {
-          this.riskOptions.update((items) => items.filter((r) => r.id !== item.id));
-          this.statusMessageState.show(`已在本地模擬停用「${item.name}」。`);
-          return;
-        }
-        if (!item.id) return;
-        this.api
-          .disableRiskOption(item.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              this.riskOptions.update((items) => items.filter((r) => r.id !== item.id));
-              this.riskOptionLookup.invalidate();
-              this.statusMessageState.show(`已停用「${item.name}」。`);
-            },
-            error: (err) => this.statusMessageState.show(toApiError(err).message),
-          });
-      });
+  /** 停用項目保留在管理清單，可再次啟用。 */
+  toggleRiskOptionActive(item: RiskOptionVM): void {
+    if (!item.active) {
+      this.setRiskOptionActive(item, true);
+      return;
+    }
+    this.dialog.confirm(
+      '確認停用風險選項',
+      ['即將停用「' + item.name + '」。', '停用後不再提供選用，仍可在此清單重新啟用。'],
+      '確定停用', '取消',
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed) this.setRiskOptionActive(item, false);
+    });
+  }
+
+  private setRiskOptionActive(item: RiskOptionVM, active: boolean): void {
+    const apply = () => {
+      this.riskOptions.update((items) => items.map((row) =>
+        row === item ? { ...row, active } : row,
+      ));
+      this.riskOptionLookup.invalidate();
+      this.statusMessageState.show('已' + (active ? '啟用' : '停用') + '「' + item.name + '」。');
+    };
+    if (this.useMockData) {
+      apply();
+      return;
+    }
+    if (item.id === null) return;
+    const request = active ? this.api.enableRiskOption(item.id) : this.api.disableRiskOption(item.id);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: apply,
+      error: (err) => this.statusMessageState.show(toApiError(err).message),
+    });
   }
 
   private performRemoveProductType(name: string, item: ProductTypeVM): void {
@@ -1688,7 +1693,7 @@ export class Settings implements OnInit {
       } else {
         this.riskOptions.update((items) => [
           ...items,
-          { id: null, name: this.draftName().trim(), keywords, isSystemDefault: false },
+          { id: null, name: this.draftName().trim(), keywords, isSystemDefault: false, active: true },
         ]);
       }
     } else if (type === 'productType' && this.draftName().trim()) {
@@ -1757,7 +1762,7 @@ export class Settings implements OnInit {
           .subscribe({
             next: (updated) => {
               this.riskOptions.update((items) =>
-                items.map((item) => (item.id === editingId ? toRiskOptionVM(updated) : item)),
+                items.map((item) => (item.id === editingId ? { ...toRiskOptionVM(updated), active: updated.isActive ?? item.active } : item)),
               );
               this.riskOptionLookup.invalidate();
               this.statusMessageState.show('已更新風險選項。');
@@ -2024,6 +2029,7 @@ function toRiskOptionVM(payload: RiskOptionResponsePayload): RiskOptionVM {
   return {
     id: payload.id,
     name: payload.name,
+    active: payload.isActive ?? true,
     keywords: payload.alertKeywords ?? '',
     isSystemDefault: payload.isSystemDefault ?? false,
   };

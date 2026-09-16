@@ -107,6 +107,8 @@ describe('Settings', () => {
     switchEvaluationMode: vi.fn((id: number) =>
       of({ ...MOCK_MODES.find((m) => m.id === id)! }),
     ),
+    disableRiskOption: vi.fn(() => of({})),
+    enableRiskOption: vi.fn(() => of({})),
     getRiskOptions: vi.fn(() => of(MOCK_RISK_OPTIONS.map((r) => ({ ...r })))),
     createRiskOption: vi.fn((body: { name: string; alertKeywords?: string | null }) =>
       of({ id: 99, name: body.name, description: null, isSystemDefault: false, alertKeywords: body.alertKeywords ?? null }),
@@ -240,6 +242,48 @@ describe('Settings', () => {
     expect(component.productTypes().filter((item) => item.system).length).toBe(9);
   });
 
+  it('keeps a disabled risk visible and allows enabling it again', () => {
+    vi.spyOn(dialog, 'confirm').mockReturnValue(of(true));
+    component.setTab('risks');
+    const item = component.riskOptions()[0];
+    component.toggleRiskOptionActive(item);
+    fixture.detectChanges();
+    expect(settingsApi.disableRiskOption).toHaveBeenCalledWith(item.id);
+    expect(component.riskOptions()).toHaveLength(MOCK_RISK_OPTIONS.length);
+    expect(component.riskOptions()[0].active).toBe(false);
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.includes('重新啟用'))!;
+    expect(button).toBeTruthy();
+    button.click();
+    fixture.detectChanges();
+    expect(settingsApi.enableRiskOption).toHaveBeenCalledWith(item.id);
+    expect(component.riskOptions()[0].active).toBe(true);
+    expect(riskOptionLookup.invalidate).toHaveBeenCalled();
+  });
+
+  it('loads disabled risks and preserves state when enabling fails', () => {
+    settingsApi.getRiskOptions.mockReturnValue(of(MOCK_RISK_OPTIONS.map((r) => ({ ...r, isActive: false }))));
+    settingsApi.enableRiskOption.mockReturnValueOnce(throwError(() => new Error('啟用失敗')));
+    component.setTab('risks');
+    component.toggleRiskOptionActive(component.riskOptions()[0]);
+    fixture.detectChanges();
+    expect(component.riskOptions()[0].active).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('已停用');
+    expect(fixture.nativeElement.textContent).toContain('重新啟用');
+  });
+
+  it('leaves a risk enabled when disabling is cancelled or fails', () => {
+    const confirm = vi.spyOn(dialog, 'confirm').mockReturnValue(of(false));
+    component.setTab('risks');
+    component.toggleRiskOptionActive(component.riskOptions()[0]);
+    expect(settingsApi.disableRiskOption).not.toHaveBeenCalled();
+    confirm.mockReturnValue(of(true));
+    settingsApi.disableRiskOption.mockReturnValueOnce(throwError(() => new Error('停用失敗')));
+    component.toggleRiskOptionActive(component.riskOptions()[0]);
+    expect(component.riskOptions()[0].active).toBe(true);
+    expect(component.riskOptions()).toHaveLength(MOCK_RISK_OPTIONS.length);
+  });
+
   it('creates a risk option through modal state', () => {
     component.openModal('risk');
     component.draftName.set('測試風險');
@@ -311,8 +355,8 @@ describe('Settings', () => {
     expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(false);
     fixture.detectChanges();
     const toggleButton = Array.from(
-      fixture.nativeElement.querySelectorAll('.status-actions-cell .text-action'),
-    ).find((el) => (el as HTMLElement).textContent?.includes('帳號')) as HTMLButtonElement;
+      fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    ).find((el) => (el as HTMLElement).textContent?.includes('buyer01'))?.querySelector('button') as HTMLButtonElement;
     expect(toggleButton?.textContent).toContain('復用帳號');
     expect(toggleButton?.classList.contains('is-restore')).toBe(true);
 
