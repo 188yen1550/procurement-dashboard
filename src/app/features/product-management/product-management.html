@@ -196,6 +196,8 @@
           <button type="button" (click)="clearFilters()">清除篩選</button>
         </div>
       } @else {
+        <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
+        <app-list-sort class="mobile-table-sort" [sort]="productSort" [choices]="productSortChoices" label="品項管理" />
         <div class="table-wrap" tabindex="0" aria-label="正式候選商品清單，可水平捲動">
           <table>
             <caption class="visually-hidden">
@@ -203,73 +205,13 @@
             </caption>
             <thead>
               <tr>
-                <th scope="col">
-                  <button
-                    type="button"
-                    class="sort-header-btn"
-                    (click)="toggleNameSort()"
-                    [attr.aria-label]="
-                      sortOption() === 'name_asc' ? '商品名稱，目前正序，點擊改為倒序' : '商品名稱，點擊排序'
-                    "
-                  >
-                    商品名稱
-                    <span class="sort-arrow">
-                      @if (sortOption() === 'name_asc') {
-                        <app-icon name="chevron-up" size="sm" />
-                      } @else if (sortOption() === 'name_desc') {
-                        <app-icon name="chevron-down" size="sm" />
-                      } @else {
-                        <app-icon name="chevrons-up-down" size="sm" />
-                      }
-                    </span>
-                  </button>
-                </th>
-                <th scope="col">實際分類／訂價分流</th>
-                <th scope="col">供應商</th>
-                <th scope="col">
-                  <button
-                    type="button"
-                    class="sort-header-btn"
-                    (click)="toggleFinalScoreSort()"
-                    [attr.aria-label]="
-                      sortOption() === 'finalScore_desc' ? '最終分數，目前高到低，點擊改為低到高' : '最終分數，點擊排序'
-                    "
-                  >
-                    最終分數
-                    <span class="sort-arrow">
-                      @if (sortOption() === 'finalScore_desc') {
-                        <app-icon name="chevron-down" size="sm" />
-                      } @else if (sortOption() === 'finalScore_asc') {
-                        <app-icon name="chevron-up" size="sm" />
-                      } @else {
-                        <app-icon name="chevrons-up-down" size="sm" />
-                      }
-                    </span>
-                  </button>
-                </th>
-                <th scope="col">資料完整度</th>
-                <th scope="col">審核／品項狀態</th>
-                <th scope="col">
-                  <button
-                    type="button"
-                    class="sort-header-btn"
-                    (click)="toggleUpdatedAtSort()"
-                    [attr.aria-label]="
-                      sortOption() === 'updatedAt_desc' ? '更新時間，目前新到舊，點擊改為舊到新' : '更新時間，點擊排序'
-                    "
-                  >
-                    更新時間
-                    <span class="sort-arrow">
-                      @if (sortOption() === 'updatedAt_desc') {
-                        <app-icon name="chevron-down" size="sm" />
-                      } @else if (sortOption() === 'updatedAt_asc') {
-                        <app-icon name="chevron-up" size="sm" />
-                      } @else {
-                        <app-icon name="chevrons-up-down" size="sm" />
-                      }
-                    </span>
-                  </button>
-                </th>
+                <th scope="col" appSortHeader="name" [sort]="productSort">商品名稱</th>
+                <th scope="col" appSortHeader="productTypeName|pricingType" [sort]="productSort">實際分類／訂價分流</th>
+                <th scope="col" appSortHeader="supplierName" [sort]="productSort">供應商</th>
+                <th scope="col" appSortHeader="finalScore" [sort]="productSort">最終分數</th>
+                <th scope="col" appSortHeader="dataCompleteness" [sort]="productSort">資料完整度</th>
+                <th scope="col" appSortHeader="reviewStatus|itemStatus" [sort]="productSort">審核／品項狀態</th>
+                <th scope="col" appSortHeader="updatedAt:date" [sort]="productSort">更新時間</th>
                 <th scope="col" class="actions-column">操作</th>
               </tr>
             </thead>

@@ -7,6 +7,7 @@
  * CRUD，只有「整批匯入」「整批回退」兩種寫入路徑——不要因為使用者想改
  * 一筆資料就在這裡加編輯功能，那不是這個系統的職責範圍。
  */
+import { ListSort, SortHeader, SortRowsPipe } from '../../shared/ui/list-sort';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -43,11 +44,13 @@ interface ProductTypeFilterGroup {
 
 @Component({
   selector: 'app-group-buy',
-  imports: [FormsModule],
+  imports: [SortHeader, SortRowsPipe, FormsModule],
   templateUrl: './group-buy.html',
   styleUrl: './group-buy.scss',
 })
 export class GroupBuy implements OnInit {
+  readonly recordSort = new ListSort();
+  readonly errorSort = new ListSort();
   private readonly api = inject(GroupBuyApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly dialog = inject(DialogService);

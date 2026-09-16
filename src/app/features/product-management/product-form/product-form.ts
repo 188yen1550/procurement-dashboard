@@ -3,6 +3,7 @@
  * NEW 不要求價格；RESALE 要求成本、售價與市價。APPROVED 仍可修改一般資料
  * 與圖片，但核心資料鎖定。新增商品取得 id 後才上傳所選圖片。
  */
+import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -177,11 +178,20 @@ const EDIT_DATA: Record<string, EditMockEntry> = {
 
 @Component({
   selector: 'app-product-form',
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, Icon],
+  imports: [ListSortControls, SortRowsPipe, CommonModule, ReactiveFormsModule, FormsModule, RouterLink, Icon],
   templateUrl: './product-form.html',
   styleUrls: ['./product-form.scss', './product-image.scss'],
 })
 export class ProductForm implements OnInit {
+  readonly claimSort = new ListSort();
+  readonly claimSortChoices = [
+    { key: 'externalProductName', label: '商品名稱' },
+    { key: 'supplierName', label: '供應商' },
+    { key: 'nameSimilarity', label: '名稱相似度' },
+    { key: 'supplierSimilarity', label: '供應商相似度' },
+    { key: 'campaignStartDate:date|campaignEndDate:date', label: '開團日期' },
+    { key: 'result', label: '結果' },
+  ];
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);

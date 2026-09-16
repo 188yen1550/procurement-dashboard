@@ -92,8 +92,9 @@
         <button type="button" (click)="query.set('')">清除搜尋</button>
       </section>
     } @else {
-      <section class="suggestion-grid" aria-label="AI 建議品項">
-        @for (item of filtered(); track item.id) {
+      <app-list-sort [sort]="suggestionSort" [choices]="suggestionSortChoices" label="AI 建議品項" />
+  <section class="suggestion-grid" aria-label="AI 建議品項">
+        @for (item of filtered() | sortRows: suggestionSort.state(); track item.id) {
           <article>
             <header>
               <label

@@ -2,6 +2,7 @@
  * 檔案用途：品項詳情的評分拆解、圖片、趨勢、AI、封存／復用與各種本地 UI 狀態。
  * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
  */
+import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -167,12 +168,19 @@ const INCOMPLETE: DetailProduct = {
 
 @Component({
   selector: 'app-product-detail',
-  imports: [CommonModule, RouterLink, Icon],
+  imports: [ListSortControls, SortRowsPipe, CommonModule, RouterLink, Icon],
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
 export class ProductDetail implements OnInit {
+  readonly historySort = new ListSort();
+  readonly historySortChoices = [
+    { key: 'submissionCount', label: '送審次數' },
+    { key: 'reviewStatus', label: '審核結果' },
+    { key: 'reviewedAt:date', label: '審核時間' },
+    { key: 'reviewComment', label: '審核留言' },
+  ];
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
   private readonly productTypes = inject(ProductTypeLookupService);

@@ -17,8 +17,9 @@
            按「不用了」也完全沒關係，不影響商品本身已經儲存的結果。 -->
       <section class="form-card" aria-labelledby="claim-title">
         <header><span>💡</span><div><h2 id="claim-title">這件商品有可能對應到舊的歷史開團紀錄</h2><p>下列紀錄目前沒有連結到任何系統商品，勾選確定是同一件的紀錄，可以讓歷史成團率這項計分因子更準確；不確定的話留著不勾就好。</p></div></header>
-        <ul class="resale-candidate-list">
-          @for (c of claimCandidates(); track c.id) {
+        <app-list-sort [sort]="claimSort" [choices]="claimSortChoices" label="歷史紀錄認領" />
+  <ul class="resale-candidate-list">
+          @for (c of claimCandidates() | sortRows: claimSort.state(); track c.id) {
             <li>
               <label class="resale-candidate">
                 <input type="checkbox" [checked]="selectedClaimIds().has(c.id)" (change)="toggleClaimCandidate(c.id)" />

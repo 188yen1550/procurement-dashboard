@@ -3,6 +3,7 @@
  * 待審清單預設顯示 PENDING＋ACTIVE；分類名稱由設定資料對照，分數、完整度與
  * 建立者名稱由待審 API 提供。核准只代表選品決策，不代表上架或銷售。
  */
+import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -108,11 +109,23 @@ function toReviewItem(item: PendingReviewItem): ReviewItem {
 @Component({
   selector: 'app-review',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, CommonModule, FormsModule, RouterLink],
   templateUrl: './review.html',
   styleUrl: './review.scss',
 })
 export class ReviewComponent implements OnInit {
+  readonly pendingSort = new ListSort();
+  readonly pendingSortChoices = [
+    { key: 'name', label: '商品名稱' },
+    { key: 'category', label: '分類' },
+    { key: 'submittedBy', label: '送審人' },
+    { key: 'submittedAt:date', label: '送審時間' },
+    { key: 'finalScore', label: '最終分數' },
+    { key: 'completeness', label: '完整度' },
+    { key: 'submissionCount', label: '送審次數' },
+    { key: 'status|itemStatus', label: '狀態' },
+  ];
+  readonly recordTableSort = new ListSort();
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly useMockData = APP_CONFIG.useMockData;
@@ -160,6 +173,7 @@ export class ReviewComponent implements OnInit {
   });
 
   clearRecordFilters(): void {
+    this.recordTableSort.set('', 'asc');
     this.recordSearch.set('');
     this.recordResultFilter.set('ALL');
     this.recordSort.set('date_desc');

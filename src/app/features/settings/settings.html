@@ -125,14 +125,14 @@
     <table>
       <thead>
         <tr>
-          <th>選項名稱</th>
-          <th>AI 風險關鍵字</th>
-          <th>狀態</th>
+          <th appSortHeader="name" [sort]="riskSort">選項名稱</th>
+          <th appSortHeader="keywords" [sort]="riskSort">AI 風險關鍵字</th>
+          <th appSortHeader="active" [sort]="riskSort">狀態</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        @for (item of riskOptions(); track item.name) {
+        @for (item of riskOptions() | sortRows: riskSort.state(); track item.name) {
         <tr>
           <td>
             <strong>{{ item.name }}</strong>
@@ -148,13 +148,10 @@
             <span class="helper">未設定</span>
             }
           </td>
-          <!-- ⚠️ 這支 API 本身只回啟用中的選項（WHERE is_active=true），
-                   清單裡出現的每一筆依定義都是啟用中，不需要判斷。
-                   已停用的選項後端目前沒有任何端點能看到，是已知缺口。 -->
-          <td>啟用</td>
+          <td>{{ item.active ? '啟用' : '已停用' }}</td>
           <td class="row-actions">
             <button type="button" class="btn" (click)="openRiskEditModal(item)">編輯</button>
-            <button type="button" class="btn danger" (click)="disableRiskOptionRow(item)">停用</button>
+            <button type="button" class="btn" [class.danger]="item.active" [class.is-restore]="!item.active" (click)="toggleRiskOptionActive(item)">{{ item.active ? '停用' : '重新啟用' }}</button>
           </td>
         </tr>
         }
@@ -182,14 +179,14 @@
     <table>
       <thead>
         <tr>
-          <th>類型名稱</th>
-          <th>來源</th>
-          <th>使用品項</th>
-          <th>狀態／操作</th>
+          <th appSortHeader="name" [sort]="typeSort">類型名稱</th>
+          <th appSortHeader="system" [sort]="typeSort">來源</th>
+          <th appSortHeader="used" [sort]="typeSort">使用品項</th>
+          <th appSortHeader="active" [sort]="typeSort">狀態／操作</th>
         </tr>
       </thead>
       <tbody>
-        @for (group of productTypeGroups(); track group.major.id) {
+        @for (group of productTypeGroups() | sortRows: typeSort.state(): 'major.'; track group.major.id) {
         <tr class="type-major-row">
           <td>
             <button type="button" class="type-toggle" [class.is-expanded]="isProductTypeGroupExpanded(group.major.id)"
@@ -216,7 +213,7 @@
           </td>
         </tr>
         @if (isProductTypeGroupExpanded(group.major.id)) {
-        @for (item of group.minors; track item.name) {
+        @for (item of group.minors | sortRows: typeSort.state(); track item.name) {
         <tr class="type-minor-row">
           <td class="type-minor-name">{{ item.name }}</td>
           <td>{{ item.system ? '系統預設' : '自訂' }}</td>
@@ -251,16 +248,16 @@
     <table>
       <thead>
         <tr>
-          <th>檔期</th>
-          <th>分類</th>
-          <th>起訖日期</th>
-          <th>狀態</th>
-          <th>手動覆蓋</th>
+          <th appSortHeader="name" [sort]="campaignSort">檔期</th>
+          <th appSortHeader="categoryLabel" [sort]="campaignSort">分類</th>
+          <th appSortHeader="range" [sort]="campaignSort">起訖日期</th>
+          <th appSortHeader="status" [sort]="campaignSort">狀態</th>
+          <th appSortHeader="override" [sort]="campaignSort">手動覆蓋</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody>
-        @for (item of campaigns(); track item.name) {
+        @for (item of campaigns() | sortRows: campaignSort.state(); track item.name) {
         <tr>
           <td>
             <strong>{{ item.name }}</strong>
@@ -297,14 +294,14 @@
       <table>
         <thead>
           <tr>
-            <th>因子</th>
-            <th class="num">下界</th>
-            <th class="num">上界</th>
+            <th appSortHeader="factorLabel" [sort]="globalBandSort">因子</th>
+            <th class="num" appSortHeader="lowerBound" [sort]="globalBandSort">下界</th>
+            <th class="num" appSortHeader="upperBound" [sort]="globalBandSort">上界</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (band of globalScoreBands(); track band.id) {
+          @for (band of globalScoreBands() | sortRows: globalBandSort.state(); track band.id) {
           @if (editingScoreBandId() === band.id) {
           <tr class="is-editing">
             <td>{{ band.factorLabel }}</td>
@@ -421,15 +418,15 @@
       <table>
         <thead>
           <tr>
-            <th>商品類型</th>
-            <th>因子</th>
-            <th class="num">下界</th>
-            <th class="num">上界</th>
+            <th appSortHeader="productTypeName" [sort]="overrideBandSort">商品類型</th>
+            <th appSortHeader="factorLabel" [sort]="overrideBandSort">因子</th>
+            <th class="num" appSortHeader="lowerBound" [sort]="overrideBandSort">下界</th>
+            <th class="num" appSortHeader="upperBound" [sort]="overrideBandSort">上界</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (band of overrideScoreBands(); track band.id) {
+          @for (band of overrideScoreBands() | sortRows: overrideBandSort.state(); track band.id) {
           @if (editingScoreBandId() === band.id) {
           <tr class="is-editing">
             <td>{{ band.productTypeName }}</td>
@@ -495,14 +492,14 @@
       <table>
         <thead>
           <tr>
-            <th>參數</th>
-            <th class="num">目前值</th>
-            <th>最後異動</th>
+            <th appSortHeader="displayName" [sort]="parameterSort">參數</th>
+            <th class="num" appSortHeader="value" [sort]="parameterSort">目前值</th>
+            <th appSortHeader="updatedAt:date" [sort]="parameterSort">最後異動</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (setting of group.items; track setting.key) {
+          @for (setting of group.items | sortRows: parameterSort.state(); track setting.key) {
           @if (editingSystemSettingKey() === setting.key) {
           <tr class="is-editing">
             <td>
@@ -584,15 +581,15 @@
     <table>
       <thead>
         <tr>
-          <th>使用者帳號</th>
-          <th>姓名</th>
-          <th>角色權限</th>
-          <th>狀態</th>
+          <th appSortHeader="username" [sort]="accountSort">使用者帳號</th>
+          <th appSortHeader="name" [sort]="accountSort">姓名</th>
+          <th appSortHeader="role" [sort]="accountSort">角色權限</th>
+          <th appSortHeader="active" [sort]="accountSort">狀態</th>
           <th>停用/復用帳號</th>
         </tr>
       </thead>
       <tbody>
-        @for (item of accounts(); track item.username) {
+        @for (item of accounts() | sortRows: accountSort.state(); track item.username) {
         <tr>
           <td>
             <strong>{{ item.username }}</strong>
@@ -617,8 +614,9 @@
       <h2>評估模式與權重</h2>
     </div>
   </section>
+  <app-list-sort [sort]="modeSort" [choices]="modeSortChoices" label="評估模式" />
   <div class="mode-grid">
-    @for (mode of modes(); track mode.code) {
+    @for (mode of modes() | sortRows: modeSort.state(); track mode.code) {
     <article [class.active]="activeMode() === mode.code" [class.is-selectable]="activeMode() !== mode.code"
       (click)="activeMode() !== mode.code && selectMode(mode.code)">
       <header>

@@ -8,7 +8,8 @@
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
@@ -136,18 +137,23 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('尚未產生 AI 分析');
   });
   it('syncs trend data via the real API in formal mode', () => {
+    const response = { source: 'GOOGLE_TRENDS', keyword: '中秋烤肉', trendScore: 92, popularityScore: 88, trendDirection: 'UP' as const, collectedAt: '2026-09-02T10:00:00' };
+    const pending = new Subject<typeof response>();
+    api.syncTrend.mockReturnValueOnce(pending);
     component.syncTrend();
     expect(component.syncState()).toBe('syncing');
     // 這支 spec 沒有設定路由參數，productId 實際上是空字串（見同檔案
     // generateAiAnalysis 測試的說明），語意上跟其他測試保持一致。
     expect(api.syncTrend).toHaveBeenCalledWith('');
+    pending.next(response);
+    pending.complete();
     expect(component.syncState()).toBe('success');
     expect(component.product()?.trendDirection).toBe('UP');
     expect(component.product()?.trendScore).toBe(92);
   });
 
   it('shows the real error message when trend sync fails', () => {
-    api.syncTrend.mockReturnValueOnce(throwError(() => ({ error: { message: '外部趨勢資料源逾時' } })));
+    api.syncTrend.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 502, error: { message: '外部趨勢資料源逾時' } })));
     component.syncTrend();
     fixture.detectChanges();
     expect(component.syncState()).toBe('error');

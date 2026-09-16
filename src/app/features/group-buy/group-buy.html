@@ -82,26 +82,27 @@
     </p>
   </section>
 } @else {
-  <section class="data-table">
+  <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
+        <section class="data-table">
     <table>
       <thead>
         <tr>
-          <th>商品名稱</th>
-          <th>商品類型</th>
-          <th>供應商</th>
-          <th>檔期</th>
-          <th class="num">最低訂購量</th>
-          <th class="num">售價</th>
-          <th class="num">成本</th>
-          <th class="num">市價</th>
-          <th class="num">集單量</th>
-          <th>結果</th>
-          <th>批次</th>
+          <th appSortHeader="externalProductName" [sort]="recordSort">商品名稱</th>
+          <th appSortHeader="productTypeName" [sort]="recordSort">商品類型</th>
+          <th appSortHeader="supplierName" [sort]="recordSort">供應商</th>
+          <th appSortHeader="campaignStartDate:date|campaignEndDate:date" [sort]="recordSort">檔期</th>
+          <th class="num" appSortHeader="moqAtTime" [sort]="recordSort">最低訂購量</th>
+          <th class="num" appSortHeader="salePriceAtTime" [sort]="recordSort">售價</th>
+          <th class="num" appSortHeader="costPriceAtTime" [sort]="recordSort">成本</th>
+          <th class="num" appSortHeader="marketPriceAtTime" [sort]="recordSort">市價</th>
+          <th class="num" appSortHeader="actualQuantity|targetQuantity" [sort]="recordSort">集單量</th>
+          <th appSortHeader="result" [sort]="recordSort">結果</th>
+          <th appSortHeader="importBatchId" [sort]="recordSort">批次</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        @for (r of records(); track r.id) {
+        @for (r of records() | sortRows: recordSort.state(); track r.id) {
           <tr>
             <td>
               {{ r.externalProductName }}
@@ -182,13 +183,13 @@
             <table>
               <thead>
                 <tr>
-                  <th>列號</th>
-                  <th>欄位</th>
-                  <th>錯誤訊息</th>
+                  <th appSortHeader="rowNumber" [sort]="errorSort">列號</th>
+                  <th appSortHeader="field" [sort]="errorSort">欄位</th>
+                  <th appSortHeader="message" [sort]="errorSort">錯誤訊息</th>
                 </tr>
               </thead>
               <tbody>
-                @for (e of result.errors; track $index) {
+                @for (e of result.errors | sortRows: errorSort.state(); track $index) {
                   <tr>
                     <td>{{ e.rowNumber }}</td>
                     <td>{{ e.field }}</td>

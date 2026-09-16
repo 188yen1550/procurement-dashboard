@@ -425,8 +425,9 @@
     <header>
       <h2>歷次審核紀錄</h2>
     </header>
-    <ul class="review-history-list">
-      @for (record of reviewHistory(); track record.id) {
+    <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
+  <ul class="review-history-list">
+      @for (record of reviewHistory() | sortRows: historySort.state(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
         <div class="review-history-head">
           <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>

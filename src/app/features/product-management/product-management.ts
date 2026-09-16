@@ -3,6 +3,7 @@
  * 真實模式由後端處理搜尋、篩選與分頁；展示模式使用本地資料。AI_SUGGESTED
  * 不在主清單顯示，刪除只允許未審核且從未送審的商品。
  */
+import { ListSort, ListSortControls, SortHeader, sortRows } from '../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -32,7 +33,8 @@ export type SortOption =
   | 'finalScore_desc'
   | 'finalScore_asc'
   | 'name_asc'
-  | 'name_desc';
+  | 'name_desc'
+  | `${'productTypeName|pricingType' | 'supplierName' | 'dataCompleteness' | 'reviewStatus|itemStatus'}_${'asc' | 'desc'}`;
 
 /** 本地 Mock：欄位形狀與 ProductListItem 一致，切換模式時樣板不用改。 */
 function mockItem(
@@ -92,11 +94,22 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Icon],
+  imports: [ListSortControls, SortHeader, CommonModule, FormsModule, RouterLink, Icon],
   templateUrl: './product-management.html',
   styleUrls: ['./product-management.scss', './product-management-actions.scss'],
 })
 export class ProductManagement implements OnInit {
+  readonly productSortChoices = [
+    { key: 'name', label: '商品名稱' },
+    { key: 'productTypeName|pricingType', label: '分類／訂價分流' },
+    { key: 'supplierName', label: '供應商' },
+    { key: 'finalScore', label: '最終分數' },
+    { key: 'dataCompleteness', label: '資料完整度' },
+    { key: 'reviewStatus|itemStatus', label: '審核／品項狀態' },
+    { key: 'updatedAt:date', label: '更新時間' },
+  ];
+  readonly productSort = new ListSort('updatedAt:date', 'desc', (state) =>
+    this.updateSort(state.key.replace(':date', '') + '_' + state.direction));
   private readonly api = inject(ProductApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly auth = inject(AuthService);
@@ -232,41 +245,8 @@ export class ProductManagement implements OnInit {
   readonly isLoading = computed(() => this.pageState() === 'loading');
   readonly hasLoadError = computed(() => this.pageState() === 'error');
 
-  /**
-   * 分數排序只作用在目前這一頁已載入的資料，不是全體品項——見上方
-   * sortOption 的說明。時間排序已經由後端 Pageable Sort 排好，這裡不用
-   * 再排一次（真實模式再排一次也不會錯，只是白工；Mock 模式本來就要
-   * 靠這裡排，因為 Mock 資料沒有經過任何後端排序）。
-   */
-  readonly sortedProducts = computed(() => {
-    const list = this.filteredProducts();
-    const sort = this.sortOption();
-    if (sort === 'finalScore_desc' || sort === 'finalScore_asc') {
-      const direction = sort === 'finalScore_desc' ? -1 : 1;
-      return [...list].sort((a, b) => {
-        // 尚無分數的品項一律排到最後面，不管是遞增還遞減排序，
-        // 不要讓「沒有分數」跟「分數是 0」混在一起排序，語意不同。
-        if (a.finalScore === null && b.finalScore === null) return 0;
-        if (a.finalScore === null) return 1;
-        if (b.finalScore === null) return -1;
-        return (a.finalScore - b.finalScore) * direction;
-      });
-    }
-    if (sort === 'updatedAt_asc' && this.useMockData) {
-      return [...list].sort((a, b) => {
-        const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-        const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-        return at - bt;
-      });
-    }
-    // name 排序在真實模式下由後端 Pageable/Sort 處理，這裡的分支只服務
-    // Mock 模式（本地固定陣列，沒有後端可以幫忙排序）。
-    if ((sort === 'name_asc' || sort === 'name_desc') && this.useMockData) {
-      const direction = sort === 'name_asc' ? 1 : -1;
-      return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant') * direction);
-    }
-    return list;
-  });
+  /** All columns sort the loaded page; name/date also request the corresponding server order. */
+  readonly sortedProducts = computed(() => sortRows(this.filteredProducts(), this.productSort.state()));
 
   /**
    * 商品名稱欄位的排序箭頭——點擊直接在正序/倒序間切換，不用另外選單
@@ -417,6 +397,9 @@ export class ProductManagement implements OnInit {
    */
   updateSort(value: string): void {
     this.sortOption.set(value as SortOption);
+    const separator = value.lastIndexOf('_');
+    const key = value.slice(0, separator);
+    this.productSort.set(key === 'updatedAt' ? 'updatedAt:date' : key, value.endsWith('_desc') ? 'desc' : 'asc');
     // 原本只有 updatedAt_desc/asc 這兩個分支會觸發 load()，name_asc/desc
     // 是 #4 那批新增的排序選項，卻漏了同步加進這個判斷——導致點擊商品
     // 名稱的排序箭頭，圖示會換、但清單順序從來沒有真的重新抓取過，
