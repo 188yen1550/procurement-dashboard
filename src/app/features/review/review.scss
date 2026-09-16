@@ -228,6 +228,13 @@
   font-size: var(--t-xs);
 }
 
+.resubmit-hint {
+  display: block;
+  margin-top: .2rem;
+  color: #8d3733;
+  font-size: var(--t-xs);
+}
+
 .meta {
   display: grid;
   justify-items: start;

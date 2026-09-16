@@ -125,7 +125,7 @@ button:focus-visible {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -156,6 +156,25 @@ button:focus-visible {
 }
 .stat-card.rejected::before {
   background: #c76661;
+}
+.stat-card.ai-suggested::before {
+  background: #8a63d2;
+}
+/* 「待人工審核」卡片上的差異說明——見 dashboard.html：AI 建議尚未轉正
+   候選的商品計入這張卡片的數字，但不會出現在品項管理主清單。 */
+.stat-card .stat-note {
+  margin-top: 0.4rem;
+  color: #8a63d2;
+  font-size: var(--t-xs);
+  line-height: 1.4;
+}
+.stat-card.ai-suggested a {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: #5689b2;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  text-decoration: underline;
 }
 .stat-card span,
 .stat-card small {

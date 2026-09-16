@@ -2,10 +2,10 @@
 <section class="page-header">
   <div>
     <h1>歷史銷售紀錄</h1>
-    <p>
+    <!-- <p>
       外部系統開團結果的唯讀參考資料，是「歷史成團率」這個計分因子的資料來源。
       本頁不提供單筆新增／編輯／刪除——只有「整批匯入」與「整批回退」兩種寫入路徑。
-    </p>
+    </p> -->
   </div>
   @if (isManager()) {
     <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
@@ -17,6 +17,7 @@
 }
 
 <!-- ===== 篩選 ===== -->
+<!-- 商品類型、供應商都是選了立刻生效的前端即時篩選，不需要另外按「套用」。 -->
 <section class="filter-panel">
   <label>
     商品類型
@@ -34,15 +35,58 @@
       }
     </select>
   </label>
-  <button type="button" class="btn-primary" (click)="applyFilter()">套用篩選</button>
-  <button type="button" class="btn" (click)="clearFilter()">清除篩選</button>
+  <label>
+    供應商
+    <select
+      [ngModel]="filterSupplierName()"
+      (ngModelChange)="setFilterSupplierName($event)"
+    >
+      <option [ngValue]="null">不篩選（全部供應商）</option>
+      @for (supplier of supplierOptions(); track supplier) {
+        <option [ngValue]="supplier">{{ supplier }}</option>
+      }
+    </select>
+  </label>
+  <button type="button" class="btn" (click)="clearFilters()">清除篩選</button>
 </section>
+
+<!-- ===== 整批退回 ===== -->
+@if (isManager() && availableBatches().length > 0) {
+  <section class="batch-retract-panel">
+    <div class="batch-retract-panel__heading">
+      <h2>整批退回</h2>
+      <p>選擇匯入批次後即可整批刪除，此操作無法復原。</p>
+    </div>
+    <div class="batch-retract-panel__controls">
+      <label>
+        選擇批次
+        <select
+          [ngModel]="selectedBatchId()"
+          (ngModelChange)="setSelectedBatchId($event)"
+        >
+          <option [ngValue]="null">請選擇批次</option>
+          @for (batch of availableBatches(); track batch.batchId) {
+            <option [ngValue]="batch.batchId">{{ batch.batchId }}（共 {{ batch.count }} 筆）</option>
+          }
+        </select>
+      </label>
+      <button
+        type="button"
+        class="text-action danger"
+        [disabled]="!selectedBatchId() || isDeletingBatch()"
+        (click)="retractSelectedBatch()"
+      >
+        {{ isDeletingBatch() ? '回退中…' : '回退此批次' }}
+      </button>
+    </div>
+  </section>
+}
 
 <!-- ===== 成團率統計卡 ===== -->
 <section class="stat-card-grid">
   <article class="stat-card">
     <p class="stat-label">目前清單筆數</p>
-    <p class="stat-value">{{ records().length }}</p>
+    <p class="stat-value">{{ filteredRecords().length }}</p>
   </article>
   <article class="stat-card">
     <p class="stat-label">有效樣本（成團+未成團）</p>
@@ -57,7 +101,7 @@
         —
       }
     </p>
-    <p class="stat-hint">分母不含「取消開團」，與後端計分邏輯一致</p>
+    <p class="stat-hint">分母不含「取消開團」</p>
   </article>
 </section>
 
@@ -70,7 +114,7 @@
   <section class="empty">
     <p>載入中…</p>
   </section>
-} @else if (records().length === 0) {
+} @else if (filteredRecords().length === 0) {
   <section class="empty">
     <h2>目前沒有符合條件的紀錄</h2>
     <p>
@@ -86,32 +130,23 @@
     <table>
       <thead>
         <tr>
-          <th>商品名稱</th>
-          <th>商品類型</th>
-          <th>供應商</th>
-          <th>檔期</th>
-          <th class="num">最低訂購量</th>
-          <th class="num">售價</th>
-          <th class="num">成本</th>
-          <th class="num">市價</th>
-          <th class="num">集單量</th>
-          <th>結果</th>
-          <th>批次</th>
-          <th></th>
+          <th class="col-name">商品名稱</th>
+          <th class="col-type">商品類型</th>
+          <th class="col-supplier">供應商</th>
+          <th class="col-campaign">檔期</th>
+          <th class="num col-moq">最低訂購量</th>
+          <th class="num col-price">售價</th>
+          <th class="num col-cost">成本</th>
+          <th class="num col-market">市價</th>
+          <th class="num col-quantity">集單量</th>
+          <th class="col-result">結果</th>
+          <th class="col-batch">批次</th>
         </tr>
       </thead>
       <tbody>
-        @for (r of records(); track r.id) {
+        @for (r of filteredRecords(); track r.id) {
           <tr>
-            <td>
-              {{ r.externalProductName }}
-              @if (r.productId !== null) {
-                <span class="helper">(對應商品 #{{ r.productId }})</span>
-              }
-              @if (r.isSimulated) {
-                <span class="badge badge-muted" title="這是模擬資料，非真實開團績效">模擬資料</span>
-              }
-            </td>
+            <td>{{ r.externalProductName }}</td>
             <td>{{ r.productTypeName }}</td>
             <td>{{ r.supplierName ?? '—' }}</td>
             <td>
@@ -130,13 +165,6 @@
               <span class="badge" [class]="resultBadgeClass(r.result)">{{ resultLabel[r.result] }}</span>
             </td>
             <td>{{ r.importBatchId ?? '—' }}</td>
-            <td class="row-actions">
-              @if (isManager() && r.importBatchId) {
-                <button type="button" class="text-action danger" (click)="confirmDeleteBatch(r.importBatchId)">
-                  回退整批
-                </button>
-              }
-            </td>
           </tr>
         }
       </tbody>

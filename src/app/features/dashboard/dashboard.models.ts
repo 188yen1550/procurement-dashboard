@@ -30,6 +30,12 @@ export interface DashboardStatistics {
   approvedProducts: number;
   rejectedProducts: number;
   /**
+   * pendingReviews 的子集：AI 建議尚未轉正候選、但已計入 pendingReviews 的
+   * 商品數。用來在「待人工審核」卡片旁揭露它與「正式候選品項」清單筆數
+   * 對不起來的原因，不是另一種獨立的審核狀態。
+   */
+  aiSuggestedPending: number;
+  /**
    * ⚠️ 可能為 null：後端分母（曾送審過的不重複商品數）為 0 時
    * （系統剛啟用、還沒有任何商品送審過）回傳 null，代表「尚無資料」，
    * 不是「轉換率 0%」。這兩者意義完全不同，樣板必須分開處理，

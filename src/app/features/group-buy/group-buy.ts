@@ -72,28 +72,58 @@ export class GroupBuy implements OnInit {
   // 關係，勉強做只會做出另一個容易選錯的介面）。後端 API 本身仍支援
   // productId 篩選（見 GroupBuyApiService.list()），保留給未來可能的
   // 「從商品詳情頁連結過來，帶著 productId 查詢參數」這種情境使用。
+  //
+  // ⚠️ 商品類型與供應商都改成「一次抓全部、前端即時篩選」，不再對後端送
+  // productTypeId 查詢參數：後端 list() 完全沒有供應商篩選的參數，
+  // supplierName 只是紀錄上的自由文字欄位，本來就只能前端比對；商品類型
+  // 篩選如果繼續留在後端查、供應商留在前端比對，會變成「兩個下拉、兩套
+  // 篩選時機」的不一致體驗，選了以後還要另外按「套用」才生效。乾脆兩個
+  // 都用前端 computed 即時篩選，選了就直接看到結果。
   readonly filterProductTypeId = signal<number | null>(null);
+  readonly filterSupplierName = signal<string | null>(null);
   readonly productTypeFilterGroups = signal<readonly ProductTypeFilterGroup[]>([]);
+
+  /** 供應商下拉選項——沒有獨立的供應商主檔，只能從目前已載入的紀錄裡去重取得。 */
+  readonly supplierOptions = computed(() => {
+    const names = new Set<string>();
+    for (const r of this.records()) {
+      if (r.supplierName) names.add(r.supplierName);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  });
+
+  readonly filteredRecords = computed(() => {
+    const typeId = this.filterProductTypeId();
+    const supplier = this.filterSupplierName();
+    return this.records().filter(
+      (r) =>
+        (typeId === null || r.productTypeId === typeId) &&
+        (supplier === null || r.supplierName === supplier),
+    );
+  });
 
   setFilterProductTypeId(value: number | null): void {
     this.filterProductTypeId.set(value);
   }
 
-  applyFilter(): void {
-    this.load();
+  setFilterSupplierName(value: string | null): void {
+    this.filterSupplierName.set(value);
   }
 
-  clearFilter(): void {
+  clearFilters(): void {
     this.filterProductTypeId.set(null);
-    this.load();
+    this.filterSupplierName.set(null);
   }
 
   // ----- 統計（成團率，分母僅計 FULFILLED+FAILED，對齊後端計分邏輯） -----
+  // 統計數字反映「目前篩選後看到的資料」，跟表格內容一致——換一個供應商
+  // 或商品類型，上面的成團率也要跟著變，不然使用者會分不清楚統計是算全部
+  // 還是算篩選後的範圍。
   readonly effectiveCount = computed(
-    () => this.records().filter((r) => r.result === 'FULFILLED' || r.result === 'FAILED').length,
+    () => this.filteredRecords().filter((r) => r.result === 'FULFILLED' || r.result === 'FAILED').length,
   );
   readonly fulfilledCount = computed(
-    () => this.records().filter((r) => r.result === 'FULFILLED').length,
+    () => this.filteredRecords().filter((r) => r.result === 'FULFILLED').length,
   );
   readonly fulfillmentRate = computed(() => {
     const eff = this.effectiveCount();
@@ -139,9 +169,7 @@ export class GroupBuy implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((nameById) => {
         this.api
-          .list({
-            productTypeId: this.filterProductTypeId() ?? undefined,
-          })
+          .list()
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (list) => {
@@ -227,6 +255,19 @@ export class GroupBuy implements OnInit {
 
   // ----- 整批回退 -----
   readonly isDeletingBatch = signal(false);
+  /** 上方「整批退回」下拉選單目前選到的批次；改用獨立區塊取代逐列重複按鈕，
+   *  同一個批次不管有幾筆資料，選單裡都只會出現一次。 */
+  readonly selectedBatchId = signal<string | null>(null);
+
+  setSelectedBatchId(value: string | null): void {
+    this.selectedBatchId.set(value);
+  }
+
+  retractSelectedBatch(): void {
+    const batchId = this.selectedBatchId();
+    if (!batchId) return;
+    this.confirmDeleteBatch(batchId);
+  }
 
   /**
    * 整批回退是不可復原的破壞性操作，且影響範圍可能是上百筆——確認訊息
@@ -257,6 +298,9 @@ export class GroupBuy implements OnInit {
             next: () => {
               this.isDeletingBatch.set(false);
               this.statusMessageState.show(`已回退批次「${batchId}」，共 ${count} 筆。`);
+              if (this.selectedBatchId() === batchId) {
+                this.selectedBatchId.set(null);
+              }
               this.load();
             },
             error: (err) => {

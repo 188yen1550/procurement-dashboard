@@ -407,6 +407,187 @@ tr.is-editing select {
   margin-top: var(--s-2);
 }
 
+/* ===================== 資料表格欄寬 ===================== */
+/*
+ * 這支元件裡有 7 個各自獨立的表格（風險選項／商品類型／節慶檔期／
+ * 目標區間 x2／演算法參數／帳號管理），全部共用全域的 .data-table
+ * 外觀，但彼此欄位結構完全不同，不能像單一表格那樣直接用
+ * col-name／col-status 這種通用名稱——同一個 class 在表格 A 是
+ * 「風險選項名稱」，在表格 B 卻可能是「帳號使用者名稱」，寬度需求
+ * 不一樣，硬共用只會兩邊都調不準。所以這裡每個表格的欄寬 class
+ * 都加上各自的字首（risk- / type- / campaign- / band-global- /
+ * band-override- / setting- / account-），彼此獨立，不互相影響。
+ *
+ * 沿用歷史銷售紀錄、品項管理同一套做法：table-layout: fixed + 百分比
+ * 寬度，內容超出欄寬時交給下面的換行規則處理，不做單行截斷。跟前兩個
+ * 頁面一樣，這些規則寫在元件自己的 scss 裡（Angular 元件樣式預設
+ * scoped），只會套用到這個元件渲染出來的 7 個表格，不會影響
+ * group-buy／product-management 頁面用到的同名 class。
+ */
+.data-table table {
+  table-layout: fixed;
+}
+
+.data-table th {
+  white-space: normal;
+}
+
+.data-table td {
+  overflow-wrap: break-word;
+}
+
+/*
+ * 操作／編輯欄一律靠右對齊：這 7 個表格最後一欄都是操作用按鈕
+ * （編輯、停用、刪除…），跟本頁其他偏「資料閱讀」的欄位性質不同，
+ * 統一靠右對齊除了視覺上更好辨識「這是操作區」，也讓按鈕跟表格
+ * 右邊界對齊、比較好點擊。.row-actions 是全域共用的 class（用來排
+ * 版按鈕間距），這裡只覆寫對齊方式，只影響這個元件渲染出來的表格，
+ * 不會動到 .row-actions 原本在其他地方的行為（目前只有這個頁面用到）。
+ * 表頭文字（如「操作」「狀態／操作」）一併靠右，跟底下的按鈕對齊，
+ * 兩者才會是同一個視覺區塊，不是表頭靠左、內容卻靠右的不一致狀態。
+ */
+.row-actions {
+  justify-content: flex-end;
+}
+
+.risk-col-actions,
+.type-col-status-actions,
+.campaign-col-actions,
+.band-global-col-actions,
+.band-override-col-actions,
+.setting-col-actions,
+.account-col-actions {
+  text-align: right;
+}
+
+/* 風險選項 */
+.risk-col-name {
+  width: 22%;
+}
+
+.risk-col-keywords {
+  width: 48%;
+}
+
+.risk-col-status {
+  width: 12%;
+}
+
+.risk-col-actions {
+  width: 18%;
+}
+
+/* 商品類型設定 */
+.type-col-name {
+  width: 30%;
+}
+
+.type-col-source {
+  width: 15%;
+}
+
+.type-col-used {
+  width: 13%;
+}
+
+.type-col-status-actions {
+  width: 42%;
+}
+
+/* 節慶檔期管理 */
+.campaign-col-name {
+  width: 18%;
+}
+
+.campaign-col-category {
+  width: 13%;
+}
+
+.campaign-col-range {
+  width: 19%;
+}
+
+.campaign-col-status {
+  width: 12%;
+}
+
+.campaign-col-override {
+  width: 12%;
+}
+
+.campaign-col-actions {
+  width: 26%;
+}
+
+/* 目標區間－全域預設 */
+.band-global-col-factor {
+  width: 40%;
+}
+
+.band-global-col-bound {
+  width: 18%;
+}
+
+.band-global-col-actions {
+  width: 24%;
+}
+
+/* 目標區間－各商品類型覆寫（欄位比全域預設多一欄「商品類型」，
+   比例跟全域預設那組不共用，即使兩者都有「因子」「上下界」） */
+.band-override-col-type {
+  width: 24%;
+}
+
+.band-override-col-factor {
+  width: 24%;
+}
+
+.band-override-col-bound {
+  width: 16%;
+}
+
+.band-override-col-actions {
+  width: 20%;
+}
+
+/* 演算法參數 */
+.setting-col-param {
+  width: 52%;
+}
+
+.setting-col-value {
+  width: 22%;
+}
+
+.setting-col-updated {
+  width: 12%;
+}
+
+.setting-col-actions {
+  width: 14%;
+}
+
+/* 帳號管理 */
+.account-col-username {
+  width: 32%;
+}
+
+.account-col-name {
+  width: 18%;
+}
+
+.account-col-role {
+  width: 16%;
+}
+
+.account-col-status {
+  width: 14%;
+}
+
+.account-col-actions {
+  width: 30%;
+}
+
 /* ===================== 響應式 ===================== */
 
 @media (max-width: 760px) {
@@ -629,10 +810,12 @@ tr.is-editing select {
    是多少」這個關鍵數字時最重要的資訊，應該放大加粗，不是等同於旁邊
    的輔助說明。 */
 .system-setting-value {
-  font-size: var(--t-xl);
+  font-size: var(--t-lg);
   font-weight: 650;
   color: var(--c-brand, #1c5286);
 }
+
+
 .unit {
   margin-left: 0.3rem;
   color: #6c7a89;

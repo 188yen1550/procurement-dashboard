@@ -150,7 +150,16 @@
         <tbody>
           @for (record of filteredRecords(); track record.id) {
           <tr>
-            <td>{{ record.name }}</td>
+            <td>
+              <a [routerLink]="['/products', record.productId]">{{ record.name }}</a>
+              @if (record.result === 'REJECTED') {
+                <!-- 決策紀錄本身是唯讀快照，不在這裡做重審——重審是對「商品現況」
+                     的操作，集中在品項管理頁（見 product-management.html 的
+                     canResubmit 判斷），避免這張表同時身兼決策記錄與生命週期操作
+                     兩種職責。這裡只提供「點進去看該商品現況」的路徑。 -->
+                <small class="resubmit-hint">可於品項頁重審</small>
+              }
+            </td>
             <td>第 {{ record.round }} 次</td>
             <td>
               <span [attr.data-result]="record.result">{{

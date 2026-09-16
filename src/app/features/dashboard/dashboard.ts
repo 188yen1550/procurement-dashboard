@@ -57,6 +57,7 @@ const EMPTY_DASHBOARD: DashboardMockData = {
     pendingReviews: 0,
     approvedProducts: 0,
     rejectedProducts: 0,
+    aiSuggestedPending: 0,
     conversionRate: null,
   },
   recommendations: [],
@@ -290,6 +291,7 @@ function toDashboardPageData(
       pendingReviews: result.statistics?.pendingCount ?? 0,
       approvedProducts: result.statistics?.approvedCount ?? 0,
       rejectedProducts: result.statistics?.rejectedCount ?? 0,
+      aiSuggestedPending: result.statistics?.aiSuggestedPendingCount ?? 0,
       // hasData 為 false 時（尚無商品送審過）維持 null，不要顯示成 0%。
       conversionRate:
         result.conversionRate?.hasData ? result.conversionRate.ratePercentage : null,

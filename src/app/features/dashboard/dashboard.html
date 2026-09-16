@@ -156,12 +156,24 @@
       </article>
       <article class="stat-card pending">
         <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
+        @if (data().statistics.aiSuggestedPending > 0) {
+          <!-- 說明「待人工審核」與「品項管理／正式候選品項」清單筆數對不起來的
+               原因：這裡面有幾筆其實是 AI 建議、尚未經人工「加入候選」轉正，
+               不會出現在品項管理主清單裡。避免使用者自己猜兩邊數字為什麼不同。 -->
+          <small class="stat-note"
+            >含 {{ data().statistics.aiSuggestedPending }} 筆 AI 建議尚未轉正候選</small
+          >
+        }
       </article>
       <article class="stat-card approved">
         <span>通過選品審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
       </article>
       <article class="stat-card rejected">
         <span>未通過</span><strong>{{ data().statistics.rejectedProducts }}</strong>
+      </article>
+      <article class="stat-card ai-suggested">
+        <span>AI 建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
+        <a routerLink="/products/ai-suggestions">前往確認清單</a>
       </article>
     </section>
 

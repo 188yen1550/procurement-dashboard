@@ -66,6 +66,12 @@ export interface ReviewItem {
 /** 決策紀錄表格的顯示模型。 */
 export interface DecisionRecordRow {
   id: number;
+  /**
+   * 商品 id。後端 ReviewRecordResponse 本來就有 productId 欄位，
+   * 只是先前的 mapper 沒有取用——這裡補上，讓決策紀錄可以連回該商品，
+   * 管理層看到「未通過」想追蹤後續，不用自己再去品項管理頁搜尋一次商品名稱。
+   */
+  productId: number;
   name: string;
   round: number;
   result: 'APPROVED' | 'REJECTED';
@@ -112,8 +118,8 @@ const MOCK: readonly ReviewItem[] = [
 ];
 
 const MOCK_RECORDS: readonly DecisionRecordRow[] = [
-  { id: 501, name: '中秋炭烤海陸組合禮盒', round: 1, result: 'APPROVED', reviewer: '管理員 王主任', score: 92.4, date: '2026/08/28', comment: '節慶需求明確，確認冷鏈排程後通過。' },
-  { id: 502, name: '可機洗抗菌涼感被', round: 1, result: 'REJECTED', reviewer: '管理員 李經理', score: 69.5, date: '2026/08/24', comment: '供應穩定性不足，請補充備援方案。' },
+  { id: 501, productId: 101, name: '中秋炭烤海陸組合禮盒', round: 1, result: 'APPROVED', reviewer: '管理員 王主任', score: 92.4, date: '2026/08/28', comment: '節慶需求明確，確認冷鏈排程後通過。' },
+  { id: 502, productId: 106, name: '可機洗抗菌涼感被', round: 1, result: 'REJECTED', reviewer: '管理員 李經理', score: 69.5, date: '2026/08/24', comment: '供應穩定性不足，請補充備援方案。' },
 ];
 
 /** PendingReviewItem（後端）→ ReviewItem（畫面）。 */
@@ -287,6 +293,7 @@ export class ReviewComponent implements OnInit {
           this.records.set(
             result.items.map((record) => ({
               id: record.id,
+              productId: record.productId,
               name: record.productName,
               round: record.submissionCount ?? 1,
               result: record.reviewStatus,

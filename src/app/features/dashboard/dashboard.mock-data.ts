@@ -11,6 +11,9 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     pendingReviews: 18,
     approvedProducts: 72,
     rejectedProducts: 14,
+    // Mock 情境：18 筆待人工審核中，有 5 筆其實是 AI 建議尚未轉正候選，
+    // 用來展示「待人工審核」卡片旁的差異說明文字長什麼樣子。
+    aiSuggestedPending: 5,
     conversionRate: 63.7,
   },
   recommendations: [

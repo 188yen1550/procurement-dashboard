@@ -281,36 +281,48 @@ td {
   line-height: 1.45;
 }
 
-th:nth-child(1) {
-  width: 195px
+/*
+ * 欄寬改用語意化 class，不再用 th:nth-child(n)——位置式寫法綁的是「第幾欄」
+ * 不是「哪個欄位」，欄位順序調整或增減時，寬度規則會悄悄套到錯的欄位上，
+ * 且不會有任何編譯期警告。改成 class 之後，寬度規則跟著欄位語意走，
+ * HTML 調整欄位順序也不會影響到其他欄的寬度設定。
+ *
+ * 改用百分比而非寫死的 px：欄寬會依表格實際寬度等比例縮放，比純寫死
+ * px 更有彈性；表格仍維持 table-layout: fixed，所以每欄有明確的目標
+ * 寬度（不會被內容撐開），內容超出目標寬度時交給下面移除的 nowrap／
+ * ellipsis 規則改為正常換行處理，而不是裁切看不到完整資訊。
+ * 各欄比例是從原本 px 寬度等比例換算過來，維持原設計的相對比重。
+ * 最後一欄（操作）不在這裡設定，寬度由 product-management-actions.scss
+ * 的 .actions-column 決定（它是 position: sticky 的欄位，原本 th:nth-child(8)
+ * 又重複設了一次 170px，跟 .actions-column 的 190px 互相打架，
+ * 實際生效哪一個要看選擇器優先權，是隱藏的衝突——一併移除重複宣告。
+ */
+.col-name {
+  width: 18%;
 }
 
-th:nth-child(2) {
-  width: 145px
+.col-type {
+  width: 12%;
 }
 
-th:nth-child(3) {
-  width: 135px
+.col-supplier {
+  width: 15%;
 }
 
-th:nth-child(4) {
-  width: 82px
+.col-score {
+  width: 7%;
 }
 
-th:nth-child(5) {
-  width: 180px
+.col-completeness {
+  width: 12%;
 }
 
-th:nth-child(6) {
-  width: 205px
+.col-status {
+  width: 12%;
 }
 
-th:nth-child(7) {
-  width: 92px
-}
-
-th:nth-child(8) {
-  width: 170px
+.col-updated {
+  width: 9%;
 }
 
 .product-cell strong,
@@ -322,14 +334,8 @@ th:nth-child(8) {
   display: block;
 }
 
-.product-cell strong,
-.supplier-cell {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .product-cell strong {
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .product-cell>span,

@@ -126,10 +126,10 @@
     <table>
       <thead>
         <tr>
-          <th>選項名稱</th>
-          <th>AI 風險關鍵字</th>
-          <th>狀態</th>
-          <th></th>
+          <th class="risk-col-name">選項名稱</th>
+          <th class="risk-col-keywords">AI 風險關鍵字</th>
+          <th class="risk-col-status">狀態</th>
+          <th class="risk-col-actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -183,10 +183,10 @@
     <table>
       <thead>
         <tr>
-          <th>類型名稱</th>
-          <th>來源</th>
-          <th>使用品項</th>
-          <th>狀態／操作</th>
+          <th class="type-col-name">類型名稱</th>
+          <th class="type-col-source">來源</th>
+          <th class="type-col-used">使用品項</th>
+          <th class="type-col-status-actions">狀態／操作</th>
         </tr>
       </thead>
       <tbody>
@@ -252,12 +252,12 @@
     <table>
       <thead>
         <tr>
-          <th>檔期</th>
-          <th>分類</th>
-          <th>起訖日期</th>
-          <th>狀態</th>
-          <th>手動覆蓋</th>
-          <th>操作</th>
+          <th class="campaign-col-name">檔期</th>
+          <th class="campaign-col-category">分類</th>
+          <th class="campaign-col-range">起訖日期</th>
+          <th class="campaign-col-status">狀態</th>
+          <th class="campaign-col-override">手動覆蓋</th>
+          <th class="campaign-col-actions">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -272,7 +272,7 @@
             <span class="status-pill" [attr.data-status]="item.status">{{ campaignStatusLabel[item.status] }}</span>
           </td>
           <td>{{ item.override ? '是' : '否' }}</td>
-          <td>
+          <td class="row-actions">
             <button type="button" class="btn edit-change-stage" (click)="editCampaign(item.name)">編輯</button>
             <button type="button" class="btn" (click)="openCampaignStatusModal(item)">
               切換狀態
@@ -298,10 +298,10 @@
       <table>
         <thead>
           <tr>
-            <th>因子</th>
-            <th class="num">下界</th>
-            <th class="num">上界</th>
-            <th></th>
+            <th class="band-global-col-factor">因子</th>
+            <th class="num band-global-col-bound">下界</th>
+            <th class="num band-global-col-bound">上界</th>
+            <th class="band-global-col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -422,11 +422,11 @@
       <table>
         <thead>
           <tr>
-            <th>商品類型</th>
-            <th>因子</th>
-            <th class="num">下界</th>
-            <th class="num">上界</th>
-            <th></th>
+            <th class="band-override-col-type">商品類型</th>
+            <th class="band-override-col-factor">因子</th>
+            <th class="num band-override-col-bound">下界</th>
+            <th class="num band-override-col-bound">上界</th>
+            <th class="band-override-col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -496,10 +496,10 @@
       <table>
         <thead>
           <tr>
-            <th>參數</th>
-            <th class="num">目前值</th>
-            <th>最後異動</th>
-            <th></th>
+            <th class="setting-col-param">參數</th>
+            <th class="num setting-col-value">目前值</th>
+            <th class="setting-col-updated">最後異動</th>
+            <th class="setting-col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -585,11 +585,11 @@
     <table>
       <thead>
         <tr>
-          <th>使用者帳號</th>
-          <th>姓名</th>
-          <th>角色權限</th>
-          <th>狀態</th>
-          <th>停用/復用帳號</th>
+          <th class="account-col-username">使用者帳號</th>
+          <th class="account-col-name">姓名</th>
+          <th class="account-col-role">角色權限</th>
+          <th class="account-col-status">狀態</th>
+          <th class="account-col-actions">停用/復用帳號</th>
         </tr>
       </thead>
       <tbody>
