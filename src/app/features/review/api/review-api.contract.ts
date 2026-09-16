@@ -182,4 +182,9 @@ export interface ReviewRecordResponsePayload {
   updatedAt: IsoDateTime | null;
 }
 
-export type DecisionRecordQuery = PageQuery;
+/**
+ * reviewResult 可選：不帶代表查全部。2026-09-16修正：原本前端沒有把
+ * 篩選條件送給後端，「結果篩選」只在已抓回來的那一頁裡做，資料量一多、
+ * 篩選條件剛好不在那一頁時就會誤報「找不到」。
+ */
+export type DecisionRecordQuery = PageQuery & { reviewResult?: 'APPROVED' | 'REJECTED' };

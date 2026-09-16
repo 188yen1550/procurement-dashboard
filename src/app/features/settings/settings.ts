@@ -600,6 +600,8 @@ export class Settings implements OnInit {
    */
   readonly draftManualOverride = signal(true);
   readonly isSaving = signal(false);
+  /** risk / productType / account / campaign / campaignStatus 共用的新增/編輯 modal 存檔中狀態。 */
+  readonly isSavingModal = signal(false);
 
   readonly form = this.fb().nonNullable.group({
     name: ['核心家庭團購客群', [Validators.required, Validators.maxLength(100)]],
@@ -1345,6 +1347,56 @@ export class Settings implements OnInit {
   readonly systemSettingDraftValue = signal('');
   readonly isSavingSystemSetting = signal(false);
 
+  /**
+   * 範本 template 內不能直接呼叫全域的 String(...)（Angular 樣板編譯器會把它
+   * 當成 component 上的屬性去找，因而報 TS2339）。number/range input 的
+   * ngModelChange 會送出 number，但 systemSettingDraftValue 統一存字串，
+   * 所以透過這個 component method 做轉換。
+   */
+  protected toDraftValue(value: unknown): string {
+    return String(value ?? '');
+  }
+
+  /**
+   * 滑桿的「顆粒度」：
+   * - 品類/商品層平滑常數 k（shrinkage_k_category / shrinkage_k_product）：
+   *   業務上只在意 5 為單位的粗略調整，收斂成 0、5、10…的倍數。
+   * - 中性基準分數（neutral_baseline_score）：後端型別雖然是 DECIMAL
+   *   （為了跟其他百分比類設定共用同一個 API 型別），但業務語意上就是
+   *   整數分數，固定用 1。
+   * - 其餘沿用原本規則：INTEGER 用 1，DECIMAL 用 0.01。
+   */
+  protected sliderStep(setting: SystemSettingVM): number {
+    if (setting.key === 'shrinkage_k_category' || setting.key === 'shrinkage_k_product') return 5;
+    if (setting.key === 'neutral_baseline_score') return 1;
+    return setting.dataType === 'INTEGER' ? 1 : 0.01;
+  }
+
+  /** 拖動滑桿：每一格都即時收斂到 sliderStep() 的倍數。 */
+  protected onSliderDrag(setting: SystemSettingVM, value: unknown): void {
+    this.systemSettingDraftValue.set(this.snapSettingValue(setting, this.toDraftValue(value)));
+  }
+
+  private snapSettingValue(setting: SystemSettingVM, raw: string): string {
+    const step = this.sliderStep(setting);
+    const min = setting.minValue;
+    const max = setting.maxValue;
+    const parsed = Number(raw);
+
+    if (raw.trim() === '' || Number.isNaN(parsed)) {
+      return this.toDraftValue(min ?? 0);
+    }
+
+    const snapped = Math.round(parsed / step) * step;
+    const lowerBounded = min !== null ? Math.max(min, snapped) : snapped;
+    const bounded = max !== null ? Math.min(max, lowerBounded) : lowerBounded;
+
+    // step < 1（目前只有一般 DECIMAL 設定的 0.01）才需要顯示小數；
+    // k 常數跟中性基準分數的 step 都 >= 1，一律顯示整數，避免出現
+    // 「10.00 次」這種多餘的尾數。
+    return step < 1 ? bounded.toFixed(2) : String(Math.round(bounded));
+  }
+
   /*
    * 這四個分類採用滑桿操作——都是「在一個固定範圍內挑一個數字」的調參
    * 情境（分位數、平滑常數、半衰期天數…），拖動滑桿比在小數字輸入框
@@ -1698,6 +1750,7 @@ export class Settings implements OnInit {
 
   closeModal(): void {
     this.modal.set(null);
+    this.isSavingModal.set(false);
     this.draftName.set('');
     this.draftKeywords.set('');
     this.draftUsername.set('');
@@ -1713,6 +1766,7 @@ export class Settings implements OnInit {
   }
 
   saveModal(): void {
+    if (this.isSavingModal()) return;
     const type = this.modal();
 
     if (this.useMockData) {
@@ -1798,6 +1852,7 @@ export class Settings implements OnInit {
 
       const editingId = this.editingRiskOptionId();
       if (editingId !== null) {
+        this.isSavingModal.set(true);
         this.api
           .updateRiskOption(editingId, { name: this.draftName().trim(), alertKeywords: keywords })
           .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1810,11 +1865,15 @@ export class Settings implements OnInit {
               this.statusMessageState.show('已更新風險選項。');
               this.closeModal();
             },
-            error: (err) => this.statusMessageState.show(toApiError(err).message),
+            error: (err) => {
+              this.isSavingModal.set(false);
+              this.statusMessageState.show(toApiError(err).message);
+            },
           });
         return;
       }
 
+      this.isSavingModal.set(true);
       this.api
         .createRiskOption({ name: this.draftName().trim(), alertKeywords: keywords })
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1825,7 +1884,10 @@ export class Settings implements OnInit {
             this.statusMessageState.show('已新增風險選項，審核頁勾選清單即時生效。');
             this.closeModal();
           },
-          error: (err) => this.statusMessageState.show(toApiError(err).message),
+          error: (err) => {
+            this.isSavingModal.set(false);
+            this.statusMessageState.show(toApiError(err).message);
+          },
         });
       return;
     }
@@ -1835,6 +1897,7 @@ export class Settings implements OnInit {
         this.statusMessageState.show('請輸入類型名稱。');
         return;
       }
+      this.isSavingModal.set(true);
       this.api
         .createProductType({ name: this.draftName().trim() })
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1848,7 +1911,10 @@ export class Settings implements OnInit {
             this.statusMessageState.show('已新增商品類型。');
             this.closeModal();
           },
-          error: (err) => this.statusMessageState.show(toApiError(err).message),
+          error: (err) => {
+            this.isSavingModal.set(false);
+            this.statusMessageState.show(toApiError(err).message);
+          },
         });
       return;
     }
@@ -1858,6 +1924,7 @@ export class Settings implements OnInit {
         this.statusMessageState.show('請完整填寫必填欄位，密碼至少 8 碼。');
         return;
       }
+      this.isSavingModal.set(true);
       this.userApi
         .create({
           username: this.draftUsername().trim(),
@@ -1873,6 +1940,7 @@ export class Settings implements OnInit {
             this.closeModal();
           },
           error: (err) => {
+            this.isSavingModal.set(false);
             // username 重複時後端回 400，直接顯示訊息，讓使用者知道要換一個帳號名。
             this.statusMessageState.show(toApiError(err).message);
           },
@@ -1902,6 +1970,7 @@ export class Settings implements OnInit {
 
       const existing = this.campaigns().find((item) => item.name === this.selectedCampaign());
 
+      this.isSavingModal.set(true);
       if (existing?.id) {
         this.api
           .updateFestiveCampaign(existing.id, {
@@ -1921,7 +1990,10 @@ export class Settings implements OnInit {
               this.statusMessageState.show('已更新檔期。');
               this.closeModal();
             },
-            error: (err) => this.statusMessageState.show(toApiError(err).message),
+            error: (err) => {
+              this.isSavingModal.set(false);
+              this.statusMessageState.show(toApiError(err).message);
+            },
           });
       } else {
         this.api
@@ -1941,7 +2013,10 @@ export class Settings implements OnInit {
               this.statusMessageState.show('已新增檔期。');
               this.closeModal();
             },
-            error: (err) => this.statusMessageState.show(toApiError(err).message),
+            error: (err) => {
+              this.isSavingModal.set(false);
+              this.statusMessageState.show(toApiError(err).message);
+            },
           });
       }
       return;
@@ -1957,6 +2032,7 @@ export class Settings implements OnInit {
    * 分開，否則使用者會以為選了下拉選單的值也會一併生效。
    */
   applyCampaignStatus(): void {
+    if (this.isSavingModal()) return;
     const target = this.campaigns().find((item) => item.name === this.selectedCampaign());
     if (!target) return;
 
@@ -1969,11 +2045,12 @@ export class Settings implements OnInit {
           item.name === this.selectedCampaign() ? { ...item, status, override: overrideEnabled } : item,
         ),
       );
-      this.modal.set(null);
+      this.closeModal();
       return;
     }
 
     if (!target.id) return;
+    this.isSavingModal.set(true);
     this.api
       .switchFestiveCampaignStatus(target.id, {
         status: status as 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED',
@@ -1986,9 +2063,12 @@ export class Settings implements OnInit {
             items.map((item) => (item.id === updated.id ? toCampaignVM(updated) : item)),
           );
           this.statusMessageState.show(overrideEnabled ? '已手動切換檔期狀態。' : '已恢復自動判斷。');
-          this.modal.set(null);
+          this.closeModal();
         },
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => {
+          this.isSavingModal.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
       });
   }
 

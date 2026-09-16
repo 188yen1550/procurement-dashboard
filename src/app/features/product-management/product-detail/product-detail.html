@@ -190,7 +190,7 @@
           @if (gate.failedCount > 0) {
           {{ gate.failedCount }} 項不通過
           } @else {
-          全數通過或不適用
+          通過或不適用
           }
         </span>
         }
@@ -426,7 +426,7 @@
       <h2>歷次審核紀錄</h2>
     </header>
     <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
-  <ul class="review-history-list">
+    <ul class="review-history-list">
       @for (record of reviewHistory() | sortRows: historySort.state(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
         <div class="review-history-head">

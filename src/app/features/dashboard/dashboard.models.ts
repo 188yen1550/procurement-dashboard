@@ -13,9 +13,9 @@ export interface DashboardStatistics {
   approvedProducts: number;
   rejectedProducts: number;
   /**
-   * pendingReviews 的子集：AI 建議尚未轉正候選、但已計入 pendingReviews 的
-   * 商品數。用來在「待人工審核」卡片旁揭露它與「正式候選品項」清單筆數
-   * 對不起來的原因，不是另一種獨立的審核狀態。
+   * 2026-09-16修正：與 pendingReviews 互斥（不再是子集）——後端已改為
+   * pendingReviews 只算已轉正候選（CANDIDATE）的商品，AI 建議尚未轉正的
+   * 商品只計入這個欄位，兩者相加才等於全部 PENDING 商品數。
    */
   aiSuggestedPending: number;
   /**

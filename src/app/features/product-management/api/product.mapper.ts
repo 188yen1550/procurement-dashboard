@@ -142,7 +142,12 @@ export function toProductActionAvailability(
     payload.reviewStatus === 'APPROVED' || payload.reviewStatus === 'REJECTED';
 
   return {
-    canResubmit: payload.reviewStatus === 'REJECTED' && payload.itemStatus === 'ACTIVE',
+    // 與後端 ProductService.resubmit() 的候選狀態檢查對稱：AI建議商品須先
+    // 加入正式候選才能重新送審，即使 reviewStatus/itemStatus 條件都符合。
+    canResubmit:
+      payload.reviewStatus === 'REJECTED' &&
+      payload.itemStatus === 'ACTIVE' &&
+      payload.candidateStatus === 'CANDIDATE',
     canArchive: payload.itemStatus === 'ACTIVE' && hasReviewResult,
     canRestore: payload.itemStatus === 'ARCHIVED' && hasReviewResult,
     canPromote: payload.candidateStatus === 'AI_SUGGESTED',

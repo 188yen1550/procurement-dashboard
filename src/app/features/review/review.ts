@@ -148,11 +148,12 @@ export class ReviewComponent implements OnInit {
 
   readonly filteredRecords = computed(() => {
     const keyword = this.recordSearch().trim().toLocaleLowerCase('zh-Hant');
-    const resultFilter = this.recordResultFilter();
+    // resultFilter 不在這裡再篩一次：真實模式下 loadDecisionRecords() 已經把
+    // recordResultFilter 當成查詢參數送給後端了，這裡再篩會跟 product-management.ts
+    // 的真實模式原則不一致（篩選交給後端，前端只處理關鍵字/排序這類無法送後端
+    // 的操作），也可能因為只抓了一頁而誤刪掉本來就該顯示的資料。
     const list = this.records().filter(
-      (r) =>
-        (!keyword || r.name.toLocaleLowerCase('zh-Hant').includes(keyword)) &&
-        (resultFilter === 'ALL' || r.result === resultFilter),
+      (r) => !keyword || r.name.toLocaleLowerCase('zh-Hant').includes(keyword),
     );
 
     const sort = this.recordSort();
@@ -181,8 +182,10 @@ export class ReviewComponent implements OnInit {
   clearRecordFilters(): void {
     this.recordTableSort.set('', 'asc');
     this.recordSearch.set('');
+    const shouldReload = this.recordResultFilter() !== 'ALL';
     this.recordResultFilter.set('ALL');
     this.recordSort.set('date_desc');
+    if (shouldReload && !this.useMockData) this.loadDecisionRecords();
   }
   readonly query = signal('');
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
@@ -268,8 +271,14 @@ export class ReviewComponent implements OnInit {
 
   /** GET /api/reviews/decision-records [僅管理]。失敗只讓紀錄分頁降級，不影響待審清單。 */
   loadDecisionRecords(): void {
+    const reviewResult = this.recordResultFilter();
     this.api
-      .listDecisionRecords({ page: 0, size: 20, sort: 'reviewedAt,desc' })
+      .listDecisionRecords({
+        page: 0,
+        size: 20,
+        sort: 'reviewedAt,desc',
+        reviewResult: reviewResult === 'ALL' ? undefined : reviewResult,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -289,6 +298,16 @@ export class ReviewComponent implements OnInit {
         },
         error: () => this.records.set([]),
       });
+  }
+
+  /**
+   * 審核結果篩選改變時：真實模式要重新呼叫 API（後端才是真正篩選的地方，
+   * 見 loadDecisionRecords() 的說明）；Mock 模式維持原本的純前端篩選，
+   * 不需要重新載入。
+   */
+  updateRecordResultFilter(value: 'ALL' | 'APPROVED' | 'REJECTED'): void {
+    this.recordResultFilter.set(value);
+    if (!this.useMockData) this.loadDecisionRecords();
   }
 
   retry(): void {

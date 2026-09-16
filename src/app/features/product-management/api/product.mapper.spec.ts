@@ -124,6 +124,20 @@ describe('toProductActionAvailability', () => {
     expect(actions.canRestore).toBe(true);
   });
 
+  it('REJECTED 且 ACTIVE，但 candidateStatus 還是 AI_SUGGESTED：不可重審', () => {
+    // 2026-09-16修正：與後端 ProductService.resubmit() 的候選狀態檢查對稱——
+    // AI 建議商品理論上不該出現在這個判斷式面對的清單裡（品項管理預設只查
+    // CANDIDATE），但檢查邏輯本身要獨立成立，不能只靠「不會走到這裡」假設安全。
+    const actions = toProductActionAvailability({
+      reviewStatus: 'REJECTED',
+      itemStatus: 'ACTIVE',
+      candidateStatus: 'AI_SUGGESTED',
+      submissionCount: 1,
+    });
+
+    expect(actions.canResubmit).toBe(false);
+  });
+
   it('APPROVED：核心資料鎖定', () => {
     const actions = toProductActionAvailability({
       reviewStatus: 'APPROVED',

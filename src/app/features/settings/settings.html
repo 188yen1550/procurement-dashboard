@@ -518,9 +518,8 @@
               <span class="helper">至少需勾選一項；未勾選的溫層視為此通路不支援。</span>
               } @else if (sliderCategories.has(group.category)) {
               <div class="system-setting-slider-field">
-                <input type="range" [min]="setting.minValue" [max]="setting.maxValue"
-                  [step]="setting.dataType === 'INTEGER' ? 1 : 0.01" [ngModel]="systemSettingDraftValue()"
-                  (ngModelChange)="systemSettingDraftValue.set($event)" />
+                <input type="range" [min]="setting.minValue" [max]="setting.maxValue" [step]="sliderStep(setting)"
+                  [ngModel]="systemSettingDraftValue()" (ngModelChange)="onSliderDrag(setting, $event)" />
                 <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
                     class="unit"> {{ setting.unit }}</span>}</span>
               </div>
@@ -531,7 +530,7 @@
               <label class="system-setting-edit-field">
                 <input [type]="setting.dataType === 'STRING' ? 'text' : 'number'"
                   [step]="setting.dataType === 'INTEGER' ? 1 : 0.01" [ngModel]="systemSettingDraftValue()"
-                  (ngModelChange)="systemSettingDraftValue.set($event)" />
+                  (ngModelChange)="systemSettingDraftValue.set(toDraftValue($event))" />
                 @if (setting.unit) {
                 <span class="unit">{{ setting.unit }}</span>
                 }
@@ -562,7 +561,8 @@
               }
             </td>
             <td class="num">
-              <span class="system-setting-value" [class.is-text-value]="setting.dataType === 'STRING'">{{ formatSystemSettingValue(setting) }}</span>
+              <span class="system-setting-value" [class.is-text-value]="setting.dataType === 'STRING'">{{
+                formatSystemSettingValue(setting) }}</span>
               @if (setting.unit) {
               <span class="unit">{{ setting.unit }}</span>
               }
@@ -868,7 +868,7 @@
       }
       <footer>
         <button type="button" class="btn" (click)="closeModal()">取消</button><button type="submit" class="btn-primary"
-          [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
+          [disabled]="isSavingModal()">{{ isSavingModal() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
       </footer>
     </form>
   </div>

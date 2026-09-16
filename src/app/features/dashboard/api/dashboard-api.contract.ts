@@ -31,10 +31,9 @@ export interface DashboardStatisticsResponsePayload {
   approvedCount: number;
   rejectedCount: number;
   /**
-   * pendingCount 的子集：candidate_status=AI_SUGGESTED 且尚未審核的商品數。
-   * 這批商品計入 pendingCount，但不會出現在品項管理主清單（該清單預設只查
-   * candidate_status=CANDIDATE），是「候選品項數」與「待人工審核數」對不起來
-   * 的主因之一，前端用這個欄位在卡片上說明差異來源。
+   * 2026-09-16修正：與 pendingCount 互斥（不再是子集）——candidate_status=
+   * AI_SUGGESTED 且 review_status=PENDING 的商品數，pendingCount 已改為
+   * 只算 candidate_status=CANDIDATE 的部分。
    */
   aiSuggestedPendingCount: number;
 }
