@@ -1,31 +1,7 @@
 /**
- * 檔案用途：新增／編輯品項表單、圖片上傳、欄位鎖定、重複送出與未儲存變更保護。
- * NEW 顯示 PENDING_PRICING 且不要求價格；RESALE 要求成本／售價／市價。APPROVED 仍可改一般資料與圖片，但核心資料鎖定。
- *
- * ## 這次接上真實 API 做了什麼
- *
- * 1. `productType` 從「純文字分類名稱」改成 `productTypeId`（number）。
- *    後端 `ProductCreateRequestPayload.productTypeId` 要的是編號，
- *    選項清單真實模式改讀 `SettingsApiService.getProductTypes()`。
- *
- * 2. ⚠️ 圖片上傳有先後順序限制：`POST /api/products/{id}/image` 需要
- *    商品已存在的 id。新增模式下，使用者選圖片時**只能先本地預覽**，
- *    真正上傳要等 `create()` 成功拿到新 id 之後才能做。編輯模式下
- *    id 已存在，可以在送出時直接上傳。這裡用 `selectedImageFile`
- *    保留使用者選的實際 File 物件（原本的程式碼建完預覽 dataURL 後就
- *    把 File 物件丟了，沒有留著給之後上傳用）。
- *
- * 3. ⚠️ PUT 是整份覆蓋。這個表單沒有「圖片網址」文字欄位可編輯——
- *    圖片只透過檔案選擇器處理，所以更新既有商品時，若不小心把
- *    `imageUrl` 送成空字串，會把使用者原本的圖片覆蓋掉。
- *    用 `currentImageUrl` 保留載入時的原始圖片網址，使用者沒有動圖片時
- *    照樣把原值送回去；按下「移除圖片」才會明確把它設為 null。
- *
- * 4. 已核准商品的鎖定狀態改讀真實 `reviewStatus`（APPROVED），
- *    不再用寫死的商品 id 字串判斷。
- *
- * 5. APPROVED 商品若異動核心資料，後端回 409，這裡單獨處理成
- *    「已核准商品僅能修改一般基本資料與圖片」，不是通用錯誤訊息。
+ * 檔案用途：新增／編輯品項、圖片上傳、欄位鎖定、重新送審與未儲存變更保護。
+ * NEW 不要求價格；RESALE 要求成本、售價與市價。APPROVED 仍可修改一般資料
+ * 與圖片，但核心資料鎖定。新增商品取得 id 後才上傳所選圖片。
  */
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
@@ -332,7 +308,7 @@ export class ProductForm implements OnInit {
 
   /**
    * 使用者選定的參考商品。送出時填入 ProductCreateRequestPayload／
-   * ProductUpdateRequestPayload 的 resaleReferenceProductId。
+   * ProductUpdateRequestPayload 的 resaleReferenceProductId；編輯模式由 API 回填。
    */
   readonly resaleReferenceProductId = signal<number | null>(null);
   readonly resaleReferenceName = signal<string | null>(null);

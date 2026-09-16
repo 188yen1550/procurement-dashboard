@@ -1,34 +1,7 @@
 /**
  * 檔案用途：管理人員的待審清單與決策紀錄。
- * 預設範圍是 PENDING＋ACTIVE；核准只是選品決策，不代表上架、簽約、銷售或營收。
- *
- * ## 這次改寫做了什麼
- *
- * 舊碼的 loadPendingItems() 是一支打不通的死碼——註解已經正確指出
- * ProductResponse 湊不齊 ReviewItem 的欄位，但方法還留著且會 404。
- * 現在改為真的接上 ReviewApiService，並且對「後端沒有的欄位」誠實處理。
- *
- * ## ⚠️ 後端拿不到／已補上的欄位，處理方式
- *
- * | 欄位          | 後端狀況                                          | 這次的處理              |
- * |---------------|----------------------------------------------------|--------------------------|
- * | category      | 只有 productTypeId                                | 對照設定 API 取得名稱   |
- * | finalScore    | 後端已在清單端點併帶（批次查詢，不逐筆呼叫 /evaluation） | 有值就顯示，該商品尚無評估紀錄時為 null，畫面顯示「—」 |
- * | completeness  | 同上                                              | 同上 |
- * | riskLevel     | **後端完全沒有這個概念**                          | 已移除                  |
- *
- * riskLevel 直接刪掉而不是填假值：那是舊原型自行發明的欄位，
- * 系統的風險是審核時由主管勾選 risk_options，不是商品的屬性。
- * 留著它會讓人以為後端有風險分級，是錯誤的心智模型。
- *
- * 分數與完整度後端已在清單端點批次補上，不需要前端再逐筆呼叫 /evaluation。
- *
- * ## ⚠️ submittedBy 這次已接上真實資料，不再是死欄位
- *
- * 後端補了 ProductResponse.createdByName（ProductService／ReviewService
- * 批次查 app_users 後填入），現在直接讀 PendingReviewItem.createdByName，
- * 不再需要「恆為 null」的特殊處理。找不到對應帳號時後端回 fallback 字串，
- * 前端不再需要另外判斷 null。
+ * 待審清單預設顯示 PENDING＋ACTIVE；分類名稱由設定資料對照，分數、完整度與
+ * 建立者名稱由待審 API 提供。核准只代表選品決策，不代表上架或銷售。
  */
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
@@ -44,19 +17,19 @@ import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
 
-/** 待審清單的顯示模型。可為 null 的欄位代表後端目前提供不了。 */
+/** 待審清單的顯示模型；尚無評估紀錄時，分數與完整度為 null。 */
 export interface ReviewItem {
   id: number;
   name: string;
-  /** 後端已批次查好；找不到對應帳號時為 fallback 字串，不會是 null。 */
+  /** 待審 API 提供的建立者顯示名稱。 */
   submittedBy: string;
   status: ReviewStatus;
   itemStatus: ItemStatus;
   /** 由 productTypeId 對照設定 API 得來。 */
   category: string;
-  /** ⚠️ 恆為 null：分數在 /evaluation，清單端點沒有。 */
+  /** 尚無評估紀錄時為 null。 */
   finalScore: number | null;
-  /** ⚠️ 恆為 null，理由同上。 */
+  /** 尚無評估紀錄時為 null。 */
   completeness: number | null;
   submissionCount: number;
   /** ⚠️ 實際是 updatedAt。ProductResponse 沒有「送審時間」這個欄位。 */
@@ -127,7 +100,6 @@ function toReviewItem(item: PendingReviewItem): ReviewItem {
   return {
     id: item.id,
     name: item.name,
-    // 後端已批次查好 createdByName，不再需要「恆為 null」的特殊處理。
     submittedBy: item.createdByName,
     status: item.reviewStatus,
     itemStatus: item.itemStatus,
@@ -157,9 +129,6 @@ export class ReviewComponent implements OnInit {
   readonly records = signal<DecisionRecordRow[]>([]);
 
   // ----- 歷次決策紀錄：搜尋／篩選／排序 -----
-  // 原本這個分頁完全沒有任何互動控制，只是把 API 回來的資料原樣攤平成
-  // 一張表——資料量一多，要從裡面找特定商品或特定結果的紀錄只能用瀏覽器
-  // 內建的 Ctrl+F，體驗跟「待審核清單」分頁（已經有搜尋/篩選）完全不對稱。
   readonly recordSearch = signal('');
   readonly recordResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>('ALL');
   readonly recordSort = signal<'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'>('date_desc');

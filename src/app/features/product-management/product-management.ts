@@ -1,25 +1,7 @@
 /**
  * 檔案用途：正式候選 CANDIDATE 商品主清單、篩選及生命週期操作。
- * AI_SUGGESTED 不在主清單顯示；刪除只允許未審核且從未送審者。
- *
- * ## 這次改寫做了什麼
- *
- * 1. 移除 inject(HttpClient)，改注入 ProductApiService。
- *    原本這個元件與 product-api.ts 各有一份 `/api/products` 的呼叫程式，
- *    contract 一改要改兩處，遲早漏掉。
- *
- * 2. 本地 Product 介面刪除，改用 mapper 的 ProductListItem。
- *    舊介面的 productType（字串名稱）、finalScore、dataCompleteness、
- *    hasReviewRecord 四個欄位後端 ProductResponse 都沒有，是憑空設計的。
- *
- * 3. 篩選改由後端負責。原本是抓全部再前端 filter，
- *    後端已支援 keyword／三種狀態／類型 + 分頁，前端再 filter 一次
- *    會讓分頁完全失效（第 1 頁 20 筆過濾後剩 3 筆，使用者以為只有 3 筆）。
- *    Mock 模式維持前端過濾，因為那裡沒有後端可用。
- *
- * ## 保留的部分
- * 四大 UI 狀態切換器與本地 Mock 完全保留——那是成員 C 的既有交付，
- * demo 仰賴它，不因為接了 API 就砍掉。
+ * 真實模式由後端處理搜尋、篩選與分頁；展示模式使用本地資料。AI_SUGGESTED
+ * 不在主清單顯示，刪除只允許未審核且從未送審的商品。
  */
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';

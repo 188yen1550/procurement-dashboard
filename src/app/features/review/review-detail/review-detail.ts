@@ -1,28 +1,7 @@
 /**
- * 檔案用途：管理人員審核詳情、人工風險、留言、APPROVED／REJECTED 決策。
- * 「其他」風險需備註；AI 只提供摘要，最終核准一定由人工選擇。
- *
- * ## 這次接上真實 API 做了什麼
- *
- * 1. Mock 模式完全保留——原本硬編碼的兩筆展示資料、UI 狀態切換器、
- *    模擬 409 按鈕都不動，PM／利害關係人展示畫面用的到。
- *
- * 2. 真實模式呼叫 `ReviewApiService.getDetailWithTypeName()` 載入審核快照，
- *    送出走 `ReviewApiService.submit()`。
- *
- * 3. ⚠️ 送出前一定先跑 `validateReviewForm()`——後端 `ReviewSubmitRequest`
- *    對 riskOptionIds／reviewComment 刻意不加驗證（見 review.mapper.ts 的
- *    說明：「通過且無風險」是合法結果），企劃書要求的三條規則
- *    （必選結果、其他風險需備註、必填留言）完全由前端把關。
- *
- * 4. ⚠️ 409 是真的會發生的情況，不是模擬：後端用條件式 UPDATE
- *    `WHERE review_status='PENDING'` 做併發控制，代表「你點進來審核時，
- *    別人已經先審過了」。真實模式收到 409 時彈同一個衝突對話框，
- *    導回待審清單，不要照原請求重試。
- *
- * 5. 風險勾選清單改讀 `availableRiskOptions`（只含目前啟用中的選項），
- *    不是設定頁那份含已停用選項的清單——這兩份資料來源不同，
- *    見 RiskOptionLookupService 的說明。
+ * 檔案用途：管理人員審核詳情、人工風險、留言與 APPROVED／REJECTED 決策。
+ * 送出前驗證必選結果、其他風險備註與審核留言；409 代表商品已由他人審核，
+ * 需提示使用者並返回清單。AI 只提供摘要，最終決策由人工選擇。
  */
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';

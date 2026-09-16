@@ -39,8 +39,7 @@
     </div>
   </section>
   }
-  <!-- ⚠️ 修正：原本只有 sr-only 隱藏元素承載狀態訊息，加入候選等操作的
-       成功／失敗回饋一般使用者完全看不到。 -->
+  <!-- 同時提供螢幕閱讀器通知與可見的操作結果。 -->
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
     <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
@@ -109,10 +108,7 @@
             <p class="category">{{ item.category }}</p>
             <h2>{{ item.name }}</h2>
             <p class="supplier">{{ item.supplier }}</p>
-            <!-- ⚠️ trend/audienceMatch/risk 真實模式恆為 null：後端 ai-suggested
-                 端點與正式候選清單同一個 DTO，沒有這些欄位。reason 則已經接上
-                 後端補的 suggestionReason（用跟批次判定相同的門檻即時重算），
-                 不再是死欄位——但仍用同一套「有資料才顯示」的防呆，不編造內容。 -->
+            <!-- 推薦理由由 API 提供；其餘輔助資訊只在資料存在時顯示。 -->
             @if (item.trend !== null) {
               <div class="trend">
                 <strong>{{ item.trend }}</strong
