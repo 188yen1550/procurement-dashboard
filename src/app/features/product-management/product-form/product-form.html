@@ -15,20 +15,26 @@
            商品已經儲存成功，這是選填的加值步驟：把匯入當下沒有對應系統
            商品的舊開團紀錄，連結到剛建立的這件商品。不勾任何一筆、直接
            按「不用了」也完全沒關係，不影響商品本身已經儲存的結果。 -->
-      <section class="form-card" aria-labelledby="claim-title">
+      <section class="form-card claim-card" aria-labelledby="claim-title">
         <header><span>💡</span><div><h2 id="claim-title">這件商品有可能對應到舊的歷史開團紀錄</h2><p>下列紀錄目前沒有連結到任何系統商品，勾選確定是同一件的紀錄，可以讓歷史成團率這項計分因子更準確；不確定的話留著不勾就好。</p></div></header>
         <app-list-sort [sort]="claimSort" [choices]="claimSortChoices" label="歷史紀錄認領" />
-  <ul class="resale-candidate-list">
+        <ul class="claim-candidate-list">
           @for (c of claimCandidates() | sortRows: claimSort.state(); track c.id) {
             <li>
-              <label class="resale-candidate">
+              <label class="claim-candidate" [class.is-checked]="selectedClaimIds().has(c.id)">
                 <input type="checkbox" [checked]="selectedClaimIds().has(c.id)" (change)="toggleClaimCandidate(c.id)" />
-                <span class="resale-candidate-name">{{ c.externalProductName }}</span>
-                <span class="resale-candidate-meta">
-                  {{ c.supplierName ?? '—' }} · 名稱相似度 {{ toSimilarityPercent(c.nameSimilarity) }} · 供應商相似度
-                  {{ toSimilarityPercent(c.supplierSimilarity) }} · {{ c.campaignStartDate }} ~ {{ c.campaignEndDate }} ·
-                  {{ claimResultLabel[c.result] }}
-                </span>
+                <div class="claim-candidate-body">
+                  <div class="claim-candidate-top">
+                    <span class="claim-candidate-name">{{ c.externalProductName }}</span>
+                    <span class="claim-result-badge" [attr.data-result]="c.result">{{ claimResultLabel[c.result] }}</span>
+                  </div>
+                  <div class="claim-candidate-meta">
+                    <span class="claim-meta-item">{{ c.supplierName ?? '—' }}</span>
+                    <span class="claim-meta-item">名稱相似度 {{ toSimilarityPercent(c.nameSimilarity) }}</span>
+                    <span class="claim-meta-item">供應商相似度 {{ toSimilarityPercent(c.supplierSimilarity) }}</span>
+                    <span class="claim-meta-item">{{ c.campaignStartDate }} ~ {{ c.campaignEndDate }}</span>
+                  </div>
+                </div>
               </label>
             </li>
           }
@@ -53,8 +59,17 @@
       </div></section>
 
       @if (isResale()) {
-        <!-- ===== 02：逐層過濾參考商品（商品分類 → 供應商 → 商品名稱） ===== -->
-        <section aria-labelledby="resale-reference-title" [class.is-core-locked]="isCoreLocked()"><header><span>02</span><div><h2 id="resale-reference-title">選擇參考商品（選填）</h2><p>依供應商、商品名稱逐層縮小範圍找出同一件舊商品，選定後自動預填商品說明等資料，不需要知道任何內部編號。</p></div></header><div class="form-grid">
+        <!-- ===== 02：逐層過濾參考商品（商品分類 → 供應商 → 參考商品） =====
+             ⚠️ 供應商欄位改用 input[list]（datalist）而不是純 select：
+             form.controls.supplierName.valueChanges 這條 pipe（見 product-form.ts
+             ngOnInit）本來就同時支援「下拉選定」跟「手動打字」兩種來源，兩者都會
+             debounce 後重新查第三層參考商品，只是舊版畫面用 <select> 把「手動打字」
+             這條路堵死了——分類下已有供應商清單，但清單裡剛好沒有這次真正要用的
+             供應商時，使用者完全無法輸入，這是比欄位重複更嚴重的死路。
+             改用 datalist：清單裡有就用滑鼠選，沒有就直接打字，永遠有路可走，
+             也因此不需要在「商品基本資料」那邊再放一個自由輸入的備援欄位——
+             這裡是供應商欄位唯一、也是永遠可用的互動入口。 -->
+        <section aria-labelledby="resale-reference-title" [class.is-core-locked]="isCoreLocked()"><header><span>02</span><div><h2 id="resale-reference-title">選擇參考商品（選填）</h2><p>依供應商、既有品項逐層縮小範圍找出同一件舊商品，選定後自動預填商品名稱、商品說明等資料，仍可自行修改。</p></div></header><div class="form-grid">
           @if (isCoreLocked()) {
             <!-- 已核准商品：resaleReferenceProductId 屬於選品核心資料，核准後不可異動，
                  這裡只唯讀顯示目前設定，不提供可互動的選單（即使 productTypeId／supplierName
@@ -65,42 +80,85 @@
             } @else {
               <p class="wide helper">未設定參考商品。</p>
             }
+            <p class="wide">供應商：{{ form.controls.supplierName.value || '（未設定）' }}</p>
           } @else if (!form.controls.productTypeId.value) {
             <p class="wide helper">請先選擇上方的商品分類，才能列出這個分類下的供應商。</p>
           } @else {
-            <label>供應商<select formControlName="supplierName" [attr.aria-invalid]="fieldInvalid('supplierName')"><option value="">請選擇</option>@for (s of resaleSuppliers(); track s) { <option [value]="s">{{ s }}</option> }</select>
-              @if (isLoadingResaleSuppliers()) { <small class="helper">供應商清單載入中…</small> }
+            <label class="wide">供應商
+              <input
+                formControlName="supplierName"
+                list="resale-supplier-datalist"
+                autocomplete="off"
+                placeholder="輸入供應商名稱，或從建議清單選擇"
+                [attr.aria-invalid]="fieldInvalid('supplierName')"
+              />
+              <datalist id="resale-supplier-datalist">
+                @for (s of resaleSuppliers(); track s) { <option [value]="s">{{ s }}</option> }
+              </datalist>
+              @if (fieldInvalid('supplierName')) { <small role="alert">請輸入供應商名稱。</small> }
+              @else if (isLoadingResaleSuppliers()) { <small class="helper">供應商建議清單載入中…</small> }
               @else if (resaleSupplierError()) { <small role="alert">{{ resaleSupplierError() }}</small> }
-              @else if (resaleSuppliers().length === 0) { <small class="helper">這個分類下目前沒有既有商品可參考，直接當成全新品項處理即可。</small> }
+              @else if (resaleSuppliers().length === 0) { <small class="helper">這個分類下目前沒有既有供應商可參考，直接輸入即可。</small> }
+              @else { <small class="helper">清單裡沒有想要的供應商時，直接打字輸入新的即可，不受限於清單。</small> }
             </label>
 
             @if (form.controls.supplierName.value.trim()) {
-              <label>商品名稱
+              <label>參考商品（比對既有品項，選填）
                 <select [ngModel]="resaleReferenceProductId()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="onResaleCandidateSelected($event)">
-                  <option [ngValue]="null">請選擇</option>
+                  <option [ngValue]="null">不比對，直接手動輸入本次資料</option>
                   @for (c of resaleCandidateProducts(); track c.productId) { <option [ngValue]="c.productId">{{ c.name }}</option> }
                 </select>
                 @if (isLoadingResaleCandidates()) { <small class="helper">商品清單載入中…</small> }
                 @else if (resaleCandidateError()) { <small role="alert">{{ resaleCandidateError() }}</small> }
-                @else if (resaleCandidateProducts().length === 0) { <small class="helper">這個供應商在這個分類下沒有其他既有商品。</small> }
+                @else if (resaleCandidateProducts().length === 0) { <small class="helper">這個供應商在這個分類下沒有其他既有商品，下方請直接手動填寫。</small> }
+                @else { <small class="helper">這裡選的是「要比對哪件舊商品來預填資料」，選定後會一併帶入下方的商品名稱等欄位，仍可自行修改。</small> }
               </label>
             }
 
             @if (resaleReferenceProductId(); as refId) {
               <div class="wide resale-reference-selected">
-                <span>已選定：{{ resaleReferenceName() }}</span>
+                <span>已選定參考商品：{{ resaleReferenceName() }}</span>
                 @if (isLoadingReferenceDetail()) { <span class="helper">正在讀取資料以便預填…</span> }
                 <button type="button" class="btn" [disabled]="isCoreLocked()" (click)="clearResaleReference()">取消選定</button>
               </div>
-              <p class="wide helper">已預填商品說明、節慶標籤、供貨穩定度、目標客群描述與供應物流屬性；名稱、價格、最低訂購量請依這次實際情況填寫，不會被預填。</p>
+              <p class="wide helper">已預填商品名稱、商品說明、節慶標籤、供貨穩定度、目標客群描述與供應物流屬性；成本價／售價／市價、最低訂購量請依這次實際情況填寫，不會被預填。上述所有預填欄位都還可以自行修改，例如想換個行銷用的商品名稱。</p>
             }
           }
         </div></section>
       }
 
       <section aria-labelledby="basic-title"><header><span>{{ isResale() ? '03' : '02' }}</span><div><h2 id="basic-title">商品基本資料</h2><p>通過審核後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
+        @if (isResale() && resaleReferenceProductId()) {
+        <!-- ⚠️ 2026-09-17修正：原本這裡寫「商品名稱不會自動帶入」，但名稱
+             現在已經改成會預填（見 product-form.ts 的 prefillFromReference()
+             說明）——這則提示如果不跟著改，內容就是錯的，會誤導使用者。
+             改成說明「已經幫你帶入，這裡仍可以自己改」，跟實際行為一致。 -->
+        <div class="wide notice success resale-name-reminder">
+          <strong>商品名稱已依參考商品自動帶入</strong>
+          <span>如果這次要用不同的名稱（例如行銷包裝用語），直接在下面修改即可，不會影響已選定的參考商品。</span>
+        </div>
+        }
         <label class="wide">商品名稱 <em>*</em><input formControlName="name" [attr.aria-invalid]="fieldInvalid('name')" />@if (fieldInvalid('name')) { <small role="alert">請輸入 100 字以內的商品名稱。</small> }</label>
-        <label>供應商名稱 <em>*</em><input formControlName="supplierName" [attr.aria-invalid]="fieldInvalid('supplierName')" />@if (fieldInvalid('supplierName')) { <small role="alert">請輸入供應商名稱。</small> }@if (isResale() && form.controls.productTypeId.value) { <small class="helper">與上方「選擇參考商品」共用同一個欄位，如有不同可直接在這裡調整。</small> }</label>
+        <!-- ⚠️ 供應商名稱只能有一個互動入口：RESALE 且上方「選擇參考商品」
+             正在顯示 datalist input 時（見該 input 的條件），這裡改唯讀摘要，
+             避免兩個地方同時可編輯同一個 FormControl；其餘狀態（NEW、或
+             RESALE 但上方還沒到可以輸入的狀態）這裡就是唯一、真正可編輯
+             的欄位，條件必須跟上方 datalist input 完全對稱。 -->
+        @if (isResale() && form.controls.productTypeId.value && !isCoreLocked()) {
+        <!-- ⚠️ 修正：上一版把這裡改成「只要 isResale() 就一律唯讀」，沒考慮到
+             上方「選擇參考商品」區塊在「還沒選分類」或「已核准鎖定」這兩種
+             狀態下，根本不會渲染那個互動用的 datalist input——結果是這兩種
+             狀態下，畫面上完全沒有任何地方能輸入供應商名稱，required 欄位
+             卡死、表單送不出去也看不出原因。條件必須跟上方 datalist input
+             實際渲染的條件完全一致，才能保證「隨時都恰好有一個、且只有一個」
+             互動輸入框存在，不多不少。 -->
+        <div class="wide resale-supplier-readonly">
+          <span>供應商名稱：{{ form.controls.supplierName.value || '（尚未填寫）' }}</span>
+          <small class="helper">請在上方「選擇參考商品」的供應商欄位輸入或選取，不在這裡重複輸入。</small>
+        </div>
+        } @else {
+        <label>供應商名稱 <em>*</em><input formControlName="supplierName" [attr.aria-invalid]="fieldInvalid('supplierName')" />@if (fieldInvalid('supplierName')) { <small role="alert">請輸入供應商名稱。</small> }</label>
+        }
         <label class="wide">商品說明<textarea rows="3" formControlName="description"></textarea></label>
         <div class="wide image-field" [class.disabled]="pageState() === 'locked'" aria-labelledby="image-label">
           <div class="image-heading"><div><strong id="image-label">商品圖片</strong><small>僅支援單張 JPG、PNG 或 WebP，最大 {{ maxImageSizeLabel }}；建議使用 4:3、至少 800 × 600 px。選取後先在瀏覽器預覽。</small></div><label class="image-picker" [class.is-disabled]="pageState() === 'locked'"><input id="product-image" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" [disabled]="pageState() === 'locked' || isSubmitting()" (change)="onImageSelected($event)" /><span>{{ imageState() === 'ready' ? '更換圖片' : '選擇圖片' }}</span></label></div>
@@ -122,12 +180,14 @@
                 [class.is-selected]="isCampaignTagSelected(tag)"
                 [attr.aria-pressed]="isCampaignTagSelected(tag)"
                 [disabled]="isCoreLocked()"
+                [title]="campaignTagTooltip(tag)"
                 (click)="toggleCampaignTag(tag)"
               >
                 {{ tag }}
               </button>
             }
           </div>
+          <small class="helper">選的是關鍵字標籤，不是直接選節慶——系統會依目前生效中的節慶檔期，自動比對出符合度最高的檔期，同一件商品可隨檔期時間輪替自動對應不同節慶。滑鼠移到標籤上可查看它來自哪個節慶檔期。</small>
         </label>
         @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div>
           @if (priceAboveMarketWarning()) {

@@ -20,12 +20,28 @@
       }
       @if (isLocked()) {
       <button type="button" disabled title="已封存或目前為鎖定預覽">編輯品項</button>
+      } @else if (actions()?.canResubmit) {
+      <a class="resubmit-action" [routerLink]="['/products', product()!.id, 'edit']">重審品項</a>
       } @else {
       <a [routerLink]="['/products', product()!.id, 'edit']">編輯品項</a>
       }
     </div>
     }
   </header>
+  <!-- ⚠️ 補上：review.html 的決策紀錄表格點進「未通過」商品時寫著
+       「可於品項頁重審」，但這裡原本完全沒有對應的提示——使用者點進來
+       只看到跟其他狀態一樣的一般畫面，得自己點進「編輯品項」才會第一次
+       看到跟重審有關的字樣。跟 product-form.html 的 isRejected 提示、
+       review-detail.html 的 isResubmission 提示用同一套判斷條件
+       （actions().canResubmit），三處文案風格保持一致。 -->
+  @if (actions()?.canResubmit) {
+  <section class="notice rejected">
+    <div>
+      <strong>此品項上次未通過審核</strong>
+      <span>可點擊右上角「重審品項」修改後重新送審，歷史審核紀錄不會被覆蓋。</span>
+    </div>
+  </section>
+  }
   @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態預覽</strong><span>本地 Mock 評估與趨勢資料</span></div>

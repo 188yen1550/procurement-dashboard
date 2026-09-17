@@ -253,7 +253,11 @@
                     }
                   </td>
                   <td>
-                    <strong class="score">{{ item.finalScore }}</strong>
+                    @if (!hasFinalScore(item)) {
+                      <span class="unavailable">—</span>
+                    } @else {
+                      <strong class="score">{{ item.finalScore }}</strong>
+                    }
                   </td>
                   <td class="actions-column">
                     @if (item.reviewStatus === 'APPROVED') {
@@ -291,11 +295,8 @@
             <app-list-sort [sort]="riskListSort" [choices]="riskListSortChoices" label="高風險提示" />
   <div class="risk-list">
               @for (risk of data().riskAlerts | sortRows: riskListSort.state(); track risk.id) {
-                <article class="risk-item" [attr.data-level]="risk.level ?? 'UNKNOWN'">
-                  <div>
-                    <strong>{{ risk.productName }}</strong
-                    ><span>{{ riskLevelLabel(risk.level) }}</span>
-                  </div>
+                <article class="risk-item">
+                  <strong>{{ risk.productName }}</strong>
                   <p>{{ risk.message }}</p>
                   <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
                 </article>

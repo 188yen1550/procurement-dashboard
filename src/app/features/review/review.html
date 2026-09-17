@@ -52,14 +52,34 @@
         (ngModelChange)="reviewFilter.set($event)">
         <option value="ALL">全部</option>
         <option value="PENDING">未審核</option>
+        <!-- ⚠️ 「已通過」／「未通過」在真實模式下是死選項：GET /api/reviews/pending
+             後端寫死只回 PENDING+ACTIVE，不吃篩選參數（見 review.ts 的
+             loadPendingItems() 說明），選了也絕對查不到東西。只在 Mock
+             模式顯示，避免使用者在真實環境誤以為這裡能查到已審核商品。
+             真的要查已通過／未通過的商品，請到品項管理頁——那裡的篩選
+             是真的送給後端做的。 -->
+        @if (useMockData) {
         <option value="APPROVED">已通過</option>
         <option value="REJECTED">未通過</option>
+        }
       </select></label><label>品項狀態<select [ngModel]="itemFilter()" (ngModelChange)="itemFilter.set($event)">
         <option value="ALL">全部</option>
         <option value="ACTIVE">使用中</option>
         <option value="ARCHIVED">已封存</option>
-      </select></label><button type="button" class="secondary-action" (click)="clearFilters()">恢復預設</button>
+      </select></label><label>分類設定<select [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+        <option value="ALL">全部</option>
+        @for (c of categoryOptions(); track c) { <option [value]="c">{{ c }}</option> }
+      </select></label><label>送審時間(起)<input type="date" [ngModel]="submittedFrom()"
+        (ngModelChange)="submittedFrom.set($event)" /></label><label>送審時間(迄)<input type="date" [ngModel]="submittedTo()"
+        (ngModelChange)="submittedTo.set($event)" /></label><button type="button" class="secondary-action"
+      (click)="clearFilters()">恢復預設</button>
   </section>
+  @if (!useMockData) {
+  <p class="helper">
+    待審清單僅顯示未審核且使用中的品項；查詢已通過／未通過的商品請至
+    <a routerLink="/products">品項管理</a>。
+  </p>
+  }
   @if (items().length === 0) {
   <section class="empty">
     <h2>目前沒有審核品項</h2>
@@ -108,6 +128,21 @@
     </article>
     }
   </section>
+  @if (totalPages() > 1) {
+  <!-- ⚠️ 補上：totalElements()／totalPages() 由 loadPendingItems() 正確
+       設值，但先前沒有任何畫面元素讀取，待審清單永遠只看得到第 1 頁
+       20 筆，其餘品項無從得知、也無法翻頁查看。 -->
+  <nav class="pagination" aria-label="待審清單分頁">
+    <button type="button" (click)="goToPage(pageNumber() - 1)" [disabled]="pageNumber() === 0 || isLoading">
+      上一頁
+    </button>
+    <span aria-live="polite">第 {{ pageNumber() + 1 }} 頁／共 {{ totalPages() }} 頁（共 {{ totalElements() }} 筆）</span>
+    <button type="button" (click)="goToPage(pageNumber() + 1)"
+      [disabled]="pageNumber() >= totalPages() - 1 || isLoading">
+      下一頁
+    </button>
+  </nav>
+  }
   }
   } @else {
   <section class="records">
@@ -128,7 +163,7 @@
     <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
     }
     <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
-        <div class="table-wrap">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
@@ -147,11 +182,11 @@
             <td>
               <a [routerLink]="['/products', record.productId]">{{ record.name }}</a>
               @if (record.result === 'REJECTED') {
-                <!-- 決策紀錄本身是唯讀快照，不在這裡做重審——重審是對「商品現況」
+              <!-- 決策紀錄本身是唯讀快照，不在這裡做重審——重審是對「商品現況」
                      的操作，集中在品項管理頁（見 product-management.html 的
                      canResubmit 判斷），避免這張表同時身兼決策記錄與生命週期操作
                      兩種職責。這裡只提供「點進去看該商品現況」的路徑。 -->
-                <small class="resubmit-hint">可於品項頁重審</small>
+              <small class="resubmit-hint">可於品項頁重審</small>
               }
             </td>
             <td>第 {{ record.round }} 次</td>
@@ -169,6 +204,18 @@
         </tbody>
       </table>
     </div>
+    @if (recordTotalPages() > 1) {
+    <nav class="pagination" aria-label="決策紀錄分頁">
+      <button type="button" (click)="goToRecordPage(recordPageNumber() - 1)" [disabled]="recordPageNumber() === 0">
+        上一頁
+      </button>
+      <span aria-live="polite">第 {{ recordPageNumber() + 1 }} 頁／共 {{ recordTotalPages() }} 頁</span>
+      <button type="button" (click)="goToRecordPage(recordPageNumber() + 1)"
+        [disabled]="recordPageNumber() >= recordTotalPages() - 1">
+        下一頁
+      </button>
+    </nav>
+    }
   </section>
   }
 </main>

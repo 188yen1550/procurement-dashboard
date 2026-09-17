@@ -123,13 +123,10 @@ export class ReviewComponent implements OnInit {
   readonly pendingSort = new ListSort();
   readonly pendingSortChoices = [
     { key: 'name', label: '商品名稱' },
-    { key: 'category', label: '分類' },
     { key: 'submittedBy', label: '送審人' },
-    { key: 'submittedAt:date', label: '送審時間' },
     { key: 'finalScore', label: '最終分數' },
     { key: 'completeness', label: '完整度' },
     { key: 'submissionCount', label: '送審次數' },
-    { key: 'status|itemStatus', label: '狀態' },
   ];
   readonly recordTableSort = new ListSort();
   private readonly api = inject(ReviewApiService);
@@ -185,15 +182,39 @@ export class ReviewComponent implements OnInit {
     const shouldReload = this.recordResultFilter() !== 'ALL';
     this.recordResultFilter.set('ALL');
     this.recordSort.set('date_desc');
+    // 篩選條件變了，換頁的基準跟著變，回到第 1 頁避免停在一個現在
+    // 可能已經不存在的頁碼上（例如原本在第 3 頁，篩掉大部分資料後
+    // 只剩 1 頁）。
+    this.recordPageNumber.set(0);
     if (shouldReload && !this.useMockData) this.loadDecisionRecords();
   }
   readonly query = signal('');
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
   readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');
+  /** 分類設定篩選——'ALL' 代表不篩選；選項由目前已載入的待審品項動態算出。 */
+  readonly categoryFilter = signal<'ALL' | string>('ALL');
+  /** 送審起訖時間篩選（yyyy-MM-dd，date input 原生格式）；空字串代表不限制該端。 */
+  readonly submittedFrom = signal('');
+  readonly submittedTo = signal('');
+  /** 分類篩選下拉選單的選項：只列出目前這頁待審品項實際出現過的分類，不去問設定 API 拿全部類型清單。 */
+  readonly categoryOptions = computed(() =>
+    [...new Set(this.items().map((item) => item.category).filter(Boolean))].sort(),
+  );
   readonly view = signal<'pending' | 'records'>('pending');
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
   readonly totalElements = signal(0);
+  /**
+   * ⚠️ 修正：跟 product-management.ts 先前同一種 bug——totalElements()
+   * 有從 API 正確設值，但沒有任何畫面元素讀取，待審清單永遠只顯示第一頁
+   * 20 筆，使用者以為「選品審核的商品數僅有 20 筆」。這裡補上跟
+   * product-management.ts 同一套 pageNumber／totalPages／goToPage()。
+   */
+  readonly pageNumber = signal(0);
+  readonly totalPages = signal(0);
+  /** 決策紀錄分頁另外算一份，跟待審清單的分頁狀態互不影響。 */
+  readonly recordPageNumber = signal(0);
+  readonly recordTotalPages = signal(0);
 
   constructor() {
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
@@ -212,14 +233,23 @@ export class ReviewComponent implements OnInit {
    */
   readonly filtered = computed(() => {
     const keyword = this.query().trim().toLocaleLowerCase('zh-Hant');
-    return this.items().filter(
-      (item) =>
+    const from = this.submittedFrom();
+    const to = this.submittedTo();
+    return this.items().filter((item) => {
+      // submittedAt 是完整的 ISO 時間字串（實際存的是 updatedAt，見 ReviewItem
+      // 註解），日期輸入框只給到「日」的精度，取前 10 碼（yyyy-MM-dd）比對即可。
+      const submittedDate = item.submittedAt?.slice(0, 10) ?? '';
+      return (
         (!keyword ||
           item.name.toLocaleLowerCase('zh-Hant').includes(keyword) ||
           (item.submittedBy ?? '').toLocaleLowerCase('zh-Hant').includes(keyword)) &&
         (this.reviewFilter() === 'ALL' || item.status === this.reviewFilter()) &&
-        (this.itemFilter() === 'ALL' || item.itemStatus === this.itemFilter()),
-    );
+        (this.itemFilter() === 'ALL' || item.itemStatus === this.itemFilter()) &&
+        (this.categoryFilter() === 'ALL' || item.category === this.categoryFilter()) &&
+        (!from || (submittedDate !== '' && submittedDate >= from)) &&
+        (!to || (submittedDate !== '' && submittedDate <= to))
+      );
+    });
   });
 
   ngOnInit(): void {
@@ -249,12 +279,13 @@ export class ReviewComponent implements OnInit {
     this.pageState.set('loading');
 
     this.api
-      .listPending({ page: 0, size: 20, sort: 'updatedAt,desc' })
+      .listPending({ page: this.pageNumber(), size: 20, sort: 'updatedAt,desc' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.items.set(result.items.map(toReviewItem));
           this.totalElements.set(result.totalElements);
+          this.totalPages.set(result.totalPages);
           this.isLoading = false;
           this.pageState.set(result.items.length === 0 ? 'empty' : 'default');
         },
@@ -269,12 +300,18 @@ export class ReviewComponent implements OnInit {
       });
   }
 
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.pageNumber.set(page);
+    this.loadPendingItems();
+  }
+
   /** GET /api/reviews/decision-records [僅管理]。失敗只讓紀錄分頁降級，不影響待審清單。 */
   loadDecisionRecords(): void {
     const reviewResult = this.recordResultFilter();
     this.api
       .listDecisionRecords({
-        page: 0,
+        page: this.recordPageNumber(),
         size: 20,
         sort: 'reviewedAt,desc',
         reviewResult: reviewResult === 'ALL' ? undefined : reviewResult,
@@ -295,9 +332,16 @@ export class ReviewComponent implements OnInit {
               comment: record.reviewComment,
             })),
           );
+          this.recordTotalPages.set(result.totalPages);
         },
         error: () => this.records.set([]),
       });
+  }
+
+  goToRecordPage(page: number): void {
+    if (page < 0 || page >= this.recordTotalPages()) return;
+    this.recordPageNumber.set(page);
+    this.loadDecisionRecords();
   }
 
   /**
@@ -307,6 +351,7 @@ export class ReviewComponent implements OnInit {
    */
   updateRecordResultFilter(value: 'ALL' | 'APPROVED' | 'REJECTED'): void {
     this.recordResultFilter.set(value);
+    this.recordPageNumber.set(0);
     if (!this.useMockData) this.loadDecisionRecords();
   }
 
@@ -321,6 +366,9 @@ export class ReviewComponent implements OnInit {
     this.query.set('');
     this.reviewFilter.set('PENDING');
     this.itemFilter.set('ACTIVE');
+    this.categoryFilter.set('ALL');
+    this.submittedFrom.set('');
+    this.submittedTo.set('');
     this.statusMessageState.show('已恢復預設篩選：未審核＋使用中。');
   }
 

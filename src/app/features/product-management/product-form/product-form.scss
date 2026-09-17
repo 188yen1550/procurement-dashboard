@@ -285,6 +285,27 @@
   grid-column: 1/-1
 }
 
+/* 再販售且已選分類、該分類下有既有供應商可選時，商品基本資料這裡改顯示
+   唯讀摘要（見 product-form.html 的說明），樣式沿用 .form-grid label 的
+   字級但拿掉輸入框的視覺樣式，避免看起來像可以直接點擊編輯。 */
+.resale-supplier-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .5rem .65rem;
+  color: #40576a;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  background: #f1f4f6;
+  border: 1px dashed #cbd9e3;
+  border-radius: .45rem;
+}
+
+.resale-supplier-readonly .helper {
+  color: #6c7a89;
+  font-weight: 600;
+}
+
 .form-grid input:not([type=radio]),
 .form-grid select,
 .form-grid textarea {
@@ -544,4 +565,111 @@ a:focus-visible {
   border: 1px solid #f0d9ad;
   border-radius: 0.4rem;
   font-size: var(--t-xs);
+}
+
+/* ===== 「認領歷史紀錄」清單（claim-candidate-list）=====
+   原本這裡完全沒有樣式，畫面上就是瀏覽器預設的項目符號清單＋原生
+   checkbox，跟畫面其他地方（卡片、圓角、留白）的視覺語言完全脫節。
+   改成跟 .form-card 其他區塊一致的卡片式列表：整列可點擊勾選、
+   名稱最顯眼、相似度／日期等次要資訊收成一排小標籤、結果依成團/
+   未成團/取消開團上色，一眼就能分辨。 */
+.claim-card .helper {
+  margin: 0 0 .8rem;
+}
+
+.claim-candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.claim-candidate {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .85rem 1rem;
+  background: #fafbfc;
+  border: 1px solid #e0e8ee;
+  border-radius: .6rem;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.claim-candidate:hover {
+  border-color: #b9c9d6;
+}
+
+.claim-candidate.is-checked {
+  background: #eef6f1;
+  border-color: #7fa34a;
+}
+
+.claim-candidate input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: .15rem;
+  accent-color: #39735c;
+}
+
+.claim-candidate-body {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.claim-candidate-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.claim-candidate-name {
+  color: #23364a;
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.claim-result-badge {
+  padding: .15rem .55rem;
+  color: #526677;
+  background: #eef1f3;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* FULFILLED＝成團（綠）、FAILED＝未成團（紅）、CANCELLED＝取消開團（灰），
+   對應 GROUP_BUY_RESULT_LABEL 的三種代碼。 */
+.claim-result-badge[data-result='FULFILLED'] {
+  color: #21694f;
+  background: #e5f5ee;
+}
+
+.claim-result-badge[data-result='FAILED'] {
+  color: #8a3f39;
+  background: #fff0ef;
+}
+
+.claim-result-badge[data-result='CANCELLED'] {
+  color: #6c7a89;
+  background: #eef1f3;
+}
+
+.claim-candidate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem .75rem;
+  color: #6c7a89;
+  font-size: var(--t-xs);
+}
+
+.claim-meta-item {
+  white-space: nowrap;
 }

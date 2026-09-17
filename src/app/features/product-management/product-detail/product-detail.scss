@@ -172,6 +172,14 @@
   border: 1px solid #e8c59e
 }
 
+/* 跟 product-form.scss 的 .notice.rejected 用同一組配色，「未通過審核」
+   這件事在編輯頁跟詳情頁應該是同一種視覺語言，不要各自長出一套顏色。 */
+.notice.rejected {
+  color: #8a3f39;
+  background: #fff0ef;
+  border: 1px solid #efc1be
+}
+
 .panel,
 .score-grid article,
 .empty,

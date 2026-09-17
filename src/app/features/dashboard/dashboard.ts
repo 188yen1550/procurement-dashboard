@@ -21,7 +21,6 @@ import {
   DashboardRecommendation,
   DashboardUiState,
   ReviewStatus,
-  RiskLevel,
 } from './dashboard.models';
 
 /** 後端真的沒有這個資訊時的統一顯示字串，避免跟真的空字串混淆。 */
@@ -54,8 +53,6 @@ export class Dashboard implements OnInit, OnDestroy {
   readonly riskListSort = new ListSort();
   readonly riskListSortChoices = [
     { key: 'productName', label: '商品名稱' },
-    { key: 'level', label: '風險等級' },
-    { key: 'message', label: '提示內容' },
     { key: 'detectedKeyword', label: '命中關鍵字' },
   ];
   readonly recommendationSortChoices = [
@@ -255,10 +252,9 @@ export class Dashboard implements OnInit, OnDestroy {
     return item.completeness !== null;
   }
 
-  public riskLevelLabel(level: RiskLevel | null): string {
-    if (level === 'HIGH') return '高風險';
-    if (level === 'MEDIUM') return '需留意';
-    return '示警';
+  /** 跟 hasCompleteness() 同樣的理由：null !== 0，不能直接拿 finalScore 當數字比較或顯示。 */
+  public hasFinalScore(item: DashboardRecommendation): boolean {
+    return item.finalScore !== null;
   }
 
   ngOnDestroy(): void {
@@ -298,7 +294,7 @@ function toDashboardPageData(
         item.productTypeId === null
           ? NOT_PROVIDED
           : (productTypeNameById.get(item.productTypeId) ?? NOT_PROVIDED),
-      finalScore: item.finalScore ?? 0,
+      finalScore: item.finalScore,
       // ⚠️ 這裡固定寫 'PENDING'，不是猜測值：後端 getRecommendations() 呼叫
       // findTopRecommendations() 時 reviewStatus 參數寫死傳入 PENDING
       // （見 DashboardService.java 類別註解引用的企劃書 QA4：「只有 CANDIDATE
@@ -316,8 +312,6 @@ function toDashboardPageData(
     riskAlerts: (result.riskAlerts ?? []).map((item) => ({
       id: item.productId,
       productName: item.productName,
-      // 後端沒有風險嚴重度分級概念，不自行假造 HIGH/MEDIUM。
-      level: null,
       // aiReasons 是完整 AI 分析文字（可能較長），不是 Mock 那種精簡人工摘要，
       // 但樣板只是把它當一段文字顯示，不影響版面結構。
       message: item.aiReasons,

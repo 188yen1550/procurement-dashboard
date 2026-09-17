@@ -160,6 +160,7 @@ interface CampaignVM {
   range: string;
   status: string;
   override: boolean;
+  leadDays: number;
   tags: FestiveCampaignTagPayload[];
 }
 
@@ -346,6 +347,7 @@ const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
     range: '2026/08/15–2026/09/25',
     status: 'ACTIVE',
     override: false,
+    leadDays: 30,
     tags: [{ tag: 'bbq', matchTier: 'CORE' }],
   },
   {
@@ -357,6 +359,7 @@ const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
     range: '2026/09/15–2026/10/10',
     status: 'PREPARING',
     override: false,
+    leadDays: 21,
     tags: [{ tag: 'gift', matchTier: 'GENERAL' }],
   },
   {
@@ -368,6 +371,7 @@ const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
     range: '2026/10/01–2026/11/15',
     status: 'UPCOMING',
     override: true,
+    leadDays: 45,
     tags: [{ tag: 'seasonal', matchTier: 'WEAK' }],
   },
 ];
@@ -385,18 +389,8 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
-  readonly modeSort = new ListSort();
-  readonly modeSortChoices = [
-    { key: 'name', label: '模式名稱' },
-    { key: 'code', label: '代碼' },
-    { key: 'description', label: '說明' },
-  ];
-  readonly riskSort = new ListSort();
   readonly typeSort = new ListSort();
   readonly campaignSort = new ListSort();
-  readonly globalBandSort = new ListSort();
-  readonly overrideBandSort = new ListSort();
-  readonly parameterSort = new ListSort();
   readonly accountSort = new ListSort();
   readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
   private readonly api = inject(SettingsApiService);
@@ -471,6 +465,7 @@ export class Settings implements OnInit {
    * null 代表目前是新增模式；有值代表正在編輯這個 id 的既有選項。
    */
   readonly editingRiskOptionId = signal<number | null>(null);
+  readonly editingProductTypeId = signal<number | null>(null);
 
   /**
    * 關鍵字改用陣列＋逐一輸入的方式管理，畫面上呈現成一顆一顆可個別刪除
@@ -541,14 +536,37 @@ export class Settings implements OnInit {
     return this.knownTags().filter((t) => t.toLocaleLowerCase('zh-Hant').includes(keyword));
   });
 
-  /** 搜尋文字本身不在已知清單裡時，允許直接新增這個新標籤。 */
+  /**
+   * 搜尋文字本身不在已知清單裡時，允許直接新增這個新標籤。
+   *
+   * ⚠️ 原本用 knownTags().includes(keyword) 做精確比對（區分大小寫），
+   * 但上面的 filteredKnownTags 是不分大小寫比對——結果是已有「Gift」時，
+   * 打「gift」不只會在清單裡篩出「Gift」，「＋ 新增標籤」按鈕也會同時
+   * 出現，使用者一沒注意點了新增，就會多出一個大小寫不同但語意重複的
+   * 標籤，直接違背這整個 dialog 想避免「標籤名稱不一致」的初衷。改成
+   * 一樣不分大小寫比對，兩者判斷基準才會一致。
+   */
   readonly canAddNewTag = computed(() => {
     const keyword = this.tagPickerSearch().trim();
-    return !!keyword && !this.knownTags().includes(keyword);
+    if (!keyword) return false;
+    const normalized = keyword.toLocaleLowerCase('zh-Hant');
+    return !this.knownTags().some((tag) => tag.toLocaleLowerCase('zh-Hant') === normalized);
   });
 
   /** 目前草稿裡實際有效（非空字串）的標籤數量，供「已選 N 項」跟顯示邏輯共用判斷。 */
   readonly selectedTagRows = computed(() => this.draftTags().filter((r) => r.tag));
+
+  /**
+   * 「進階：調整比對等級」的下拉選單改比對等級時要用這個方法，不要在
+   * 樣板裡直接 `row.matchTier = $event`。selectedTagRows() 是
+   * computed(() => draftTags().filter(...))，篩出來的物件跟 draftTags()
+   * 陣列裡的是同一個參照——直接改屬性雖然「畫面上看起來有變」，但完全
+   * 繞過 draftTags.set()，signal 沒有真的更新，依賴 draftTags() 的其他
+   * computed／等值比較都不會正確重新運算，是很容易埋雷的寫法。
+   */
+  updateTagMatchTier(tag: string, matchTier: FestiveCampaignTagPayload['matchTier']): void {
+    this.draftTags.update((rows) => rows.map((row) => (row.tag === tag ? { ...row, matchTier } : row)));
+  }
 
   openTagPicker(): void {
     this.tagPickerSelected.set(new Set(this.draftTags().map((r) => r.tag).filter(Boolean)));
@@ -1021,12 +1039,15 @@ export class Settings implements OnInit {
     const item = this.productTypes().find((type) => type.name === name);
     if (!item) return;
 
+    const isMajor = item.level === 1;
     this.dialog
       .confirm(
         '確認刪除商品類型',
         [
           `即將永久刪除「${name}」，此操作無法復原。`,
-          '若這個類型已經被任何品項使用，刪除會被拒絕，請改用「停用」。',
+          isMajor
+            ? '若這個大類底下仍有小類、或有任何品項使用，刪除會被拒絕，請先處理小類或改用「停用」。'
+            : '若這個類型已經被任何品項使用，刪除會被拒絕，請改用「停用」。',
         ],
         '確定刪除',
         '取消',
@@ -1077,6 +1098,14 @@ export class Settings implements OnInit {
         this.statusMessageState.show('此類型已被品項使用，不可刪除，請改為停用。');
         return;
       }
+      // 大類（level=1）就算自己 used=0（商品只能掛在小類，大類的 used
+      // 恆為 0），只要底下還有小類就不能刪除，否則小類會變成孤兒資料，
+      // 跟真實 API 的 existsByParentId() 檢查對齊。
+      const hasChildren = this.productTypes().some((type) => type.parentId === item.id);
+      if (hasChildren) {
+        this.statusMessageState.show('此大類底下仍有小類，請先刪除或搬移小類，無法直接刪除。');
+        return;
+      }
       this.productTypes.update((items) => items.filter((type) => type.name !== name));
       return;
     }
@@ -1092,10 +1121,11 @@ export class Settings implements OnInit {
           this.statusMessageState.show(`已刪除「${name}」。`);
         },
         error: (err) => {
-          const error = toApiError(err);
-          this.statusMessageState.show(
-            error.status === 409 ? '此類型已被品項使用，不可刪除，請改為停用。' : error.message,
-          );
+          // 後端 409（IllegalStateException）的訊息本身就是為了安全顯示給
+          // 使用者而寫的可控文字，「品項使用中」跟「底下還有小類」各有專屬
+          // 訊息，直接用 error.message；不要再用前端寫死的單一文案蓋掉，
+          // 否則「底下還有小類」會被誤顯示成「已被品項使用」，講錯真正原因。
+          this.statusMessageState.show(toApiError(err).message);
         },
       });
   }
@@ -1184,7 +1214,12 @@ export class Settings implements OnInit {
     const [start, end] = campaign.range.split('–').map((date) => date.replaceAll('/', '-'));
     this.draftStart.set(start ?? '');
     this.draftEnd.set(end ?? '');
-    // ⚠️ tags 是整份覆蓋：先把現有標籤帶進表單，讓使用者在既有基礎上增刪，
+    // ⚠️ 原本這裡完全沒有回填備戰天數——CampaignVM 之前也沒有 leadDays
+    // 欄位，表單一路沿用 draftLeadDays 的殘留值（預設 30 或上一次編輯/
+    // 新增留下的數字），送出時會用這個錯的值覆蓋掉該檔期真正的備戰天數，
+    // 屬於靜默資料損毀。現在 CampaignVM 已經帶 leadDays，這裡補上回填。
+    this.draftLeadDays.set(campaign.leadDays);
+    // tags 是整份覆蓋：先把現有標籤帶進表單，讓使用者在既有基礎上增刪，
     // 不要讓表單以空陣列開局，否則存檔會把原有標籤全部清光。
     this.draftTags.set(
       campaign.tags.length > 0 ? campaign.tags.map((t) => ({ ...t })) : [{ tag: '', matchTier: 'CORE' }],
@@ -1748,6 +1783,18 @@ export class Settings implements OnInit {
     this.modal.set('risk');
   }
 
+  /**
+   * 開啟商品類型編輯：原本畫面上只有「新增」，完全沒有編輯入口——後端
+   * updateProductType() PUT 端點其實已經存在，只是前端從來沒有接上，
+   * 導致改錯名字的自訂類型只能刪除重建（還可能因為已被品項使用而刪不掉）。
+   * 補上入口，行為跟風險選項的編輯（openRiskEditModal）同一套模式。
+   */
+  openProductTypeEditModal(item: ProductTypeVM): void {
+    this.editingProductTypeId.set(item.id);
+    this.draftName.set(item.name);
+    this.modal.set('productType');
+  }
+
   closeModal(): void {
     this.modal.set(null);
     this.isSavingModal.set(false);
@@ -1759,10 +1806,18 @@ export class Settings implements OnInit {
     this.tagPickerSearch.set('');
     this.tagPickerSelected.set(new Set());
     this.editingRiskOptionId.set(null);
+    this.editingProductTypeId.set(null);
     this.draftKeywordChips.set([]);
     this.draftKeywordInput.set('');
     this.draftCampaignCode.set('');
     this.draftManualOverride.set(true);
+    // ⚠️ 這四個原本沒有被重置——只有 editCampaign() 會寫入它們，關閉/
+    // 新增沒有清空。結果是：編輯過某個檔期之後，直接點「＋ 新增檔期」，
+    // 表單會殘留上一個檔期的分類/日期/備戰天數，不是乾淨的新表單。
+    this.draftCategory.set('FESTIVAL');
+    this.draftStart.set('');
+    this.draftEnd.set('');
+    this.draftLeadDays.set(30);
   }
 
   saveModal(): void {
@@ -1793,10 +1848,17 @@ export class Settings implements OnInit {
         ]);
       }
     } else if (type === 'productType' && this.draftName().trim()) {
-      this.productTypes.update((items) => [
-        ...items,
-        { id: null, name: this.draftName().trim(), system: false, used: 0, active: true, parentId: null, level: null },
-      ]);
+      const editingTypeId = this.editingProductTypeId();
+      if (editingTypeId !== null) {
+        this.productTypes.update((items) =>
+          items.map((item) => (item.id === editingTypeId ? { ...item, name: this.draftName().trim() } : item)),
+        );
+      } else {
+        this.productTypes.update((items) => [
+          ...items,
+          { id: null, name: this.draftName().trim(), system: false, used: 0, active: true, parentId: null, level: null },
+        ]);
+      }
     } else if (
       type === 'campaign' &&
       this.draftName().trim() &&
@@ -1811,6 +1873,7 @@ export class Settings implements OnInit {
         range: `${this.draftStart()}–${this.draftEnd()}`,
         status: 'UPCOMING',
         override: false,
+        leadDays: this.draftLeadDays(),
         tags: this.draftTags().filter((t) => t.tag.trim()),
       };
       this.campaigns.update((items) =>
@@ -1897,7 +1960,30 @@ export class Settings implements OnInit {
         this.statusMessageState.show('請輸入類型名稱。');
         return;
       }
+      const editingTypeId = this.editingProductTypeId();
       this.isSavingModal.set(true);
+
+      if (editingTypeId !== null) {
+        this.api
+          .updateProductType(editingTypeId, { name: this.draftName().trim() })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (updated) => {
+              this.productTypes.update((items) =>
+                items.map((item) => (item.id === editingTypeId ? { ...item, name: updated.name } : item)),
+              );
+              this.productTypeLookup.invalidate();
+              this.statusMessageState.show('已更新商品類型。');
+              this.closeModal();
+            },
+            error: (err) => {
+              this.isSavingModal.set(false);
+              this.statusMessageState.show(toApiError(err).message);
+            },
+          });
+        return;
+      }
+
       this.api
         .createProductType({ name: this.draftName().trim() })
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1964,9 +2050,17 @@ export class Settings implements OnInit {
         );
         return;
       }
-      const tags = this.draftTags()
-        .filter((row) => row.tag.trim())
-        .map((row) => ({ tag: joinCampaignTags([row.tag.trim()]), matchTier: row.matchTier }));
+      // ⚠️ 防呆：festive_campaign_tags 在 (campaign_id, tag) 上有 UNIQUE 約束，
+      // 後端 saveTags() 現在會自動去重，但前端這裡也順手做一次——避免明明
+      // 知道會撞唯一約束，還是把可能重複的清單原封不動送出去，多一趟浪費
+      // 的來回請求。用 trim 後的文字當 key，同名時保留第一筆的比對等級。
+      const seenTags = new Map<string, FestiveCampaignTagPayload>();
+      for (const row of this.draftTags()) {
+        const trimmed = row.tag.trim();
+        if (!trimmed || seenTags.has(trimmed)) continue;
+        seenTags.set(trimmed, { tag: joinCampaignTags([trimmed]), matchTier: row.matchTier });
+      }
+      const tags = [...seenTags.values()];
 
       const existing = this.campaigns().find((item) => item.name === this.selectedCampaign());
 
@@ -2164,6 +2258,7 @@ function toCampaignVM(payload: {
   category: FestiveCategory;
   startDate: string;
   endDate: string;
+  preparationLeadDays: number | null;
   campaignStatus: string;
   isManualOverride: boolean | null;
   tags: FestiveCampaignTagPayload[];
@@ -2177,6 +2272,9 @@ function toCampaignVM(payload: {
     range: `${payload.startDate}–${payload.endDate}`,
     status: payload.campaignStatus,
     override: payload.isManualOverride ?? false,
+    // 後端未填時預設 30（見 FestiveCampaignResponsePayload 註解），這裡跟著
+    // 用同一個保底值，避免 null 一路傳進表單的 number input 變成空白。
+    leadDays: payload.preparationLeadDays ?? 30,
     tags: payload.tags ?? [],
   };
 }

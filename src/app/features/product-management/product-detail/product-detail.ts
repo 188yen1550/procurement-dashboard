@@ -28,7 +28,7 @@ import { ProductTypeLookupService } from '../../settings/api/product-type-lookup
 import { ProductApiService } from '../api/product-api.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
-import { AiAnalysisModel } from '../api/product.mapper';
+import { AiAnalysisModel, toProductActionAvailability } from '../api/product.mapper';
 import {
   DetailProduct,
   DetailState,
@@ -36,6 +36,7 @@ import {
   ReviewStatus,
   toDetailProduct,
 } from './product-detail.model';
+import { CandidateStatus } from '../../../core/domain/enums';
 
 /**
  * 把 AiAnalysisModel 轉成 toDetailProduct() 要的 extras 形狀。
@@ -219,6 +220,28 @@ export class ProductDetail implements OnInit {
   readonly isLocked = computed(
     () => this.pageState() === 'locked' || this.product()?.itemStatus === 'ARCHIVED',
   );
+
+  /**
+   * ⚠️ 補上：這頁原本完全沒有算 canResubmit，「未通過審核」的商品在
+   * 這裡只看得到泛用的「編輯品項」連結——跟 product-management.html
+   * 清單列（同一條件會顯示「重審」而非「編輯」）、product-form.html
+   * 編輯頁（會顯示「此品項上次未通過審核」提示＋「儲存並重審」按鈕）
+   * 不一致。而 review.html 決策紀錄表格點進商品名稱時，明確寫著
+   * 「可於品項頁重審」——這裡卻沒有對應的重審入口／提示可以兌現這句話，
+   * 使用者得先點進「編輯品項」才會第一次看到重審相關字樣。
+   * 共用跟清單同一份判斷邏輯（toProductActionAvailability），避免這裡
+   * 又長出第二套跟清單不一致的規則。
+   */
+  readonly actions = computed(() => {
+    const p = this.product();
+    if (!p) return null;
+    return toProductActionAvailability({
+      reviewStatus: p.reviewStatus,
+      itemStatus: p.itemStatus,
+      candidateStatus: p.candidateStatus as CandidateStatus,
+      submissionCount: p.submissionCount,
+    });
+  });
 
   ngOnInit(): void {
     this.reload();

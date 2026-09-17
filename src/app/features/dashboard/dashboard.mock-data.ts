@@ -116,21 +116,18 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     {
       id: 1,
       productName: '磁吸快充行動電源',
-      level: 'HIGH',
       message: 'AI 摘要提及認證文件與電池安全資訊尚未確認。',
       detectedKeyword: '認證／安全',
     },
     {
       id: 2,
       productName: '機能防曬外套',
-      level: 'MEDIUM',
       message: '尺寸退換貨政策不完整，可能提高客服與庫存壓力。',
       detectedKeyword: '退換貨',
     },
     {
       id: 3,
       productName: '低糖精品月餅禮盒',
-      level: 'MEDIUM',
       message: '節慶檔期接近，包裝交期可能影響預定時程。',
       detectedKeyword: '交期',
     },

@@ -215,7 +215,12 @@ button:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 2.1fr) minmax(280px, 0.9fr);
   gap: 1rem;
-  align-items: start;
+  /* ⚠️ 原本是 align-items: start，兩欄各自依內容決定高度——高風險提示
+     的項目數通常比 Top 10 少，看起來就是右側一小塊、左側一大塊，版面
+     不齊。改成 stretch（grid 的預設值其實就是 stretch，這裡明確寫出來
+     避免被誤改回 start）讓兩欄拉齊到同一個高度，交給 .risk-panel／
+     .risk-list 內部處理超出高度後的捲動（見下方）。 */
+  align-items: stretch;
 }
 .panel {
   background: #fff;
@@ -357,6 +362,14 @@ td {
 .side-column {
   display: grid;
   gap: 1rem;
+  /* stretch 底下的 .risk-panel 才會真正吃到 content-grid 拉齊過來的高度，
+     而不是保持自己的內容高度（grid 預設值就是 stretch，這裡明確寫出來，
+     跟上面 .content-grid 的註解是同一個原因）。 */
+  align-items: stretch;
+  /* .content-grid 是 stretch 之後，.side-column 這個 grid item 本身也要
+     能縮到比內容小，內部的 .risk-panel 才擋得住溢出改用捲動而不是把
+     整欄撐高，這是 grid/flex 常見的「子項目預設不縮」問題。 */
+  min-height: 0;
 }
 .conversion-panel {
   justify-content: flex-start;
@@ -406,8 +419,21 @@ td {
   font-size: var(--t-xs);
   font-weight: 800;
 }
+/* .panel-header 跟 <app-list-sort> 維持自然高度，.risk-list 吃掉剩餘
+   空間並在超出時自己捲動——面板整體高度因此固定跟 Top 10 一樣高，
+   不會被清單筆數撐高，也不會把 <aside> 其餘內容擠出畫面。 */
+.risk-panel {
+  display: flex;
+  flex-direction: column;
+  /* 同一個「flex 子項目預設不縮」問題：沒有這行，.risk-list 的
+     max-height:100% 不會生效，超出的項目會撐開卡片而不是自己捲動。 */
+  min-height: 0;
+}
 .risk-list {
   padding: 0.4rem 1rem 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .risk-item {
   margin-top: 0.7rem;
@@ -416,17 +442,9 @@ td {
   background: #fffaf0;
   border-radius: 0.4rem;
 }
-.risk-item[data-level='HIGH'] {
-  border-color: #bd514b;
-  background: #fff3f2;
-}
-.risk-item > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.risk-item span {
-  color: #a24640;
+.risk-item strong {
+  display: block;
+  color: #40311a;
   font-size: var(--t-xs);
   font-weight: 800;
 }
@@ -577,9 +595,20 @@ td {
   }
   .content-grid {
     grid-template-columns: minmax(0, 1fr);
+    /* ⚠️ 補上：這個斷點把兩欄改成單欄上下堆疊，.recommendations-panel
+       跟 .side-column 不再左右並排，「跟 Top 10 等高」这件事在堆疊版面
+       下沒有意義（因為兩者本來就各自佔一整行，不會有一個被撐得比另一個
+       高的問題）。但拿掉 align-items: stretch 後，.risk-panel 原本靠
+       stretch 拿到的高度限制也一併消失，超長清單會直接把整個頁面撐得
+       很長。改用固定的 max-height + 捲動，維持「高風險提示不要無限
+       撐高」這個目的，只是換一種寬度下的做法。 */
+    align-items: initial;
   }
   .side-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .risk-panel {
+    max-height: 26rem;
   }
 }
 @media (max-width: 700px) {

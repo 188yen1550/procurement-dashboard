@@ -232,6 +232,27 @@ export class ProductForm implements OnInit {
   readonly campaignTagOptions = signal<readonly string[]>(
     this.useMockData ? MOCK_CAMPAIGN_TAGS : [],
   );
+  /**
+   * tag → 這個標籤來自哪些節慶檔期的名稱（逗號分隔），純粹給畫面上的
+   * tooltip 用。
+   *
+   * ⚠️ 商品這裡選的本來就是「節慶標籤」（關鍵字），不是直接選一個節慶——
+   * 後端 ScoringService.buildMatchedCampaignSnapshot() 是拿商品的標籤跟
+   * 目前 PREPARING／ACTIVE 的檔期各自的標籤做比對，自動找出比對度最高
+   * 的檔期，商品本身不綁定單一檔期。這樣同一件商品的標籤能隨著檔期
+   * 隨時間輪替（中秋檔期結束、下一個節慶檔期開始）自動比對到新的檔期，
+   * 不需要每次都手動改商品去指定新節慶。畫面上這串標籤看起來像跟
+   * 節慶無關的關鍵字，容易讓人誤會是隨便打的、應該改成直接選節慶——
+   * 這裡不改底層設計（那會讓商品標籤失去跨檔期自動比對的彈性），只補上
+   * 這個 tooltip，滑鼠移到標籤上能看到它實際來自哪個／哪些節慶檔期。
+   */
+  readonly tagCampaignNames = signal<ReadonlyMap<string, string>>(new Map());
+
+  /** 標籤按鈕的 title：告訴使用者這個標籤實際來自哪個節慶檔期，不是憑空存在的關鍵字。 */
+  campaignTagTooltip(tag: string): string {
+    const names = this.tagCampaignNames().get(tag);
+    return names ? `來自節慶檔期：${names}` : '';
+  }
 
   /** 真實模式下由載入的商品決定；Mock 模式由 EDIT_DATA 決定。兩者最終都反映在這兩個 signal。 */
   readonly reviewStatus = signal<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
@@ -472,11 +493,19 @@ export class ProductForm implements OnInit {
   }
 
   /**
-   * 選定參考商品後，依團隊決議的欄位清單預填：只預填「商品固有屬性」
-   * ——商品說明、節慶標籤、供貨穩定度、目標客群描述、8 個 Gate 判定屬性。
-   * 不預填名稱、成本價／售價／市價、最低訂購量、價格競爭力、預估購買率
-   * ——這些每次進貨成本、每次開團的市場預期都可能不同，照抄容易讓使用者
-   * 忘記改成這次真正的數字。
+   * 選定參考商品後，依團隊決議的欄位清單預填：「商品固有屬性」（商品說明、
+   * 節慶標籤、供貨穩定度、目標客群描述、8 個 Gate 判定屬性）＋商品名稱。
+   * 不預填成本價／售價／市價、最低訂購量、價格競爭力、預估購買率——這些
+   * 每次進貨成本、每次開團的市場預期都可能不同，照抄容易讓使用者忘記
+   * 改成這次真正的數字，跟「商品名稱」不是同一類：再販售賣的是同一件
+   * 實體商品，名稱通常就是同一個，沒有理由要求使用者每次都重打一遍；
+   * 需要換個名稱行銷包裝是例外情況，而不是預設情況，交給下面的 dirty
+   * 判斷處理即可——真的想換掉就自己打字蓋過去。
+   *
+   * ⚠️ 2026-09-17修正：先前名稱被歸進跟價格／成本一樣「每次都可能不同，
+   * 不該自動帶入」那一類，但沒有任何具體理由支持這個歸類，名稱不像
+   * 價格會隨時間波動；使用者明確反映「若無特別推薦的因素，請自動帶入」，
+   * 查證後找不到站得住腳的理由繼續排除它，改成跟其他固有屬性一樣預填。
    *
    * 只覆蓋使用者「還沒自己動過」的欄位（controls.xxx.dirty 為 false）：
    * 若使用者在選定參考商品之前已經手動填過商品說明，選定參考商品不該
@@ -487,6 +516,9 @@ export class ProductForm implements OnInit {
    */
   private prefillFromReference(product: Partial<ProductResponsePayload>): void {
     const patch: Record<string, unknown> = {};
+    if (!this.form.controls.name.dirty && product.name) {
+      patch['name'] = product.name;
+    }
     if (!this.form.controls.description.dirty && product.description) {
       patch['description'] = product.description;
     }
@@ -675,8 +707,25 @@ export class ProductForm implements OnInit {
         next: (campaigns) => {
           const tags = campaigns.flatMap((campaign) => campaign.tags.map((tag) => tag.tag.trim()));
           this.campaignTagOptions.set([...new Set(tags.filter(Boolean))].sort());
+
+          const namesByTag = new Map<string, Set<string>>();
+          for (const campaign of campaigns) {
+            for (const tag of campaign.tags) {
+              const trimmed = tag.tag.trim();
+              if (!trimmed) continue;
+              const set = namesByTag.get(trimmed) ?? new Set<string>();
+              set.add(campaign.campaignName);
+              namesByTag.set(trimmed, set);
+            }
+          }
+          this.tagCampaignNames.set(
+            new Map([...namesByTag].map(([tag, names]) => [tag, [...names].join('、')])),
+          );
         },
-        error: () => this.campaignTagOptions.set([]),
+        error: () => {
+          this.campaignTagOptions.set([]);
+          this.tagCampaignNames.set(new Map());
+        },
       });
   }
 

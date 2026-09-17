@@ -1,11 +1,10 @@
 /**
  * 檔案用途：Dashboard 畫面模型。
  * 分類名稱由 productTypeId 對照取得；尚無評估紀錄時完整度可為 null。
- * 推薦清單只包含待審商品。風險 API 未提供嚴重度時，level 保持 null。
+ * 推薦清單只包含待審商品。
  */
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type DashboardUiState = 'default' | 'locked' | 'loading' | 'edge';
-export type RiskLevel = 'HIGH' | 'MEDIUM';
 
 export interface DashboardStatistics {
   totalProducts: number;
@@ -32,7 +31,14 @@ export interface DashboardRecommendation {
   rank: number;
   name: string;
   category: string;
-  finalScore: number;
+  /**
+   * ⚠️ 理論上 findTopRecommendations() 的 JOIN 條件（product_evaluations 對
+   * product_id 有 UNIQUE 約束）保證清單裡每一筆都查得到評估資料，這裡維持
+   * nullable 純粹是防禦性寫法：跟 completeness 用同一套「查不到就顯示
+   * ―，不要偽裝成一個看起來合理的數字」原則，避免 0 分被誤讀成「這個
+   * AI 推薦的商品分數是 0」。
+   */
+  finalScore: number | null;
   /** ⚠️ 前端固定寫死 'PENDING'，理由見檔頭說明。不是後端回傳的值。 */
   reviewStatus: ReviewStatus | null;
   /** 該商品若尚無評估紀錄則為 null。 */
@@ -45,8 +51,6 @@ export interface DashboardRecommendation {
 export interface DashboardRiskAlert {
   id: number;
   productName: string;
-  /** ⚠️ 真實模式恆為 null：後端沒有風險嚴重度分級概念。 */
-  level: RiskLevel | null;
   message: string;
   /** 真實模式可能同時命中多個關鍵字，已用頓號合併成單一字串顯示。 */
   detectedKeyword: string;
