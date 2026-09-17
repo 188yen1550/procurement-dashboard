@@ -28,7 +28,7 @@
   }
   <nav class="tabs">
     <button type="button" [class.active]="view() === 'pending'" (click)="view.set('pending')">
-      待審核清單 <span>{{ items().length }}</span></button><button type="button" [class.active]="view() === 'records'"
+      待審核清單 </button><button type="button" [class.active]="view() === 'records'"
       (click)="view.set('records')">
       歷次決策紀錄
     </button>
@@ -162,7 +162,6 @@
     @if (records().length > 0 && filteredRecords().length === 0) {
     <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
     }
-    <p class="helper">點擊欄位標題切換升冪／降冪；排序目前載入的資料。</p>
     <div class="table-wrap">
       <table>
         <thead>

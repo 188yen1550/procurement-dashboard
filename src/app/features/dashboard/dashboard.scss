@@ -215,11 +215,13 @@ button:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 2.1fr) minmax(280px, 0.9fr);
   gap: 1rem;
-  /* ⚠️ 原本是 align-items: start，兩欄各自依內容決定高度——高風險提示
-     的項目數通常比 Top 10 少，看起來就是右側一小塊、左側一大塊，版面
-     不齊。改成 stretch（grid 的預設值其實就是 stretch，這裡明確寫出來
-     避免被誤改回 start）讓兩欄拉齊到同一個高度，交給 .risk-panel／
-     .risk-list 內部處理超出高度後的捲動（見下方）。 */
+  /* stretch 讓右欄在天生比 Top 10 短的時候可以拉齊；但 stretch 本身無法
+     擋住「右欄內容天生就比 Top 10 高」的情況——grid 算列高時是先看每個
+     項目沒被截斷前的天生內容高度，右欄若內容夠多，反而會把這一列的
+     高度撐高，變成 Top 10 被迫跟著長高，這正是使用者說「不是要 Top 10
+     跟著變高」的那個症狀。真正擋住右欄長高的是 .risk-panel 的
+     max-height（見下方），stretch 在這裡只負責短的時候把右欄拉滿，
+     不負責長的時候的上限。 */
   align-items: stretch;
 }
 .panel {
@@ -420,11 +422,19 @@ td {
   font-weight: 800;
 }
 /* .panel-header 跟 <app-list-sort> 維持自然高度，.risk-list 吃掉剩餘
-   空間並在超出時自己捲動——面板整體高度因此固定跟 Top 10 一樣高，
-   不會被清單筆數撐高，也不會把 <aside> 其餘內容擠出畫面。 */
+   空間並在超出時自己捲動。
+   2026-09-17再修正：只靠 align-items:stretch＋min-height:0 這條鏈路
+   不夠——grid 計算列高時是用「.risk-panel 沒被截斷前的天生內容高度」
+   去參與，如果高風險提示項目多、天生內容比 Top 10 高，會反過來把
+   Top 10 那一列撐高，變成「Top 10 跟著長高」而不是「高風險提示自己
+   縮短」，跟使用者要的方向剛好相反。這裡改成 max-height 給一個明確
+   上限，不管天生內容多高，.risk-panel 這個 box 本身永遠不會超過這個
+   高度，grid 列高也就不會被它撐大；超過上限的項目交給 .risk-list 的
+   overflow-y:auto 自己捲動。 */
 .risk-panel {
   display: flex;
   flex-direction: column;
+  max-height: 75rem;
   /* 同一個「flex 子項目預設不縮」問題：沒有這行，.risk-list 的
      max-height:100% 不會生效，超出的項目會撐開卡片而不是自己捲動。 */
   min-height: 0;

@@ -17,6 +17,17 @@
            按「不用了」也完全沒關係，不影響商品本身已經儲存的結果。 -->
       <section class="form-card claim-card" aria-labelledby="claim-title">
         <header><span>💡</span><div><h2 id="claim-title">這件商品有可能對應到舊的歷史開團紀錄</h2><p>下列紀錄目前沒有連結到任何系統商品，勾選確定是同一件的紀錄，可以讓歷史成團率這項計分因子更準確；不確定的話留著不勾就好。</p></div></header>
+        @if (claimTargetSnapshot(); as target) {
+        <!-- ⚠️ 補上：原本這裡只有候選清單，完全沒有顯示「現在是在幫哪件
+             商品認領」，使用者比對下面每一筆候選時沒有基準可以對照，
+             只能憑印象回想剛剛打的名稱／供應商。固定顯示在候選清單正
+             上方，隨時可以往上看一眼核對。 -->
+        <div class="claim-target-summary">
+          <span class="claim-target-label">目前新增的商品</span>
+          <span class="claim-target-name">{{ target.name }}</span>
+          <span class="claim-target-supplier">供應商：{{ target.supplierName }}</span>
+        </div>
+        }
         <app-list-sort [sort]="claimSort" [choices]="claimSortChoices" label="歷史紀錄認領" />
         <ul class="claim-candidate-list">
           @for (c of claimCandidates() | sortRows: claimSort.state(); track c.id) {

@@ -577,6 +577,38 @@ a:focus-visible {
   margin: 0 0 .8rem;
 }
 
+/* 認領面板正上方的「目前新增的商品」比對基準列——跟 .claim-card 其他
+   區塊拉開一點視覺重量，用淺色底色框起來，讓使用者掃視候選清單前，
+   先看一眼現在是在核對哪件商品。 */
+.claim-target-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .3rem .6rem;
+  margin: 0 0 .8rem;
+  padding: .65rem .9rem;
+  background: #eef4f8;
+  border: 1px solid #dce6ed;
+  border-radius: .6rem;
+}
+
+.claim-target-label {
+  color: #526677;
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.claim-target-name {
+  color: #1c5286;
+  font-size: var(--t-base);
+  font-weight: 800;
+}
+
+.claim-target-supplier {
+  color: #40576a;
+  font-size: var(--t-xs);
+}
+
 .claim-candidate-list {
   display: flex;
   flex-direction: column;

@@ -986,6 +986,16 @@ export class ProductForm implements OnInit {
   readonly selectedClaimIds = signal<ReadonlySet<number>>(new Set());
   readonly isClaiming = signal(false);
   private claimTargetProductId: number | null = null;
+  /**
+   * 認領面板要顯示「這件剛建立的商品」本身的名稱／供應商，讓使用者能
+   * 逐一比對下面每筆候選紀錄是不是真的同一件——原本畫面只有候選清單，
+   * 完全沒有顯示「現在是在幫哪件商品認領」，沒有比對基準。
+   * 用獨立的 signal 存一份快照，不要直接讀 form.controls：儲存成功後
+   * 表單有可能被使用者繼續編輯（例如認領之前手滑改了名稱），這裡要固定
+   * 顯示「儲存當下」的值，才會跟候選清單的比對基準（送出查詢當下的
+   * name／supplierName）一致，不會因為使用者後續操作而跑掉。
+   */
+  readonly claimTargetSnapshot = signal<{ name: string; supplierName: string } | null>(null);
 
   private checkClaimCandidatesThenNavigate(productId: number): void {
     const productTypeId = this.form.controls.productTypeId.value;
@@ -995,12 +1005,14 @@ export class ProductForm implements OnInit {
       return;
     }
 
+    const supplierName = this.form.controls.supplierName.value.trim();
     this.claimTargetProductId = productId;
+    this.claimTargetSnapshot.set({ name, supplierName: supplierName || '（未填寫）' });
     this.groupBuyApi
       .searchUnlinkedCandidates({
         productTypeId,
         name,
-        supplierName: this.form.controls.supplierName.value.trim() || undefined,
+        supplierName: supplierName || undefined,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
