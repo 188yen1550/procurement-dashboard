@@ -160,12 +160,13 @@ button:focus-visible {
 .stat-card.ai-suggested::before {
   background: #8a63d2;
 }
-.stat-card.ai-suggested {
+.stat-card {
   padding: 0;
 }
 /* 整張卡片都可點擊跳轉，不是只有底部一小行文字才能點——
    card 本身的 padding 移到 .stat-card-link 上，讓可點擊區域涵蓋整張卡片。 */
 .stat-card-link {
+  box-sizing: border-box;
   display: block;
   height: 100%;
   padding: 1.1rem 1.1rem 1.3rem;
@@ -692,21 +693,73 @@ td {
 
 .status-chart-wrap {
   position: relative;
-  height: 260px;
-  margin-top: 0.5rem;
+  height: 220px;
+  min-width: 0;
+}
+
+.status-overview {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(230px, 1.15fr);
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+.chart-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  strong { font-size: 2rem; color: #1e3448; }
+  span { color: #6c7a89; font-size: var(--t-xs); }
+}
+.status-breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 4rem;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #edf1f4;
+    font-size: var(--t-sm);
+  }
+  li:last-child { border-bottom: 0; }
+  small { font-weight: normal; color: #6c7a89; }
+}
+.status-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  i { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex-shrink: 0; }
+}
+.status-percentage { text-align: right; color: #6c7a89; }
+.status-note { margin: 0 1.5rem 1rem; color: #935f16; font-size: var(--t-xs); }
+.chart-row > .conversion-panel {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
 }
 
 .chart-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
+  grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1100px) {
   .chart-row {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 600px) {
+  .status-overview { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 1rem; }
 }
 
 .content-grid.operator-view {

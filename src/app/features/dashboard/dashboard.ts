@@ -92,6 +92,23 @@ export class Dashboard implements OnInit, OnDestroy {
     this.useMockData ? DASHBOARD_MOCK_DATA : this.realData(),
   );
 
+  readonly statusBreakdown = computed(() => {
+    const stats = this.data().statistics;
+    return [
+      { label: '待人工審核', count: stats.pendingReviews, color: '#d19a32' },
+      { label: '通過審核', count: stats.approvedProducts, color: '#379773' },
+      { label: '未通過審核', count: stats.rejectedProducts, color: '#c76661' },
+      { label: 'AI 建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' },
+    ].map((item) => ({
+      ...item,
+      percentage: stats.totalProducts > 0
+        ? (item.count / stats.totalProducts * 100).toFixed(1) : '0.0',
+    }));
+  });
+  readonly statusTotal = computed(() =>
+    this.statusBreakdown().reduce((total, item) => total + item.count, 0),
+  );
+
   // ----- 狀態分布圖表（chart.js）-----
   @ViewChild('statusChartCanvas') private readonly statusChartCanvas?: ElementRef<HTMLCanvasElement>;
   private chart: Chart | null = null;
@@ -117,24 +134,28 @@ export class Dashboard implements OnInit, OnDestroy {
    * 家族的 afterNextRender／afterEveryRender，這裡沿用一致的做法。
    */
   private readonly renderStatusChartEffect = afterRenderEffect(() => {
-    // 讀取 data() 建立依賴——待審／通過／未通過三個數字任一變動，
+    // 四種狀態共用明細資料，任一數字變動時同步更新圖表。
     // 圖表都要重新畫。canvas 在 skeleton／empty／error 狀態下不存在，
     // ViewChild 拿到 undefined 時直接跳過，不強行畫圖到不存在的元素上。
-    const stats = this.data().statistics;
+    const breakdown = this.statusBreakdown();
     const canvas = this.statusChartCanvas?.nativeElement;
     if (!canvas) return;
 
     const chartData = {
-      labels: ['待審核', '已通過', '未通過'],
+      labels: breakdown.map((item) => item.label),
       datasets: [
         {
-          data: [stats.pendingReviews, stats.approvedProducts, stats.rejectedProducts],
-          backgroundColor: ['#d19a32', '#379773', '#c76661'],
+          data: breakdown.map((item) => item.count),
+          backgroundColor: breakdown.map((item) => item.color),
           borderWidth: 0,
         },
       ],
     };
 
+    if (this.chart && this.chart.canvas !== canvas) {
+      this.chart.destroy();
+      this.chart = null;
+    }
     if (this.chart) {
       this.chart.data = chartData;
       this.chart.update();
@@ -155,7 +176,7 @@ export class Dashboard implements OnInit, OnDestroy {
         maintainAspectRatio: false,
         cutout: '68%',
         plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          legend: { display: false },
         },
       },
     });

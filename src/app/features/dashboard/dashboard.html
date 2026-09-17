@@ -73,7 +73,7 @@
       <span class="spinner" aria-hidden="true"></span>正在整理統計與 AI 評分結果…
     </div>
     <section class="stats-grid" aria-label="統計資料載入中">
-      @for (item of [1, 2, 3, 4]; track item) {
+      @for (item of [1, 2, 3, 4, 5]; track item) {
         <div class="skeleton-card"><span></span><strong></strong><small></small></div>
       }
     </section>
@@ -94,7 +94,7 @@
       <span class="spinner" aria-hidden="true"></span>正在載入儀表板資料…
     </div>
     <section class="stats-grid" aria-label="統計資料載入中">
-      @for (item of [1, 2, 3, 4]; track item) {
+      @for (item of [1, 2, 3, 4, 5]; track item) {
         <div class="skeleton-card"><span></span><strong></strong><small></small></div>
       }
     </section>
@@ -152,19 +152,27 @@
 
     <section class="stats-grid" aria-label="選品統計">
       <article class="stat-card total">
+        <a class="stat-card-link" routerLink="/products" aria-label="候選商品總數：前往品項管理">
         <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong>
+        </a>
       </article>
       <article class="stat-card pending">
+        <a class="stat-card-link" routerLink="/products" aria-label="待人工審核：前往品項管理">
         <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
+        </a>
         <!-- 2026-09-16修正：後端 pendingReviews 已改為只算已轉正候選（CANDIDATE）
              的商品，不再含 AI 建議尚未轉正候選的部分，兩者是互斥集合，
              這裡不用再額外說明子集關係。 -->
       </article>
       <article class="stat-card approved">
+        <a class="stat-card-link" routerLink="/products" aria-label="通過審核：前往品項管理">
         <span>通過審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
+        </a>
       </article>
       <article class="stat-card rejected">
+        <a class="stat-card-link" routerLink="/products" aria-label="未通過審核：前往品項管理">
         <span>未通過審核</span><strong>{{ data().statistics.rejectedProducts }}</strong>
+        </a>
       </article>
       <article class="stat-card ai-suggested">
         <a class="stat-card-link" routerLink="/products/ai-suggestions" aria-label="AI 建議待確認：前往確認清單">
@@ -178,12 +186,27 @@
       <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
         <header class="panel-header">
           <div>
-            <h2 id="status-chart-title">審核狀態分布</h2>
+            <h2 id="status-chart-title">商品狀態分布</h2>
           </div>
         </header>
-        <div class="status-chart-wrap">
-          <canvas #statusChartCanvas aria-label="待審核、已通過、未通過三種狀態的比例圖" role="img"></canvas>
+        <div class="status-overview">
+          <div class="status-chart-wrap">
+            <canvas #statusChartCanvas aria-label="待人工審核、通過審核、未通過審核、AI 建議待確認四種狀態的比例圖，筆數與占比詳見旁側明細" role="img"></canvas>
+            <div class="chart-center" aria-hidden="true"><strong>{{ statusTotal() }}</strong><span>狀態合計</span></div>
+          </div>
+          <ul class="status-breakdown" aria-label="商品狀態筆數與占總數比例">
+            @for (item of statusBreakdown(); track item.label) {
+              <li>
+                <span class="status-label"><i [style.background-color]="item.color" aria-hidden="true"></i>{{ item.label }}</span>
+                <strong>{{ item.count }} <small>筆</small></strong>
+                <span class="status-percentage">{{ item.percentage }}%</span>
+              </li>
+            }
+          </ul>
         </div>
+        @if (statusTotal() !== data().statistics.totalProducts) {
+          <p class="status-note">狀態合計 {{ statusTotal() }} 筆，與候選商品總數 {{ data().statistics.totalProducts }} 筆不一致，請確認統計資料。</p>
+        }
       </section>
 
       <section class="panel conversion-panel" aria-labelledby="conversion-title">

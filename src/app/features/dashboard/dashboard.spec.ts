@@ -37,6 +37,21 @@ describe('Dashboard', () => {
     expect(component.recommendations()).toHaveLength(10);
   });
 
+  it('includes AI suggestions in the chart breakdown and exposes inconsistent totals', () => {
+    expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14, 5]);
+    expect(component.statusTotal()).toBe(109);
+    const rows = fixture.nativeElement.querySelectorAll('.status-breakdown li');
+    expect(rows).toHaveLength(4);
+    expect(rows[3].textContent).toContain('AI 建議待確認');
+    expect(fixture.nativeElement.querySelector('.status-note').textContent).toContain('128');
+  });
+
+  it('links all four product cards to management and keeps the AI suggestion destination', () => {
+    const links = fixture.nativeElement.querySelectorAll('.stat-card-link');
+    expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href')))
+      .toEqual(['/products', '/products', '/products', '/products', '/products/ai-suggestions']);
+  });
+
   it('should lock recommendation actions in locked state', () => {
     component.setUiState('locked');
     expect(component.recommendations().every((item) => item.reviewStatus === 'APPROVED')).toBe(
