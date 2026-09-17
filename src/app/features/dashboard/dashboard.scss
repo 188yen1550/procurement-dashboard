@@ -373,6 +373,28 @@ td {
      整欄撐高，這是 grid/flex 常見的「子項目預設不縮」問題。 */
   min-height: 0;
 }
+@media (min-width: 1181px) {
+  // 以推薦表格決定整列高度，風險清單超出時在面板內捲動。
+  .side-column {
+    position: relative;
+    align-self: stretch;
+  }
+  .risk-panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .risk-panel > .panel-header,
+  .risk-panel > app-list-sort {
+    flex-shrink: 0;
+  }
+  .risk-list {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
 .conversion-panel {
   justify-content: flex-start;
   padding: 1rem;
@@ -444,6 +466,10 @@ td {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+.risk-panel > app-list-sort {
+  --list-sort-justify: center;
+  padding-inline: 1rem;
 }
 .risk-item {
   margin-top: 0.7rem;
