@@ -64,7 +64,7 @@
     <div class="filter-grid">
       <div class="field search-field">
         <label for="product-search">關鍵字搜尋</label><input id="product-search" type="search" placeholder="搜尋商品或供應商名稱"
-          [ngModel]="searchTerm()" (ngModelChange)="updateSearch($event)" [disabled]="isLoading()" />
+          [ngModel]="searchTerm()" (ngModelChange)="updateSearch($event)" />
       </div>
       <div class="field">
         <label for="review-filter">審核狀態</label><select id="review-filter" [ngModel]="reviewFilter()"
@@ -165,11 +165,12 @@
         <thead>
           <tr>
             <th scope="col" class="col-name" appSortHeader="name" [sort]="productSort">商品名稱</th>
-            <th scope="col" class="col-type" appSortHeader="productTypeName|pricingType" [sort]="productSort">實際分類／訂價分流</th>
+            <th scope="col" class="col-type">實際分類</th>
+            <th scope="col" class="col-pricing" appSortHeader="pricingType" [sort]="productSort">新品／再販售</th>
             <th scope="col" class="col-supplier" appSortHeader="supplierName" [sort]="productSort">供應商</th>
             <th scope="col" class="col-score" appSortHeader="finalScore" [sort]="productSort">分數</th>
             <th scope="col" class="col-completeness" appSortHeader="dataCompleteness" [sort]="productSort">資料完整度</th>
-            <th scope="col" class="col-status" appSortHeader="reviewStatus|itemStatus" [sort]="productSort">審核／品項狀態</th>
+            <th scope="col" class="col-status">審核／品項狀態</th>
             <th scope="col" class="col-updated" appSortHeader="updatedAt:date" [sort]="productSort">更新時間</th>
             <th scope="col" class="actions-column">操作</th>
           </tr>
@@ -195,7 +196,10 @@
                 product.productTypeName
                 }}@if (productTypeDescriptions().has(product.productTypeId ?? -1)) {
                 <span class="type-tooltip">{{ productTypeDescriptions().get(product.productTypeId ?? -1) }}</span>
-                }</strong><span class="pricing-badge" [attr.data-type]="product.pricingType">{{
+                }</strong>
+            </td>
+            <td>
+              <span class="pricing-badge" [attr.data-type]="product.pricingType">{{
                 pricingTypeLabel(product.pricingType)
                 }}</span>
             </td>

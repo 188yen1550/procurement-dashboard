@@ -233,7 +233,7 @@ export interface ReviewRecordModel {
   /** 來自快照，是審核當下的名稱。 */
   productName: string;
   reviewerId: number | null;
-  /** ⚠️ 後端無 id→姓名 API，目前一律為 null，畫面顯示「—」。 */
+  /** 帳號被刪除等情況仍可能是 null，畫面顯示「—」。 */
   reviewerName: string | null;
   submissionCount: number | null;
   reviewStatus: ReviewDecision;
@@ -267,6 +267,12 @@ export interface ReviewRecordModel {
  * 統一成 festivalBoost／finalScore。理由：整個 DTO 都是快照，
  * 只有兩個欄位帶後綴反而讓人誤以為其他欄位是即時值。
  * 「這些是快照」用畫面標示說明，不靠欄位名稱。
+ *
+ * ⚠️ 2026-09-17修正：reviewerName 原本在這裡直接寫死 null（註解說「後端
+ * 無 id→姓名 API」），但後端這次已經補上批次解析姓名、直接放進
+ * payload.reviewerName 了——這裡卻還在硬蓋成 null，等於後端修好了、
+ * 前端又把它蓋掉，決策紀錄畫面的「審核人」欄位還是會一直顯示「—」。
+ * 改成老實接後端給的值。
  */
 export function toReviewRecordModel(
   payload: ReviewRecordResponsePayload,
@@ -277,7 +283,7 @@ export function toReviewRecordModel(
     productId: payload.productId,
     productName: payload.productName ?? NOT_PROVIDED,
     reviewerId: payload.reviewerId,
-    reviewerName: null,
+    reviewerName: payload.reviewerName,
     submissionCount: payload.submissionCount,
     reviewStatus: payload.reviewStatus,
     reviewedAt: payload.reviewedAt,

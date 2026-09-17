@@ -110,10 +110,6 @@ export class AiSuggestions implements OnInit {
     { key: 'name', label: '商品名稱' },
     { key: 'category', label: '分類' },
     { key: 'supplier', label: '供應商' },
-    { key: 'trend', label: '趨勢' },
-    { key: 'audienceMatch', label: '客群匹配' },
-    { key: 'reason', label: '推薦理由' },
-    { key: 'risk', label: '風險提示' },
   ];
   private readonly api = inject(ProductApiService);
   private readonly destroyRef = inject(DestroyRef);

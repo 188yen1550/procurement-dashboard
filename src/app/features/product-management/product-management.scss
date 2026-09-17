@@ -329,12 +329,24 @@ td {
   width: 18%;
 }
 
+/* ⚠️ 修正：實際分類／訂價分流拆成兩欄後，這裡原本還是沿用舊的合併欄寬
+   （12%），新拆出來的 .col-pricing 完全沒有寬度規則——table-layout:fixed
+   下沒有寬度規則的欄位會被壓到接近 0，導致「新品」「再販售」這種短文字
+   的徽章被擠到直排換行、表頭文字也被 sort 箭頭圖示重疊蓋住。這裡把原本
+   12% 拆成兩欄各自的寬度，而不是在總和之外硬加，避免其他欄位被連帶
+   壓縮；同時把供應商／完整度／狀態各自收窄一點點，維持總比例跟排版
+   彈性一致（表格仍搭配 .table-wrap 的 overflow-x:auto + min-width:1300px
+   因應更窄的視窗，兩欄合計的寬度足夠讓短徽章與分類文字都不需要換行）。 */
 .col-type {
-  width: 12%;
+  width: 8%;
+}
+
+.col-pricing {
+  width: 9%;
 }
 
 .col-supplier {
-  width: 15%;
+  width: 14%;
 }
 
 .col-score {
@@ -342,11 +354,11 @@ td {
 }
 
 .col-completeness {
-  width: 12%;
+  width: 11%;
 }
 
 .col-status {
-  width: 12%;
+  width: 11%;
 }
 
 .col-updated {
@@ -383,7 +395,6 @@ td {
 .pricing-badge {
   width: max-content;
   max-width: 100%;
-  margin-top: .3rem;
   padding: .2rem .42rem;
   color: #375c78;
   background: #eaf3fb;

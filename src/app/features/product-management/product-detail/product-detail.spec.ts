@@ -108,7 +108,7 @@ describe('ProductDetail', () => {
   });
   it('renders a complete product evaluation', () => {
     expect(component).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('最終分數');
+    expect(fixture.nativeElement.textContent).toContain('總分');
     expect(fixture.nativeElement.textContent).toContain('92.4');
     expect(fixture.nativeElement.textContent).toContain('節慶加成明細');
   });
@@ -185,7 +185,7 @@ describe('ProductDetail', () => {
   });
   it('shows fallback content when the product image fails', () => {
     component.handleImageError(); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.image-fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('最終分數');
+    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.image-fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('總分');
   });
   it('shows an empty image state when imageUrl is absent', () => {
     component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無商品圖片');

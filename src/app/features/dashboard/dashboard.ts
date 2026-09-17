@@ -59,7 +59,7 @@ export class Dashboard implements OnInit, OnDestroy {
     { key: 'rank', label: '排名' },
     { key: 'name|aiReason', label: '商品與推薦理由' },
     { key: 'completeness', label: '完整度' },
-    { key: 'finalScore', label: '最終分數' },
+    { key: 'finalScore', label: '總分' },
   ];
   readonly recommendationSort = new ListSort();
   private readonly api = inject(DashboardApiService);
@@ -325,8 +325,16 @@ function toDashboardPageData(
       // dataCompleteness 與 finalScore 來自同一筆已查出的
       // ProductEvaluation，沒有額外查詢成本。找不到評估紀錄時仍可能是 null。
       completeness: item.dataCompleteness,
-      // Dashboard 推薦端點未提供推薦理由；拒絕留言保留給重新送審提示。
-      aiReason: NOT_PROVIDED,
+      // ⚠️ 2026-09-17修正：原本這裡固定寫 NOT_PROVIDED（'—'），連同
+      // DashboardRecommendationItem.java 類別註解說明的理由一起看——
+      // 這不是「這個功能沒做」，是後端這次把 ai_analyses 既有的
+      // recommendation 欄位接上來了，該商品真的還沒有 AI 分析紀錄時才會
+      // 是空字串，才顯示 NOT_PROVIDED。這個欄位需要搭配同一批修正過的
+      // dashboard.mapper.ts（RecommendationItem.recommendationReason）與
+      // dashboard-api.contract.ts、後端 DashboardService／
+      // DashboardRecommendationItem.java 一起套用，缺一個都會編譯不過
+      // 或依然顯示「—」。
+      aiReason: item.recommendationReason || NOT_PROVIDED,
       submissionCount: item.submissionCount,
       previousRejectionSummary: item.isReentry ? item.lastRejectionComment : undefined,
     })),

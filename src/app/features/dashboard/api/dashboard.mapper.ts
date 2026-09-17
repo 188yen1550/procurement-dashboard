@@ -26,6 +26,8 @@ export interface RecommendationItem {
   isReentry: boolean;
   reentryLabel: string;
   lastRejectionComment: string;
+  /** 該商品尚無 AI 分析紀錄時為空字串，畫面顯示「—」。 */
+  recommendationReason: string;
 }
 
 /**
@@ -49,6 +51,7 @@ export function toRecommendationItem(
     isReentry: reentryLabel !== '',
     reentryLabel,
     lastRejectionComment: payload.lastRejectionComment?.trim() ?? '',
+    recommendationReason: payload.recommendationReason?.trim() ?? '',
   };
 }
 

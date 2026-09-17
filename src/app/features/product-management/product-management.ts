@@ -240,7 +240,12 @@ export class ProductManagement implements OnInit {
       !!this.searchTerm().trim() ||
       this.reviewFilter() !== 'ALL' ||
       this.itemFilter() !== 'ALL' ||
-      this.productTypeFilter() !== 'ALL',
+      this.productTypeFilter() !== 'ALL' ||
+      // ⚠️ 修正：這裡原本沒有把修改時間（起/迄）算進去——設定日期區間後
+      // hasActiveFilters() 仍然回 false，「清除篩選」按鈕維持 disabled，
+      // 使用者設完篩選卻按不到清除按鈕。
+      !!this.updatedFromDraft() ||
+      !!this.updatedToDraft(),
   );
   readonly isLoading = computed(() => this.pageState() === 'loading');
   readonly hasLoadError = computed(() => this.pageState() === 'error');

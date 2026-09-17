@@ -466,6 +466,19 @@ export class Settings implements OnInit {
    */
   readonly editingRiskOptionId = signal<number | null>(null);
   readonly editingProductTypeId = signal<number | null>(null);
+  /**
+   * 新增商品類型時要不要掛在某個大類底下——null 代表「這筆是大類本身」，
+   * 有值代表「這筆是小類，掛在這個 id 指定的大類下面」。只在新增流程用，
+   * 編輯既有類型（改名）不會動到這個欄位，維持既有編輯行為不變。
+   */
+  /**
+   * 新增商品類型時是「大類」還是「小類」——UI 用單選鈕切換。編輯既有類型
+   * （改名）不會用到這個欄位，維持既有編輯行為不變。
+   */
+  readonly draftProductTypeLevel = signal<1 | 2>(1);
+  readonly draftProductTypeParentId = signal<number | null>(null);
+  /** 新增小類時「選擇上層大類」下拉選單的選項——只列出現有的大類（level=1）。 */
+  readonly availableMajorTypes = computed(() => this.productTypes().filter((t) => t.level === 1));
 
   /**
    * 關鍵字改用陣列＋逐一輸入的方式管理，畫面上呈現成一顆一顆可個別刪除
@@ -1139,10 +1152,21 @@ export class Settings implements OnInit {
   }
 
   disableProductType(name: string): void {
-    if (this.useMockData) {
-      this.productTypes.update((items) =>
-        items.map((item) => (item.name === name ? { ...item, active: false } : item)),
+    // ⚠️ 補上大類→小類連動（跟後端 disableProductType() 的邏輯對齊，
+    // 見該方法註解）：停用大類時，畫面上底下的小類也要一起變成已停用，
+    // 不然會出現「大類已停用，小類卻還顯示啟用中」的不一致畫面。
+    const cascadeDisable = (items: ProductTypeVM[], target: ProductTypeVM): ProductTypeVM[] => {
+      const updated = items.map((item) => (item.name === name ? { ...item, active: false } : item));
+      if (target.level !== 1) return updated;
+      return updated.map((item) =>
+        item.level === 2 && item.parentId === target.id ? { ...item, active: false } : item,
       );
+    };
+
+    if (this.useMockData) {
+      const target = this.productTypes().find((type) => type.name === name);
+      if (!target) return;
+      this.productTypes.update((items) => cascadeDisable(items, target));
       return;
     }
 
@@ -1154,11 +1178,11 @@ export class Settings implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.productTypes.update((items) =>
-            items.map((type) => (type.name === name ? { ...type, active: false } : type)),
-          );
+          this.productTypes.update((items) => cascadeDisable(items, item));
           this.productTypeLookup.invalidate();
-          this.statusMessageState.show(`已停用「${name}」。`);
+          this.statusMessageState.show(
+            item.level === 1 ? `已停用「${name}」，底下小類也一併停用。` : `已停用「${name}」。`,
+          );
         },
         error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
@@ -1763,14 +1787,19 @@ export class Settings implements OnInit {
   }
 
   /**
-   * 開啟「切換狀態」modal：把該檔期目前的狀態回填進草稿，
-   * 並預設為「手動指定狀態」——這是按鈕原本唯一支援的行為，
-   * 「恢復自動判斷」是使用者在 modal 內再另外選的次要選項。
+   * 開啟「切換狀態」modal：把該檔期目前的狀態與是否手動覆蓋都如實回填
+   * 進草稿——不預設任何一種模式，維持「打開來看不會意外改變設定」。
    */
   openCampaignStatusModal(item: CampaignVM): void {
     this.selectedCampaign.set(item.name);
     this.draftStatus.set(item.status);
-    this.draftManualOverride.set(true);
+    // ⚠️ 修正：這裡原本寫死 set(true)，不管檔期目前實際是「手動覆蓋」
+    // 還是「自動判斷」，一律讓 modal 開起來時顯示「手動指定狀態」。使用者
+    // 只是想看一下目前狀態、確認沒問題就按「儲存」，結果會把原本設定
+    // 「自動判斷」的檔期，靜靜地改成「手動覆蓋」——畫面上確實存檔成功、
+    // 也沒有錯誤訊息，但存下去的是使用者沒打算做的變更。改成如實回填
+    // 檔期目前的 override 狀態，不做任何動作、直接按儲存時才會維持原狀。
+    this.draftManualOverride.set(item.override);
     this.modal.set('campaignStatus');
   }
 
@@ -1807,6 +1836,8 @@ export class Settings implements OnInit {
     this.tagPickerSelected.set(new Set());
     this.editingRiskOptionId.set(null);
     this.editingProductTypeId.set(null);
+    this.draftProductTypeLevel.set(1);
+    this.draftProductTypeParentId.set(null);
     this.draftKeywordChips.set([]);
     this.draftKeywordInput.set('');
     this.draftCampaignCode.set('');
@@ -1854,9 +1885,19 @@ export class Settings implements OnInit {
           items.map((item) => (item.id === editingTypeId ? { ...item, name: this.draftName().trim() } : item)),
         );
       } else {
+        const level = this.draftProductTypeLevel();
+        const parentId = level === 2 ? this.draftProductTypeParentId() : null;
         this.productTypes.update((items) => [
           ...items,
-          { id: null, name: this.draftName().trim(), system: false, used: 0, active: true, parentId: null, level: null },
+          {
+            id: null,
+            name: this.draftName().trim(),
+            system: false,
+            used: 0,
+            active: true,
+            parentId,
+            level,
+          },
         ]);
       }
     } else if (
@@ -1961,6 +2002,14 @@ export class Settings implements OnInit {
         return;
       }
       const editingTypeId = this.editingProductTypeId();
+
+      // ⚠️ 只在「新增」流程檢查層級：編輯既有類型（改名）不動層級/上層大類，
+      // draftProductTypeLevel 只是新增用的暫存選擇，不該套用到編輯上。
+      if (editingTypeId === null && this.draftProductTypeLevel() === 2 && this.draftProductTypeParentId() === null) {
+        this.statusMessageState.show('請選擇這個小類要掛在哪個大類底下。');
+        return;
+      }
+
       this.isSavingModal.set(true);
 
       if (editingTypeId !== null) {
@@ -1984,8 +2033,9 @@ export class Settings implements OnInit {
         return;
       }
 
+      const parentId = this.draftProductTypeLevel() === 2 ? this.draftProductTypeParentId() : null;
       this.api
-        .createProductType({ name: this.draftName().trim() })
+        .createProductType({ name: this.draftName().trim(), parentId })
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (created) => {
@@ -1994,7 +2044,7 @@ export class Settings implements OnInit {
               { id: created.id, name: created.name, system: false, used: 0, active: true, parentId: created.parentId, level: created.level },
             ]);
             this.productTypeLookup.invalidate();
-            this.statusMessageState.show('已新增商品類型。');
+            this.statusMessageState.show(parentId !== null ? '已新增小類。' : '已新增大類。');
             this.closeModal();
           },
           error: (err) => {

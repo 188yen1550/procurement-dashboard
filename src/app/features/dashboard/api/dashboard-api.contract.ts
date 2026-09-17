@@ -64,6 +64,12 @@ export interface DashboardRecommendationResponsePayload {
   reentryLabel: string | null;
   /** 上次被拒的原因，可為 null。適合放 tooltip 或摺疊區。 */
   lastRejectionComment: string | null;
+  /**
+   * ⚠️ 後端這次補上：來自 ai_analyses 既有的 recommendation 欄位（跟審核
+   * 詳情頁「AI 推薦摘要」同一份資料），不是虛構文案。該商品還沒有 AI
+   * 分析紀錄時為 null。
+   */
+  recommendationReason: string | null;
 }
 
 /**

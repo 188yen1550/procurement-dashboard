@@ -223,7 +223,14 @@
               (click)="openProductTypeEditModal(item)">
               編輯
             </button>
+            <!-- ⚠️ 補上與大類同步：大類已停用時，小類的狀態不該再單獨
+                 改動——後端 disableProductType() 停用大類會連動停用底下
+                 所有小類，這裡鎖住按鈕並說明原因，避免使用者以為自己
+                 點了「復用」小類就能繞過大類停用的狀態，實際上一放開
+                 手就會發現大類還是停用中、小類看起來能用但其實不該用。
+                 大類本身是啟用狀態時，小類維持原本可以獨立停用/復用。 -->
             <button type="button" class="btn" [class.is-restore]="!item.active"
+              [disabled]="!group.major.active" [title]="!group.major.active ? '大類已停用，請先復用大類' : ''"
               (click)="toggleProductTypeActive(item.name)">
               {{ item.active ? '停用' : '復用' }}
             </button>
@@ -523,8 +530,9 @@
               <span class="helper">至少需勾選一項；未勾選的溫層視為此通路不支援。</span>
               } @else if (sliderCategories.has(group.category)) {
               <div class="system-setting-slider-field">
-                <input type="range" [min]="setting.minValue" [max]="setting.maxValue" [step]="sliderStep(setting)"
-                  [ngModel]="systemSettingDraftValue()" (ngModelChange)="onSliderDrag(setting, $event)" />
+                <input type="range" [min]="setting.minValue" [max]="setting.maxValue"
+                  [step]="sliderStep(setting)" [ngModel]="systemSettingDraftValue()"
+                  (ngModelChange)="onSliderDrag(setting, $event)" />
                 <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
                     class="unit"> {{ setting.unit }}</span>}</span>
               </div>
@@ -764,6 +772,39 @@
       </label>
       }
       @if (modal() === 'productType') {
+      @if (editingProductTypeId() === null) {
+      <!-- ⚠️ 補上：新增商品類型原本只有一個名稱欄位，完全沒有選大類/小類、
+           也沒有選上層大類的地方——送出的類型永遠是「無層級」的孤兒分類，
+           跟系統既有的兩層分類體系（大類/小類）脫節。編輯既有類型（改名）
+           不show這組欄位，層級與上層大類只在新增當下決定，之後不能再改。 -->
+      <fieldset class="product-type-level">
+        <legend>類型層級</legend>
+        <label class="radio-option">
+          <input type="radio" name="productTypeLevel" [checked]="draftProductTypeLevel() === 1"
+            (change)="draftProductTypeLevel.set(1)" />
+          大類
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="productTypeLevel" [checked]="draftProductTypeLevel() === 2"
+            (change)="draftProductTypeLevel.set(2)" [disabled]="availableMajorTypes().length === 0" />
+          小類
+        </label>
+        @if (availableMajorTypes().length === 0) {
+        <small class="helper">目前還沒有任何大類，請先新增一個大類才能建立小類。</small>
+        }
+      </fieldset>
+      @if (draftProductTypeLevel() === 2) {
+      <label>上層大類 <em>*</em>
+        <select required [ngModel]="draftProductTypeParentId()"
+          (ngModelChange)="draftProductTypeParentId.set($event)" name="productTypeParent">
+          <option [ngValue]="null">請選擇</option>
+          @for (major of availableMajorTypes(); track major.id) {
+          <option [ngValue]="major.id">{{ major.name }}</option>
+          }
+        </select>
+      </label>
+      }
+      }
       <label>類型名稱
         <input required [ngModel]="draftName()" (ngModelChange)="draftName.set($event)" name="typeName" /></label>
       }
@@ -812,8 +853,7 @@
              受影響）——但 dialog 裡打不到既有標籤時，可以直接在那裡新增，
              不是只能從既有標籤選，按鈕文字跟著改，不要讓人誤會這裡是
              唯讀的搜尋功能。 -->
-        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" />
-          選擇或新增標籤</button>
+        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" /> 選擇或新增標籤</button>
         <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
         <div class="keyword-chip-list">
           @for (row of selectedTagRows(); track row.tag) {
@@ -834,8 +874,7 @@
           @for (row of selectedTagRows(); track row.tag) {
           <div class="tag-row">
             <span>{{ row.tag }}</span>
-            <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)"
-              [name]="'tier-' + row.tag">
+            <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)" [name]="'tier-' + row.tag">
               <option value="CORE">核心</option>
               <option value="GENERAL">一般</option>
               <option value="WEAK">弱</option>
@@ -929,7 +968,7 @@
         @for (tag of filteredKnownTags(); track tag) {
         <label class="tag-picker-option">
           <input type="checkbox" [checked]="tagPickerSelected().has(tag)" (change)="toggleTagPickerSelection(tag)" />
-          {{ tag }}
+          <span class="tag-picker-option-text">{{ tag }}</span>
         </label>
         } @empty {
         <p class="helper">沒有符合的既有標籤{{ tagPickerSearch().trim() ? '，可用上方按鈕新增這個新標籤' : '' }}。</p>

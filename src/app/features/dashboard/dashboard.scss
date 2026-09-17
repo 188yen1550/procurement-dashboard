@@ -213,17 +213,15 @@ button:focus-visible {
 }
 
 .content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2.1fr) minmax(280px, 0.9fr);
-  gap: 1rem;
-  /* stretch 讓右欄在天生比 Top 10 短的時候可以拉齊；但 stretch 本身無法
-     擋住「右欄內容天生就比 Top 10 高」的情況——grid 算列高時是先看每個
-     項目沒被截斷前的天生內容高度，右欄若內容夠多，反而會把這一列的
-     高度撐高，變成 Top 10 被迫跟著長高，這正是使用者說「不是要 Top 10
-     跟著變高」的那個症狀。真正擋住右欄長高的是 .risk-panel 的
-     max-height（見下方），stretch 在這裡只負責短的時候把右欄拉滿，
-     不負責長的時候的上限。 */
+  /* ⚠️ 2026-09-17三修：前兩次分別用「CSS Grid + align-items:stretch」和
+     「CSS Grid + position:absolute/inset:0」都沒有穩定做到等高，改用
+     flexbox——這是「兩欄並排、等高、其中一欄內部捲動」這個需求最直接、
+     瀏覽器支援度也最一致的寫法：flex 容器預設 align-items:stretch，
+     兩個 flex item 天生就會拉齊到同一個高度（以較高的那個為準），
+     不需要額外的定位技巧或猜測用的 max-height 數值。 */
+  display: flex;
   align-items: stretch;
+  gap: 1rem;
 }
 .panel {
   background: #fff;
@@ -237,6 +235,9 @@ button:focus-visible {
 }
 .recommendations-panel {
   overflow: hidden;
+  /* Top 10 表格固定最多 10 列，天生高度本來就有上限；用 flex-basis
+     取代原本 grid-template-columns 的 2.1fr，維持同樣的寬度比例。 */
+  flex: 2.1 1 0;
 }
 .panel-header {
   padding: 1rem 1.1rem;
@@ -363,38 +364,16 @@ td {
 }
 
 .side-column {
-  display: grid;
-  gap: 1rem;
-  /* stretch 底下的 .risk-panel 才會真正吃到 content-grid 拉齊過來的高度，
-     而不是保持自己的內容高度（grid 預設值就是 stretch，這裡明確寫出來，
-     跟上面 .content-grid 的註解是同一個原因）。 */
-  align-items: stretch;
-  /* .content-grid 是 stretch 之後，.side-column 這個 grid item 本身也要
-     能縮到比內容小，內部的 .risk-panel 才擋得住溢出改用捲動而不是把
-     整欄撐高，這是 grid/flex 常見的「子項目預設不縮」問題。 */
+  /* 原本是 display:grid，但這一欄現在只有 .risk-panel 一個子項目，用
+     flex column 就夠了。position:relative 是給下面 .risk-panel 的
+     position:absolute 當定位基準。 */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
   min-height: 0;
-}
-@media (min-width: 1181px) {
-  // 以推薦表格決定整列高度，風險清單超出時在面板內捲動。
-  .side-column {
-    position: relative;
-    align-self: stretch;
-  }
-  .risk-panel {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .risk-panel > .panel-header,
-  .risk-panel > app-list-sort {
-    flex-shrink: 0;
-  }
-  .risk-list {
-    min-height: 0;
-    overflow-y: auto;
-  }
+  /* 寬度比例對應原本 grid-template-columns 的 minmax(280px, 0.9fr)。 */
+  flex: 0.9 1 280px;
 }
 .conversion-panel {
   justify-content: flex-start;
@@ -446,21 +425,24 @@ td {
 }
 /* .panel-header 跟 <app-list-sort> 維持自然高度，.risk-list 吃掉剩餘
    空間並在超出時自己捲動。
-   2026-09-17再修正：只靠 align-items:stretch＋min-height:0 這條鏈路
-   不夠——grid 計算列高時是用「.risk-panel 沒被截斷前的天生內容高度」
-   去參與，如果高風險提示項目多、天生內容比 Top 10 高，會反過來把
-   Top 10 那一列撐高，變成「Top 10 跟著長高」而不是「高風險提示自己
-   縮短」，跟使用者要的方向剛好相反。這裡改成 max-height 給一個明確
-   上限，不管天生內容多高，.risk-panel 這個 box 本身永遠不會超過這個
-   高度，grid 列高也就不會被它撐大；超過上限的項目交給 .risk-list 的
-   overflow-y:auto 自己捲動。 */
+   2026-09-17三修：.content-grid／.side-column 已改用 flexbox，但光靠
+   flex 的 align-items:stretch 不夠可靠——.risk-panel 若是「正常排列」
+   的 flex 子項目，瀏覽器計算 .content-grid 這個 flex 容器的高度時，
+   仍然會把 .risk-panel「還沒被截斷前的天生內容高度」納入考量，項目一多
+   就會反過來把整個 .content-grid（連帶 .recommendations-panel）撐高，
+   跟兩次前的 CSS Grid 版本是同一種問題，換了排版模型但沒解決成因。
+   真正可靠的做法是用 position:absolute 把 .risk-panel 整個移出正常
+   文件流——絕對定位的元素完全不參與任何祖先容器的高度計算，不管裡面
+   塞多少筆高風險提示都一樣。.side-column（position:relative）先靠
+   flex stretch 拿到跟 .recommendations-panel 一致的高度，.risk-panel
+   再用 inset:0 精準填滿那個高度，兩者的高度來源在演算法上就是同一個
+   值，不是兩個各自估計、剛好湊近的數字。 */
 .risk-panel {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  max-height: 75rem;
-  /* 同一個「flex 子項目預設不縮」問題：沒有這行，.risk-list 的
-     max-height:100% 不會生效，超出的項目會撐開卡片而不是自己捲動。 */
-  min-height: 0;
+  overflow: hidden;
 }
 .risk-list {
   padding: 0.4rem 1rem 1rem;
@@ -631,20 +613,21 @@ td {
     grid-template-columns: repeat(2, 1fr);
   }
   .content-grid {
-    grid-template-columns: minmax(0, 1fr);
-    /* ⚠️ 補上：這個斷點把兩欄改成單欄上下堆疊，.recommendations-panel
-       跟 .side-column 不再左右並排，「跟 Top 10 等高」这件事在堆疊版面
-       下沒有意義（因為兩者本來就各自佔一整行，不會有一個被撐得比另一個
-       高的問題）。但拿掉 align-items: stretch 後，.risk-panel 原本靠
-       stretch 拿到的高度限制也一併消失，超長清單會直接把整個頁面撐得
-       很長。改用固定的 max-height + 捲動，維持「高風險提示不要無限
-       撐高」這個目的，只是換一種寬度下的做法。 */
-    align-items: initial;
+    /* 這個斷點把兩欄改成單欄上下堆疊，.recommendations-panel 跟
+       .side-column 不再左右並排，「跟 Top 10 等高」這件事在堆疊版面下
+       沒有意義（兩者本來就各自佔一整行）。 */
+    flex-direction: column;
   }
   .side-column {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* 堆疊版面下不需要再當 .risk-panel 的定位基準，.risk-panel 改回
+       正常排列＋固定的 max-height + 捲動，維持「不要無限撐高」這個
+       目的，只是換一種寬度下的做法。 */
+    position: static;
   }
   .risk-panel {
+    position: static;
+    display: flex;
+    flex-direction: column;
     max-height: 26rem;
   }
 }
@@ -659,8 +642,7 @@ td {
   .data-time {
     white-space: normal;
   }
-  .stats-grid,
-  .side-column {
+  .stats-grid {
     grid-template-columns: 1fr;
   }
   .state-actions {
@@ -762,13 +744,16 @@ td {
   .status-overview { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 1rem; }
 }
 
-.content-grid.operator-view {
-  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+.content-grid.operator-view .recommendations-panel {
+  flex: 1.6 1 0;
+}
+.content-grid.operator-view .side-column {
+  flex: 1 1 260px;
 }
 
 @media (max-width: 900px) {
   .content-grid.operator-view {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
   }
 }
 

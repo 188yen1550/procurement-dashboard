@@ -223,6 +223,8 @@ export interface ProductTypeResponsePayload {
 export interface ProductTypeCreateRequestPayload {
   name: string;
   description?: string | null;
+  /** 不填＝新增大類；有值＝新增小類，掛在這個 id 指定的大類底下。 */
+  parentId?: number | null;
 }
 
 // =========================================================================

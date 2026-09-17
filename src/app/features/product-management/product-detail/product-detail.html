@@ -136,7 +136,7 @@
       <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
     </article>
     <article class="final">
-      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
+      <span>總分</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
         {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
     </article>
   </section>
@@ -180,7 +180,7 @@
       </div>
     </dl>
     <p class="boost-hint">
-      加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
+      加成已計入總分，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
       離檔期開始越近，加成分數越高。
     </p>
     <details class="formula-detail">
@@ -450,6 +450,9 @@
           <span class="review-history-badge" [attr.data-result]="record.reviewStatus">{{
             record.reviewStatus === 'APPROVED' ? '通過' : '未通過'
             }}</span>
+          @if (record.reviewerName) {
+          <span class="review-history-reviewer">審核人：{{ record.reviewerName }}</span>
+          }
           @if (record.reviewedAt) {
           <span class="review-history-date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           }

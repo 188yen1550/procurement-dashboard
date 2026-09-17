@@ -124,7 +124,7 @@ export class ReviewComponent implements OnInit {
   readonly pendingSortChoices = [
     { key: 'name', label: '商品名稱' },
     { key: 'submittedBy', label: '送審人' },
-    { key: 'finalScore', label: '最終分數' },
+    { key: 'finalScore', label: '總分' },
     { key: 'completeness', label: '完整度' },
     { key: 'submissionCount', label: '送審次數' },
   ];
