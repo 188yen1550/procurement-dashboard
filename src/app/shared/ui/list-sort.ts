@@ -199,6 +199,7 @@ export class SortHeader {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
+        justify-content: var(--list-sort-justify, flex-start);
         gap: 0.4rem;
         font-size: 0.8rem;
         color: #536b80;
