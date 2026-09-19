@@ -203,7 +203,7 @@ export class ReviewDetail implements OnInit {
     // 訊息裡明確覆誦這次的決定是「通過」還是「不通過」，不是泛用的
     // 「確定要送出嗎？」——泛用訊息無法讓使用者核對「我選的是不是我
     // 真正要的那個決定」，這才是誤觸真正會出錯的地方。
-    const decisionLabel = this.decision() === 'APPROVED' ? '通過選品審核' : '不通過';
+    const decisionLabel = this.decision() === 'APPROVED' ? '審核通過' : '審核拒絕';
     this.dialog
       .confirm(
         '確認送出審核決策',
@@ -223,7 +223,7 @@ export class ReviewDetail implements OnInit {
 
   private proceedSubmit(form: ReviewFormModel): void {
     if (this.useMockData) {
-      const message = `已在本地模擬${this.decision() === 'APPROVED' ? '通過' : '不通過'}決策。`;
+      const message = `已在本地模擬${this.decision() === 'APPROVED' ? '審核通過' : '審核拒絕'}決策。`;
       this.submitted.set(true);
       this.showSubmittedDialog(message);
       return;
@@ -241,8 +241,8 @@ export class ReviewDetail implements OnInit {
           this.submitted.set(true);
           this.showSubmittedDialog(
             this.decision() === 'APPROVED'
-              ? '已通過選品審核，但不代表已銷售。'
-              : '未通過，後續可修改品項後重審。',
+              ? '審核通過，但不代表已銷售。'
+              : '審核拒絕，後續可修改品項後重審。',
           );
         },
         error: (err) => {

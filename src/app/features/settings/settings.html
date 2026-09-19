@@ -531,7 +531,7 @@
               } @else if (sliderCategories.has(group.category)) {
               <div class="system-setting-slider-field">
                 <input type="range" [min]="setting.minValue" [max]="setting.maxValue"
-                  [step]="sliderStep(setting)" [ngModel]="systemSettingDraftValue()"
+                  [step]="nativeSliderStep(setting)" [ngModel]="systemSettingDraftValue()"
                   (ngModelChange)="onSliderDrag(setting, $event)" />
                 <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
                     class="unit"> {{ setting.unit }}</span>}</span>

@@ -76,7 +76,7 @@
           <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
         </article>
         <article class="final">
-          <span>總分</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
+          <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
         </article>
         <article><span>商業效益</span><strong>{{ p.scores.businessScore ?? '—' }}</strong></article>
         <article><span>客群契合</span><strong>{{ p.scores.audienceScore ?? '—' }}</strong></article>
@@ -155,7 +155,7 @@
               value="APPROVED"
               [ngModel]="decision()"
               (ngModelChange)="decision.set($event)"
-            />通過
+            />審核通過
           </label>
           <label>
             <input
@@ -164,7 +164,7 @@
               value="REJECTED"
               [ngModel]="decision()"
               (ngModelChange)="decision.set($event)"
-            />不通過
+            />審核拒絕
           </label>
         </div>
       </fieldset>

@@ -309,7 +309,37 @@
 .records table {
   width: 100%;
   min-width: 900px;
+  /* ⚠️ 補上：決策紀錄表原本是瀏覽器預設的 auto table-layout，欄寬純粹
+     由內容自動決定，沒辦法像品項管理／系統設定那些表格一樣透過下面的
+     .col-* class 精準控制比例。改成 fixed，跟全站其他表格用同一套
+     「語意化 class + 百分比欄寬」做法。 */
+  table-layout: fixed;
   border-collapse: collapse
+}
+
+/* 商品名稱與審核留言的文字量最大，分配較多空間；送審次數、結果、
+   最終分數、日期都是短內容，欄寬給少一點。加總留一點餘裕給
+   min-width:900px 的水平捲動空間，不用剛好湊滿 100%。 */
+.col-name {
+  width: 18%;
+}
+.col-round {
+  width: 9%;
+}
+.col-result {
+  width: 10%;
+}
+.col-score {
+  width: 10%;
+}
+.col-reviewer {
+  width: 12%;
+}
+.col-date {
+  width: 11%;
+}
+.col-comment {
+  width: 22%;
 }
 
 .records th,

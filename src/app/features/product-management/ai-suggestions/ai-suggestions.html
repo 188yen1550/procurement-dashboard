@@ -16,7 +16,7 @@
           [disabled]="isBatchRunning()"
           (click)="triggerBatch()"
         >
-          {{ isBatchRunning() ? '批次執行中…' : '批次執行 AI 選品' }}
+          {{ isBatchRunning() ? '批次執行中…' : '批次篩選熱門候選' }}
         </button>
       }
       <a class="btn" routerLink="/products">回到正式候選清單</a>

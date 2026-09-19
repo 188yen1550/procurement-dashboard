@@ -120,7 +120,7 @@
   } @else {
     @if (useMockData && uiState() === 'locked') {
       <div class="notice locked-notice" role="status">
-        <strong>已審核資料鎖定示範</strong> 已通過選品審核的核心條件為唯讀，相關操作按鈕已停用。
+        <strong>已審核資料鎖定示範</strong> 審核通過的核心條件為唯讀，相關操作按鈕已停用。
       </div>
     }
 
@@ -170,8 +170,8 @@
         </a>
       </article>
       <article class="stat-card rejected">
-        <a class="stat-card-link" routerLink="/products" aria-label="未通過審核：前往品項管理">
-        <span>未通過審核</span><strong>{{ data().statistics.rejectedProducts }}</strong>
+        <a class="stat-card-link" routerLink="/products" aria-label="審核拒絕：前往品項管理">
+        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card ai-suggested">
@@ -191,7 +191,7 @@
         </header>
         <div class="status-overview">
           <div class="status-chart-wrap">
-            <canvas #statusChartCanvas aria-label="待人工審核、通過審核、未通過審核、AI 建議待確認四種狀態的比例圖，筆數與占比詳見旁側明細" role="img"></canvas>
+            <canvas #statusChartCanvas aria-label="待人工審核、審核通過、審核拒絕、AI 建議待確認四種狀態的比例圖，筆數與占比詳見旁側明細" role="img"></canvas>
             <div class="chart-center" aria-hidden="true"><strong>{{ statusTotal() }}</strong><span>狀態合計</span></div>
           </div>
           <ul class="status-breakdown" aria-label="商品狀態筆數與占總數比例">
@@ -221,7 +221,7 @@
         }
         <div>
           <h2 id="conversion-title">選品轉換率</h2>
-          <p>以曾送審的不重複商品為分母，目前最終狀態為通過者為分子。</p>
+          <p>以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
           @if (data().statistics.conversionRate === null) {
             <p class="hint">目前尚無商品送審過，因此無法計算轉換率。</p>
           }
@@ -241,11 +241,11 @@
           <table>
             <thead>
               <tr>
-                <th appSortHeader="rank" [sort]="recommendationSort">排名</th>
-                <th appSortHeader="name|aiReason" [sort]="recommendationSort">商品與推薦理由</th>
-                <th appSortHeader="completeness" [sort]="recommendationSort">完整度</th>
-                <th appSortHeader="finalScore" [sort]="recommendationSort">總分</th>
-                <th class="actions-column">操作</th>
+                <th class="col-rank" appSortHeader="rank" [sort]="recommendationSort">排名</th>
+                <th class="col-reason" appSortHeader="name|aiReason" [sort]="recommendationSort">商品與推薦理由</th>
+                <th class="col-completeness" appSortHeader="completeness" [sort]="recommendationSort">完整度</th>
+                <th class="col-score" appSortHeader="finalScore" [sort]="recommendationSort">最終分數</th>
+                <th class="col-actions actions-column">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -288,7 +288,7 @@
                         type="button"
                         class="table-action"
                         disabled
-                        title="已審核通過，核心資料鎖定"
+                        title="審核通過，核心資料鎖定"
                       >
                         已鎖定
                       </button>

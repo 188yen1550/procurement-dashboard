@@ -1417,17 +1417,39 @@ export class Settings implements OnInit {
   }
 
   /**
-   * 滑桿的「顆粒度」：
+   * 滑桿顯示／收斂的「業務顆粒度」（拖曳後收斂成這個數字的倍數，給
+   * snapSettingValue() 用）：
    * - 品類/商品層平滑常數 k（shrinkage_k_category / shrinkage_k_product）：
    *   業務上只在意 5 為單位的粗略調整，收斂成 0、5、10…的倍數。
    * - 中性基準分數（neutral_baseline_score）：後端型別雖然是 DECIMAL
    *   （為了跟其他百分比類設定共用同一個 API 型別），但業務語意上就是
    *   整數分數，固定用 1。
    * - 其餘沿用原本規則：INTEGER 用 1，DECIMAL 用 0.01。
+   *
+   * ⚠️ 這個值只給 snapSettingValue() 的「四捨五入到倍數」邏輯用，
+   * **不要**再直接綁到 <input type="range"> 的原生 [step] 屬性——原生
+   * step 有自己的一套「合法值」機制，min/max 沒有剛好落在 step 倍數
+   * 格線上時（例如 min=1、step=5、max=100，格線是 1,6,11…96，100 根本
+   * 不在格線上），瀏覽器內部限制拖曳只能停在格線上，會讓拉桿永遠碰不到
+   * 真正的邊界值 100，之後不管在 JS 這層怎麼收斂都補救不回來——原始值
+   * 從瀏覽器那一關就已經被卡在 96，不是 100。原生 [step] 一律固定用
+   * nativeSliderStep()（1 或 0.01），業務上想要的「5 一格」的視覺/收斂
+   * 效果完全交由 snapSettingValue() 在 JS 這一層自己做，不假手瀏覽器。
    */
   protected sliderStep(setting: SystemSettingVM): number {
     if (setting.key === 'shrinkage_k_category' || setting.key === 'shrinkage_k_product') return 5;
     if (setting.key === 'neutral_baseline_score') return 1;
+    return setting.dataType === 'INTEGER' ? 1 : 0.01;
+  }
+
+  /**
+   * <input type="range"> 原生 [step] 屬性專用——永遠用「這個資料型別最細
+   * 的顆粒度」（整數 1、小數 0.01），讓瀏覽器在任何 min/max 組合下都能
+   * 真正拖到邊界值，不會被 sliderStep() 那個業務用的粗顆粒度（例如 5）
+   * 卡住。實際顯示要收斂成幾的倍數，由 snapSettingValue() 在拖曳事件裡
+   * 自己算，不依賴原生 step 的「合法值」機制。
+   */
+  protected nativeSliderStep(setting: SystemSettingVM): number {
     return setting.dataType === 'INTEGER' ? 1 : 0.01;
   }
 
@@ -1444,6 +1466,17 @@ export class Settings implements OnInit {
 
     if (raw.trim() === '' || Number.isNaN(parsed)) {
       return this.toDraftValue(min ?? 0);
+    }
+
+    // 原生 [step] 已經改用 nativeSliderStep()（永遠是 1 或 0.01），瀏覽器
+    // 不會再因為業務顆粒度（例如 5）跟 min/max 對不齊而卡住邊界值，
+    // 所以這裡改成單純判斷「原始值是不是剛好等於邊界」，命中就直接回傳
+    // 邊界本身，不再套用倍數捨入——不需要再猜測、估算容許誤差範圍。
+    if (max !== null && parsed >= max) {
+      return this.toDraftValue(max);
+    }
+    if (min !== null && parsed <= min) {
+      return this.toDraftValue(min);
     }
 
     const snapped = Math.round(parsed / step) * step;

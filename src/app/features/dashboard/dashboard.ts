@@ -59,7 +59,7 @@ export class Dashboard implements OnInit, OnDestroy {
     { key: 'rank', label: '排名' },
     { key: 'name|aiReason', label: '商品與推薦理由' },
     { key: 'completeness', label: '完整度' },
-    { key: 'finalScore', label: '總分' },
+    { key: 'finalScore', label: '最終分數' },
   ];
   readonly recommendationSort = new ListSort();
   private readonly api = inject(DashboardApiService);
@@ -96,8 +96,8 @@ export class Dashboard implements OnInit, OnDestroy {
     const stats = this.data().statistics;
     return [
       { label: '待人工審核', count: stats.pendingReviews, color: '#d19a32' },
-      { label: '通過審核', count: stats.approvedProducts, color: '#379773' },
-      { label: '未通過審核', count: stats.rejectedProducts, color: '#c76661' },
+      { label: '審核通過', count: stats.approvedProducts, color: '#379773' },
+      { label: '審核拒絕', count: stats.rejectedProducts, color: '#c76661' },
       { label: 'AI 建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' },
     ].map((item) => ({
       ...item,

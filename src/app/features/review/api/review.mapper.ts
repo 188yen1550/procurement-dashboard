@@ -177,7 +177,7 @@ export function validateReviewForm(
   availableRiskOptions: readonly RiskOptionResponsePayload[],
 ): ReviewFormValidationResult {
   if (form.decision === '') {
-    return { valid: false, message: '請選擇審核結果（通過或不通過）。' };
+    return { valid: false, message: '請選擇審核結果（審核通過或審核拒絕）。' };
   }
 
   const otherOption = availableRiskOptions.find(

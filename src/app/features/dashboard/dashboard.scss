@@ -265,7 +265,34 @@ button:focus-visible {
 table {
   width: 100%;
   min-width: 850px;
+  /* ⚠️ 補上：這張表原本是瀏覽器預設的 auto table-layout，欄寬完全由
+     內容自動決定，沒有 table-layout:fixed 就沒辦法透過下面的
+     .col-* class 精準控制比例——寫了百分比也不會生效，因為 auto
+     排版下欄寬會被內容（尤其是「商品與推薦理由」這種長文字）撐開。
+     改成 fixed，跟品項管理頁（product-management.scss）等其他表格
+     用同一套「語意化 class + 百分比欄寬」的做法，之後要調整比例
+     只需要改這裡的數字，不用去動 HTML。 */
+  table-layout: fixed;
   border-collapse: collapse;
+}
+/* 各欄比例：商品與推薦理由的文字量最大，分配最多空間；排名、完整度、
+   最終分數都是短內容，欄寬給少一點；操作欄固定放一個「查看評估」
+   連結，不需要太寬。加總留一點餘裕給 min-width:850px 的水平捲動空間，
+   不用剛好湊滿 100%。 */
+.col-rank {
+  width: 8%;
+}
+.col-reason {
+  width: 42%;
+}
+.col-completeness {
+  width: 15%;
+}
+.col-score {
+  width: 13%;
+}
+.col-actions {
+  width: 12%;
 }
 th,
 td {

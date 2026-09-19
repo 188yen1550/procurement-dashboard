@@ -43,8 +43,8 @@ export const USER_ROLE_LABEL: Record<UserRole, string> = {
 
 export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
   PENDING: '未審核',
-  APPROVED: '已通過',
-  REJECTED: '未通過',
+  APPROVED: '審核通過',
+  REJECTED: '審核拒絕',
 };
 
 export const ITEM_STATUS_LABEL: Record<ItemStatus, string> = {
@@ -79,8 +79,8 @@ export const PRICE_SENSITIVITY_LABEL: Record<PriceSensitivity, string> = {
 };
 
 export const REVIEW_DECISION_LABEL: Record<ReviewDecision, string> = {
-  APPROVED: '通過',
-  REJECTED: '不通過',
+  APPROVED: '審核通過',
+  REJECTED: '審核拒絕',
 };
 
 export const FESTIVE_CATEGORY_LABEL: Record<FestiveCategory, string> = {

@@ -1247,6 +1247,33 @@ export class ProductForm implements OnInit {
    * 送出時才發現連同其他有效變更一起被打回，且錯誤訊息不會指出是哪個
    * 欄位造成的（見 onSubmit() 的 409 訊息只有一句通用文案）。
    */
+  /**
+   * 商品通過審核後鎖住的欄位——原則是「會影響評分或 Gate 判定結果的欄位
+   * 才鎖」，不是「核准後全部唯讀」。
+   *
+   * ⚠️ 2026-09-19盤點：對照 ProductFactorScorer／GateEvaluationService
+   * 實際讀取哪些欄位，逐一確認每個鎖住的欄位是否真的有計分或 Gate 影響。
+   * packingType（分裝方式）、supplierMaxCapacity（供應商產能上限）、
+   * handlingFlags（處理注意事項）、certificationFlags（認證狀態）這四個
+   * 原本也鎖著，但全專案搜尋後，找不到任何計分或 Gate 邏輯讀取這四個
+   * 欄位——handlingFlags／certificationFlags 連欄位旁邊的說明文字都
+   * 明寫「不影響任何判定或計分」「沒有任何 Gate 或計分邏輯讀取」，鎖住
+   * 它們沒有保護到任何東西，純粹造成核准後改不了一個打錯的分裝方式或
+   * 認證狀態。移出鎖定清單，讓核准後仍可修改（即使會影響 AI 生成的
+   * 評語文字也允許，因為 AI 評語不是「標準化評分」——標準化評分是這裡
+   * 保留鎖定的那些欄位，由 Java 後端計算，需要可重現性，AI 評語本來就
+   * 是描述性文字，本來就會因為資料更新而變化）。
+   *
+   * 保留鎖定的欄位都能在 ProductFactorScorer／GateEvaluationService／
+   * FestivalBoost 計算裡找到對應的讀取點：productTypeId（品類分數帶）、
+   * pricingType（決定其他欄位語意）、campaignTags（節慶加成）、
+   * costPrice／salePrice／marketPrice（毛利率、折扣深度）、
+   * moq（GATE_MOQ_FEASIBILITY）、supplyStability（計分因子本身）、
+   * priceCompetitiveness（折扣深度）、targetCustomer（客群契合度）、
+   * estimatedPurchaseRate（計分因子本身）、temperatureZone（Gate）、
+   * shelfLifeTier／supplierLeadTimeTier（Gate）、packageSizeTier
+   * （毛利率因子的運費估算，見欄位旁的說明文字）。
+   */
   private lockCoreFields(): void {
     const names: (keyof typeof this.form.controls)[] = [
       'productTypeId',
@@ -1264,10 +1291,6 @@ export class ProductForm implements OnInit {
       'shelfLifeTier',
       'supplierLeadTimeTier',
       'packageSizeTier',
-      'packingType',
-      'handlingFlags',
-      'certificationFlags',
-      'supplierMaxCapacity',
     ];
     names.forEach((name) => this.form.controls[name].disable());
   }

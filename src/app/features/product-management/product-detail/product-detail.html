@@ -37,7 +37,7 @@
   @if (actions()?.canResubmit) {
   <section class="notice rejected">
     <div>
-      <strong>此品項上次未通過審核</strong>
+      <strong>此品項上次審核拒絕</strong>
       <span>可點擊右上角「重審品項」修改後重新送審，歷史審核紀錄不會被覆蓋。</span>
     </div>
   </section>
@@ -136,7 +136,7 @@
       <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
     </article>
     <article class="final">
-      <span>總分</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
+      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
         {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
     </article>
   </section>
@@ -180,7 +180,7 @@
       </div>
     </dl>
     <p class="boost-hint">
-      加成已計入總分，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
+      加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
       離檔期開始越近，加成分數越高。
     </p>
     <details class="formula-detail">
@@ -469,7 +469,7 @@
   <section class="panel lifecycle">
     <div>
       <h2>品項狀態操作</h2>
-      <p>封存不等於刪除；已通過或未通過皆可封存，但僅已通過且已封存者可復用。</p>
+      <p>封存不等於刪除；審核通過或審核拒絕皆可封存，但僅審核通過且已封存者可復用。</p>
     </div>
     <button type="button" (click)="toggleArchive()" [disabled]="
           p.reviewStatus === 'PENDING' ||
