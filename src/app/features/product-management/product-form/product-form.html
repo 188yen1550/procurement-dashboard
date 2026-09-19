@@ -208,7 +208,7 @@
           }
         }
         @else { <div class="pending-pricing wide"><strong>待訂價</strong><span>新品此階段不要求成本價與售價。</span></div> }
-        <label>最低訂購量 <em>*</em><input type="number" min="1" formControlName="moq" /></label>
+        <label>最低訂購量<input type="number" min="0" formControlName="moq" placeholder="留空＝套用品類或全域預設" /><small class="helper">留空代表繼承商品類型或系統的預設 MOQ；填 0 代表明確表示這件商品沒有最低訂購量限制。</small></label>
         <label>供應穩定性<select formControlName="supplyStability">@for (level of scoreLevels; track level) { <option [value]="level">{{ supplyStabilityLevelLabel[level] }}</option> }</select></label>
         <label>價格競爭力<select formControlName="priceCompetitiveness">@for (level of scoreLevels; track level) { <option [value]="level">{{ priceCompetitivenessLevelLabel[level] }}</option> }</select></label>
         <label>預估購買率（%）<input type="number" min="0" max="100" formControlName="estimatedPurchaseRate" /></label>

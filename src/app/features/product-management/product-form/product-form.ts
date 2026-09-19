@@ -289,7 +289,20 @@ export class ProductForm implements OnInit {
     costPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     salePrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
     marketPrice: [0, [Validators.min(0), Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
-    moq: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
+    moq: [
+      null as number | null,
+      // ⚠️ 2026-09-20修正：MOQ 原本是 Validators.required + 預設值 1，
+      // 但後端 MoqResolver（三層解析：商品→品類→全域）的類別註解明寫
+      // 「moq = null 代表繼承上層，moq = 0 代表明確表示無最低量限制」，
+      // 兩者語意不同、都是合法狀態，不是「一定要填一個數字」。原本這裡
+      // 因為必填＋預設 1，載入既有商品時只要資料庫存的是 null（代表
+      // 這件商品要繼承上層設定），表單就會顯示成 1、使用者不知情地把
+      // 「繼承」這個語意存沒了；而且核准商品的核心資料鎖定會把「表單被迫
+      // 顯示的 1」跟「資料庫實際的 null」判定成不同值，導致完全不相關的
+      // 存檔（例如只是換一張圖片）也被一起擋下。拿掉 required，允許
+      // 留空＝null＝繼承；有填數字時才用 min(0)（0 是合法值，見上）驗證。
+      [Validators.min(0), Validators.pattern(/^\d+$/)],
+    ],
     // ⚠️ 後端 V6 migration 已改成 1–5 整數等級（@Min(1) @Max(5)），不再是
     // 0–5 分制小數。用 <select> 而非數字輸入框，選項本身已經限制在 1~5，
     // 不需要再疊加 min/max/pattern validator；預設值 3（普通）是中性起點，
@@ -621,7 +634,10 @@ export class ProductForm implements OnInit {
             costPrice: model.core.costPrice ?? 0,
             salePrice: model.core.salePrice ?? 0,
             marketPrice: model.core.marketPrice ?? 0,
-            moq: model.core.moq ?? 1,
+            // ⚠️ 不要再 ?? 1：null 代表「繼承上層」，是合法狀態本身，
+            // 不是「還沒填」的暫時狀態，忠實回填，不要幫使用者偷偷決定
+            // 成一個具體數字（見上面 moq 這個 FormControl 宣告處的說明）。
+            moq: model.core.moq,
             supplyStability: model.core.supplyStability ?? 3,
             priceCompetitiveness: model.core.priceCompetitiveness ?? 3,
             targetCustomer: model.core.targetCustomerDescription,
@@ -869,11 +885,16 @@ export class ProductForm implements OnInit {
       error: (err) => {
         this.isSubmitting.set(false);
         const error = toApiError(err);
-        const message =
+        // ⚠️ 後端這次補上會直接點名是哪個欄位觸發鎖定（例如「...核心資料
+        // 禁止修改（目標客群描述）」），跟舊版只有一句「核心資料禁止修改」
+        // 完全看不出原因不一樣——這裡改成兩句分開顯示，不要把「已核准
+        // 商品僅能改一般資料與圖片」這句說明硬塞進同一個括號，變成
+        // 「（目標客群描述）（已核准商品僅能修改...）」兩層括號疊在一起。
+        const messages =
           error.status === 409
-            ? `${error.message}（已核准商品僅能修改一般基本資料與圖片）`
-            : error.message;
-        this.dialog.notify('error', '儲存失敗', [message]).subscribe();
+            ? [error.message, '已核准商品僅能修改一般基本資料與圖片。']
+            : [error.message];
+        this.dialog.notify('error', '儲存失敗', messages).subscribe();
       },
     });
   }
