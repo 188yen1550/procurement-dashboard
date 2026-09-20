@@ -118,6 +118,7 @@ describe('toReviewRecordModel', () => {
       productId: 101,
       productName: '中秋炭烤海陸組合禮盒',
       reviewerId: 2,
+      reviewerName: '審核人 A',
       submissionCount: 1,
       reviewStatus: 'APPROVED',
       reviewedAt: '2026-08-28T14:30:00',
@@ -168,10 +169,18 @@ describe('toReviewRecordModel', () => {
     expect(model.riskOptionNames).toEqual(['實際供貨風險', '商品品質與客訴風險']);
   });
 
-  it('reviewerName 一律為 null：後端沒有 id 轉姓名的端點', () => {
+  it('reviewerName 直接透傳後端批次解析好的姓名', () => {
     const model = toReviewRecordModel(makeRecord());
 
-    // 這是已知缺口，不要在前端寫死對照表假裝有這個資料。
+    // 2026-09-17修正：後端 ReviewService.resolveUserNames() 補上批次解析，
+    // 不再是前端沒有資料來源的已知缺口，這裡改成驗證有正確透傳，
+    // 不要再斷言為 null（那是舊 bug 被誤寫成預期行為）。
+    expect(model.reviewerName).toBe('審核人 A');
+  });
+
+  it('後端沒有解析出姓名（reviewerName 為 null）時，原樣透傳，不擅自補預設值', () => {
+    const model = toReviewRecordModel({ ...makeRecord(), reviewerName: null });
+
     expect(model.reviewerName).toBeNull();
   });
 });

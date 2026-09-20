@@ -135,10 +135,10 @@ export interface ProductSnapshotPayload {
  * 不要因為 totalScore 沒有後綴就以為它是即時值。整個 ReviewRecordResponse
  * 都是審核當下的凍結資料，畫面上建議統一標示「此為審核當下的數據」。
  *
- * ## ✅ reviewerId 已可顯示姓名（2026-09-17補上）
- * 後端這次批次解析 reviewerId 對應的 app_users 姓名，補進 reviewerName
- * 欄位——決策紀錄與商品審核歷史都能正確顯示「誰審的」了。reviewerId
- * 本身繼續保留（內部用途），畫面請一律改用 reviewerName。
+ * ## reviewerId 姓名解析
+ * reviewerId 只是編號，2026-09-17後端補上 reviewerName（見 ReviewRecordResponse
+ * 類別／ReviewService.resolveUserNames()），批次解析好直接帶在這個 payload 裡，
+ * 不用前端再想辦法拼湊或另外查使用者端點。
  */
 export interface ReviewRecordResponsePayload {
   id: number;
@@ -146,11 +146,7 @@ export interface ReviewRecordResponsePayload {
   /** 來自快照，是審核當下的商品名稱，可能與現在不同。 */
   productName: string | null;
   reviewerId: number | null;
-  /**
-   * ⚠️ 後端這次補上：批次解析 reviewerId 對應的姓名（app_users），
-   * 上面「reviewerId 顯示不了」的已知缺口已經補上。帳號被刪除等情況
-   * 仍可能是 null，畫面顯示「—」。
-   */
+  /** 後端批次解析 reviewerId 對應的姓名，見上方類別註解。 */
   reviewerName: string | null;
   submissionCount: number | null;
   reviewStatus: ReviewDecision;
