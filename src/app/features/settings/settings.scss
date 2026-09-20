@@ -393,7 +393,30 @@ tr.is-editing select {
   font-weight: 700;
 }
 
-.weight-editor-row input {
+/*
+ * 2026-09-20新增（自訂模式增刪因子）：checkbox＋文字放一組，數字輸入框
+ * 放另一邊，取代原本單一 <label> 直接當作 .weight-editor-row 的舊排版。
+ * min-width: 0 讓長標籤（例如「毛利率（已扣運費）」）能在 flex 容器裡正常
+ * 換行，不會把數字輸入框擠出畫面或撐開整列高度不一致。
+ */
+.weight-editor-row-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.weight-editor-row-label input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+}
+
+.weight-editor-row-value {
+  flex-shrink: 0;
   width: 5.5rem;
   padding: 0.35rem 0.5rem;
   text-align: right;
@@ -402,6 +425,12 @@ tr.is-editing select {
   border-radius: var(--r-sm);
   font: inherit;
   font-variant-numeric: tabular-nums;
+}
+
+.weight-editor-row-value:disabled {
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  opacity: 0.6;
 }
 
 .weight-editor-total {
@@ -433,6 +462,68 @@ tr.is-editing select {
 .edit-weights-button {
   width: 100%;
   margin-top: var(--s-2);
+}
+
+/*
+ * ===================== 自訂因子：新增表單 =====================
+ * 2026-09-20新增。原本直接借用 .data-table 當外層容器，但 .data-table
+ * 本身只對內部的 <table> 有樣式，對一般表單元素（label/input/select）
+ * 沒有任何版面規則，導致所有欄位擠成一行、placeholder 跟下一個欄位的
+ * label 文字黏在一起。改成響應式的 grid：每個欄位自己是一個直向排列的
+ * label（文字在上、輸入框在下），欄位之間用固定間距排開，寬螢幕自動
+ * 多欄、窄螢幕自動變成單欄堆疊。
+ */
+.factor-definition-form {
+  padding: var(--s-3);
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-sm);
+}
+
+.factor-definition-form form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--s-3);
+  align-items: start;
+}
+
+.factor-definition-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.factor-definition-form input,
+.factor-definition-form select {
+  padding: 0.45rem 0.6rem;
+  background: var(--c-surface);
+  border: 1px solid #d4dee6;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-weight: 400;
+}
+
+.factor-definition-form input::placeholder {
+  color: var(--c-ink-muted);
+}
+
+.factor-definition-form input:disabled,
+.factor-definition-form select:disabled {
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  opacity: 0.6;
+}
+
+/* 說明文字／勾選加總這類需要橫跨整排寬度的元素，不要被切進某一欄裡。 */
+.factor-definition-form .helper,
+.factor-definition-form .weight-editor-actions {
+  grid-column: 1 / -1;
+}
+
+.factor-definition-form .helper.is-invalid {
+  color: var(--c-danger);
 }
 
 /* ===================== 資料表格欄寬 ===================== */

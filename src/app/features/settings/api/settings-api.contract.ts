@@ -157,11 +157,12 @@ export type FactorStrategyCode = 'MANUAL_SCALE' | 'MANUAL_PERCENT' | 'TARGET_BAN
 
 /**
  * 可綁定的既有欄位代碼，對應後端 enums/FactorDataSource.java。
- * 目前只有一個候選：價格競爭力（products.price_competitiveness，1~5人工評分），
- * 是盤點既有欄位後唯一一個沒有被任何既有因子使用的欄位。之後每多開放一個
- * 既有欄位可綁定，這裡就多一個值——不需要資料庫變更。
+ * 2026-09-20新增 MOQ／SUPPLIER_MAX_CAPACITY 兩個候選——盤點既有欄位後
+ * 發現這兩個也完全沒有被任何既有因子使用，且都是「原始數字，需要依品類
+ * 設定合理區間」的形狀，剛好對上原本沒有資料源可綁的 TARGET_BAND_NORMALIZE。
+ * 之後每多開放一個既有欄位可綁定，這裡就多一個值——不需要資料庫變更。
  */
-export type FactorDataSource = 'PRICE_COMPETITIVENESS';
+export type FactorDataSource = 'PRICE_COMPETITIVENESS' | 'MOQ' | 'SUPPLIER_MAX_CAPACITY';
 
 /** 對應後端 dto/response/FactorDefinitionResponse.java。 */
 export interface FactorDefinitionResponsePayload {

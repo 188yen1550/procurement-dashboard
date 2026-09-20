@@ -797,28 +797,53 @@ export class Settings implements OnInit {
   readonly isSavingWeights = signal(false);
 
   /**
-   * 2026-09-20改用 computed，改成依「目前正在編輯的模式」實際擁有的因子清單
-   * 動態決定，不再是寫死的七項——否則自訂因子（factor_definitions）建立後，
-   * 即使後端已經把它算進 weightSnapshot.factors，畫面上也永遠不會出現
-   * 對應的權重輸入列，變成使用者無法從設定頁替自訂因子分配權重。
-   * 沒有正在編輯任何模式時退回 FACTOR_ORDER，避免其他還沒編輯的畫面情境出錯。
+   * 目前勾選「啟用」的因子代碼（2026-09-20新增：自訂模式增刪因子）。
+   * 未勾選的因子權重會被鎖住並強制為 0——後端 getAllActiveFactorCodes()
+   * 要求整份送出的清單必須涵蓋所有目前生效中的因子（固定七個＋所有啟用中的
+   * 自訂因子），沒有真正「刪除」這回事，「刪除」只能實作成「權重歸零＋
+   * 視為未啟用」，數學上 weightedAverage() 本來就把權重0排除在分母外，
+   * 效果等同刪除。
    */
-  readonly factorOrder = computed<readonly string[]>(() => {
+  readonly enabledFactorCodes = signal<Set<string>>(new Set());
+
+  /**
+   * 編輯器要列出的完整因子清單：這個模式目前已經在用的（mode.rawFactors）
+   * ＋全部生效中、但這個模式還沒用過的自訂因子。後者也必須列出來，即使
+   * 預設不啟用——否則儲存時送出的清單會漏掉這些因子代碼，被後端的
+   * 「缺少必要的因子」擋下（見 getAllActiveFactorCodes() 的整份覆蓋要求）。
+   */
+  readonly weightEditorRows = computed<{ factorCode: string; factorName: string }[]>(() => {
     const mode = this.modes().find((m) => m.id === this.editingWeightsModeId());
-    return mode?.rawFactors ? mode.rawFactors.map((f) => f.factorCode) : FACTOR_ORDER;
+    if (!mode?.rawFactors) return [];
+    const rows = mode.rawFactors.map((f) => ({ factorCode: f.factorCode, factorName: f.factorName }));
+    const existingCodes = new Set(rows.map((r) => r.factorCode));
+    this.factorDefinitions().forEach((definition) => {
+      if (definition.isActive && !existingCodes.has(definition.factorCode)) {
+        rows.push({ factorCode: definition.factorCode, factorName: definition.factorName });
+      }
+    });
+    return rows;
   });
 
   /**
-   * 同上理由，改成動態組出：以既有的 FACTOR_LABEL 靜態對照表為底，
-   * 疊上「目前正在編輯的模式」裡每個因子後端實際回傳的 factorName——
-   * 自訂因子的中文名稱本來就是管理層建立時自己填的，後端 weightSnapshot
-   * 已經有這個值，沒有必要也不應該在前端另外維護一份對照表。
+   * 2026-09-20改用 weightEditorRows()，不再只看 mode.rawFactors——理由同上，
+   * 編輯器要能顯示「還沒加入這個模式」的自訂因子，才能勾選啟用。
+   * 沒有正在編輯任何模式時退回 FACTOR_ORDER，避免其他還沒編輯的畫面情境出錯。
+   */
+  readonly factorOrder = computed<readonly string[]>(() => {
+    const rows = this.weightEditorRows();
+    return rows.length > 0 ? rows.map((r) => r.factorCode) : FACTOR_ORDER;
+  });
+
+  /**
+   * 同上理由，改成從 weightEditorRows() 組出：因子的中文名稱直接讀後端
+   * 回傳的 factorName（自訂因子的名稱本來就是管理層建立時自己填的），
+   * 沒有必要也不應該在前端另外維護一份對照表。
    */
   readonly factorLabel = computed<Record<string, string>>(() => {
-    const mode = this.modes().find((m) => m.id === this.editingWeightsModeId());
     const dynamicLabels: Record<string, string> = {};
-    mode?.rawFactors?.forEach((f) => {
-      dynamicLabels[f.factorCode] = f.factorName;
+    this.weightEditorRows().forEach((r) => {
+      dynamicLabels[r.factorCode] = r.factorName;
     });
     return { ...FACTOR_LABEL, ...dynamicLabels };
   });
@@ -830,21 +855,67 @@ export class Settings implements OnInit {
 
   startEditWeights(mode: EvaluationModeVM): void {
     if (!mode.isEditable || !mode.rawFactors || mode.id === null) return;
+    // 先設定正在編輯的模式，weightEditorRows() 才能正確算出「這個模式還沒用過、
+    // 但已存在的自訂因子」清單。
+    this.editingWeightsModeId.set(mode.id);
+
     const drafts: Record<string, number> = {};
+    const enabled = new Set<string>();
     mode.rawFactors.forEach((f) => {
       drafts[f.factorCode] = f.weight ?? 0;
+      // 用「權重是否大於0」判斷勾選狀態，不是用「是否存在於 rawFactors」——
+      // 後端沒有獨立的啟用/停用欄位，權重0本身就是唯一的「已停用」訊號
+      // （見 enabledFactorCodes 類別註解）。這樣重新打開編輯器時，上次
+      // 取消勾選（歸零）的因子才會正確顯示成未勾選，而不是因為它還留在
+      // rawFactors 裡就被誤判成勾選中。
+      if ((f.weight ?? 0) > 0) {
+        enabled.add(f.factorCode);
+      }
+    });
+    // 還沒被這個模式使用的自訂因子：預設不啟用、權重0，管理層要主動勾選
+    // 才會納入計分；仍要先放進 drafts，儲存時才不會漏掉這個因子代碼。
+    this.weightEditorRows().forEach((row) => {
+      if (!(row.factorCode in drafts)) drafts[row.factorCode] = 0;
     });
     this.weightDrafts.set(drafts);
-    this.editingWeightsModeId.set(mode.id);
+    this.enabledFactorCodes.set(enabled);
   }
 
   cancelEditWeights(): void {
     this.editingWeightsModeId.set(null);
     this.weightDrafts.set({});
+    this.enabledFactorCodes.set(new Set());
   }
 
   updateWeightDraft(factorCode: string, value: number): void {
     this.weightDrafts.update((drafts) => ({ ...drafts, [factorCode]: value }));
+  }
+
+  /**
+   * 勾選/取消勾選某個因子（新增/刪除因子的實際操作）。
+   * 取消勾選時強制把權重歸零並鎖住輸入框（樣板 [disabled]），不留著舊數字
+   * 造成「看起來被移除、實際上還在算分」的誤解。「刪除」的真實效果就是
+   * 權重0——後端沒有真正把這一列從送出清單裡拿掉的機制，見上方
+   * enabledFactorCodes 的類別註解。
+   *
+   * 2026-09-20修正：不再接收外部傳入的 checked 狀態（改用 (change) 事件，
+   * 不是 (ngModelChange)，事件本身不帶可靠的布林值），改成內部自行判斷目前
+   * 勾選狀態並翻轉，比照同檔案 toggleTagPickerSelection() 的既有寫法。
+   */
+  toggleFactorEnabled(factorCode: string): void {
+    const wasEnabled = this.enabledFactorCodes().has(factorCode);
+    this.enabledFactorCodes.update((set) => {
+      const next = new Set(set);
+      if (next.has(factorCode)) {
+        next.delete(factorCode);
+      } else {
+        next.add(factorCode);
+      }
+      return next;
+    });
+    if (wasEnabled) {
+      this.updateWeightDraft(factorCode, 0);
+    }
   }
 
   /**
@@ -860,6 +931,14 @@ export class Settings implements OnInit {
   saveWeights(): void {
     const modeId = this.editingWeightsModeId();
     if (modeId === null || this.isSavingWeights()) return;
+
+    // 基本防呆：不能把因子全部取消勾選——那樣送出去全部因子權重都是0，
+    // 加總檢查會先擋下來，但錯誤訊息應該講清楚真正的原因是什麼，而不是
+    // 讓使用者對著「加總須為100」的訊息一頭霧水，不知道為什麼怎麼調都是0。
+    if (this.enabledFactorCodes().size === 0) {
+      this.statusMessageState.show('至少要啟用一個因子，不能全部取消勾選。');
+      return;
+    }
 
     const total = this.weightDraftTotal();
     if (Math.abs(total - 100) > 0.01) {
@@ -933,7 +1012,6 @@ export class Settings implements OnInit {
   readonly isSavingFactorDefinition = signal(false);
   readonly newFactorCode = signal('');
   readonly newFactorName = signal('');
-  readonly newFactorCategory = signal('');
   readonly newFactorStrategy = signal<FactorStrategyCode>('MANUAL_SCALE');
   readonly newFactorDataSource = signal<FactorDataSource>('PRICE_COMPETITIVENESS');
   /** 空字串代表沿用該策略的預設倍率（MANUAL_SCALE=20／MANUAL_PERCENT=100），不送 strategyParams。 */
@@ -947,15 +1025,26 @@ export class Settings implements OnInit {
   };
 
   /** 下拉選單用的陣列版本，避免在樣板裡用 keyvalue pipe（這個元件目前沒有引入它）。 */
+  /**
+   * 下拉選單用的陣列版本，避免在樣板裡用 keyvalue pipe（這個元件目前沒有引入它）。
+   *
+   * 2026-09-20拿掉 MANUAL_PERCENT：目前沒有任何既有欄位符合它的資料形狀
+   * （0~1 小數人工估值），選了必定被 availableFactorDataSourceOptions() 擋下，
+   * 是一個保證失敗的選項，留著只會讓使用者多花時間填表單才發現不能用。
+   * 後端 FactorStrategyCode.MANUAL_PERCENT／ManualPercentStrategy 都還在
+   * （已經寫好、可運作），只是這裡不再列出來選——之後如果找到合適的既有欄位
+   * （或欄位本身開放新增），把這行加回來就好，不需要重寫任何邏輯。
+   */
   readonly factorStrategyOptions: readonly { code: FactorStrategyCode; label: string }[] = [
     { code: 'MANUAL_SCALE', label: '人工評分 × 倍率' },
-    { code: 'MANUAL_PERCENT', label: '人工估值 × 倍率' },
     { code: 'TARGET_BAND_NORMALIZE', label: '依品類目標區間正規化' },
   ];
 
   /** 中文顯示名稱，對應後端 FactorDataSource。目前只有一個候選，見該類別註解。 */
   readonly factorDataSourceLabel: Record<string, string> = {
     PRICE_COMPETITIVENESS: '價格競爭力（1~5人工評分）',
+    MOQ: '最低訂購量（原始數字，需設定目標區間）',
+    SUPPLIER_MAX_CAPACITY: '供應商最大產能（原始數字，需設定目標區間）',
   };
 
   /**
@@ -966,7 +1055,25 @@ export class Settings implements OnInit {
   readonly factorDataSourceOptions: readonly {
     code: FactorDataSource;
     compatibleStrategy: FactorStrategyCode;
-  }[] = [{ code: 'PRICE_COMPETITIVENESS', compatibleStrategy: 'MANUAL_SCALE' }];
+  }[] = [
+    { code: 'PRICE_COMPETITIVENESS', compatibleStrategy: 'MANUAL_SCALE' },
+    { code: 'MOQ', compatibleStrategy: 'TARGET_BAND_NORMALIZE' },
+    { code: 'SUPPLIER_MAX_CAPACITY', compatibleStrategy: 'TARGET_BAND_NORMALIZE' },
+  ];
+
+  /**
+   * 依目前選擇的運算邏輯篩選出相容的資料源（2026-09-20新增）。
+   *
+   * MANUAL_PERCENT／TARGET_BAND_NORMALIZE 目前完全沒有相容的資料源——
+   * 盤點 Product 既有欄位後，唯一沒被既有因子用過的欄位（價格競爭力）
+   * 是 1~5 人工評分，形狀對得上的只有 MANUAL_SCALE。列出這兩個策略選項
+   * 是讓管理層知道系統設計上支援這兩種算法，之後有合適欄位時就能直接用；
+   * 但選了也組不出一個能成功送出的因子，所以畫面要清楚擋下來並說明原因，
+   * 而不是讓使用者填完整份表單、送出後才被後端一句「資料源不相容」打回票。
+   */
+  readonly availableFactorDataSourceOptions = computed(() =>
+    this.factorDataSourceOptions.filter((option) => option.compatibleStrategy === this.newFactorStrategy()),
+  );
 
   private loadFactorDefinitions(): void {
     this.api
@@ -982,11 +1089,31 @@ export class Settings implements OnInit {
   openCreateFactorDefinition(): void {
     this.newFactorCode.set('');
     this.newFactorName.set('');
-    this.newFactorCategory.set('');
     this.newFactorStrategy.set('MANUAL_SCALE');
     this.newFactorDataSource.set('PRICE_COMPETITIVENESS');
     this.newFactorScale.set('');
     this.isCreatingFactorDefinition.set(true);
+  }
+
+  /**
+   * 切換運算邏輯時，資料源要跟著限縮到相容清單，並自動選第一個可用選項——
+   * 不然選了 MANUAL_PERCENT 之類目前沒有相容資料源的邏輯，資料源下拉會變成
+   * 空的，或者留著上一次選的、其實已經不相容的值,使用者送出時只會得到
+   * 一個看起來沒道理的後端錯誤。沒有可用選項時保持 newFactorDataSource
+   * 不變，交給 createFactorDefinition() 的防呆去擋。
+   */
+  updateNewFactorStrategy(strategy: FactorStrategyCode): void {
+    this.newFactorStrategy.set(strategy);
+    const firstCompatible = this.factorDataSourceOptions.find((o) => o.compatibleStrategy === strategy);
+    if (firstCompatible) {
+      this.newFactorDataSource.set(firstCompatible.code);
+    }
+    // TARGET_BAND_NORMALIZE 不吃倍率參數，畫面上這個欄位也會跟著隱藏——
+    // 一併清空，避免殘留前一次選 MANUAL_SCALE 時填的數字被送進
+    // strategyParams，變成一筆沒有用途卻存在的資料。
+    if (strategy === 'TARGET_BAND_NORMALIZE') {
+      this.newFactorScale.set('');
+    }
   }
 
   cancelCreateFactorDefinition(): void {
@@ -1005,6 +1132,11 @@ export class Settings implements OnInit {
     const factorName = this.newFactorName().trim();
     if (!factorCode || !factorName) {
       this.statusMessageState.show('請填寫因子代碼與名稱。');
+      return;
+    }
+
+    if (this.availableFactorDataSourceOptions().length === 0) {
+      this.statusMessageState.show('此運算邏輯目前沒有可綁定的既有欄位，暫不可用，請改選其他運算邏輯。');
       return;
     }
 
@@ -1039,7 +1171,11 @@ export class Settings implements OnInit {
       .createFactorDefinition({
         factorCode,
         factorName,
-        category: this.newFactorCategory().trim() || null,
+        // 2026-09-20拿掉分組欄位：category 的唯一用途是卡片上的四象限彙總
+        // 顯示，那個顯示已經在同一輪改成展開因子明細（見 mode-grid 樣板），
+        // 分組已經沒有任何畫面在讀，繼續讓使用者填一個沒有效果的欄位只會
+        // 造成困惑。後端 FactorDefinitionCreateRequest.category 保留可為 null，
+        // 這裡固定不送即可，不需要為此再動後端。
         strategyCode: this.newFactorStrategy(),
         dataSourceCode: this.newFactorDataSource(),
         strategyParams: strategyParams ?? null,

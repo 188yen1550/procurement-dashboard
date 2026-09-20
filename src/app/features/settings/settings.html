@@ -669,15 +669,43 @@
       <p class="empty">權重載入中…</p>
       } @else if (editingWeightsModeId() === mode.id) {
       <!-- ===== 權重編輯器（僅 CUSTOM，isEditable = true）===== -->
-      <div class="weight-editor">
+      <!-- 2026-09-20新增勾選欄：取消勾選＝刪除因子（權重歸零＋鎖住輸入框），
+           勾選＝新增/啟用因子。因子清單涵蓋這個模式還沒用過的自訂因子，
+           見 weightEditorRows() 的說明。 -->
+      <div class="weight-editor" (click)="$event.stopPropagation()">
+        <!--
+          2026-09-20再次修正：找到另一個真正的原因了。整張卡片外層的
+          <article> 有 (click)="activeMode() !== mode.code && selectMode(mode.code)"——
+          點卡片任何地方都會冒泡上去，如果目前編輯的自訂模式剛好不是「目前
+          生效模式」，每次點 checkbox 都會連帶觸發 selectMode()，呼叫後端
+          switchEvaluationMode() 把系統生效模式切走、還會跳出「所有未審核
+          商品的即時分數將重新計算」的訊息。header 裡的 radio input 其實
+          已經用 $event.stopPropagation() 擋過同樣的問題，這次新增的權重
+          編輯器忘了比照辦理。在容器層擋一次，底下所有互動元件（checkbox、
+          輸入框、按鈕）都不會再冒泡上去。
+        -->
         @for (factorCode of factorOrder(); track factorCode) {
-        <label class="weight-editor-row">{{ factorLabel()[factorCode] ?? factorCode }}
-          <input type="number" step="0.01" min="0" max="100" [ngModel]="weightDrafts()[factorCode]"
+        <div class="weight-editor-row">
+          <label class="weight-editor-row-label">
+            <!--
+              checkbox 改用 (click)+preventDefault()，不用 (change)：改成
+              完全由 Angular 的 [checked] 綁定決定畫面上的勾選狀態，不讓
+              瀏覽器自己原生切換 checked，兩邊各管各的就不會有「瀏覽器切了
+              一次、Angular 重新算出來的值又把它切回去」這種時序競爭的可能。
+            -->
+            <input type="checkbox" [checked]="enabledFactorCodes().has(factorCode)"
+              [attr.aria-label]="'啟用' + (factorLabel()[factorCode] ?? factorCode)"
+              (click)="$event.preventDefault(); toggleFactorEnabled(factorCode)" />
+            <span>{{ factorLabel()[factorCode] ?? factorCode }}</span>
+          </label>
+          <input type="number" step="0.01" min="0" max="100" class="weight-editor-row-value"
+            [ngModel]="weightDrafts()[factorCode]"
+            [disabled]="!enabledFactorCodes().has(factorCode)"
             (ngModelChange)="updateWeightDraft(factorCode, $event)" />
-        </label>
+        </div>
         }
         <div class="weight-editor-total" [class.is-invalid]="weightDraftTotal() !== 100">
-          目前加總：{{ weightDraftTotal() }} / 100
+          目前加總：{{ weightDraftTotal() }} / 100（僅計入已勾選的因子）
         </div>
         <div class="weight-editor-actions">
           <button type="button" class="btn" [disabled]="isSavingWeights()" (click)="cancelEditWeights()">
@@ -690,23 +718,17 @@
         <p class="helper">調整僅影響之後新送審的商品，已完成審核的紀錄不會變動。</p>
       </div>
       } @else {
-      <dl>
+      <!-- 2026-09-20改成展開因子明細，取代原本的商業條件／客群匹配／歷史銷售／
+           預測人氣四象限彙總——四個固定模式跟自訂模式都改，理由：自訂因子
+           本來就不屬於任何一個既有象限分組，彙總會漏掉它們；四個模式統一
+           呈現方式，畫面邏輯也比較一致。唯讀展示，樣式沿用既有 dt/dd 排版。 -->
+      <dl class="factor-breakdown">
+        @for (factor of mode.rawFactors; track factor.factorCode) {
         <div>
-          <dt>商業條件</dt>
-          <dd>{{ mode.weights.business }}%</dd>
+          <dt>{{ factor.factorName }}</dt>
+          <dd>{{ factor.weight ?? 0 }}%</dd>
         </div>
-        <div>
-          <dt>客群匹配</dt>
-          <dd>{{ mode.weights.audience }}%</dd>
-        </div>
-        <div>
-          <dt>歷史銷售</dt>
-          <dd>{{ mode.weights.history }}%</dd>
-        </div>
-        <div>
-          <dt>預測人氣</dt>
-          <dd>{{ mode.weights.forecast }}%</dd>
-        </div>
+        }
       </dl>
       @if (mode.isEditable) {
       <button type="button" class="btn edit-weights-button" [disabled]="pageState() === 'disabled'"
@@ -747,13 +769,9 @@
         <input type="text" [ngModel]="newFactorName()" name="newFactorName"
           (ngModelChange)="newFactorName.set($event)" placeholder="例如 價格競爭力" />
       </label>
-      <label>分組（選填）
-        <input type="text" [ngModel]="newFactorCategory()" name="newFactorCategory"
-          (ngModelChange)="newFactorCategory.set($event)" />
-      </label>
       <label>運算邏輯
         <select [ngModel]="newFactorStrategy()" name="newFactorStrategy"
-          (ngModelChange)="newFactorStrategy.set($event)">
+          (ngModelChange)="updateNewFactorStrategy($event)">
           @for (option of factorStrategyOptions; track option.code) {
           <option [value]="option.code">{{ option.label }}</option>
           }
@@ -761,25 +779,47 @@
       </label>
       <label>資料源
         <select [ngModel]="newFactorDataSource()" name="newFactorDataSource"
+          [disabled]="availableFactorDataSourceOptions().length === 0"
           (ngModelChange)="newFactorDataSource.set($event)">
-          @for (option of factorDataSourceOptions; track option.code) {
+          @for (option of availableFactorDataSourceOptions(); track option.code) {
           <option [value]="option.code">{{ factorDataSourceLabel[option.code] ?? option.code }}</option>
           }
         </select>
       </label>
+      <!--
+        2026-09-20新增：倍率只有 MANUAL_SCALE／MANUAL_PERCENT 會用到（拿去乘
+        原始值），TARGET_BAND_NORMALIZE 靠目標區間正規化，不吃這個參數——
+        選了 TARGET_BAND_NORMALIZE 卻還讓使用者填一個沒有效果的倍率欄位，
+        會誤導人以為它有作用。改成依選擇的運算邏輯決定要不要顯示。
+      -->
+      @if (newFactorStrategy() !== 'TARGET_BAND_NORMALIZE') {
       <label>倍率（選填，留空沿用該邏輯的預設值）
         <input type="text" [ngModel]="newFactorScale()" name="newFactorScale"
           (ngModelChange)="newFactorScale.set($event)" placeholder="例如 20" />
       </label>
-      <p class="helper">
-        資料源必須跟運算邏輯相容（見上方對照），組錯後端會拒絕並說明原因。
+      }
+      @if (availableFactorDataSourceOptions().length === 0) {
+      <p class="helper is-invalid">
+        此運算邏輯目前沒有可綁定的既有欄位，暫不可用，請改選其他運算邏輯。
       </p>
+      } @else if (newFactorStrategy() === 'TARGET_BAND_NORMALIZE') {
+      <p class="helper">
+        新增後這個因子還不會影響任何分數——目標區間正規化需要先到「設定 >
+        目標區間」頁面，替各品類（或全域）設定這個因子的合理上下限，沒有設定
+        區間的品類，這個因子會維持 null（不計入分母），不是計算錯誤。
+      </p>
+      } @else {
+      <p class="helper">
+        資料源必須跟運算邏輯相容，畫面已經幫你篩選過，不會出現組不出來的組合。
+      </p>
+      }
       <div class="weight-editor-actions">
         <button type="button" class="btn" [disabled]="isSavingFactorDefinition()"
           (click)="cancelCreateFactorDefinition()">
           取消
         </button>
-        <button type="submit" class="btn-primary" [disabled]="isSavingFactorDefinition()">
+        <button type="submit" class="btn-primary"
+          [disabled]="isSavingFactorDefinition() || availableFactorDataSourceOptions().length === 0">
           {{ isSavingFactorDefinition() ? '儲存中…' : '新增' }}
         </button>
       </div>
