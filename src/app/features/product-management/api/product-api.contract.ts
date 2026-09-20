@@ -172,6 +172,15 @@ export interface WeightFactorPayload {
   factorName: string;
   category: string;
   weight: Decimal;
+  /**
+   * 這個因子當時採用的運算邏輯代碼（2026-09-20新增，見 FactorStrategyCode）。
+   * 既有七個固定因子沒有對應的 FactorDefinition，恆為 null；只有自訂因子有值。
+   * 目前前端沒有畫面在用這個欄位，先透傳以符合後端型別，之後若設定頁要顯示
+   * 「這個因子用的是哪種運算邏輯」可以直接讀這裡，不需要再跟後端要新欄位。
+   */
+  strategyCode?: string | null;
+  /** 同上，該策略當時的參數快照（例如 MANUAL_SCALE 的 scale 倍率）。 */
+  strategyParams?: Record<string, number> | null;
 }
 
 /** 對應後端 json/WeightSnapshot.java。權重是唯讀展示，後端沒有修改 API。 */

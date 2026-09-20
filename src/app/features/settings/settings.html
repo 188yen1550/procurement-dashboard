@@ -670,8 +670,8 @@
       } @else if (editingWeightsModeId() === mode.id) {
       <!-- ===== 權重編輯器（僅 CUSTOM，isEditable = true）===== -->
       <div class="weight-editor">
-        @for (factorCode of factorOrder; track factorCode) {
-        <label class="weight-editor-row">{{ factorLabel[factorCode] }}
+        @for (factorCode of factorOrder(); track factorCode) {
+        <label class="weight-editor-row">{{ factorLabel()[factorCode] ?? factorCode }}
           <input type="number" step="0.01" min="0" max="100" [ngModel]="weightDrafts()[factorCode]"
             (ngModelChange)="updateWeightDraft(factorCode, $event)" />
         </label>
@@ -721,6 +721,114 @@
     </article>
     }
   </div>
+
+  <!-- ===== 自訂計分因子管理（2026-09-20新增，方案B）===== -->
+  <section class="management-head factor-definitions">
+    <div>
+      <h2>自訂計分因子</h2>
+      <p class="helper">
+        新增後不會自動影響任何評估模式的分數，還需要在上方自訂模式的「編輯權重」
+        裡把新因子加進去並分配權重。
+      </p>
+    </div>
+    <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'"
+      (click)="openCreateFactorDefinition()">
+      新增自訂因子
+    </button>
+  </section>
+  @if (isCreatingFactorDefinition()) {
+  <section class="data-table factor-definition-form">
+    <form (ngSubmit)="createFactorDefinition()">
+      <label>因子代碼
+        <input type="text" [ngModel]="newFactorCode()" name="newFactorCode"
+          (ngModelChange)="newFactorCode.set($event)" placeholder="例如 PRICE_COMPETITIVENESS" />
+      </label>
+      <label>因子名稱
+        <input type="text" [ngModel]="newFactorName()" name="newFactorName"
+          (ngModelChange)="newFactorName.set($event)" placeholder="例如 價格競爭力" />
+      </label>
+      <label>分組（選填）
+        <input type="text" [ngModel]="newFactorCategory()" name="newFactorCategory"
+          (ngModelChange)="newFactorCategory.set($event)" />
+      </label>
+      <label>運算邏輯
+        <select [ngModel]="newFactorStrategy()" name="newFactorStrategy"
+          (ngModelChange)="newFactorStrategy.set($event)">
+          @for (option of factorStrategyOptions; track option.code) {
+          <option [value]="option.code">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label>資料源
+        <select [ngModel]="newFactorDataSource()" name="newFactorDataSource"
+          (ngModelChange)="newFactorDataSource.set($event)">
+          @for (option of factorDataSourceOptions; track option.code) {
+          <option [value]="option.code">{{ factorDataSourceLabel[option.code] ?? option.code }}</option>
+          }
+        </select>
+      </label>
+      <label>倍率（選填，留空沿用該邏輯的預設值）
+        <input type="text" [ngModel]="newFactorScale()" name="newFactorScale"
+          (ngModelChange)="newFactorScale.set($event)" placeholder="例如 20" />
+      </label>
+      <p class="helper">
+        資料源必須跟運算邏輯相容（見上方對照），組錯後端會拒絕並說明原因。
+      </p>
+      <div class="weight-editor-actions">
+        <button type="button" class="btn" [disabled]="isSavingFactorDefinition()"
+          (click)="cancelCreateFactorDefinition()">
+          取消
+        </button>
+        <button type="submit" class="btn-primary" [disabled]="isSavingFactorDefinition()">
+          {{ isSavingFactorDefinition() ? '儲存中…' : '新增' }}
+        </button>
+      </div>
+    </form>
+  </section>
+  }
+  <section class="data-table">
+    <table>
+      <thead>
+        <tr>
+          <th>因子代碼</th>
+          <th>名稱</th>
+          <th>運算邏輯</th>
+          <th>資料源</th>
+          <th>狀態</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (factorDefinitions().length === 0) {
+        <tr>
+          <td colspan="6" class="empty">目前沒有自訂因子。</td>
+        </tr>
+        }
+        @for (definition of factorDefinitions(); track definition.id) {
+        <tr>
+          <td>{{ definition.factorCode }}</td>
+          <td>{{ definition.factorName }}</td>
+          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}</td>
+          <td>{{ factorDataSourceLabel[definition.dataSourceCode] ?? definition.dataSourceCode }}</td>
+          <td>{{ definition.isActive ? '啟用中' : '已停用' }}</td>
+          <td>
+            @if (definition.isActive) {
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
+              (click)="disableFactorDefinition(definition.id)">
+              停用
+            </button>
+            } @else {
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
+              (click)="enableFactorDefinition(definition.id)">
+              啟用
+            </button>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </section>
   }
   @if (modal()) {
   <div class="modal-backdrop" (click)="closeModal()">

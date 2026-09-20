@@ -62,7 +62,14 @@ function mockDetail(productId: string): ReviewDetailModel {
       { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true, alertKeywords: '缺貨、斷貨' },
       { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true, alertKeywords: '瑕疵、客訴' },
       { id: 3, name: '市場不確定性與需求變動風險', description: null, isSystemDefault: true, alertKeywords: '退燒、競品' },
-      { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true, alertKeywords: null },
+      {
+        id: 9,
+        name: OTHER_RISK_OPTION_NAME,
+        description: null,
+        isSystemDefault: true,
+        alertKeywords: null,
+        isFreeTextOption: true,
+      },
     ],
   };
 }
@@ -106,8 +113,11 @@ export class ReviewDetail implements OnInit {
 
   /** 「其他」風險是否已勾選；決定要不要顯示補充說明欄位。 */
   readonly hasOtherSelected = computed(() => {
+    // 2026-09-20改用 isFreeTextOption 欄位識別，不再靠名稱字串比對
+    // option.name === OTHER_RISK_OPTION_NAME——理由見 review.mapper.ts
+    // 的 OTHER_RISK_OPTION_NAME 類別註解。
     const other = this.product()?.availableRiskOptions.find(
-      (option) => option.name === OTHER_RISK_OPTION_NAME,
+      (option) => option.isFreeTextOption === true,
     );
     return other !== undefined && this.selectedRiskIds().includes(other.id);
   });

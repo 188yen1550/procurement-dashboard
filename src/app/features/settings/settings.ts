@@ -18,6 +18,9 @@ import { joinCampaignTags, splitKeywords, TEMPERATURE_ZONE_LABEL } from '../../c
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
+  FactorDataSource,
+  FactorDefinitionResponsePayload,
+  FactorStrategyCode,
   FestiveCampaignTagPayload,
   ProductTypeScoreBandCreateRequestPayload,
   ProductTypeScoreBandResponsePayload,
@@ -121,6 +124,27 @@ interface RiskOptionVM {
   name: string;
   keywords: string;
   isSystemDefault: boolean;
+}
+
+/** 自訂計分因子的畫面顯示模型（2026-09-20新增，方案B）。 */
+interface FactorDefinitionVM {
+  id: number;
+  factorCode: string;
+  factorName: string;
+  strategyCode: FactorStrategyCode;
+  dataSourceCode: FactorDataSource;
+  isActive: boolean;
+}
+
+function toFactorDefinitionVM(payload: FactorDefinitionResponsePayload): FactorDefinitionVM {
+  return {
+    id: payload.id,
+    factorCode: payload.factorCode,
+    factorName: payload.factorName,
+    strategyCode: payload.strategyCode,
+    dataSourceCode: payload.dataSourceCode,
+    isActive: payload.isActive,
+  };
 }
 
 interface ProductTypeVM {
@@ -728,6 +752,7 @@ export class Settings implements OnInit {
           this.modes.set(shells);
           this.markLoaded('modes');
           this.loadCurrentMode();
+          this.loadFactorDefinitions();
           shells.forEach((mode) => this.loadModeWeights(mode.id));
         },
         error: (err) => this.handleLoadError(err),
@@ -771,8 +796,32 @@ export class Settings implements OnInit {
   readonly weightDrafts = signal<Record<string, number>>({});
   readonly isSavingWeights = signal(false);
 
-  readonly factorOrder = FACTOR_ORDER;
-  readonly factorLabel = FACTOR_LABEL;
+  /**
+   * 2026-09-20改用 computed，改成依「目前正在編輯的模式」實際擁有的因子清單
+   * 動態決定，不再是寫死的七項——否則自訂因子（factor_definitions）建立後，
+   * 即使後端已經把它算進 weightSnapshot.factors，畫面上也永遠不會出現
+   * 對應的權重輸入列，變成使用者無法從設定頁替自訂因子分配權重。
+   * 沒有正在編輯任何模式時退回 FACTOR_ORDER，避免其他還沒編輯的畫面情境出錯。
+   */
+  readonly factorOrder = computed<readonly string[]>(() => {
+    const mode = this.modes().find((m) => m.id === this.editingWeightsModeId());
+    return mode?.rawFactors ? mode.rawFactors.map((f) => f.factorCode) : FACTOR_ORDER;
+  });
+
+  /**
+   * 同上理由，改成動態組出：以既有的 FACTOR_LABEL 靜態對照表為底，
+   * 疊上「目前正在編輯的模式」裡每個因子後端實際回傳的 factorName——
+   * 自訂因子的中文名稱本來就是管理層建立時自己填的，後端 weightSnapshot
+   * 已經有這個值，沒有必要也不應該在前端另外維護一份對照表。
+   */
+  readonly factorLabel = computed<Record<string, string>>(() => {
+    const mode = this.modes().find((m) => m.id === this.editingWeightsModeId());
+    const dynamicLabels: Record<string, string> = {};
+    mode?.rawFactors?.forEach((f) => {
+      dynamicLabels[f.factorCode] = f.factorName;
+    });
+    return { ...FACTOR_LABEL, ...dynamicLabels };
+  });
 
   /** 目前草稿的加總。畫面即時顯示，但依決議只在送出時檢查、不擋輸入。 */
   readonly weightDraftTotal = computed(() =>
@@ -801,8 +850,12 @@ export class Settings implements OnInit {
   /**
    * 送出權重編輯。依決議只在送出時檢查一次加總，不做輸入中即時擋。
    *
-   * ⚠️ 整份覆蓋：後端 EvaluationFactorUpdateRequest 要求全部七個因子，
-   * weightDrafts 由 startEditWeights() 一次帶入全部七項，這裡不會遺漏。
+   * ⚠️ 整份覆蓋：後端 EvaluationFactorUpdateRequest 要求送齊「目前所有生效中
+   * 的因子」（既有七個＋自訂因子，數量不再固定是七）。2026-09-20改用
+   * factorOrder()（見上方 computed 的說明）取代原本寫死的 this.factorOrder
+   * （FACTOR_ORDER 常數）——舊寫法會導致自訂因子的權重永遠不會被送出，
+   * 且如果自訂模式目前的因子數不是七項，舊寫法送出的清單「項數不齊全」，
+   * 後端會直接拒絕。
    */
   saveWeights(): void {
     const modeId = this.editingWeightsModeId();
@@ -810,11 +863,11 @@ export class Settings implements OnInit {
 
     const total = this.weightDraftTotal();
     if (Math.abs(total - 100) > 0.01) {
-      this.statusMessageState.show(`七項權重加總須為 100，目前為 ${total}，請調整後再送出。`);
+      this.statusMessageState.show(`全部因子權重加總須為 100，目前為 ${total}，請調整後再送出。`);
       return;
     }
 
-    const factors = this.factorOrder.map((factorCode) => ({
+    const factors = this.factorOrder().map((factorCode) => ({
       factorCode,
       weight: this.weightDrafts()[factorCode] ?? 0,
     }));
@@ -864,6 +917,187 @@ export class Settings implements OnInit {
           this.isSavingWeights.set(false);
           this.statusMessageState.show(toApiError(err).message);
         },
+      });
+  }
+
+  // ----- 自訂計分因子（2026-09-20新增，方案B）-----
+  //
+  // 沒有沿用既有的共用 modal() 系統：既有 modal 是靠共用的 draftXxx 訊號組出
+  // 好幾種完全不同的表單（風險/品類/檔期/帳號），saveModal()／saveModalMock()
+  // 已經是一長串 if-else，硬塞一種欄位形狀差很多的新表單（選運算邏輯＋選資料源＋
+  // 選填參數）進去，只會讓那兩個已經很長的方法更難讀、也更容易在改動時不小心
+  // 影響到其他既有表單。獨立一組訊號與方法，风险更低、也更容易單獨測試。
+
+  readonly factorDefinitions = signal<FactorDefinitionVM[]>([]);
+  readonly isCreatingFactorDefinition = signal(false);
+  readonly isSavingFactorDefinition = signal(false);
+  readonly newFactorCode = signal('');
+  readonly newFactorName = signal('');
+  readonly newFactorCategory = signal('');
+  readonly newFactorStrategy = signal<FactorStrategyCode>('MANUAL_SCALE');
+  readonly newFactorDataSource = signal<FactorDataSource>('PRICE_COMPETITIVENESS');
+  /** 空字串代表沿用該策略的預設倍率（MANUAL_SCALE=20／MANUAL_PERCENT=100），不送 strategyParams。 */
+  readonly newFactorScale = signal('');
+
+  /** 中文顯示名稱，對應後端 FactorStrategyCode 的三個已實作值。 */
+  readonly factorStrategyLabel: Record<string, string> = {
+    MANUAL_SCALE: '人工評分 × 倍率',
+    MANUAL_PERCENT: '人工估值 × 倍率',
+    TARGET_BAND_NORMALIZE: '依品類目標區間正規化',
+  };
+
+  /** 下拉選單用的陣列版本，避免在樣板裡用 keyvalue pipe（這個元件目前沒有引入它）。 */
+  readonly factorStrategyOptions: readonly { code: FactorStrategyCode; label: string }[] = [
+    { code: 'MANUAL_SCALE', label: '人工評分 × 倍率' },
+    { code: 'MANUAL_PERCENT', label: '人工估值 × 倍率' },
+    { code: 'TARGET_BAND_NORMALIZE', label: '依品類目標區間正規化' },
+  ];
+
+  /** 中文顯示名稱，對應後端 FactorDataSource。目前只有一個候選，見該類別註解。 */
+  readonly factorDataSourceLabel: Record<string, string> = {
+    PRICE_COMPETITIVENESS: '價格競爭力（1~5人工評分）',
+  };
+
+  /**
+   * 每個資料源相容哪一種運算邏輯，對應後端 FactorDataSource.getCompatibleStrategy()。
+   * 新增資料源時要同步更新這裡，否則畫面上選得出「不相容」的組合，
+   * 送出後端才被拒絕——不是不能運作，只是使用者體驗上晚一步才發現錯誤。
+   */
+  readonly factorDataSourceOptions: readonly {
+    code: FactorDataSource;
+    compatibleStrategy: FactorStrategyCode;
+  }[] = [{ code: 'PRICE_COMPETITIVENESS', compatibleStrategy: 'MANUAL_SCALE' }];
+
+  private loadFactorDefinitions(): void {
+    this.api
+      .getFactorDefinitions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => this.factorDefinitions.set(list.map(toFactorDefinitionVM)),
+        // 自訂因子清單載入失敗不影響評估模式卡片本身的顯示，該區塊維持空清單即可。
+        error: () => undefined,
+      });
+  }
+
+  openCreateFactorDefinition(): void {
+    this.newFactorCode.set('');
+    this.newFactorName.set('');
+    this.newFactorCategory.set('');
+    this.newFactorStrategy.set('MANUAL_SCALE');
+    this.newFactorDataSource.set('PRICE_COMPETITIVENESS');
+    this.newFactorScale.set('');
+    this.isCreatingFactorDefinition.set(true);
+  }
+
+  cancelCreateFactorDefinition(): void {
+    this.isCreatingFactorDefinition.set(false);
+  }
+
+  /**
+   * 送出新增自訂因子。因子代碼查重、策略是否已實作、資料源是否相容
+   * 這三項驗證都在後端做（見 SettingsService.createFactorDefinition()），
+   * 這裡只做「必填有沒有填」這種輸入層級的檢查，不重複後端的商業規則驗證。
+   */
+  createFactorDefinition(): void {
+    if (this.isSavingFactorDefinition()) return;
+
+    const factorCode = this.newFactorCode().trim().toUpperCase();
+    const factorName = this.newFactorName().trim();
+    if (!factorCode || !factorName) {
+      this.statusMessageState.show('請填寫因子代碼與名稱。');
+      return;
+    }
+
+    const scaleInput = this.newFactorScale().trim();
+    const strategyParams: Record<string, number> | undefined = scaleInput
+      ? { scale: Number(scaleInput) }
+      : undefined;
+    if (scaleInput && Number.isNaN(strategyParams?.['scale'])) {
+      this.statusMessageState.show('倍率必須是數字。');
+      return;
+    }
+
+    if (this.useMockData) {
+      this.factorDefinitions.update((items) => [
+        ...items,
+        {
+          id: -(items.length + 1),
+          factorCode,
+          factorName,
+          strategyCode: this.newFactorStrategy(),
+          dataSourceCode: this.newFactorDataSource(),
+          isActive: true,
+        },
+      ]);
+      this.cancelCreateFactorDefinition();
+      this.statusMessageState.show('已在本地新增 Mock 自訂因子。');
+      return;
+    }
+
+    this.isSavingFactorDefinition.set(true);
+    this.api
+      .createFactorDefinition({
+        factorCode,
+        factorName,
+        category: this.newFactorCategory().trim() || null,
+        strategyCode: this.newFactorStrategy(),
+        dataSourceCode: this.newFactorDataSource(),
+        strategyParams: strategyParams ?? null,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (created) => {
+          this.factorDefinitions.update((items) => [...items, toFactorDefinitionVM(created)]);
+          this.isSavingFactorDefinition.set(false);
+          this.cancelCreateFactorDefinition();
+          this.statusMessageState.show(
+            '自訂因子已新增。要讓某個自訂模式開始採計，請到上方「編輯權重」加入並分配權重。',
+          );
+        },
+        error: (err) => {
+          this.isSavingFactorDefinition.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  disableFactorDefinition(id: number): void {
+    if (this.useMockData) {
+      this.factorDefinitions.update((items) =>
+        items.map((item) => (item.id === id ? { ...item, isActive: false } : item)),
+      );
+      this.statusMessageState.show('已在本地停用 Mock 自訂因子。');
+      return;
+    }
+    this.api
+      .disableFactorDefinition(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) =>
+          this.factorDefinitions.update((items) =>
+            items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
+          ),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
+      });
+  }
+
+  enableFactorDefinition(id: number): void {
+    if (this.useMockData) {
+      this.factorDefinitions.update((items) =>
+        items.map((item) => (item.id === id ? { ...item, isActive: true } : item)),
+      );
+      this.statusMessageState.show('已在本地啟用 Mock 自訂因子。');
+      return;
+    }
+    this.api
+      .enableFactorDefinition(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) =>
+          this.factorDefinitions.update((items) =>
+            items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
+          ),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
       });
   }
 

@@ -55,7 +55,7 @@ describe('ReviewDetail', () => {
     },
     availableRiskOptions: [
       { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true },
-      { id: 9, name: '其他', description: null, isSystemDefault: true },
+      { id: 9, name: '其他', description: null, isSystemDefault: true, isFreeTextOption: true },
     ],
   };
 

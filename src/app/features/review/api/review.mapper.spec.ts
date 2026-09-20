@@ -19,7 +19,14 @@ import {
 const RISK_OPTIONS: RiskOptionResponsePayload[] = [
   { id: 1, name: '實際供貨風險', description: null, isSystemDefault: true, alertKeywords: '缺貨、斷貨' },
   { id: 2, name: '商品品質與客訴風險', description: null, isSystemDefault: true, alertKeywords: '瑕疵、客訴' },
-  { id: 9, name: OTHER_RISK_OPTION_NAME, description: null, isSystemDefault: true, alertKeywords: null },
+  {
+    id: 9,
+    name: OTHER_RISK_OPTION_NAME,
+    description: null,
+    isSystemDefault: true,
+    alertKeywords: null,
+    isFreeTextOption: true,
+  },
 ];
 
 function makeForm(overrides: Partial<ReviewFormModel> = {}): ReviewFormModel {
@@ -90,20 +97,21 @@ describe('toReviewSubmitPayload', () => {
     expect(payload.riskOptionIds).toEqual([]);
   });
 
-  it('把「其他」的補充說明併入 reviewComment', () => {
+  it('把「其他」的補充說明送到獨立的 otherRiskNote 欄位', () => {
     const payload = toReviewSubmitPayload(
       makeForm({ selectedRiskOptionIds: [9], otherNote: '需確認冷鏈倉儲容量' }),
     );
 
-    // 後端沒有獨立欄位存 otherNote，不併入就會遺失使用者填的內容。
-    expect(payload.reviewComment).toContain('需確認冷鏈倉儲容量');
-    expect(payload.reviewComment).toContain('【其他風險說明】');
+    // 2026-09-20修正：後端已補上獨立欄位，不再併入 reviewComment。
+    expect(payload.otherRiskNote).toBe('需確認冷鏈倉儲容量');
+    expect(payload.reviewComment).not.toContain('需確認冷鏈倉儲容量');
+    expect(payload.reviewComment).not.toContain('【其他風險說明】');
   });
 
-  it('沒有補充說明時不加上多餘標記', () => {
+  it('沒有補充說明時 otherRiskNote 為 null', () => {
     const payload = toReviewSubmitPayload(makeForm());
 
-    expect(payload.reviewComment).not.toContain('【其他風險說明】');
+    expect(payload.otherRiskNote).toBeNull();
   });
 
   it('未選擇結果時拋錯，避免送出一定會被 400 的請求', () => {
@@ -142,6 +150,7 @@ describe('toReviewRecordModel', () => {
       trendSnapshot: null,
       reviewComment: '節慶需求明確。',
       riskOptionIds: [1, 2],
+      otherRiskNote: null,
       createdAt: '2026-08-28T14:30:01',
       updatedAt: '2026-08-28T14:30:01',
     };
@@ -182,5 +191,17 @@ describe('toReviewRecordModel', () => {
     const model = toReviewRecordModel({ ...makeRecord(), reviewerName: null });
 
     expect(model.reviewerName).toBeNull();
+  });
+
+  it('otherRiskNote 直接透傳，未勾選「其他」時為 null', () => {
+    const model = toReviewRecordModel(makeRecord());
+
+    expect(model.otherRiskNote).toBeNull();
+  });
+
+  it('勾選「其他」時 otherRiskNote 透傳後端存的補充說明', () => {
+    const model = toReviewRecordModel({ ...makeRecord(), otherRiskNote: '需確認冷鏈倉儲容量' });
+
+    expect(model.otherRiskNote).toBe('需確認冷鏈倉儲容量');
   });
 });

@@ -9,6 +9,8 @@ import {
   AudienceProfileUpdateRequestPayload,
   EvaluationFactorUpdateRequestPayload,
   EvaluationModeResponsePayload,
+  FactorDefinitionCreateRequestPayload,
+  FactorDefinitionResponsePayload,
   FestiveCampaignCreateRequestPayload,
   FestiveCampaignManualStatusRequestPayload,
   FestiveCampaignResponsePayload,
@@ -116,6 +118,42 @@ export class SettingsApiService {
   ): Observable<RiskOptionResponsePayload> {
     return this.http
       .post<ApiEnvelope<RiskOptionResponsePayload>>(SETTINGS_API.riskOptions, body)
+      .pipe(unwrapData());
+  }
+
+  // ----- 自訂計分因子（2026-09-20新增，方案B）-----
+
+  /** GET /api/settings/factor-definitions [僅管理]：含已停用項目。 */
+  getFactorDefinitions(): Observable<FactorDefinitionResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<FactorDefinitionResponsePayload[]>>(SETTINGS_API.factorDefinitions)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * POST /api/settings/factor-definitions [僅管理]：新增自訂因子。
+   * 新增後不影響任何評估模式的分數，要另外去權重編輯把它加進某個自訂模式，
+   * 見 FactorDefinitionCreateRequestPayload 的類別註解。
+   */
+  createFactorDefinition(
+    body: FactorDefinitionCreateRequestPayload,
+  ): Observable<FactorDefinitionResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<FactorDefinitionResponsePayload>>(SETTINGS_API.factorDefinitions, body)
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/factor-definitions/{id}/disable [僅管理] */
+  disableFactorDefinition(id: number): Observable<FactorDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<FactorDefinitionResponsePayload>>(SETTINGS_API.disableFactorDefinition(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/factor-definitions/{id}/enable [僅管理] */
+  enableFactorDefinition(id: number): Observable<FactorDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<FactorDefinitionResponsePayload>>(SETTINGS_API.enableFactorDefinition(id), {})
       .pipe(unwrapData());
   }
 

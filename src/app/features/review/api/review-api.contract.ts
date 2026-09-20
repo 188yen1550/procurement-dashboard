@@ -99,6 +99,11 @@ export interface ReviewSubmitRequestPayload {
   /** 沒勾就送空陣列，不要送 null 或省略。 */
   riskOptionIds: number[];
   reviewComment?: string | null;
+  /**
+   * 勾選「其他」風險選項時的補充說明（2026-09-20新增，對應後端
+   * ReviewSubmitRequest.otherRiskNote）。未勾選「其他」時送 null 或省略。
+   */
+  otherRiskNote?: string | null;
 }
 
 /**
@@ -178,6 +183,11 @@ export interface ReviewRecordResponsePayload {
   reviewComment: string | null;
   /** ⚠️ 只有 id，要顯示名稱得用 RiskOptionLookupService 對照。 */
   riskOptionIds: number[] | null;
+  /**
+   * 勾選「其他」風險選項時的補充說明（2026-09-20新增）。未勾選「其他」時為 null。
+   * 取代先前併入 reviewComment 的 workaround，不再需要靠固定前綴字串辨識。
+   */
+  otherRiskNote: string | null;
 
   /** ⚠️ 紀錄本身的建立時間，與 reviewedAt 語意不同，畫面通常用 reviewedAt。 */
   createdAt: IsoDateTime | null;

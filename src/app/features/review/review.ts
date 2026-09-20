@@ -182,14 +182,27 @@ export class ReviewComponent implements OnInit {
   clearRecordFilters(): void {
     this.recordTableSort.set('', 'asc');
     this.recordSearch.set('');
-    const shouldReload = this.recordResultFilter() !== 'ALL';
+    const shouldReload = this.recordResultFilter() !== 'ALL' || this.recordPageNumber() !== 0;
     this.recordResultFilter.set('ALL');
     this.recordSort.set('date_desc');
+    this.recordPageNumber.set(0);
     if (shouldReload && !this.useMockData) this.loadDecisionRecords();
   }
   readonly query = signal('');
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
   readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');
+  /**
+   * 分類設定／送審時間範圍——這三個訊號原本只有 review.html 的篩選列在用，
+   * review.ts 從來沒有宣告過，屬於畫面寫好、元件邏輯沒跟上的既有缺口
+   * （build 時才會被 Angular 的 strict template 檢查抓出來，不是這次改動
+   * 造成的）。做法比照 itemFilter：純前端篩選，因為 GET /api/reviews/pending
+   * 後端本來就寫死只回 PENDING+ACTIVE、不吃篩選參數，這幾個篩選條件在
+   * 真實模式下本來就只能對「已經抓回來的這一頁」生效，跟 itemFilter 的
+   * 既有限制一致，不是這次才出現的新限制。
+   */
+  readonly categoryFilter = signal('ALL');
+  readonly submittedFrom = signal('');
+  readonly submittedTo = signal('');
   readonly view = signal<'pending' | 'records'>('pending');
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
@@ -200,6 +213,14 @@ export class ReviewComponent implements OnInit {
   // 模式。補上 pageNumber／totalPages／goToPage()。
   readonly pageNumber = signal(0);
   readonly totalPages = signal(0);
+
+  /**
+   * 決策紀錄的分頁——review.html 的分頁列（recordPageNumber／recordTotalPages／
+   * goToRecordPage）原本就寫好了，但 loadDecisionRecords() 從來沒有讀取／回填
+   * 分頁狀態，一直是寫死 page:0，跟待審清單先前修過的是同一種缺口，這裡一併補上。
+   */
+  readonly recordPageNumber = signal(0);
+  readonly recordTotalPages = signal(0);
 
   constructor() {
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
@@ -218,14 +239,29 @@ export class ReviewComponent implements OnInit {
    */
   readonly filtered = computed(() => {
     const keyword = this.query().trim().toLocaleLowerCase('zh-Hant');
+    const category = this.categoryFilter();
+    const from = this.submittedFrom();
+    const to = this.submittedTo();
     return this.items().filter(
       (item) =>
         (!keyword ||
           item.name.toLocaleLowerCase('zh-Hant').includes(keyword) ||
           (item.submittedBy ?? '').toLocaleLowerCase('zh-Hant').includes(keyword)) &&
         (this.reviewFilter() === 'ALL' || item.status === this.reviewFilter()) &&
-        (this.itemFilter() === 'ALL' || item.itemStatus === this.itemFilter()),
+        (this.itemFilter() === 'ALL' || item.itemStatus === this.itemFilter()) &&
+        (category === 'ALL' || item.category === category) &&
+        // submittedAt 是 ISO 日期時間字串，只取日期部分（前10碼）跟
+        // <input type="date"> 的 yyyy-MM-dd 格式比較字串大小即可，
+        // 不需要真的解析成 Date——ISO 格式本身可以直接字典序比較。
+        (!from || (item.submittedAt ?? '').slice(0, 10) >= from) &&
+        (!to || (item.submittedAt ?? '').slice(0, 10) <= to),
     );
+  });
+
+  /** 分類設定下拉的選項清單：從目前已載入的待審清單裡取不重複的分類，依字母排序。 */
+  readonly categoryOptions = computed(() => {
+    const categories = new Set(this.items().map((item) => item.category).filter((c) => !!c));
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
   });
 
   ngOnInit(): void {
@@ -288,7 +324,7 @@ export class ReviewComponent implements OnInit {
     const reviewResult = this.recordResultFilter();
     this.api
       .listDecisionRecords({
-        page: 0,
+        page: this.recordPageNumber(),
         size: 20,
         sort: 'reviewedAt,desc',
         reviewResult: reviewResult === 'ALL' ? undefined : reviewResult,
@@ -296,6 +332,8 @@ export class ReviewComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          this.totalElements.set(result.totalElements);
+          this.recordTotalPages.set(result.totalPages);
           this.records.set(
             result.items.map((record) => ({
               id: record.id,
@@ -306,12 +344,24 @@ export class ReviewComponent implements OnInit {
               reviewer: record.reviewerName,
               score: record.finalScore,
               date: record.reviewedAt,
-              comment: record.reviewComment,
+              // 2026-09-20：otherRiskNote 現在是後端獨立欄位（見 review.mapper.ts），
+              // 這裡沿用先前併入 reviewComment 的顯示格式組出 comment，
+              // 只是資料來源改變——決策紀錄表格畫面不用跟著改。
+              comment: record.otherRiskNote
+                ? `${record.reviewComment}\n【其他風險說明】${record.otherRiskNote}`
+                : record.reviewComment,
             })),
           );
         },
         error: () => this.records.set([]),
       });
+  }
+
+  /** 決策紀錄分頁：切頁時重新呼叫 API，比照 goToPage() 對待審清單的既有做法。 */
+  goToRecordPage(page: number): void {
+    if (page < 0 || page >= this.recordTotalPages() || this.useMockData) return;
+    this.recordPageNumber.set(page);
+    this.loadDecisionRecords();
   }
 
   /**
@@ -321,6 +371,8 @@ export class ReviewComponent implements OnInit {
    */
   updateRecordResultFilter(value: 'ALL' | 'APPROVED' | 'REJECTED'): void {
     this.recordResultFilter.set(value);
+    // 換篩選條件時重置回第一頁：沿用舊頁碼可能超出新篩選條件下的總頁數。
+    this.recordPageNumber.set(0);
     if (!this.useMockData) this.loadDecisionRecords();
   }
 
@@ -335,6 +387,9 @@ export class ReviewComponent implements OnInit {
     this.query.set('');
     this.reviewFilter.set('PENDING');
     this.itemFilter.set('ACTIVE');
+    this.categoryFilter.set('ALL');
+    this.submittedFrom.set('');
+    this.submittedTo.set('');
     this.statusMessageState.show('已恢復預設篩選：未審核＋使用中。');
   }
 

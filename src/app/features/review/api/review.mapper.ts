@@ -145,11 +145,19 @@ export interface ReviewFormModel {
   decision: ReviewDecision | '';
   selectedRiskOptionIds: number[];
   reviewComment: string;
-  /** 勾選「其他」時的補充說明。後端沒有獨立欄位，會併入 reviewComment。 */
+  /**
+   * 勾選「其他」時的補充說明。2026-09-20起送到後端獨立欄位 otherRiskNote，
+   * 不再併入 reviewComment（見 toReviewSubmitPayload()）。
+   */
   otherNote: string;
 }
 
-/** 風險選項名稱為此值時，企劃書要求必須填寫備註。 */
+/**
+ * 系統預設「其他」選項目前的顯示名稱，僅供 mock 資料與測試 fixture 使用。
+ * ⚠️ 2026-09-20起，是否為「其他」改用 RiskOptionResponsePayload.isFreeTextOption
+ * 欄位識別（見 validateReviewForm()），不再靠這個名稱字串比對——名稱只是
+ * 畫面顯示文字，管理層在設定頁把選項改名不應該影響邏輯判斷。
+ */
 export const OTHER_RISK_OPTION_NAME = '其他';
 
 export interface ReviewFormValidationResult {
@@ -180,9 +188,10 @@ export function validateReviewForm(
     return { valid: false, message: '請選擇審核結果（通過或不通過）。' };
   }
 
-  const otherOption = availableRiskOptions.find(
-    (option) => option.name === OTHER_RISK_OPTION_NAME,
-  );
+  // 2026-09-20改用 isFreeTextOption 欄位識別，取代原本的 name === '其他'
+  // 名稱比對——名稱只是顯示文字，被改名就會讓判斷失準，見後端 V9 migration
+  // 與 RiskOption.isFreeTextOption 的類別註解。
+  const otherOption = availableRiskOptions.find((option) => option.isFreeTextOption === true);
   const hasOtherSelected =
     otherOption !== undefined && form.selectedRiskOptionIds.includes(otherOption.id);
 
@@ -200,18 +209,16 @@ export function validateReviewForm(
 /**
  * 表單 → POST /api/reviews 的 body。
  *
- * otherNote 併入 reviewComment：後端沒有獨立欄位存它，
- * 若不併入就會遺失使用者填的內容。格式刻意固定，
- * 讓決策紀錄頁看到時能認得出這段是「其他風險」的說明。
+ * 2026-09-20修正：otherNote 現在直接送到後端的獨立欄位 otherRiskNote
+ * （見 ReviewSubmitRequest.java），不再併入 reviewComment。舊版因為後端
+ * 沒有獨立欄位存它，必須用固定前綴字串拼接才能保留使用者填的內容；
+ * 後端補上欄位後這裡的 workaround 就可以拿掉，reviewComment 恢復成
+ * 單純的審核留言，不再夾帶其他風險的說明。
  */
 export function toReviewSubmitPayload(form: ReviewFormModel): ReviewSubmitRequestPayload {
   if (form.decision === '') {
     throw new Error('decision 未選擇，送出前應由 validateReviewForm() 擋下');
   }
-
-  const comment = form.otherNote.trim()
-    ? `${form.reviewComment.trim()}\n【其他風險說明】${form.otherNote.trim()}`
-    : form.reviewComment.trim();
 
   return {
     productId: form.productId,
@@ -219,7 +226,8 @@ export function toReviewSubmitPayload(form: ReviewFormModel): ReviewSubmitReques
     // 沒勾就送空陣列，不要送 null——後端 List<Long> 收 null 雖然不會爆，
     // 但語意上「沒有勾選」與「欄位缺漏」應該區分。
     riskOptionIds: [...form.selectedRiskOptionIds],
-    reviewComment: comment || null,
+    reviewComment: form.reviewComment.trim() || null,
+    otherRiskNote: form.otherNote.trim() || null,
   };
 }
 
@@ -239,6 +247,11 @@ export interface ReviewRecordModel {
   reviewStatus: ReviewDecision;
   reviewedAt: string | null;
   reviewComment: string;
+  /**
+   * 勾選「其他」風險選項時的補充說明（2026-09-20新增）。未勾選「其他」時為 null，
+   * 不再是併入 reviewComment 的固定前綴字串，見 toReviewRecordModel()。
+   */
+  otherRiskNote: string | null;
 
   /** 全部是審核當下的凍結值，畫面建議統一標示「此為審核當下的數據」。 */
   businessScore: number | null;
@@ -282,6 +295,7 @@ export function toReviewRecordModel(
     reviewStatus: payload.reviewStatus,
     reviewedAt: payload.reviewedAt,
     reviewComment: payload.reviewComment ?? '',
+    otherRiskNote: payload.otherRiskNote ?? null,
 
     businessScore: payload.businessScore,
     audienceScore: payload.audienceScore,

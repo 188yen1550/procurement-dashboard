@@ -47,6 +47,10 @@ export const SETTINGS_API = {
   riskOptionEnable: (id: number | string) => `/api/settings/risk-options/${id}/enable`,
   productTypeUpdate: (id: number | string) => `/api/settings/product-types/${id}`,
   riskOptionUpdate: (id: number | string) => `/api/settings/risk-options/${id}`,
+  /** GET/POST [僅管理]：自訂計分因子清單／新增（2026-09-20新增，方案B自訂因子）。 */
+  factorDefinitions: '/api/settings/factor-definitions',
+  disableFactorDefinition: (id: number | string) => `/api/settings/factor-definitions/${id}/disable`,
+  enableFactorDefinition: (id: number | string) => `/api/settings/factor-definitions/${id}/enable`,
   /** GET [操作+管理]：目標區間清單。注意讀取權限與其他 settings 端點不同。 */
   productTypeScoreBands: '/api/settings/product-type-score-bands',
   /** POST [僅管理]：新增品類專屬目標區間（只支援 MANUAL 模式建立）。 */
@@ -132,6 +136,59 @@ export interface RiskOptionResponsePayload {
    * 兩種情境共用同一個前端型別，所以這裡標成選填，不是每個來源都有值。
    */
   alertKeywords?: string | null;
+  /**
+   * 此選項是否允許審核頁自由輸入補充文字，目前僅系統預設的「其他」為 true。
+   * 2026-09-20新增，取代原本用 name === '其他' 猜測識別的做法——名稱只是
+   * 顯示文字，被改名就會讓判斷失準，這個欄位才是穩定依據。兩端點都會回傳。
+   */
+  isFreeTextOption?: boolean | null;
+}
+
+// =========================================================================
+// 自訂計分因子（2026-09-20新增，方案B：可選運算邏輯的自訂因子）
+// =========================================================================
+
+/**
+ * 可選的運算邏輯代碼，對應後端 enums/FactorStrategyCode.java。
+ * 目前只實作了這三種——HISTORY_FULFILLMENT 的貝氏收縮、TREND_HEAT 的
+ * 指數衰減不開放給自訂因子選用，見後端類別註解。
+ */
+export type FactorStrategyCode = 'MANUAL_SCALE' | 'MANUAL_PERCENT' | 'TARGET_BAND_NORMALIZE';
+
+/**
+ * 可綁定的既有欄位代碼，對應後端 enums/FactorDataSource.java。
+ * 目前只有一個候選：價格競爭力（products.price_competitiveness，1~5人工評分），
+ * 是盤點既有欄位後唯一一個沒有被任何既有因子使用的欄位。之後每多開放一個
+ * 既有欄位可綁定，這裡就多一個值——不需要資料庫變更。
+ */
+export type FactorDataSource = 'PRICE_COMPETITIVENESS';
+
+/** 對應後端 dto/response/FactorDefinitionResponse.java。 */
+export interface FactorDefinitionResponsePayload {
+  id: number;
+  factorCode: string;
+  factorName: string;
+  category: string | null;
+  strategyCode: FactorStrategyCode;
+  dataSourceCode: FactorDataSource;
+  strategyParams: Record<string, number> | null;
+  isActive: boolean;
+}
+
+/**
+ * 對應後端 dto/request/FactorDefinitionCreateRequest.java。
+ *
+ * 新增後不會自動加進任何評估模式的權重配置——建立完這個因子之後，
+ * 還要另外去「權重編輯」（PUT .../evaluation-modes/{id}/factors）把它
+ * 加進某個自訂模式並分配權重，兩支端點刻意分開，見後端類別註解。
+ */
+export interface FactorDefinitionCreateRequestPayload {
+  factorCode: string;
+  factorName: string;
+  category?: string | null;
+  strategyCode: FactorStrategyCode;
+  dataSourceCode: FactorDataSource;
+  strategyParams?: Record<string, number> | null;
 }
 
 /**
