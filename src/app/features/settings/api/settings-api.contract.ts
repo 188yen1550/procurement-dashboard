@@ -49,8 +49,16 @@ export const SETTINGS_API = {
   riskOptionUpdate: (id: number | string) => `/api/settings/risk-options/${id}`,
   /** GET/POST [僅管理]：自訂計分因子清單／新增（2026-09-20新增，方案B自訂因子）。 */
   factorDefinitions: '/api/settings/factor-definitions',
+  /** PUT [僅管理]：編輯自訂計分因子（V14新增，新增版本+舊版本軟刪除）。 */
+  updateFactorDefinition: (id: number | string) => `/api/settings/factor-definitions/${id}`,
   disableFactorDefinition: (id: number | string) => `/api/settings/factor-definitions/${id}/disable`,
   enableFactorDefinition: (id: number | string) => `/api/settings/factor-definitions/${id}/enable`,
+  /** 自訂商品屬性（動態問卷，2026-09-20新增，Phase 1：僅題目管理）。 */
+  customFieldDefinitions: '/api/settings/custom-field-definitions',
+  /** PUT [僅管理]：編輯自訂商品屬性（V14新增，新增版本+舊版本軟刪除）。 */
+  updateCustomFieldDefinition: (id: number | string) => `/api/settings/custom-field-definitions/${id}`,
+  disableCustomFieldDefinition: (id: number | string) => `/api/settings/custom-field-definitions/${id}/disable`,
+  enableCustomFieldDefinition: (id: number | string) => `/api/settings/custom-field-definitions/${id}/enable`,
   /** GET [操作+管理]：目標區間清單。注意讀取權限與其他 settings 端點不同。 */
   productTypeScoreBands: '/api/settings/product-type-score-bands',
   /** POST [僅管理]：新增品類專屬目標區間（只支援 MANUAL 模式建立）。 */
@@ -171,9 +179,29 @@ export interface FactorDefinitionResponsePayload {
   factorName: string;
   category: string | null;
   strategyCode: FactorStrategyCode;
-  dataSourceCode: FactorDataSource;
+  dataSourceCode: FactorDataSource | null;
+  /** 綁定的自訂商品屬性題目 id，跟 dataSourceCode 二選一，2026-09-20新增。 */
+  customFieldDefinitionId: number | null;
   strategyParams: Record<string, number> | null;
   isActive: boolean;
+  /** V14新增：編輯產生新版本時，指向被取代的舊版本id；null代表這是最初版本。 */
+  previousVersionId: number | null;
+  /** V14新增：這一列是否已被另一個版本取代——true時畫面應隱藏「啟用」按鈕。 */
+  isSuperseded: boolean;
+}
+
+/**
+ * 對應後端 dto/request/FactorDefinitionUpdateRequest.java（V14新增）。
+ * 沒有factorCode欄位：代碼是穩定鍵，編輯不開放修改，見後端類別註解。
+ * 其餘欄位與 FactorDefinitionCreateRequestPayload 相同，皆為完整覆蓋語意。
+ */
+export interface FactorDefinitionUpdateRequestPayload {
+  factorName: string;
+  category?: string | null;
+  strategyCode: FactorStrategyCode;
+  dataSourceCode?: FactorDataSource | null;
+  customFieldDefinitionId?: number | null;
+  strategyParams?: Record<string, number> | null;
 }
 
 /**
@@ -183,13 +211,83 @@ export interface FactorDefinitionResponsePayload {
  * 還要另外去「權重編輯」（PUT .../evaluation-modes/{id}/factors）把它
  * 加進某個自訂模式並分配權重，兩支端點刻意分開，見後端類別註解。
  */
+/**
+ * 對應後端 dto/request/FactorDefinitionCreateRequest.java。
+ *
+ * dataSourceCode／customFieldDefinitionId 二選一（2026-09-20新增後者）：
+ * dataSourceCode 綁既有 Product 固定欄位，customFieldDefinitionId 綁自訂
+ * 商品屬性（動態問卷）題目，兩者恰好擇一，見後端類別註解。
+ */
 export interface FactorDefinitionCreateRequestPayload {
   factorCode: string;
   factorName: string;
   category?: string | null;
   strategyCode: FactorStrategyCode;
-  dataSourceCode: FactorDataSource;
+  dataSourceCode?: FactorDataSource | null;
+  customFieldDefinitionId?: number | null;
   strategyParams?: Record<string, number> | null;
+}
+
+// =========================================================================
+// 自訂商品屬性（動態問卷，2026-09-20新增，Phase 1：僅題目管理）
+// =========================================================================
+
+/**
+ * 欄位型態，對應後端 enums/CustomFieldType.java。前三種是數值類，之後
+ * （Phase 4）可作為計分因子的資料源；TEXT 是純文字，不參與計分。
+ */
+export type CustomFieldType = 'SCALE_1_5' | 'PERCENT_0_1' | 'RAW_NUMBER' | 'TEXT';
+
+/** 對應後端 dto/response/CustomFieldDefinitionResponse.java。 */
+export interface CustomFieldDefinitionResponsePayload {
+  id: number;
+  fieldCode: string;
+  fieldName: string;
+  helpText: string | null;
+  fieldType: CustomFieldType;
+  isRequired: boolean;
+  isActive: boolean;
+  /** 空陣列＝適用全部品類，見後端 CustomFieldApplicableType 的類別註解。 */
+  applicableRootProductTypeIds: number[];
+  /**
+   * V14新增：僅fieldType='SCALE_1_5'時可能有值，key為'1'~'5'（JSON物件key
+   * 恆為字串），value為文字說明，例如 { "1": "非常不穩定", "5": "非常穩定" }。
+   */
+  scaleLabels: Record<string, string> | null;
+  /** V14新增：編輯產生新版本時，指向被取代的舊版本id；null代表這是最初版本。 */
+  previousVersionId: number | null;
+  /** V14新增：這一列是否已被另一個版本取代——true時畫面應隱藏「啟用」按鈕。 */
+  isSuperseded: boolean;
+}
+
+/**
+ * 對應後端 dto/request/CustomFieldDefinitionCreateRequest.java。
+ * applicableRootProductTypeIds 省略或傳空陣列＝適用全部品類；有傳值時，
+ * 每個 id 都必須是大類（product_types.level=1），後端會驗證。
+ */
+export interface CustomFieldDefinitionCreateRequestPayload {
+  fieldCode: string;
+  fieldName: string;
+  helpText?: string | null;
+  fieldType: CustomFieldType;
+  isRequired?: boolean;
+  applicableRootProductTypeIds?: number[];
+  /** V14新增：僅fieldType='SCALE_1_5'時可以提供，key必須落在1~5之間。 */
+  scaleLabels?: Record<string, string> | null;
+}
+
+/**
+ * 對應後端 dto/request/CustomFieldDefinitionUpdateRequest.java（V14新增）。
+ * 沒有fieldCode欄位：代碼是穩定鍵，編輯不開放修改，見後端類別註解。
+ * 其餘欄位與 CustomFieldDefinitionCreateRequestPayload 相同，皆為完整覆蓋語意。
+ */
+export interface CustomFieldDefinitionUpdateRequestPayload {
+  fieldName: string;
+  helpText?: string | null;
+  fieldType: CustomFieldType;
+  isRequired?: boolean;
+  applicableRootProductTypeIds?: number[];
+  scaleLabels?: Record<string, string> | null;
 }
 
 /**

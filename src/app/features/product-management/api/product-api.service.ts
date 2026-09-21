@@ -7,6 +7,7 @@ import { buildParams } from '../../../core/api/http-params';
 import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
 import { ReviewRecordResponsePayload } from '../../review/api/review-api.contract';
 import { ReviewRecordModel, toReviewRecordModel } from '../../review/api/review.mapper';
+import { CustomFieldDefinitionResponsePayload } from '../../settings/api/settings-api.contract';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import {
   AiAnalysisResponsePayload,
@@ -221,6 +222,19 @@ export class ProductApiService {
           supplierName: query.supplierName,
           excludeId: query.excludeId,
         }),
+      })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * GET /api/products/custom-field-schema：依 productTypeId 取得目前生效中、
+   * 適用這個品類的自訂商品屬性題目，供品項表單動態渲染。2026-09-20新增，
+   * 「開新計分因子資料源」Phase 2。
+   */
+  getCustomFieldSchema(productTypeId: number): Observable<CustomFieldDefinitionResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<CustomFieldDefinitionResponsePayload[]>>(PRODUCT_API.customFieldSchema, {
+        params: buildParams({ productTypeId }),
       })
       .pipe(unwrapData());
   }

@@ -7,10 +7,14 @@ import { unwrapData } from '../../../core/api/unwrap';
 import {
   AudienceProfileResponsePayload,
   AudienceProfileUpdateRequestPayload,
+  CustomFieldDefinitionCreateRequestPayload,
+  CustomFieldDefinitionResponsePayload,
+  CustomFieldDefinitionUpdateRequestPayload,
   EvaluationFactorUpdateRequestPayload,
   EvaluationModeResponsePayload,
   FactorDefinitionCreateRequestPayload,
   FactorDefinitionResponsePayload,
+  FactorDefinitionUpdateRequestPayload,
   FestiveCampaignCreateRequestPayload,
   FestiveCampaignManualStatusRequestPayload,
   FestiveCampaignResponsePayload,
@@ -143,6 +147,20 @@ export class SettingsApiService {
       .pipe(unwrapData());
   }
 
+  /**
+   * PUT /api/settings/factor-definitions/{id} [僅管理]：編輯自訂因子（V14新增）。
+   * 回應是新版本（新id）的資料，不是被取代的舊版本——呼叫端應以回應內容
+   * 取代畫面上原本這一列，見 FactorDefinitionUpdateRequestPayload 類別註解。
+   */
+  updateFactorDefinition(
+    id: number,
+    body: FactorDefinitionUpdateRequestPayload,
+  ): Observable<FactorDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<FactorDefinitionResponsePayload>>(SETTINGS_API.updateFactorDefinition(id), body)
+      .pipe(unwrapData());
+  }
+
   /** PUT /api/settings/factor-definitions/{id}/disable [僅管理] */
   disableFactorDefinition(id: number): Observable<FactorDefinitionResponsePayload> {
     return this.http
@@ -154,6 +172,55 @@ export class SettingsApiService {
   enableFactorDefinition(id: number): Observable<FactorDefinitionResponsePayload> {
     return this.http
       .put<ApiEnvelope<FactorDefinitionResponsePayload>>(SETTINGS_API.enableFactorDefinition(id), {})
+      .pipe(unwrapData());
+  }
+
+  // ----- 自訂商品屬性（動態問卷，2026-09-20新增，Phase 1）-----
+
+  /** GET /api/settings/custom-field-definitions [僅管理]：含已停用項目。 */
+  getCustomFieldDefinitions(): Observable<CustomFieldDefinitionResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<CustomFieldDefinitionResponsePayload[]>>(SETTINGS_API.customFieldDefinitions)
+      .pipe(unwrapData());
+  }
+
+  /** POST /api/settings/custom-field-definitions [僅管理]：新增自訂屬性題目。 */
+  createCustomFieldDefinition(
+    body: CustomFieldDefinitionCreateRequestPayload,
+  ): Observable<CustomFieldDefinitionResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<CustomFieldDefinitionResponsePayload>>(SETTINGS_API.customFieldDefinitions, body)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * PUT /api/settings/custom-field-definitions/{id} [僅管理]：編輯自訂屬性
+   * 題目（V14新增）。回應是新版本（新id）的資料，見
+   * CustomFieldDefinitionUpdateRequestPayload 類別註解。
+   */
+  updateCustomFieldDefinition(
+    id: number,
+    body: CustomFieldDefinitionUpdateRequestPayload,
+  ): Observable<CustomFieldDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<CustomFieldDefinitionResponsePayload>>(
+        SETTINGS_API.updateCustomFieldDefinition(id),
+        body,
+      )
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/custom-field-definitions/{id}/disable [僅管理] */
+  disableCustomFieldDefinition(id: number): Observable<CustomFieldDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<CustomFieldDefinitionResponsePayload>>(SETTINGS_API.disableCustomFieldDefinition(id), {})
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/custom-field-definitions/{id}/enable [僅管理] */
+  enableCustomFieldDefinition(id: number): Observable<CustomFieldDefinitionResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<CustomFieldDefinitionResponsePayload>>(SETTINGS_API.enableCustomFieldDefinition(id), {})
       .pipe(unwrapData());
   }
 

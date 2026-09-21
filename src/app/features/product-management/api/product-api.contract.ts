@@ -57,6 +57,8 @@ export const PRODUCT_API = {
   resaleReferenceProducts: '/api/products/resale-reference/products',
   /** POST [僅管理]：手動觸發 AI 主動選品批次。 */
   aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
+  /** GET：依 productTypeId 取得自訂商品屬性（動態問卷）題目清單，2026-09-20新增。 */
+  customFieldSchema: '/api/products/custom-field-schema',
 } as const;
 
 // =========================================================================
@@ -137,6 +139,13 @@ export interface ProductResponsePayload {
    * 後端只在看單一商品詳情時才計算。畫面不要假設清單頁的每一筆都有這個欄位。
    */
   gateResults?: GateResultSummaryPayload;
+
+  /**
+   * 自訂商品屬性（動態問卷）的答案：fieldCode → 值。語意同 gateResults——
+   * 只有 GET /api/products/{id}（單筆詳情）才會有值，清單／搜尋端點恆為
+   * undefined。2026-09-20新增，「開新計分因子資料源」Phase 2。
+   */
+  customFieldValues?: Record<string, unknown>;
 
   reviewStatus: ReviewStatus;
   candidateStatus: CandidateStatus;
@@ -326,6 +335,14 @@ export interface ProductCreateRequestPayload {
   handlingFlags?: string | null;
   certificationFlags?: string | null;
   supplierMaxCapacity?: number | null;
+
+  /**
+   * 自訂商品屬性（動態問卷）的答案：fieldCode → 值。省略或 null 等同
+   * 「這次沒有填寫任何自訂屬性」。2026-09-20新增，「開新計分因子資料源」
+   * Phase 2。整份覆蓋（PUT）時同樣適用：沒送的既有答案會被後端清除，
+   * 要保留就要連同其他沒動過的欄位一起原封送回。
+   */
+  customFieldValues?: Record<string, unknown> | null;
 }
 
 /**

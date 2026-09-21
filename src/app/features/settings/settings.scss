@@ -486,7 +486,20 @@ tr.is-editing select {
   align-items: start;
 }
 
-.factor-definition-form label {
+/*
+ * ⚠️ 修正：這裡原本用 `.factor-definition-form label` 這個描述子選擇器，
+ * 目的是統一「欄位代碼」「欄位名稱」這類最上層表單欄位的直向排列樣式，
+ * 但描述子選擇器不會區分巢狀層級——巢狀在裡面、本來就有自己一套橫向排列
+ * 樣式的元件（.tag-picker-option 核取方塊清單、.weight-editor-row-label
+ * 必填核取方塊）恰好也是 <label>，因此被一起強制套用了 flex-direction:
+ * column，覆蓋掉它們各自期待的橫向排列。具體症狀：核取方塊跟文字被迫上下
+ * 堆疊、置中，畫面上看起來像是「核取方塊清單完全沒有文字標籤」或
+ * 「必填核取方塊的文字掉到下面去」。
+ * 這裡最上層欄位（欄位代碼／欄位名稱／...）的 <label> 都沒有加 class，
+ * 巢狀元件的 <label> 都各自有 class，因此用 label:not([class]) 排除，
+ * 比一個一個列舉巢狀元件的 class 更不容易在之後新增巢狀元件時重蹈覆轍。
+ */
+.factor-definition-form label:not([class]) {
   display: flex;
   flex-direction: column;
   gap: var(--s-1);

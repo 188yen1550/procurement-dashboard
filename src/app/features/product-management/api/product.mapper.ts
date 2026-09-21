@@ -248,6 +248,14 @@ export interface ProductFormModel {
   itemStatus: ItemStatus;
   submissionCount: number;
   actions: ProductActionAvailability;
+  /**
+   * 自訂商品屬性（動態問卷）的答案：fieldCode → 值。獨立於 core 之外，
+   * 不是 Reactive Form 的欄位（題目清單本身是動態的，型別無法在
+   * FormGroup 宣告時就固定下來）——product-form.ts 用一個獨立的
+   * signal 承接，不透過 this.form 讀寫。只有 GET /api/products/{id}
+   * （單筆詳情）才會有值，新增模式恆為空物件。2026-09-20新增。
+   */
+  customFieldValues: Record<string, unknown>;
 }
 
 export function toProductFormModel(payload: ProductResponsePayload): ProductFormModel {
@@ -284,6 +292,7 @@ export function toProductFormModel(payload: ProductResponsePayload): ProductForm
     itemStatus: payload.itemStatus,
     submissionCount: payload.submissionCount,
     actions: toProductActionAvailability(payload),
+    customFieldValues: payload.customFieldValues ?? {},
   };
 }
 

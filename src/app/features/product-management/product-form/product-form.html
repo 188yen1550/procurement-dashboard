@@ -228,6 +228,43 @@
           </div>
         </fieldset>
       </div></section>
+      @if (customFieldSchema().length > 0) {
+      <section aria-labelledby="custom-field-title"><header><span>{{ isResale() ? '05' : '04' }}</span><div><h2 id="custom-field-title">自訂商品屬性</h2><p>依商品分類顯示的題目，由設定頁管理；這裡看到的題目跟必填與否會隨分類不同。</p></div></header><div class="form-grid">
+        @for (field of customFieldSchema(); track field.id) {
+        <label class="wide">
+          {{ field.fieldName }}@if (field.isRequired) { <em>*</em> }
+          @if (field.fieldType === 'TEXT') {
+          <input type="text" [ngModel]="customFieldInputs()[field.fieldCode] ?? ''" [ngModelOptions]="{standalone: true}"
+            (ngModelChange)="updateCustomFieldInput(field.fieldCode, $event)" />
+          } @else if (hasScaleLabels(field)) {
+          <!--
+            V14新增：SCALE_1_5型態若已在設定頁定義1~5的文字說明，改用下拉選單
+            讓填寫者直接選文字選項，不用自己記得數字代表什麼意思——沒有定義
+            說明的分數仍列在選項裡，只是顯示數字本身，不強制五個分數都要有說明。
+            送出的值一律是字串"1"~"5"，跟原本數字輸入框送出的格式一致，
+            buildCustomFieldValuesPayload() 不需要跟著改。
+          -->
+          <select [ngModel]="customFieldInputs()[field.fieldCode] ?? ''" [ngModelOptions]="{standalone: true}"
+            (ngModelChange)="updateCustomFieldInput(field.fieldCode, $event)">
+            <option value="">請選擇</option>
+            @for (opt of scaleLabelOptions(field); track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+          } @else {
+          <input type="number" [attr.min]="field.fieldType === 'PERCENT_0_1' ? 0 : (field.fieldType === 'SCALE_1_5' ? 1 : null)"
+            [attr.max]="field.fieldType === 'PERCENT_0_1' ? 1 : (field.fieldType === 'SCALE_1_5' ? 5 : null)"
+            [attr.step]="field.fieldType === 'PERCENT_0_1' ? 0.01 : 1"
+            [ngModel]="customFieldInputs()[field.fieldCode] ?? ''" [ngModelOptions]="{standalone: true}"
+            (ngModelChange)="updateCustomFieldInput(field.fieldCode, $event)" />
+          }
+          @if (field.helpText) { <small class="helper">{{ field.helpText }}</small> }
+          @if (field.fieldType === 'SCALE_1_5' && !hasScaleLabels(field)) { <small class="helper">請填 1~5 的整數評分。</small> }
+          @if (field.fieldType === 'PERCENT_0_1') { <small class="helper">請填 0~1 的小數（例如 0.75 代表 75%）。</small> }
+        </label>
+        }
+      </div></section>
+      }
       <footer><div><button type="button" class="secondary" [disabled]="isSubmitting()" (click)="requestCancel()">取消</button>@if (isRejected()) { <button type="button" class="primary" [disabled]="isSubmitting()" (click)="submit(true)">{{ isSubmitting() ? '儲存中…' : '儲存並重審' }}</button> } @else { <button type="submit" class="primary" [disabled]="isSubmitting()">{{ isSubmitting() ? '儲存中…' : (isEditMode ? '儲存變更' : '新增候選品項') }}</button> }</div></footer>
     </form>
     }

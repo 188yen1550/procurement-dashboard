@@ -31,6 +31,7 @@ import {
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductResponsePayload, ResaleReferenceOptionPayload } from '../api/product-api.contract';
+import { CustomFieldDefinitionResponsePayload } from '../../settings/api/settings-api.contract';
 import { SettingsApiService } from '../../settings/api/settings-api.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { GroupBuyApiService } from '../../group-buy/api/group-buy-api.service';
@@ -367,6 +368,107 @@ export class ProductForm implements OnInit {
   readonly resaleCandidateError = signal('');
 
   /**
+   * 自訂商品屬性（動態問卷，2026-09-20新增，「開新計分因子資料源」Phase 2）。
+   *
+   * 沒有併入 this.form：題目清單本身是動態的（依 productTypeId 變動），
+   * FormGroup 宣告當下型別就固定了，硬塞動態欄位進去需要繞開既有的強型別
+   * 寫法（this.fb.nonNullable.group()），風險比獨立一組簡單的訊號高很多。
+   * 這裡直接用 Record<fieldCode, 使用者輸入的原始字串>，送出前依題目型態
+   * 轉成數字或原封送出文字，比照 Settings 頁「自訂計分因子」那幾輪已經
+   * 驗證過的簡單寫法（不用 Reactive Forms 也能做基本驗證）。
+   */
+  readonly customFieldSchema = signal<readonly CustomFieldDefinitionResponsePayload[]>([]);
+  readonly customFieldInputs = signal<Record<string, string>>({});
+
+  updateCustomFieldInput(fieldCode: string, value: string): void {
+    this.customFieldInputs.update((inputs) => ({ ...inputs, [fieldCode]: value }));
+  }
+
+  /**
+   * V14新增：這個題目是不是「SCALE_1_5 且已在設定頁定義至少一個分數說明」——
+   * 是的話商品表單改用下拉選單，不是的話維持原本的 1~5 數字輸入框。
+   */
+  hasScaleLabels(field: CustomFieldDefinitionResponsePayload): boolean {
+    return (
+      field.fieldType === 'SCALE_1_5' &&
+      !!field.scaleLabels &&
+      Object.keys(field.scaleLabels).length > 0
+    );
+  }
+
+  /**
+   * V14新增：下拉選單的選項，固定列出1~5五個分數——沒有定義說明的分數
+   * 仍然可以選，只是選項文字只顯示數字本身，不強制五個分數都要有說明。
+   */
+  scaleLabelOptions(field: CustomFieldDefinitionResponsePayload): { value: string; label: string }[] {
+    const labels = field.scaleLabels ?? {};
+    return ['1', '2', '3', '4', '5'].map((value) => ({
+      value,
+      label: labels[value] ? `${value} - ${labels[value]}` : value,
+    }));
+  }
+
+  /**
+   * productTypeId 改變時重新載入題目清單。新增模式下使用者選擇/切換品類、
+   * 編輯模式下載入既有商品資料都會走到這裡（後者見 ngOnInit()）。
+   *
+   * 切換品類時刻意保留 customFieldInputs 裡「剛好兩個品類都有的同代碼題目」
+   * 的既有輸入值，不是整組清空——使用者填到一半才發現品類選錯、改回來時
+   * 不該遺失已經填好的內容。畫面上只會顯示新品類實際適用的題目，不適用的
+   * 舊輸入值只是不顯示，不會被送出（見 buildCustomFieldValuesPayload()
+   * 只依目前 schema 組裝）。
+   */
+  private loadCustomFieldSchema(productTypeId: number | null): void {
+    if (!productTypeId) {
+      this.customFieldSchema.set([]);
+      return;
+    }
+    // Mock 模式沒有真正的後端可查——這個功能目前沒有對應的 Mock 資料，
+    // 維持空清單即可，比照 Settings 頁「自訂計分因子」在 Mock 模式下的
+    // 既有簡化（見 settings.ts loadFactorDefinitions() 同樣的既定取捨）。
+    if (this.useMockData) {
+      this.customFieldSchema.set([]);
+      return;
+    }
+    this.api
+      .getCustomFieldSchema(productTypeId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (schema) => this.customFieldSchema.set(schema),
+        // 題目清單載入失敗不該擋住整張表單的其他功能，維持空清單即可，
+        // 使用者頂多看不到自訂屬性題目，仍能正常填寫並送出其餘欄位。
+        error: () => this.customFieldSchema.set([]),
+      });
+  }
+
+  /**
+   * 把目前的輸入轉成送出用的 Map。只依「目前 schema 裡實際存在的題目」
+   * 組裝——這樣品類切換後殘留在 customFieldInputs 裡、但已經不適用的
+   * 舊輸入值，自然不會被送出，不需要額外清除邏輯。
+   *
+   * 數值類欄位轉成 number；轉不成數字的直接跳過（送出空 Map 讓後端的
+   * 必填檢查去擋，訊息會比前端這裡憑空編一個「格式錯誤」更準確——
+   * 後端知道這個欄位對這個商品品類到底是不是必填）。
+   */
+  private buildCustomFieldValuesPayload(): Record<string, unknown> {
+    const inputs = this.customFieldInputs();
+    const result: Record<string, unknown> = {};
+    for (const field of this.customFieldSchema()) {
+      const raw = (inputs[field.fieldCode] ?? '').trim();
+      if (!raw) continue;
+      if (field.fieldType === 'TEXT') {
+        result[field.fieldCode] = raw;
+      } else {
+        const numeric = Number(raw);
+        if (!Number.isNaN(numeric)) {
+          result[field.fieldCode] = numeric;
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
    * 團購售價高於市價：不阻擋送出（可能是刻意的行銷策略、市價本身滯後
    * 未更新等合理情境，不該由系統武斷認定這是錯誤），但要提醒使用者
    * 注意——這種組合在「團購應該比市價便宜」的一般認知下算是反常，
@@ -390,6 +492,17 @@ export class ProductForm implements OnInit {
    * 候選、已選定的參考商品）全部重置——候選池是依分類查的，分類一變
    * 舊的候選清單就不再有意義，留著只會讓使用者誤選。
    */
+  /**
+   * productTypeId 一改變就重新載入自訂屬性題目清單，新增模式下使用者切換
+   * 品類、編輯模式下表單載入既有商品都會觸發（後者見 ngOnInit() 的
+   * emitEvent:false 段落，那裡是明確呼叫，不是靠這個訂閱）。
+   */
+  private wireCustomFieldSchemaCascade(): void {
+    this.form.controls.productTypeId.valueChanges
+      .pipe(startWith(this.form.controls.productTypeId.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((productTypeId) => this.loadCustomFieldSchema(productTypeId));
+  }
+
   private wireResaleReferenceCascade(): void {
     combineLatest([
       this.form.controls.pricingType.valueChanges.pipe(startWith(this.form.controls.pricingType.value)),
@@ -602,6 +715,7 @@ export class ProductForm implements OnInit {
     }
     // 兩種模式都要，Mock 模式走本地固定候選（見 loadResaleSuppliers／loadResaleCandidateProducts 內判斷）。
     this.wireResaleReferenceCascade();
+    this.wireCustomFieldSchemaCascade();
     this.wirePriceAboveMarketWarning();
 
     if (!this.productId) return; // 新增模式，沒有既有資料可載入
@@ -664,6 +778,19 @@ export class ProductForm implements OnInit {
               this.loadResaleCandidateProducts(model.core.productTypeId, model.base.supplierName.trim());
             }
           }
+          // 自訂商品屬性：同樣要明確呼叫，理由跟上面 loadResaleSuppliers()
+          // 一致——emitEvent:false 不會觸發 wireCustomFieldSchemaCascade()。
+          // 題目清單載入完成後，把既有答案轉成字串填進輸入框（畫面上的
+          // input 一律是文字輸入，數字答案也先轉字串顯示，送出時
+          // buildCustomFieldValuesPayload() 才轉回數字）。
+          if (model.core.productTypeId) {
+            this.loadCustomFieldSchema(model.core.productTypeId);
+          }
+          const inputs: Record<string, string> = {};
+          for (const [code, value] of Object.entries(model.customFieldValues)) {
+            if (value !== null && value !== undefined) inputs[code] = String(value);
+          }
+          this.customFieldInputs.set(inputs);
           this.currentImageUrl.set(model.base.imageUrl || null);
           if (model.base.imageUrl) {
             this.imagePreviewUrl.set(model.base.imageUrl);
@@ -820,6 +947,21 @@ export class ProductForm implements OnInit {
       return;
     }
 
+    // 自訂商品屬性的必填檢查：後端也會擋（見 ProductService.
+    // validateAndSaveCustomFieldValues()），這裡先在前端擋一次，
+    // 使用者不用送出才知道漏填了哪一題，是「未合法時的防呆」在這張表單
+    // 上的落地。只檢查目前 schema 裡實際存在的必填題目，不是整個系統。
+    const missingRequiredFields = this.customFieldSchema()
+      .filter((field) => field.isRequired)
+      .filter((field) => !this.customFieldInputs()[field.fieldCode]?.trim())
+      .map((field) => field.fieldName);
+    if (missingRequiredFields.length > 0) {
+      this.dialog
+        .notify('error', '自訂屬性有必填欄位尚未填寫', missingRequiredFields)
+        .subscribe();
+      return;
+    }
+
     if (this.useMockData) {
       this.isSubmitting.set(true);
       this.submitCount.update((count) => count + 1);
@@ -874,6 +1016,7 @@ export class ProductForm implements OnInit {
       handlingFlags: raw.handlingFlags.trim() || null,
       certificationFlags: raw.certificationFlags.trim() || null,
       supplierMaxCapacity: raw.supplierMaxCapacity,
+      customFieldValues: this.buildCustomFieldValuesPayload(),
     };
 
     const save$ = this.isEditMode
