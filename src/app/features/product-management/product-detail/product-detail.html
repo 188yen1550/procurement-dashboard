@@ -90,6 +90,7 @@
       [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
   </section>
   }
+  <div class="product-overview">
   <section class="product-media panel" aria-labelledby="product-image-title">
     <header>
       <div>
@@ -128,6 +129,7 @@
       </div>
     </dl>
   </section>
+  </div>
   <section class="score-grid" aria-label="評估分數">
     <article>
       <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}</strong><small>綜合加權分數</small>
@@ -340,44 +342,33 @@
         </div>
       </dl>
     </section>
-    <section class="panel">
+    <section class="panel evaluation-details" aria-label="客群、銷售與市場評估">
+    <div class="evaluation-metrics">
+    <section class="evaluation-item">
       <header>
         <h2>核心客群匹配</h2>
-        <strong>{{ p.audienceScore || '—' }}</strong>
+        <strong>{{ p.audienceScore }}</strong>
       </header>
       <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
     </section>
-    <section class="panel">
+    <section class="evaluation-item">
       <header>
         <h2>歷史銷售資料</h2>
-        <strong>{{ p.historicalScore || '—' }}</strong>
+        <strong>{{ p.historicalScore }}</strong>
       </header>
       <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
     </section>
-    <section class="panel">
+    <section class="evaluation-item">
       <header>
         <h2>預估購買</h2>
-        <strong>{{ p.purchaseScore || '—' }}</strong>
+        <strong>{{ p.purchaseScore }}</strong>
       </header>
       <p>
         {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
       </p>
     </section>
-  </div>
-  @if (p.pricingType === 'RESALE') {
-  <section class="panel price-compare">
-    <div>
-
-      <h2>市價與團購價比較</h2>
     </div>
-    <div>
-      <span>市售價 <s>NT$ {{ p.marketPrice }}</s></span><strong>團購價 NT$ {{ p.salePrice }}</strong><em>約省 {{ discountRate(p)
-        }}%</em>
-    </div>
-    <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
-  </section>
-  }
-  <section class="panel trend">
+  <section class="trend">
     <header>
       <div>
 
@@ -388,8 +379,10 @@
       </button>
     </header>
     <div class="trend-score">
-      <strong>{{ p.trendScore || '—' }}</strong><span>
-        @if (p.trendDirection === 'UP') {
+      <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong><span>
+        @if (!p.lastSyncedAt) {
+        尚無趨勢資料
+        } @else if (p.trendDirection === 'UP') {
         <app-icon name="trending-up" size="sm" /> 趨勢上升
         } @else if (p.trendDirection === 'DOWN') {
         <app-icon name="trending-down" size="sm" /> 趨勢下降
@@ -398,7 +391,7 @@
         }
       </span>
     </div>
-    <p>最後同步：{{ p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+    <p>最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}</p>
     @if (syncState() === 'syncing') {
     @if (useMockData) {
     <div class="sync-actions">
@@ -417,7 +410,17 @@
     </p>
     }
   </section>
-  <div class="content-grid">
+    </section>
+  </div>
+  @if (p.pricingType === 'RESALE') {
+  <section class="panel price-compare">
+    <div><h2>市價與團購價比較</h2></div>
+    <div>
+      <span>市售價 <s>NT$ {{ p.marketPrice }}</s></span><strong>團購價 NT$ {{ p.salePrice }}</strong><em>約省 {{ discountRate(p) }}%</em>
+    </div>
+    <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
+  </section>
+  }
     <section class="panel risks">
       <header>
         <h2>風險提示</h2>
@@ -432,7 +435,6 @@
       <div class="no-data">目前無足夠資料進行風險提示。</div>
       }
     </section>
-  </div>
   <!-- 這件商品自己的歷次審核紀錄——原本這支 API 完全沒被呼叫過，想知道
          「這件商品上次為什麼被拒」只能去問管理層或翻全站的決策紀錄分頁
          自己找，現在直接顯示在商品自己的詳情頁上。 -->
