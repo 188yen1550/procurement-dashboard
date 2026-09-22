@@ -51,6 +51,11 @@ describe('ProductForm', () => {
         },
       ]),
     ),
+    // 2026-09-23新增：loadCampaignTags() 改成 forkJoin 合併節慶標籤與天氣
+    // 標籤選項兩個來源，這支 mock 沒有的話，forkJoin 會因為呼叫不存在的
+    // 方法直接丟例外，讓既有測試全部失敗——不是本次要測的範圍，回傳空陣列
+    // 即可，讓 forkJoin 正常完成。
+    getWeatherSignalTagOptions: vi.fn(() => of([])),
   };
 
   beforeEach(async () => {

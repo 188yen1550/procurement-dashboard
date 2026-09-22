@@ -14,12 +14,15 @@ import { WeightSnapshotPayload } from '../../product-management/api/product-api.
  *
  * ## 權限（逐一對照 @PreAuthorize 標註，不是猜的）
  *
- * 這三支**操作層也能呼叫**，沒有 @PreAuthorize：
+ * 這四支**操作層也能呼叫**，沒有 @PreAuthorize：
  * - GET /api/settings/evaluation-mode/current（品項詳情頁要顯示目前模式）
  * - GET /api/settings/product-types（新增商品的類型下拉要用）
  * - GET /api/settings/festive-campaigns
+ * - GET /api/settings/weather-signal-tags/options（2026-09-23新增，商品表單
+ *   「可選標籤」下拉要用；注意跟 GET /weather-signal-tags 本體不同，那支
+ *   仍是僅管理）
  *
- * 其餘 13 支都是 @PreAuthorize("hasRole('MANAGER')")，
+ * 其餘 14 支都是 @PreAuthorize("hasRole('MANAGER')")，
  * 操作層呼叫會收到 403（不是 401，不要導回登入頁）。
  *
  * ⚠️ 這代表 **GET /api/settings/risk-options 是僅管理**。
@@ -94,6 +97,20 @@ export const SETTINGS_API = {
     `/api/settings/weather-signal-tags/${id}/disable`,
   enableWeatherSignalTagMapping: (id: number | string) =>
     `/api/settings/weather-signal-tags/${id}/enable`,
+  /**
+   * GET [操作+管理]（2026-09-23新增）：商品表單「可選標籤」下拉用，只回傳
+   * isActive=true、精簡過的欄位，跟上面 weatherSignalTags（設定頁CRUD、
+   * 僅管理）是分開的兩支端點，不要互用——理由同 festiveCampaigns 開放操作
+   * 層查詢、riskOptions 僅管理查詢的既有分工。
+   */
+  weatherSignalTagOptions: '/api/settings/weather-signal-tags/options',
+  /**
+   * GET/PUT [僅管理]（2026-09-23新增，地域性影響評分方案B+D）：四區
+   * （NORTH/CENTRAL/SOUTH/EAST）業務占比設定，WeatherCampaignSyncService
+   * 同步天氣檔期時依此計算region_coverage_ratio。四區固定，PUT採整份覆蓋、
+   * 加總須為100，語意比照evaluationModeFactors的因子權重編輯。
+   */
+  regionWeights: '/api/settings/region-weights',
 } as const;
 
 // =========================================================================
@@ -431,6 +448,10 @@ export interface FestiveCampaignResponsePayload {
   campaignStatus: FestiveCampaignStatus;
   /** ⚠️ true 代表狀態不再由系統自動判斷，建議用圖示提示。 */
   isManualOverride: boolean | null;
+  /** 僅category=WEATHER時有值（2026-09-23新增）。FESTIVAL/SEASON為null，代表全國性、不限地域。 */
+  region: string | null;
+  /** 僅category=WEATHER時有值（2026-09-23新增），0~1，同步當下凍結寫入。 */
+  regionCoverageRatio: Decimal | null;
   tags: FestiveCampaignTagPayload[];
 }
 
@@ -538,6 +559,39 @@ export interface WeatherSignalTagMappingCreateRequestPayload {
  */
 export interface WeatherSignalTagMappingUpdateRequestPayload {
   matchTier: TagMatchTier;
+}
+
+/**
+ * 對應後端 dto/response/WeatherSignalTagOptionResponse.java（2026-09-23新增）。
+ * 商品表單「可選標籤」下拉用，只有畫面需要的三個欄位——不含id／isSystemDefault，
+ * 跟 WeatherSignalTagMappingResponsePayload（設定頁CRUD用）不是同一個型別，
+ * 對應的端點權限也不同（見本檔案最上方權限說明）。
+ */
+export interface WeatherSignalTagOptionPayload {
+  tag: string;
+  weatherSignalType: WeatherSignalType;
+  /** 後端算好的中文文案（WeatherSignalType.getLabel()），畫面不用再自己查表對照。 */
+  weatherSignalTypeLabel: string;
+}
+
+/**
+ * 對應後端 dto/response/RegionWeightResponse.java（2026-09-23新增，地域性
+ * 影響評分方案B+D）。region 是 WEATHER_REGION_LABEL 的 key（NORTH/CENTRAL/
+ * SOUTH/EAST），畫面顯示請查該常數，不要自己另外定一份文案。
+ */
+export interface RegionWeightPayload {
+  region: string;
+  weightPercentage: Decimal;
+  updatedAt: IsoDateTime | null;
+}
+
+/**
+ * 對應後端 dto/request/RegionWeightUpdateRequest.java。採整份覆蓋語意，
+ * 必須送出全部四區，且加總須為100（後端驗證，前端可先在畫面上算好提示，
+ * 但不要假設前端算的一定跟後端一致，仍以後端回應為準）。
+ */
+export interface RegionWeightUpdateRequestPayload {
+  regionWeights: Array<{ region: string; weightPercentage: Decimal }>;
 }
 
 // =========================================================================

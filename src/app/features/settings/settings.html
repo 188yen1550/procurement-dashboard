@@ -529,6 +529,59 @@
     </div>
   </section>
 
+  <section class="weather-tag-mapping-panel">
+    <div class="weather-sync-panel-head">
+      <h3>地域占比設定</h3>
+      <p class="scope-note">
+        天氣同步時，同一種天氣訊號命中的區域（北/中/南/東）業務占比加總，決定
+        這次加成的「地域覆蓋率」——只有單一區域命中、且該區占比低時，Festival
+        Boost 會自動打折，不是每次命中都給滿額加成。四區占比加總須為100。
+      </p>
+    </div>
+
+    <table class="weather-tag-mapping-table">
+      <thead>
+        <tr>
+          <th>區域</th>
+          <th>業務占比（%）</th>
+          <th>最後更新</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @if (regionWeightsLoading()) {
+        <tr>
+          <td colspan="3" class="scope-note">載入中…</td>
+        </tr>
+        } @else {
+        @for (item of regionWeights(); track item.region) {
+        <tr>
+          <td>{{ weatherRegionLabel[item.region] ?? item.region }}</td>
+          <td>
+            <input type="number" min="0" max="100" step="0.01"
+              [ngModel]="regionWeightDrafts()[item.region]"
+              (ngModelChange)="updateRegionWeightDraft(item.region, $event)"
+              [name]="'region-weight-' + item.region" [disabled]="pageState() === 'disabled'" />
+          </td>
+          <td>{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+
+    <div class="weather-tag-mapping-add-row">
+      <span class="scope-note" [class.is-error]="regionWeightDraftSum() !== 100">
+        目前加總：{{ regionWeightDraftSum() }}（須為100）
+      </span>
+      <button type="button" class="btn-primary"
+        [disabled]="pageState() === 'disabled' || regionWeightSaving() || regionWeightDraftSum() !== 100"
+        (click)="saveRegionWeights()">
+        {{ regionWeightSaving() ? '儲存中…' : '儲存占比設定' }}
+      </button>
+    </div>
+  </section>
+
   <section class="data-table">
     <table>
       <thead>

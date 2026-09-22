@@ -9,7 +9,7 @@ import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal }
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Observable, combineLatest, of } from 'rxjs';
+import { Observable, combineLatest, forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, map, startWith } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
 import { APP_CONFIG } from '../../../core/config/app-config';
@@ -234,25 +234,27 @@ export class ProductForm implements OnInit {
     this.useMockData ? MOCK_CAMPAIGN_TAGS : [],
   );
   /**
-   * tag → 這個標籤來自哪些節慶檔期的名稱（逗號分隔），純粹給畫面上的
-   * tooltip 用。
+   * tag → 這個標籤來自哪些節慶檔期的名稱、或哪些天氣訊號類型（逗號分隔），
+   * 純粹給畫面上的 tooltip 用（2026-09-23新增天氣訊號來源，見 loadCampaignTags()）。
    *
    * ⚠️ 商品這裡選的本來就是「節慶標籤」（關鍵字），不是直接選一個節慶——
    * 後端 ScoringService.buildMatchedCampaignSnapshot() 是拿商品的標籤跟
    * 目前 PREPARING／ACTIVE 的檔期各自的標籤做比對，自動找出比對度最高
    * 的檔期，商品本身不綁定單一檔期。這樣同一件商品的標籤能隨著檔期
    * 隨時間輪替（中秋檔期結束、下一個節慶檔期開始）自動比對到新的檔期，
-   * 不需要每次都手動改商品去指定新節慶。畫面上這串標籤看起來像跟
-   * 節慶無關的關鍵字，容易讓人誤會是隨便打的、應該改成直接選節慶——
-   * 這裡不改底層設計（那會讓商品標籤失去跨檔期自動比對的彈性），只補上
-   * 這個 tooltip，滑鼠移到標籤上能看到它實際來自哪個／哪些節慶檔期。
+   * 不需要每次都手動改商品去指定新節慶。天氣標籤同理：命中哪個天氣檔期
+   * 完全由 WeatherCampaignSyncService 每天同步決定，商品標籤本身不綁定
+   * 特定一次天氣預報。畫面上這串標籤看起來像跟節慶／天氣無關的關鍵字，
+   * 容易讓人誤會是隨便打的——這裡不改底層設計（那會讓商品標籤失去跨檔期
+   * 自動比對的彈性），只補上這個 tooltip，滑鼠移到標籤上能看到它實際
+   * 來自哪個／哪些節慶檔期或天氣訊號類型。
    */
   readonly tagCampaignNames = signal<ReadonlyMap<string, string>>(new Map());
 
-  /** 標籤按鈕的 title：告訴使用者這個標籤實際來自哪個節慶檔期，不是憑空存在的關鍵字。 */
+  /** 標籤按鈕的 title：告訴使用者這個標籤實際來自哪個節慶檔期或天氣訊號類型，不是憑空存在的關鍵字。 */
   campaignTagTooltip(tag: string): string {
     const names = this.tagCampaignNames().get(tag);
-    return names ? `來自節慶檔期：${names}` : '';
+    return names ? `來自：${names}` : '';
   }
 
   /** 真實模式下由載入的商品決定；Mock 模式由 EDIT_DATA 決定。兩者最終都反映在這兩個 signal。 */
@@ -843,32 +845,48 @@ export class ProductForm implements OnInit {
   }
 
   private loadCampaignTags(): void {
-    this.settingsApi
-      .getFestiveCampaigns()
+    // 2026-09-23新增：可選標籤除了「目前已生效檔期」的標籤（getFestiveCampaigns），
+    // 也要包含「天氣訊號類型→標籤」對照表本身的標籤（getWeatherSignalTagOptions）——
+    // 後者是設定頁定義好、但可能還沒被預報命中的天氣標籤（例如現在是九月，
+    // 「保暖」這類冬季標籤），採購要能提前打標籤，不用等系統哪天真的預報到
+    // 冷氣團才看得到選項。兩個來源都失敗互不影響：某一邊掛掉時另一邊的標籤
+    // 選項仍然要能用，比照這裡原本 error 時整組清空的保守處理，只是改成
+    // 各自 catchError 成空陣列，不讓其中一支失敗拖垮另一支。
+    forkJoin({
+      campaigns: this.settingsApi.getFestiveCampaigns().pipe(catchError(() => of([]))),
+      weatherTags: this.settingsApi.getWeatherSignalTagOptions().pipe(catchError(() => of([]))),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (campaigns) => {
-          const tags = campaigns.flatMap((campaign) => campaign.tags.map((tag) => tag.tag.trim()));
-          this.campaignTagOptions.set([...new Set(tags.filter(Boolean))].sort());
+      .subscribe(({ campaigns, weatherTags }) => {
+        const campaignTags = campaigns.flatMap((campaign) => campaign.tags.map((tag) => tag.tag.trim()));
+        const weatherTagNames = weatherTags.map((item) => item.tag.trim());
+        this.campaignTagOptions.set(
+          [...new Set([...campaignTags, ...weatherTagNames].filter(Boolean))].sort(),
+        );
 
-          const namesByTag = new Map<string, Set<string>>();
-          for (const campaign of campaigns) {
-            for (const tag of campaign.tags) {
-              const trimmed = tag.tag.trim();
-              if (!trimmed) continue;
-              const set = namesByTag.get(trimmed) ?? new Set<string>();
-              set.add(campaign.campaignName);
-              namesByTag.set(trimmed, set);
-            }
+        const namesByTag = new Map<string, Set<string>>();
+        for (const campaign of campaigns) {
+          for (const tag of campaign.tags) {
+            const trimmed = tag.tag.trim();
+            if (!trimmed) continue;
+            const set = namesByTag.get(trimmed) ?? new Set<string>();
+            set.add(campaign.campaignName);
+            namesByTag.set(trimmed, set);
           }
-          this.tagCampaignNames.set(
-            new Map([...namesByTag].map(([tag, names]) => [tag, [...names].join('、')])),
-          );
-        },
-        error: () => {
-          this.campaignTagOptions.set([]);
-          this.tagCampaignNames.set(new Map());
-        },
+        }
+        // 天氣標籤的「來源」跟節慶檔期不同，不是檔期名稱，是天氣訊號類型的
+        // 中文文案（例如「炎熱」），跟 campaignTagTooltip() 的文字前綴（見該
+        // 方法）合起來會顯示成「來自：天氣訊號 炎熱」。
+        for (const item of weatherTags) {
+          const trimmed = item.tag.trim();
+          if (!trimmed) continue;
+          const set = namesByTag.get(trimmed) ?? new Set<string>();
+          set.add(`天氣訊號 ${item.weatherSignalTypeLabel}`);
+          namesByTag.set(trimmed, set);
+        }
+        this.tagCampaignNames.set(
+          new Map([...namesByTag].map(([tag, names]) => [tag, [...names].join('、')])),
+        );
       });
   }
 

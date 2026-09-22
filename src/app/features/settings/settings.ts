@@ -33,6 +33,7 @@ import {
   FestiveCampaignTagPayload,
   ProductTypeScoreBandCreateRequestPayload,
   ProductTypeScoreBandResponsePayload,
+  RegionWeightPayload,
   RiskOptionResponsePayload,
   ScoreBandSourceMode,
   WeatherSignalPreviewPayload,
@@ -481,6 +482,14 @@ const MOCK_WEATHER_SIGNAL_TAG_MAPPINGS: readonly WeatherSignalTagMappingResponse
   { id: 5, weatherSignalType: 'COLD', tag: '保暖', matchTier: 'CORE', isActive: true, isSystemDefault: true },
 ];
 
+/** 地域占比設定的 Mock 資料（2026-09-23新增）：等權重，跟 V20 migration 的種子資料一致。 */
+const MOCK_REGION_WEIGHTS: readonly RegionWeightPayload[] = [
+  { region: 'NORTH', weightPercentage: 25, updatedAt: null },
+  { region: 'CENTRAL', weightPercentage: 25, updatedAt: null },
+  { region: 'SOUTH', weightPercentage: 25, updatedAt: null },
+  { region: 'EAST', weightPercentage: 25, updatedAt: null },
+];
+
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
   { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true },
   { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true },
@@ -662,6 +671,28 @@ export class Settings implements OnInit {
   readonly draftWeatherSignalTag = signal('');
   readonly draftWeatherSignalMatchTier = signal<TagMatchTier>('CORE');
   readonly weatherSignalTagMappingTypeOptions = WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS;
+
+  /**
+   * 地域占比設定（SettingsController，2026-09-23新增，地域性影響評分方案B+D）：
+   * 四區固定，不開放新增/刪除，只開放調整占比，整份送出、加總須為100
+   * （語意比照因子權重編輯 updateEvaluationModeFactors()，見後端 SettingsService
+   * 同名方法的類別註解）。
+   *
+   * regionWeightDrafts 是編輯中的字串值（<input> 綁定用），跟已儲存的
+   * regionWeights 分開：儲存前允許暫時不為100（例如正在調整中間狀態），
+   * 只有按下「儲存」時才驗證＋送出，不要求每次按鍵都合法。
+   */
+  readonly regionWeights = signal<RegionWeightPayload[]>(
+    this.useMockData ? [...MOCK_REGION_WEIGHTS] : [],
+  );
+  readonly regionWeightsLoading = signal(false);
+  readonly regionWeightSaving = signal(false);
+  readonly regionWeightDrafts = signal<Record<string, string>>({});
+
+  readonly regionWeightDraftSum = computed(() => {
+    const drafts = this.regionWeightDrafts();
+    return Object.values(drafts).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  });
 
   // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
   // 原本的標籤編輯是每一列自由輸入文字＋選等級，容易打錯字（跟其他檔期
@@ -2165,6 +2196,8 @@ export class Settings implements OnInit {
     // 天氣訊號標籤對照跟節慶檔期同屬「檔期」分頁，一起載入，不用使用者
     // 額外觸發——見 loadWeatherSignalTagMappings() 類別註解。
     this.loadWeatherSignalTagMappings();
+    // 地域占比設定同理，跟天氣訊號標籤對照一起放在「檔期」分頁，一起載入。
+    this.loadRegionWeights();
   }
 
   /**
@@ -2226,6 +2259,93 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.weatherSyncing.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /**
+   * 地域占比設定清單載入（地域性影響評分方案B+D，2026-09-23新增）。載入後
+   * 同步把 regionWeightDrafts 初始化成目前已儲存的值（字串形式，供 <input>
+   * 綁定），使用者開始編輯前，草稿跟已儲存值是一致的。
+   */
+  loadRegionWeights(): void {
+    if (this.useMockData) {
+      const weights = [...MOCK_REGION_WEIGHTS];
+      this.regionWeights.set(weights);
+      this.resetRegionWeightDrafts(weights);
+      return;
+    }
+    this.regionWeightsLoading.set(true);
+    this.api
+      .getRegionWeights()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.regionWeights.set(list);
+          this.resetRegionWeightDrafts(list);
+          this.regionWeightsLoading.set(false);
+        },
+        error: (err) => {
+          this.regionWeightsLoading.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  private resetRegionWeightDrafts(list: RegionWeightPayload[]): void {
+    this.regionWeightDrafts.set(
+      Object.fromEntries(list.map((item) => [item.region, String(item.weightPercentage)])),
+    );
+  }
+
+  updateRegionWeightDraft(region: string, value: string): void {
+    this.regionWeightDrafts.update((drafts) => ({ ...drafts, [region]: value }));
+  }
+
+  /**
+   * 儲存四區占比。前端先擋「加總須為100」再送出，避免使用者按了儲存才
+   * 在錯誤訊息看到這個規則——但這只是提早給回饋，不是唯一的防線，後端
+   * SettingsService.updateRegionWeights() 一樣會驗證一次（見該方法類別
+   * 註解），前端這層檢查繞過了也不影響資料正確性。
+   */
+  saveRegionWeights(): void {
+    const drafts = this.regionWeightDrafts();
+    const sum = this.regionWeightDraftSum();
+    if (Math.abs(sum - 100) > 0.01) {
+      this.statusMessageState.show(`四區占比加總須為100，目前為：${sum}`);
+      return;
+    }
+
+    const regionWeights = Object.entries(drafts).map(([region, value]) => ({
+      region,
+      weightPercentage: Number(value) || 0,
+    }));
+
+    if (this.useMockData) {
+      this.regionWeights.update((list) =>
+        list.map((item) => {
+          const updated = regionWeights.find((r) => r.region === item.region);
+          return updated ? { ...item, weightPercentage: updated.weightPercentage } : item;
+        }),
+      );
+      this.statusMessageState.show('已更新（Mock 模式，未實際送出）。');
+      return;
+    }
+
+    this.regionWeightSaving.set(true);
+    this.api
+      .updateRegionWeights({ regionWeights })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.regionWeightSaving.set(false);
+          this.regionWeights.set(list);
+          this.resetRegionWeightDrafts(list);
+          this.statusMessageState.show('區域占比已更新。');
+        },
+        error: (err) => {
+          this.regionWeightSaving.set(false);
           this.statusMessageState.show(toApiError(err).message);
         },
       });

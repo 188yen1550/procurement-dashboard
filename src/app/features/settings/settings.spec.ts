@@ -161,6 +161,20 @@ describe('Settings', () => {
     enableWeatherSignalTagMapping: vi.fn((id: number) =>
       of({ id, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true }),
     ),
+    // 2026-09-23新增：地域占比設定（地域性影響評分方案B+D）。ngOnInit會跟著
+    // loadWeatherSignalTagMappings()一起觸發loadRegionWeights()，這支mock
+    // 沒有的話會直接丟例外，讓既有測試全部失敗。
+    getRegionWeights: vi.fn(() =>
+      of([
+        { region: 'NORTH', weightPercentage: 25, updatedAt: null },
+        { region: 'CENTRAL', weightPercentage: 25, updatedAt: null },
+        { region: 'SOUTH', weightPercentage: 25, updatedAt: null },
+        { region: 'EAST', weightPercentage: 25, updatedAt: null },
+      ]),
+    ),
+    updateRegionWeights: vi.fn((body: { regionWeights: Array<{ region: string; weightPercentage: number }> }) =>
+      of(body.regionWeights.map((item) => ({ ...item, updatedAt: '2026-09-23T00:00:00' }))),
+    ),
   };
 
   const userApi = {

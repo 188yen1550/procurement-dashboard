@@ -25,6 +25,8 @@ import {
   ProductTypeScoreBandResponsePayload,
   ProductTypeScoreBandUpdateRequestPayload,
   ProductTypeUpdatePayload,
+  RegionWeightPayload,
+  RegionWeightUpdateRequestPayload,
   RiskOptionCreateRequestPayload,
   RiskOptionResponsePayload,
   RiskOptionUpdatePayload,
@@ -37,6 +39,7 @@ import {
   WeatherSignalTagMappingCreateRequestPayload,
   WeatherSignalTagMappingResponsePayload,
   WeatherSignalTagMappingUpdateRequestPayload,
+  WeatherSignalTagOptionPayload,
   WeatherSyncResponsePayload,
 } from './settings-api.contract';
 
@@ -429,6 +432,32 @@ export class SettingsApiService {
         SETTINGS_API.enableWeatherSignalTagMapping(id),
         {},
       )
+      .pipe(unwrapData());
+  }
+
+  /**
+   * GET /api/settings/weather-signal-tags/options [操作+管理]（2026-09-23新增）：
+   * 商品表單「可選標籤」下拉用，只回傳isActive=true、精簡過的欄位。
+   */
+  getWeatherSignalTagOptions(): Observable<WeatherSignalTagOptionPayload[]> {
+    return this.http
+      .get<ApiEnvelope<WeatherSignalTagOptionPayload[]>>(SETTINGS_API.weatherSignalTagOptions)
+      .pipe(unwrapData());
+  }
+
+  // ----- 地域占比設定（region_weights，2026-09-23新增，地域性影響評分方案B+D）-----
+
+  /** GET /api/settings/region-weights [僅管理]：固定回傳四區。 */
+  getRegionWeights(): Observable<RegionWeightPayload[]> {
+    return this.http
+      .get<ApiEnvelope<RegionWeightPayload[]>>(SETTINGS_API.regionWeights)
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/region-weights [僅管理]：整份覆蓋四區占比，加總須為100。 */
+  updateRegionWeights(body: RegionWeightUpdateRequestPayload): Observable<RegionWeightPayload[]> {
+    return this.http
+      .put<ApiEnvelope<RegionWeightPayload[]>>(SETTINGS_API.regionWeights, body)
       .pipe(unwrapData());
   }
 
