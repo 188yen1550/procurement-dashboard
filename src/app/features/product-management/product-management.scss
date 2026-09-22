@@ -81,40 +81,6 @@ select:focus-visible {
   background: #153e66;
 }
 
-/* 頁首右側的動作組：批次新增（次要）＋ 新增品項（主要），兩顆並排、
-   窄螢幕改直式堆疊，手機不會擠成一團。 */
-.header-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: .6rem;
-}
-
-.secondary-action {
-  flex: 0 0 auto;
-  padding: .72rem 1rem;
-  color: #1c5286;
-  background: #fff;
-  border: 1px solid #cbd9e3;
-  border-radius: .55rem;
-  font-size: var(--t-sm);
-  font-weight: 800;
-  text-decoration: none;
-  text-align: center;
-}
-
-.secondary-action:hover {
-  background: #eef4f8;
-}
-
-@media (max-width: 700px) {
-  .header-actions {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-  }
-}
-
 .state-preview {
   margin-bottom: 1rem;
   padding: .75rem 1rem;
