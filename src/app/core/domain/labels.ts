@@ -20,6 +20,8 @@ import {
   TemperatureZone,
   TrendDirection,
   UserRole,
+  WeatherForecastConfidence,
+  WeatherSignalType,
 } from './enums';
 
 /**
@@ -86,6 +88,7 @@ export const REVIEW_DECISION_LABEL: Record<ReviewDecision, string> = {
 export const FESTIVE_CATEGORY_LABEL: Record<FestiveCategory, string> = {
   FESTIVAL: '節慶型',
   SEASON: '季節型',
+  WEATHER: '天氣型',
 };
 
 export const FESTIVE_CAMPAIGN_STATUS_LABEL: Record<FestiveCampaignStatus, string> = {
@@ -248,4 +251,45 @@ export const GATE_CODE_LABEL: Record<GateCode, string> = {
   GATE_SHELF_LIFE: '效期門檻',
   GATE_TEMPERATURE_ZONE: '溫層支援',
   GATE_DATA_COMPLETENESS: '資料完整度',
+};
+
+/**
+ * enums/WeatherSignalType.java 的顯示文案（2026-09-21新增）。
+ * 直接沿用後端 enum 建構子裡的字串（比照 PRICE_SENSITIVITY_LABEL 的既有
+ * 慣例：後端 enum 已經帶了正式中文，不要另外造一份）。
+ */
+export const WEATHER_SIGNAL_TYPE_LABEL: Record<WeatherSignalType, string> = {
+  HOT: '炎熱',
+  HUMID_HOT: '悶熱',
+  HUMID: '潮濕',
+  RAINY: '降雨',
+  HEAVY_RAIN: '大雨',
+  STRONG_WIND: '強風',
+  COOL: '涼爽',
+  COLD: '寒冷',
+  DRY_COOL: '乾冷',
+  NORMAL: '一般',
+};
+
+/**
+ * enums/WeatherForecastConfidence.java 的顯示文案（2026-09-21新增）。
+ * 後端這個 enum 只帶 confidenceFactor（計算用常數），沒有中文文案，這裡
+ * 依後端類別註解的天數分級（0～7天／8～14天／15天以上）自訂 UI 文字。
+ */
+export const WEATHER_FORECAST_CONFIDENCE_LABEL: Record<WeatherForecastConfidence, string> = {
+  HIGH: '高（短期）',
+  MEDIUM: '中（中期）',
+  LOW: '低（長期）',
+};
+
+/**
+ * service/weather/WeatherRegionConfig.java 的區域代碼顯示文案（2026-09-21新增）。
+ * 後端這裡是純字串常數（Map<String, List<City>> 的 key），不是 enum，沒有
+ * 型別可以鏡射，這裡直接依代碼手動對照——新增區域時要記得同步這裡。
+ */
+export const WEATHER_REGION_LABEL: Record<string, string> = {
+  NORTH: '北部',
+  CENTRAL: '中部',
+  SOUTH: '南部',
+  EAST: '東部',
 };

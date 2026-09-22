@@ -224,6 +224,113 @@
   border-radius: var(--r-md);
 }
 
+/*
+ * ===================== 天氣檔期同步面板 =====================
+ * 2026-09-21新增。刻意不共用 .data-table（那個 class 的欄寬規則是為
+ * 「節慶檔期管理」表格等固定欄位的表格設計的，見下方
+ * 「資料表格欄寬」段落的說明），這裡的預覽表格欄位完全不同、也不需要
+ * table-layout: fixed，用自己的 class 避免互相干擾。
+ */
+.weather-sync-panel {
+  margin-bottom: var(--s-4);
+  padding: var(--s-3);
+  background: var(--c-surface-alt);
+  border-radius: var(--r-md);
+}
+
+.weather-sync-panel-head h3 {
+  margin: 0 0 var(--s-1);
+  font-size: var(--t-lg);
+}
+
+.weather-sync-panel-head .scope-note {
+  margin-top: 0;
+  padding: 0;
+  background: none;
+}
+
+.weather-sync-panel-actions {
+  display: flex;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.weather-preview-table {
+  margin-top: var(--s-3);
+}
+
+.weather-preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-surface);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.weather-preview-table th,
+.weather-preview-table td {
+  padding: var(--s-2) var(--s-3);
+  text-align: left;
+  font-size: var(--t-sm);
+  border-bottom: 1px solid #e3e9ee;
+}
+
+.weather-preview-table th {
+  color: var(--c-ink-soft);
+  font-weight: 700;
+}
+
+/*
+ * 天氣訊號標籤對照面板（2026-09-22新增）。跟上面的 .weather-preview-table
+ * 同樣理由不共用 .data-table：欄位形狀完全不同，且這張表多一列
+ * 「新增對照」的表單列，用自己的 class 獨立維護。
+ */
+.weather-tag-mapping-panel {
+  margin-bottom: var(--s-4);
+  padding: var(--s-3);
+  background: var(--c-surface-alt);
+  border-radius: var(--r-md);
+}
+
+.weather-tag-mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-surface);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin-top: var(--s-3);
+}
+
+.weather-tag-mapping-table th,
+.weather-tag-mapping-table td {
+  padding: var(--s-2) var(--s-3);
+  text-align: left;
+  font-size: var(--t-sm);
+  border-bottom: 1px solid #e3e9ee;
+}
+
+.weather-tag-mapping-table th {
+  color: var(--c-ink-soft);
+  font-weight: 700;
+}
+
+.weather-tag-mapping-table tr.is-inactive {
+  opacity: 0.6;
+}
+
+.weather-tag-mapping-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  align-items: center;
+}
+
+.weather-tag-mapping-add-row input[type='text'] {
+  flex: 1;
+  min-width: 160px;
+}
+
 /* ===================== Modal 內的專屬配置 ===================== */
 
 /* 節慶標籤列：標籤輸入框吃滿剩餘寬度，層級下拉固定寬。 */

@@ -4,6 +4,8 @@ import {
   FestiveCategory,
   PriceSensitivity,
   TagMatchTier,
+  WeatherForecastConfidence,
+  WeatherSignalType,
 } from '../../../core/domain/enums';
 import { WeightSnapshotPayload } from '../../product-management/api/product-api.contract';
 
@@ -71,6 +73,27 @@ export const SETTINGS_API = {
   /** PUT [僅管理]：更新單一演算法參數。key 是路徑參數，不是 body 欄位。 */
   updateSystemSetting: (key: string) =>
     `/api/settings/system-settings/${encodeURIComponent(key)}`,
+  /**
+   * WeatherController（非SettingsController，2026-09-21新增）的兩支維運端點。
+   * URL沿用/api/settings命名空間是刻意的（跟festive-campaigns同屬「檔期」概念），
+   * 但後端實際上是獨立的WeatherController類別，見該類別Javadoc。
+   */
+  weatherSync: '/api/settings/weather/sync',
+  weatherSignalsPreview: '/api/settings/weather/signals/preview',
+  /**
+   * GET/POST [僅管理]：天氣訊號標籤對照清單／新增（2026-09-22新增，取代原本
+   * 寫死在後端WeatherCampaignSyncService裡的WEATHER_TAG_MAPPING）。
+   * 注意命名空間跟上面兩支不同：這兩支在SettingsController（一般設定
+   * CRUD），不在WeatherController（維運觸發），路徑刻意不是
+   * /api/settings/weather/...，避免跟WeatherController的路徑混淆。
+   */
+  weatherSignalTags: '/api/settings/weather-signal-tags',
+  updateWeatherSignalTagMapping: (id: number | string) =>
+    `/api/settings/weather-signal-tags/${id}`,
+  disableWeatherSignalTagMapping: (id: number | string) =>
+    `/api/settings/weather-signal-tags/${id}/disable`,
+  enableWeatherSignalTagMapping: (id: number | string) =>
+    `/api/settings/weather-signal-tags/${id}/enable`,
 } as const;
 
 // =========================================================================
@@ -453,6 +476,68 @@ export interface FestiveCampaignUpdateRequestPayload {
 export interface FestiveCampaignManualStatusRequestPayload {
   status: FestiveCampaignStatus;
   overrideEnabled: boolean;
+}
+
+/**
+ * 對應後端 WeatherSyncResponse.java。POST /api/settings/weather/sync 的回應內容，
+ * 不是festive_campaigns的資料本身——想看實際落地結果要另外呼叫getFestiveCampaigns()。
+ */
+export interface WeatherSyncResponsePayload {
+  totalSignalCount: number;
+  syncedCampaignCount: number;
+  expiredCampaignCount: number;
+}
+
+/**
+ * 對應後端 dto/weather/WeatherSignal.java。只有GET /signals/preview這支debug端點
+ * 會回傳，不寫入資料庫，欄位形狀跟festive_campaigns完全無關，不要跟
+ * FestiveCampaignResponsePayload搞混。
+ */
+export interface WeatherSignalPreviewPayload {
+  /** WeatherRegionConfig.java的區域代碼（NORTH/CENTRAL/SOUTH/EAST），畫面顯示請查WEATHER_REGION_LABEL。 */
+  region: string;
+  type: WeatherSignalType;
+  windowStart: IsoDate;
+  windowEnd: IsoDate;
+  confidence: WeatherForecastConfidence;
+}
+
+/**
+ * 對應後端 dto/response/WeatherSignalTagMappingResponse.java（2026-09-22新增）。
+ * 這是「某種天氣訊號該對應哪些商品標籤」的可調整設定，不是某一筆已產生的
+ * 天氣檔期——跟 WeatherSignalPreviewPayload 語意完全不同，不要搞混：這個
+ * 型別是設定頁的規則清單，WeatherSignalPreviewPayload 是預覽端點回傳的
+ * 「依目前規則會分類出的結果」。
+ */
+export interface WeatherSignalTagMappingResponsePayload {
+  id: number;
+  weatherSignalType: WeatherSignalType;
+  tag: string;
+  matchTier: TagMatchTier;
+  isActive: boolean;
+  /** 系統出廠內建的9筆預設對照（V19 migration）：可停用，後端不開放刪除。 */
+  isSystemDefault: boolean;
+}
+
+/**
+ * 對應後端 dto/request/WeatherSignalTagMappingCreateRequest.java。
+ * ⚠️ weatherSignalType 不接受 'NORMAL'——一般天氣不該命中任何商品，後端
+ * 會回400拒絕，畫面的天氣類型下拉不要把NORMAL列進選項。
+ */
+export interface WeatherSignalTagMappingCreateRequestPayload {
+  weatherSignalType: WeatherSignalType;
+  tag: string;
+  matchTier: TagMatchTier;
+}
+
+/**
+ * 對應後端 dto/request/WeatherSignalTagMappingUpdateRequest.java。
+ * ⚠️ 只能改matchTier——weatherSignalType／tag合起來是這筆資料的身分，
+ * 後端DTO沒有這兩個欄位，送了也不會被採用。要改對應的天氣類型或標籤，
+ * 停用這筆、另外新增一筆。
+ */
+export interface WeatherSignalTagMappingUpdateRequestPayload {
+  matchTier: TagMatchTier;
 }
 
 // =========================================================================

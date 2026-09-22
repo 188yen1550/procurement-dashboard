@@ -229,9 +229,8 @@
                  點了「復用」小類就能繞過大類停用的狀態，實際上一放開
                  手就會發現大類還是停用中、小類看起來能用但其實不該用。
                  大類本身是啟用狀態時，小類維持原本可以獨立停用/復用。 -->
-            <button type="button" class="btn" [class.is-restore]="!item.active"
-              [disabled]="!group.major.active" [title]="!group.major.active ? '大類已停用，請先復用大類' : ''"
-              (click)="toggleProductTypeActive(item.name)">
+            <button type="button" class="btn" [class.is-restore]="!item.active" [disabled]="!group.major.active"
+              [title]="!group.major.active ? '大類已停用，請先復用大類' : ''" (click)="toggleProductTypeActive(item.name)">
               {{ item.active ? '停用' : '復用' }}
             </button>
             <button type="button" class="btn danger" (click)="removeProductType(item.name)">
@@ -255,8 +254,7 @@
         這裡先建立題目本身。
       </p>
     </div>
-    <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'"
-      (click)="openCreateCustomField()">
+    <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'" (click)="openCreateCustomField()">
       新增自訂屬性
     </button>
   </section>
@@ -265,16 +263,15 @@
     <h3>{{ editingCustomFieldId() ? '編輯自訂商品屬性' : '新增自訂商品屬性' }}</h3>
     <form (ngSubmit)="submitCustomFieldDefinition()">
       <label>欄位代碼
-        <input type="text" [ngModel]="newFieldCode()" name="newFieldCode"
-          [disabled]="editingCustomFieldId() !== null"
+        <input type="text" [ngModel]="newFieldCode()" name="newFieldCode" [disabled]="editingCustomFieldId() !== null"
           (ngModelChange)="newFieldCode.set($event)" placeholder="例如 SHELF_LIFE_DAYS" />
         @if (editingCustomFieldId() !== null) {
         <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
         }
       </label>
       <label>欄位名稱
-        <input type="text" [ngModel]="newFieldName()" name="newFieldName"
-          (ngModelChange)="newFieldName.set($event)" placeholder="例如 保存期限天數" />
+        <input type="text" [ngModel]="newFieldName()" name="newFieldName" (ngModelChange)="newFieldName.set($event)"
+          placeholder="例如 保存期限天數" />
       </label>
       <label>欄位型態
         <select [ngModel]="newFieldType()" name="newFieldType" (ngModelChange)="newFieldType.set($event)">
@@ -300,10 +297,8 @@
         </p>
         @for (key of scaleLabelKeys; track key) {
         <label>{{ key }}分
-          <input type="text" [ngModel]="newFieldScaleLabels()[key] ?? ''"
-            [name]="'scaleLabel' + key"
-            (ngModelChange)="updateNewFieldScaleLabel(key, $event)"
-            placeholder="例如：非常不穩定" />
+          <input type="text" [ngModel]="newFieldScaleLabels()[key] ?? ''" [name]="'scaleLabel' + key"
+            (ngModelChange)="updateNewFieldScaleLabel(key, $event)" placeholder="例如：非常不穩定" />
         </label>
         }
       </div>
@@ -321,8 +316,7 @@
         }
       </div>
       <div class="weight-editor-actions">
-        <button type="button" class="btn" [disabled]="isSavingCustomField()"
-          (click)="cancelCreateCustomField()">
+        <button type="button" class="btn" [disabled]="isSavingCustomField()" (click)="cancelCreateCustomField()">
           取消
         </button>
         <button type="submit" class="btn-primary" [disabled]="isSavingCustomField()">
@@ -397,6 +391,144 @@
       ＋ 新增檔期
     </button>
   </section>
+
+  <section class="weather-sync-panel">
+    <div class="weather-sync-panel-head">
+      <h3>天氣檔期自動同步</h3>
+      <p class="scope-note">
+        WEATHER 分類的檔期由系統每天 05:00 自動呼叫 Open-Meteo
+        天氣預報同步。下面兩顆按鈕是手動測試／校準用，不影響自動排程本身。
+      </p>
+    </div>
+    <div class="weather-sync-panel-actions">
+      <button type="button" class="btn" [disabled]="pageState() === 'disabled' || weatherPreviewLoading()"
+        (click)="previewWeatherSignals()">
+        {{ weatherPreviewLoading() ? '預覽中…' : '預覽天氣訊號（不寫入）' }}
+      </button>
+      <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled' || weatherSyncing()"
+        (click)="syncWeatherCampaigns()">
+        {{ weatherSyncing() ? '同步中…' : '立即同步天氣檔期' }}
+      </button>
+    </div>
+
+    @if (weatherPreview(); as preview) {
+    <div class="weather-preview-table">
+      @if (preview.length === 0) {
+      <p class="scope-note">目前沒有符合門檻的天氣訊號（可能是真的風平浪靜，也可能是門檻常數需要調整）。</p>
+      } @else {
+      <table>
+        <thead>
+          <tr>
+            <th>區域</th>
+            <th>訊號類型</th>
+            <th>窗口</th>
+            <th>信心度</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (signal of preview; track signal.region + signal.type + signal.windowStart) {
+          <tr>
+            <td>{{ weatherRegionLabel[signal.region] ?? signal.region }}</td>
+            <td>{{ weatherSignalTypeLabel[signal.type] }}</td>
+            <td>{{ signal.windowStart }} ～ {{ signal.windowEnd }}</td>
+            <td>{{ weatherForecastConfidenceLabel[signal.confidence] }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+      }
+    </div>
+    }
+  </section>
+
+  <section class="weather-tag-mapping-panel">
+    <div class="weather-sync-panel-head">
+      <h3>天氣訊號標籤對照</h3>
+      <p class="scope-note">
+        決定每種天氣訊號要對應到哪些商品標籤、命中權重多高——同步時只有這裡列出的
+        天氣類型才會產生檔期，商品要標上對應的標籤才會被 Festival Boost 加成
+        （比照現有「節慶標籤」的比對邏輯，共用同一套計分機制）。
+      </p>
+    </div>
+
+    <table class="weather-tag-mapping-table">
+      <thead>
+        <tr>
+          <th>天氣訊號類型</th>
+          <th>對應標籤</th>
+          <th>命中權重</th>
+          <th>來源</th>
+          <th>狀態</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @if (weatherSignalTagMappingsLoading()) {
+        <tr>
+          <td colspan="6" class="scope-note">載入中…</td>
+        </tr>
+        } @else if (weatherSignalTagMappings().length === 0) {
+        <tr>
+          <td colspan="6" class="scope-note">
+            目前沒有任何對照，天氣同步不會產生任何檔期。
+          </td>
+        </tr>
+        } @else {
+        @for (item of weatherSignalTagMappings(); track item.id) {
+        <tr [class.is-inactive]="!item.isActive">
+          <td>{{ weatherSignalTypeLabel[item.weatherSignalType] }}</td>
+
+          <td>{{ item.tag }}</td>
+
+          <td>
+            <select [ngModel]="item.matchTier" (ngModelChange)="changeWeatherSignalTagMappingTier(item, $event)"
+              [name]="'weather-tier-' + item.id" [disabled]="pageState() === 'disabled' || !item.isActive">
+              <option value="CORE">核心</option>
+              <option value="GENERAL">一般</option>
+              <option value="WEAK">弱</option>
+            </select>
+          </td>
+
+          <td>{{ item.isSystemDefault ? '系統預設' : '自訂' }}</td>
+          <td>{{ item.isActive ? '生效中' : '已停用' }}</td>
+          <td class="row-actions">
+            <button type="button" [class.is-restore]="!item.isActive" [disabled]="pageState() === 'disabled'"
+              (click)="toggleWeatherSignalTagMappingActive(item)">
+              {{ item.isActive ? '停用' : '啟用' }}
+            </button>
+          </td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+
+    <div class="weather-tag-mapping-add-row">
+      <select [ngModel]="draftWeatherSignalType()" (ngModelChange)="draftWeatherSignalType.set($event)"
+        name="draftWeatherSignalType" [disabled]="pageState() === 'disabled'">
+        <option value="" disabled>選擇天氣訊號類型</option>
+        @for (type of weatherSignalTagMappingTypeOptions; track type) {
+        <option [value]="type">{{ weatherSignalTypeLabel[type] }}</option>
+        }
+      </select>
+      <input type="text" placeholder="對應標籤，例如：雨具" [ngModel]="draftWeatherSignalTag()"
+        (ngModelChange)="draftWeatherSignalTag.set($event)" name="draftWeatherSignalTag"
+        [disabled]="pageState() === 'disabled'" maxlength="50" />
+      <select [ngModel]="draftWeatherSignalMatchTier()" (ngModelChange)="draftWeatherSignalMatchTier.set($event)"
+        name="draftWeatherSignalMatchTier" [disabled]="pageState() === 'disabled'">
+        <option value="CORE">核心</option>
+        <option value="GENERAL">一般</option>
+        <option value="WEAK">弱</option>
+      </select>
+      <button type="button" class="btn-primary"
+        [disabled]="pageState() === 'disabled' || weatherSignalTagMappingSaving()"
+        (click)="addWeatherSignalTagMapping()">
+        {{ weatherSignalTagMappingSaving() ? '新增中…' : '＋ 新增對照' }}
+      </button>
+    </div>
+  </section>
+
   <section class="data-table">
     <table>
       <thead>
@@ -673,9 +805,8 @@
               <span class="helper">至少需勾選一項；未勾選的溫層視為此通路不支援。</span>
               } @else if (sliderCategories.has(group.category)) {
               <div class="system-setting-slider-field">
-                <input type="range" [min]="setting.minValue" [max]="setting.maxValue"
-                  [step]="nativeSliderStep(setting)" [ngModel]="systemSettingDraftValue()"
-                  (ngModelChange)="onSliderDrag(setting, $event)" />
+                <input type="range" [min]="setting.minValue" [max]="setting.maxValue" [step]="nativeSliderStep(setting)"
+                  [ngModel]="systemSettingDraftValue()" (ngModelChange)="onSliderDrag(setting, $event)" />
                 <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
                     class="unit"> {{ setting.unit }}</span>}</span>
               </div>
@@ -842,8 +973,7 @@
             <span>{{ factorLabel()[factorCode] ?? factorCode }}</span>
           </label>
           <input type="number" step="0.01" min="0" max="100" class="weight-editor-row-value"
-            [ngModel]="weightDrafts()[factorCode]"
-            [disabled]="!enabledFactorCodes().has(factorCode)"
+            [ngModel]="weightDrafts()[factorCode]" [disabled]="!enabledFactorCodes().has(factorCode)"
             (ngModelChange)="updateWeightDraft(factorCode, $event)" />
         </div>
         }
@@ -907,15 +1037,15 @@
     <form (ngSubmit)="submitFactorDefinition()">
       <label>因子代碼
         <input type="text" [ngModel]="newFactorCode()" name="newFactorCode"
-          [disabled]="editingFactorDefinitionId() !== null"
-          (ngModelChange)="newFactorCode.set($event)" placeholder="例如 PRICE_COMPETITIVENESS" />
+          [disabled]="editingFactorDefinitionId() !== null" (ngModelChange)="newFactorCode.set($event)"
+          placeholder="例如 PRICE_COMPETITIVENESS" />
         @if (editingFactorDefinitionId() !== null) {
         <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
         }
       </label>
       <label>因子名稱
-        <input type="text" [ngModel]="newFactorName()" name="newFactorName"
-          (ngModelChange)="newFactorName.set($event)" placeholder="例如 價格競爭力" />
+        <input type="text" [ngModel]="newFactorName()" name="newFactorName" (ngModelChange)="newFactorName.set($event)"
+          placeholder="例如 價格競爭力" />
       </label>
       <label>資料源類型
         <select [ngModel]="newFactorSourceKind()" name="newFactorSourceKind"
@@ -952,7 +1082,9 @@
         資料源自動決定，避免選出「運算邏輯」跟「資料源」互不相容的組合。
       -->
       <label>運算邏輯（依資料源自動決定）
-        <input type="text" [value]="newFactorStrategy() ? (factorStrategyLabel[newFactorStrategy()!] ?? newFactorStrategy()) : '請先選擇資料源'" disabled />
+        <input type="text"
+          [value]="newFactorStrategy() ? (factorStrategyLabel[newFactorStrategy()!] ?? newFactorStrategy()) : '請先選擇資料源'"
+          disabled />
       </label>
       <!--
         倍率只有 MANUAL_SCALE／MANUAL_PERCENT 會用到（拿去乘原始值），
@@ -978,8 +1110,7 @@
           (click)="cancelCreateFactorDefinition()">
           取消
         </button>
-        <button type="submit" class="btn-primary"
-          [disabled]="isSavingFactorDefinition() || !newFactorStrategy()">
+        <button type="submit" class="btn-primary" [disabled]="isSavingFactorDefinition() || !newFactorStrategy()">
           {{ isSavingFactorDefinition() ? '儲存中…' : (editingFactorDefinitionId() ? '儲存編輯' : '新增') }}
         </button>
       </div>
@@ -1114,8 +1245,8 @@
       </fieldset>
       @if (draftProductTypeLevel() === 2) {
       <label>上層大類 <em>*</em>
-        <select required [ngModel]="draftProductTypeParentId()"
-          (ngModelChange)="draftProductTypeParentId.set($event)" name="productTypeParent">
+        <select required [ngModel]="draftProductTypeParentId()" (ngModelChange)="draftProductTypeParentId.set($event)"
+          name="productTypeParent">
           <option [ngValue]="null">請選擇</option>
           @for (major of availableMajorTypes(); track major.id) {
           <option [ngValue]="major.id">{{ major.name }}</option>
@@ -1153,7 +1284,15 @@
         <select [ngModel]="draftCategory()" (ngModelChange)="draftCategory.set($event)" name="category">
           <option value="FESTIVAL">節慶</option>
           <option value="SEASON">季節</option>
-        </select></label>
+          <option value="WEATHER">天氣型</option>
+        </select>
+        @if (draftCategory() === 'WEATHER') {
+        <small class="helper">
+          天氣型檔期通常由系統每天自動同步產生（見「節慶檔期管理」上方的天氣同步面板），
+          這裡手動新增/編輯的內容之後可能會被下一次自動同步覆蓋（除非切換狀態時開啟「手動覆蓋」）。
+        </small>
+        }
+      </label>
       <div class="modal-grid">
         <label>開始日期
           <input type="date" required [ngModel]="draftStart()" (ngModelChange)="draftStart.set($event)"
@@ -1172,7 +1311,8 @@
              受影響）——但 dialog 裡打不到既有標籤時，可以直接在那裡新增，
              不是只能從既有標籤選，按鈕文字跟著改，不要讓人誤會這裡是
              唯讀的搜尋功能。 -->
-        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" /> 選擇或新增標籤</button>
+        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" />
+          選擇或新增標籤</button>
         <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
         <div class="keyword-chip-list">
           @for (row of selectedTagRows(); track row.tag) {
@@ -1193,7 +1333,8 @@
           @for (row of selectedTagRows(); track row.tag) {
           <div class="tag-row">
             <span>{{ row.tag }}</span>
-            <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)" [name]="'tier-' + row.tag">
+            <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)"
+              [name]="'tier-' + row.tag">
               <option value="CORE">核心</option>
               <option value="GENERAL">一般</option>
               <option value="WEAK">弱</option>

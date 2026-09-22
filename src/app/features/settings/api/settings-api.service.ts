@@ -33,6 +33,11 @@ import {
   SystemSettingUpdateRequestPayload,
   SwitchEvaluationModeRequestPayload,
   WeightSnapshotPayload,
+  WeatherSignalPreviewPayload,
+  WeatherSignalTagMappingCreateRequestPayload,
+  WeatherSignalTagMappingResponsePayload,
+  WeatherSignalTagMappingUpdateRequestPayload,
+  WeatherSyncResponsePayload,
 } from './settings-api.contract';
 
 /**
@@ -348,6 +353,81 @@ export class SettingsApiService {
       .post<ApiEnvelope<FestiveCampaignResponsePayload>>(
         SETTINGS_API.festiveCampaignManualStatus(id),
         body,
+      )
+      .pipe(unwrapData());
+  }
+
+  // ----- 天氣檔期同步（WeatherController，2026-09-21新增）-----
+
+  /**
+   * POST /api/settings/weather/sync [僅管理]
+   * 手動觸發一次完整天氣檔期同步，與每天05:00排程呼叫的是後端同一支方法，
+   * 行為完全一致，只是觸發時機從cron換成這支HTTP請求。
+   */
+  syncWeatherCampaigns(): Observable<WeatherSyncResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<WeatherSyncResponsePayload>>(SETTINGS_API.weatherSync, {})
+      .pipe(unwrapData());
+  }
+
+  /**
+   * GET /api/settings/weather/signals/preview [僅管理]
+   * 只預覽這次會分類出的天氣訊號，**不寫入資料庫**。想看落地後的檔期，
+   * 呼叫上面 syncWeatherCampaigns() 之後改查 getFestiveCampaigns()。
+   */
+  previewWeatherSignals(): Observable<WeatherSignalPreviewPayload[]> {
+    return this.http
+      .get<ApiEnvelope<WeatherSignalPreviewPayload[]>>(SETTINGS_API.weatherSignalsPreview)
+      .pipe(unwrapData());
+  }
+
+  // ----- 天氣訊號標籤對照（SettingsController，2026-09-22新增）-----
+
+  /** GET /api/settings/weather-signal-tags [僅管理]：含已停用與系統預設項目。 */
+  getWeatherSignalTagMappings(): Observable<WeatherSignalTagMappingResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<WeatherSignalTagMappingResponsePayload[]>>(SETTINGS_API.weatherSignalTags)
+      .pipe(unwrapData());
+  }
+
+  /** POST /api/settings/weather-signal-tags [僅管理]：新增後下一次同步立即採計。 */
+  createWeatherSignalTagMapping(
+    body: WeatherSignalTagMappingCreateRequestPayload,
+  ): Observable<WeatherSignalTagMappingResponsePayload> {
+    return this.http
+      .post<ApiEnvelope<WeatherSignalTagMappingResponsePayload>>(SETTINGS_API.weatherSignalTags, body)
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/weather-signal-tags/{id} [僅管理]：只能改matchTier。 */
+  updateWeatherSignalTagMapping(
+    id: number,
+    body: WeatherSignalTagMappingUpdateRequestPayload,
+  ): Observable<WeatherSignalTagMappingResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<WeatherSignalTagMappingResponsePayload>>(
+        SETTINGS_API.updateWeatherSignalTagMapping(id),
+        body,
+      )
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/weather-signal-tags/{id}/disable [僅管理]：含系統預設項目，僅可停用不可刪除。 */
+  disableWeatherSignalTagMapping(id: number): Observable<WeatherSignalTagMappingResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<WeatherSignalTagMappingResponsePayload>>(
+        SETTINGS_API.disableWeatherSignalTagMapping(id),
+        {},
+      )
+      .pipe(unwrapData());
+  }
+
+  /** PUT /api/settings/weather-signal-tags/{id}/enable [僅管理] */
+  enableWeatherSignalTagMapping(id: number): Observable<WeatherSignalTagMappingResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<WeatherSignalTagMappingResponsePayload>>(
+        SETTINGS_API.enableWeatherSignalTagMapping(id),
+        {},
       )
       .pipe(unwrapData());
   }

@@ -136,6 +136,31 @@ describe('Settings', () => {
     switchFestiveCampaignStatus: vi.fn((id: number, body: { status: string }) =>
       of({ ...MOCK_CAMPAIGNS.find((c) => c.id === id)!, campaignStatus: body.status, isManualOverride: true }),
     ),
+    previewWeatherSignals: vi.fn(() =>
+      of([
+        { region: 'SOUTH', type: 'HOT' as const, windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' as const },
+      ]),
+    ),
+    syncWeatherCampaigns: vi.fn(() =>
+      of({ totalSignalCount: 1, syncedCampaignCount: 1, expiredCampaignCount: 0 }),
+    ),
+    getWeatherSignalTagMappings: vi.fn(() =>
+      of([
+        { id: 1, weatherSignalType: 'RAINY' as const, tag: '雨具', matchTier: 'CORE' as const, isActive: true, isSystemDefault: true },
+      ]),
+    ),
+    createWeatherSignalTagMapping: vi.fn((body: { weatherSignalType: string; tag: string; matchTier: string }) =>
+      of({ id: 99, isActive: true, isSystemDefault: false, ...body }),
+    ),
+    updateWeatherSignalTagMapping: vi.fn((id: number, body: { matchTier: string }) =>
+      of({ id, weatherSignalType: 'RAINY', tag: '雨具', isActive: true, isSystemDefault: true, ...body }),
+    ),
+    disableWeatherSignalTagMapping: vi.fn((id: number) =>
+      of({ id, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: false, isSystemDefault: true }),
+    ),
+    enableWeatherSignalTagMapping: vi.fn((id: number) =>
+      of({ id, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true }),
+    ),
   };
 
   const userApi = {
@@ -235,6 +260,102 @@ describe('Settings', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('.data-table')).toBeTruthy();
     }
+  });
+
+  it('previews weather signals without touching the campaign list', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+
+    component.previewWeatherSignals();
+    fixture.detectChanges();
+
+    expect(settingsApi.previewWeatherSignals).toHaveBeenCalled();
+    expect(component.weatherPreview()).toEqual([
+      { region: 'SOUTH', type: 'HOT', windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' },
+    ]);
+    // 預覽不寫入資料庫，不應該連帶重新載入檔期清單。
+    expect(settingsApi.getFestiveCampaigns).not.toHaveBeenCalled();
+  });
+
+  it('syncs weather campaigns and reloads the campaign list afterward', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    settingsApi.getFestiveCampaigns.mockClear();
+
+    component.syncWeatherCampaigns();
+    fixture.detectChanges();
+
+    expect(settingsApi.syncWeatherCampaigns).toHaveBeenCalled();
+    expect(component.statusMessage()).toContain('天氣檔期同步完成');
+    // 同步後應該重新載入檔期清單，讓表格反映最新結果，不用使用者手動整理。
+    expect(settingsApi.getFestiveCampaigns).toHaveBeenCalled();
+  });
+
+  it('loads weather signal tag mappings when the campaigns tab loads', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+
+    expect(settingsApi.getWeatherSignalTagMappings).toHaveBeenCalled();
+    expect(component.weatherSignalTagMappings()).toEqual([
+      { id: 1, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true },
+    ]);
+  });
+
+  it('adds a new weather signal tag mapping and resets the draft form', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+
+    component.draftWeatherSignalType.set('HOT');
+    component.draftWeatherSignalTag.set('消暑');
+    component.draftWeatherSignalMatchTier.set('GENERAL');
+
+    component.addWeatherSignalTagMapping();
+    fixture.detectChanges();
+
+    expect(settingsApi.createWeatherSignalTagMapping).toHaveBeenCalledWith({
+      weatherSignalType: 'HOT',
+      tag: '消暑',
+      matchTier: 'GENERAL',
+    });
+    expect(component.weatherSignalTagMappings().some((m) => m.tag === '消暑')).toBe(true);
+    // 送出後應該清空草稿欄位，讓表單回到可以繼續新增下一筆的狀態。
+    expect(component.draftWeatherSignalTag()).toBe('');
+    expect(component.draftWeatherSignalType()).toBe('');
+  });
+
+  it('rejects adding a mapping with a blank tag before calling the API', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    settingsApi.createWeatherSignalTagMapping.mockClear();
+
+    component.draftWeatherSignalType.set('HOT');
+    component.draftWeatherSignalTag.set('   ');
+    component.addWeatherSignalTagMapping();
+
+    expect(settingsApi.createWeatherSignalTagMapping).not.toHaveBeenCalled();
+    expect(component.statusMessage()).toContain('請輸入標籤內容');
+  });
+
+  it('toggles a weather signal tag mapping between active and disabled', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    const item = component.weatherSignalTagMappings()[0];
+
+    component.toggleWeatherSignalTagMappingActive(item);
+
+    expect(settingsApi.disableWeatherSignalTagMapping).toHaveBeenCalledWith(item.id);
+    expect(component.weatherSignalTagMappings()[0].isActive).toBe(false);
+  });
+
+  it('changes the match tier of an existing weather signal tag mapping', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    const item = component.weatherSignalTagMappings()[0];
+
+    component.changeWeatherSignalTagMappingTier(item, 'WEAK');
+
+    expect(settingsApi.updateWeatherSignalTagMapping).toHaveBeenCalledWith(item.id, { matchTier: 'WEAK' });
+    expect(component.weatherSignalTagMappings()[0].matchTier).toBe('WEAK');
   });
 
   it('contains all nine default product types', () => {

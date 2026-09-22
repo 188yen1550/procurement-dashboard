@@ -13,8 +13,15 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { DialogService } from '../../core/dialog/dialog.service';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
-import { FestiveCategory, TemperatureZone, UserRole } from '../../core/domain/enums';
-import { joinCampaignTags, splitKeywords, TEMPERATURE_ZONE_LABEL } from '../../core/domain/labels';
+import { FestiveCategory, TemperatureZone, TagMatchTier, UserRole, WeatherSignalType } from '../../core/domain/enums';
+import {
+  joinCampaignTags,
+  splitKeywords,
+  TEMPERATURE_ZONE_LABEL,
+  WEATHER_FORECAST_CONFIDENCE_LABEL,
+  WEATHER_REGION_LABEL,
+  WEATHER_SIGNAL_TYPE_LABEL,
+} from '../../core/domain/labels';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
@@ -28,6 +35,8 @@ import {
   ProductTypeScoreBandResponsePayload,
   RiskOptionResponsePayload,
   ScoreBandSourceMode,
+  WeatherSignalPreviewPayload,
+  WeatherSignalTagMappingResponsePayload,
 } from './api/settings-api.contract';
 import { SettingsApiService } from './api/settings-api.service';
 import { UserApiService } from '../user-management/api/user-api.service';
@@ -219,6 +228,25 @@ const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   ACTIVE: '進行中',
   EXPIRED: '已結束',
 };
+
+/**
+ * 天氣訊號標籤對照的「天氣類型」下拉選項，刻意排除 NORMAL——一般天氣不該
+ * 命中任何商品（WeatherCampaignSyncService 既有規則），後端 SettingsService
+ * 建立/編輯時也會拒絕 NORMAL，這裡不列出來，避免使用者選了才在送出後
+ * 收到錯誤訊息。標籤文字沿用 WEATHER_SIGNAL_TYPE_LABEL，不在這裡重複維護
+ * 一份文案。
+ */
+const WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS: readonly WeatherSignalType[] = [
+  'HOT',
+  'HUMID_HOT',
+  'HUMID',
+  'RAINY',
+  'HEAVY_RAIN',
+  'STRONG_WIND',
+  'COOL',
+  'COLD',
+  'DRY_COOL',
+];
 
 interface CampaignVM {
   id: number | null;
@@ -445,6 +473,14 @@ const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
   },
 ];
 
+const MOCK_WEATHER_SIGNAL_TAG_MAPPINGS: readonly WeatherSignalTagMappingResponsePayload[] = [
+  { id: 1, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true },
+  { id: 2, weatherSignalType: 'RAINY', tag: '防水', matchTier: 'GENERAL', isActive: true, isSystemDefault: true },
+  { id: 3, weatherSignalType: 'HOT', tag: '涼感', matchTier: 'CORE', isActive: true, isSystemDefault: true },
+  { id: 4, weatherSignalType: 'HOT', tag: '消暑', matchTier: 'GENERAL', isActive: true, isSystemDefault: true },
+  { id: 5, weatherSignalType: 'COLD', tag: '保暖', matchTier: 'CORE', isActive: true, isSystemDefault: true },
+];
+
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
   { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true },
   { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true },
@@ -462,6 +498,9 @@ export class Settings implements OnInit {
   readonly campaignSort = new ListSort();
   readonly accountSort = new ListSort();
   readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
+  readonly weatherSignalTypeLabel = WEATHER_SIGNAL_TYPE_LABEL;
+  readonly weatherForecastConfidenceLabel = WEATHER_FORECAST_CONFIDENCE_LABEL;
+  readonly weatherRegionLabel = WEATHER_REGION_LABEL;
   private readonly api = inject(SettingsApiService);
   private readonly dialog = inject(DialogService);
   private readonly userApi = inject(UserApiService);
@@ -597,6 +636,32 @@ export class Settings implements OnInit {
    */
   readonly draftCampaignCode = signal('');
   readonly draftTags = signal<FestiveCampaignTagPayload[]>([{ tag: '', matchTier: 'CORE' }]);
+
+  /** 天氣檔期同步面板狀態（WeatherController，2026-09-21新增）。 */
+  readonly weatherPreview = signal<WeatherSignalPreviewPayload[] | null>(null);
+  readonly weatherPreviewLoading = signal(false);
+  readonly weatherSyncing = signal(false);
+
+  /**
+   * 天氣訊號標籤對照管理（SettingsController，2026-09-22新增）——把原本
+   * 寫死在後端 WeatherCampaignSyncService.WEATHER_TAG_MAPPING 的對照表
+   * 改成管理層可自行調整。刻意獨立一組 signal／方法，不接進既有風險選項
+   * 那套共用 draft/modal 狀態機：那套是為「同一個 modal 同時服務新增與
+   * 編輯多種實體」設計的，這裡只需要一個簡單的清單＋新增列表單＋
+   * 停用/復用，接進去徒增耦合，不值得。
+   *
+   * NORMAL 不列入可選項目：一般天氣不該命中任何商品，後端也會拒絕，
+   * 見 WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS。
+   */
+  readonly weatherSignalTagMappings = signal<WeatherSignalTagMappingResponsePayload[]>(
+    this.useMockData ? [...MOCK_WEATHER_SIGNAL_TAG_MAPPINGS] : [],
+  );
+  readonly weatherSignalTagMappingsLoading = signal(false);
+  readonly weatherSignalTagMappingSaving = signal(false);
+  readonly draftWeatherSignalType = signal<WeatherSignalType | ''>('');
+  readonly draftWeatherSignalTag = signal('');
+  readonly draftWeatherSignalMatchTier = signal<TagMatchTier>('CORE');
+  readonly weatherSignalTagMappingTypeOptions = WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS;
 
   // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
   // 原本的標籤編輯是每一列自由輸入文字＋選等級，容易打錯字（跟其他檔期
@@ -2097,6 +2162,212 @@ export class Settings implements OnInit {
         },
         error: (err) => this.handleLoadError(err),
       });
+    // 天氣訊號標籤對照跟節慶檔期同屬「檔期」分頁，一起載入，不用使用者
+    // 額外觸發——見 loadWeatherSignalTagMappings() 類別註解。
+    this.loadWeatherSignalTagMappings();
+  }
+
+  /**
+   * 預覽目前會分類出的天氣訊號，不寫入資料庫（WeatherController，
+   * GET /signals/preview）。用來在正式同步前，先確認Open-Meteo資料與
+   * WeatherNormalizer門檻分類出來的結果合不合理。
+   *
+   * Mock模式下沒有真實天氣資料可以預覽——與其編造一份假訊號讓畫面「看起來
+   * 正常」，不如直接告訴使用者這個功能要接上真實後端才能用，避免誤判。
+   */
+  previewWeatherSignals(): void {
+    if (this.useMockData) {
+      this.statusMessageState.show('Mock 模式沒有真實天氣資料可預覽，請切換到已串接後端的環境測試。');
+      return;
+    }
+
+    this.weatherPreviewLoading.set(true);
+    this.api
+      .previewWeatherSignals()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (signals) => {
+          this.weatherPreview.set(signals);
+          this.weatherPreviewLoading.set(false);
+        },
+        error: (err) => {
+          this.weatherPreviewLoading.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /**
+   * 手動觸發一次完整天氣檔期同步（WeatherController，POST /sync），跟每天
+   * 05:00排程呼叫的是後端同一支方法，行為完全一致。成功後重新載入檔期
+   * 清單，讓下方表格立刻反映這次同步的結果，不用使用者自己按重新整理；
+   * 同時清空預覽結果——預覽的內容此時已經落地或過期，繼續顯示只會誤導。
+   */
+  syncWeatherCampaigns(): void {
+    if (this.useMockData) {
+      this.statusMessageState.show('Mock 模式無法觸發真實天氣同步。');
+      return;
+    }
+
+    this.weatherSyncing.set(true);
+    this.api
+      .syncWeatherCampaigns()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.weatherSyncing.set(false);
+          this.weatherPreview.set(null);
+          const expiredNote =
+            result.expiredCampaignCount > 0 ? `、${result.expiredCampaignCount}筆已標記結束` : '';
+          this.statusMessageState.show(
+            `天氣檔期同步完成：共${result.totalSignalCount}個訊號、更新${result.syncedCampaignCount}筆檔期${expiredNote}。`,
+          );
+          this.loadCampaigns();
+        },
+        error: (err) => {
+          this.weatherSyncing.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /**
+   * 天氣訊號標籤對照清單載入。跟 loadRiskOptions() 同一套 mock/真實 API
+   * 分流慣例（多數設定清單走這套，previewWeatherSignals／syncWeatherCampaigns
+   * 是例外——那兩支本質上需要真實天氣資料源，Mock 模式下沒有意義；這裡是
+   * 純設定資料，Mock 模式一樣能展示畫面，所以沿用主流慣例而非比照那兩支）。
+   */
+  loadWeatherSignalTagMappings(): void {
+    if (this.useMockData) {
+      this.weatherSignalTagMappings.set([...MOCK_WEATHER_SIGNAL_TAG_MAPPINGS]);
+      return;
+    }
+    this.weatherSignalTagMappingsLoading.set(true);
+    this.api
+      .getWeatherSignalTagMappings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.weatherSignalTagMappings.set(list);
+          this.weatherSignalTagMappingsLoading.set(false);
+        },
+        error: (err) => {
+          this.weatherSignalTagMappingsLoading.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /**
+   * 新增一筆對照。前端只做「不可為空」的基本檢查——weatherSignalType 不含
+   * NORMAL（下拉選項本來就排除，見 WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS），
+   * 重複組合、NORMAL 誤送等規則性驗證留給後端 SettingsService 統一把關，
+   * 避免前後端各自維護一份判斷邏輯、日後對不齊。
+   */
+  addWeatherSignalTagMapping(): void {
+    const weatherSignalType = this.draftWeatherSignalType();
+    const tag = this.draftWeatherSignalTag().trim();
+    if (!weatherSignalType) {
+      this.statusMessageState.show('請選擇天氣訊號類型。');
+      return;
+    }
+    if (!tag) {
+      this.statusMessageState.show('請輸入標籤內容。');
+      return;
+    }
+    const matchTier = this.draftWeatherSignalMatchTier();
+
+    const resetDraft = () => {
+      this.draftWeatherSignalType.set('');
+      this.draftWeatherSignalTag.set('');
+      this.draftWeatherSignalMatchTier.set('CORE');
+    };
+
+    if (this.useMockData) {
+      const mockId = -(this.weatherSignalTagMappings().length + 1);
+      this.weatherSignalTagMappings.update((items) => [
+        ...items,
+        { id: mockId, weatherSignalType, tag, matchTier, isActive: true, isSystemDefault: false },
+      ]);
+      resetDraft();
+      this.statusMessageState.show(`已新增對照：${weatherSignalType} → ${tag}`);
+      return;
+    }
+
+    this.weatherSignalTagMappingSaving.set(true);
+    this.api
+      .createWeatherSignalTagMapping({ weatherSignalType, tag, matchTier })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (created) => {
+          this.weatherSignalTagMappingSaving.set(false);
+          this.weatherSignalTagMappings.update((items) => [...items, created]);
+          resetDraft();
+          this.statusMessageState.show(`已新增對照：${created.weatherSignalType} → ${created.tag}`);
+        },
+        error: (err) => {
+          this.weatherSignalTagMappingSaving.set(false);
+          this.statusMessageState.show(toApiError(err).message);
+        },
+      });
+  }
+
+  /**
+   * 調整既有對照的命中權重層級（下拉選單 change 時直接送出，不走額外的
+   * 編輯模式/儲存按鈕——這張表的欄位少、調整頻率低，比照
+   * updateTagMatchTier() 在節慶標籤編輯裡「選了就是選了」的即時儲存體驗，
+   * 不需要多一層確認步驟）。
+   */
+  changeWeatherSignalTagMappingTier(item: WeatherSignalTagMappingResponsePayload, matchTier: TagMatchTier): void {
+    if (item.matchTier === matchTier) return;
+
+    const apply = (updated: Partial<WeatherSignalTagMappingResponsePayload> = {}) => {
+      this.weatherSignalTagMappings.update((items) =>
+        items.map((row) => (row.id === item.id ? { ...row, matchTier, ...updated } : row)),
+      );
+    };
+
+    if (this.useMockData) {
+      apply();
+      return;
+    }
+    this.api
+      .updateWeatherSignalTagMapping(item.id, { matchTier })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => apply(updated),
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
+      });
+  }
+
+  /**
+   * 停用／復用。系統預設列（isSystemDefault=true）一樣可以停用——後端只擋
+   * 刪除，不擋停用（見 SettingsService.disableWeatherSignalTagMapping()
+   * 類別註解），管理層若判斷某筆系統預設對照已不合時宜，應該能關掉它，
+   * 前端沒有理由比後端更嚴格。
+   */
+  toggleWeatherSignalTagMappingActive(item: WeatherSignalTagMappingResponsePayload): void {
+    const nextActive = !item.isActive;
+    const apply = () => {
+      this.weatherSignalTagMappings.update((items) =>
+        items.map((row) => (row.id === item.id ? { ...row, isActive: nextActive } : row)),
+      );
+      this.statusMessageState.show(
+        `已${nextActive ? '啟用' : '停用'}對照：${item.weatherSignalType} → ${item.tag}`,
+      );
+    };
+
+    if (this.useMockData) {
+      apply();
+      return;
+    }
+    const request = nextActive
+      ? this.api.enableWeatherSignalTagMapping(item.id)
+      : this.api.disableWeatherSignalTagMapping(item.id);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: apply,
+      error: (err) => this.statusMessageState.show(toApiError(err).message),
+    });
   }
 
   editCampaign(name: string): void {
