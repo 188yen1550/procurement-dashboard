@@ -1,0 +1,170 @@
+<!--
+  檔案用途：批次新增選品頁面。流程固定為「下載範本 → 選檔解析 → 預覽確認 → 送出 → 看逐列結果」，
+  中間任何一步都可以按「重新開始」回到最初狀態，不會卡在半途無法重來。
+-->
+<main class="batch-page" aria-labelledby="page-title">
+  <header class="page-header">
+    <div>
+      <a class="back-link" routerLink="/products"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a>
+      <h1 id="page-title">批次新增選品</h1>
+      <p>以 CSV／Excel 匯入多筆品項，可選擇性一併為每筆新品項配一張圖片。</p>
+    </div>
+  </header>
+
+  <section class="step-card" aria-labelledby="step1-title">
+    <h2 id="step1-title">1. 下載範本並填寫</h2>
+    <p>範本已包含欄位標題與一列示範資料，請對照欄位說明填寫，標題列文字請勿更動。</p>
+    <button type="button" class="secondary-action" (click)="downloadTemplate()">
+      <app-icon name="list" size="sm" /> 下載 CSV 範本
+    </button>
+  </section>
+
+  <section class="step-card" aria-labelledby="step2-title">
+    <h2 id="step2-title">2. 上傳填好的檔案</h2>
+    @if (!productTypesReady()) {
+    <p class="hint">商品分類清單載入中，請稍候再選擇檔案…</p>
+    }
+    <label class="file-input">
+      <input type="file" accept=".csv,.xlsx,.xls" [disabled]="!productTypesReady()" (change)="onFileSelected($event)" />
+      <span>選擇 CSV 或 Excel 檔案</span>
+    </label>
+    @if (fileName()) {
+    <p class="file-name">目前檔案：{{ fileName() }}</p>
+    }
+
+    @if (state() === 'parsing') {
+    <p class="hint">解析中…</p>
+    }
+    @if (state() === 'parse-error') {
+    <p class="error-text"><app-icon name="alert-triangle" size="sm" /> {{ parseErrorMessage() }}</p>
+    }
+  </section>
+
+  @if (rows().length > 0) {
+  <section class="step-card" aria-labelledby="step3-title">
+    <h2 id="step3-title">3.（選填）上傳要配的圖片</h2>
+    <p>圖片檔名需與範本「圖片檔名」欄位填的文字完全相同（含副檔名），系統會依檔名自動配對。</p>
+    <label class="file-input">
+      <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onImagesSelected($event)" />
+      <span><app-icon name="image" size="sm" /> 選擇圖片檔案（可多選）</span>
+    </label>
+    @if (imageFiles().length > 0) {
+    <ul class="image-chip-list">
+      @for (file of imageFiles(); track file.name) {
+      <li class="image-chip">
+        {{ file.name }}
+        <button type="button" (click)="removeImage(file.name)" aria-label="移除這張圖片">
+          <app-icon name="x" size="sm" />
+        </button>
+      </li>
+      }
+    </ul>
+    }
+  </section>
+
+  <section class="step-card" aria-labelledby="step4-title">
+    <div class="preview-header">
+      <h2 id="step4-title">4. 預覽（共 {{ rows().length }} 列）</h2>
+      <p>
+        可送出 <strong>{{ submittableCount }}</strong> 筆
+        @if (blockedCount > 0) {
+        ，<span class="error-text">{{ blockedCount }} 列因必要欄位無法辨識，不會被送出</span>
+        }
+      </p>
+    </div>
+
+    <div class="table-scroll" role="region" aria-label="預覽表格" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">列號</th>
+            <th scope="col">商品名稱</th>
+            <th scope="col">狀態</th>
+            <th scope="col">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.rowNumber) {
+          <tr [class.row-blocked]="row.payload === null">
+            <td>{{ row.rowNumber }}</td>
+            <td>{{ row.name || '（未填）' }}</td>
+            <td>
+              @if (row.result) {
+              @if (row.result.success) {
+              <span class="status-badge status-success"><app-icon name="check-circle" size="sm" /> 成功</span>
+              } @else {
+              <span class="status-badge status-fail"><app-icon name="alert-triangle" size="sm" /> 失敗</span>
+              }
+              } @else if (row.payload === null) {
+              <span class="status-badge status-fail"><app-icon name="alert-triangle" size="sm" /> 無法送出</span>
+              } @else if (row.warnings.length > 0) {
+              <span class="status-badge status-warning"><app-icon name="info" size="sm" /> 待送出（有提示）</span>
+              } @else {
+              <span class="status-badge status-ok">待送出</span>
+              }
+            </td>
+            <td>
+              @if (row.result?.errorMessage) {
+              <p class="error-text">{{ row.result?.errorMessage }}</p>
+              }
+              @if (row.result?.warningMessage) {
+              <p class="warning-text">{{ row.result?.warningMessage }}</p>
+              }
+              @if (!row.result) {
+              @for (msg of row.blockingErrors; track msg) {
+              <p class="error-text">{{ msg }}</p>
+              }
+              @for (msg of row.warnings; track msg) {
+              <p class="warning-text">{{ msg }}</p>
+              }
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (submitErrorMessage()) {
+    <p class="error-text"><app-icon name="alert-triangle" size="sm" /> {{ submitErrorMessage() }}</p>
+    }
+
+    <div class="action-row">
+      <button type="button" class="secondary-action" (click)="reset()">
+        <app-icon name="refresh-cw" size="sm" /> 重新開始
+      </button>
+
+      @if (state() !== 'done') {
+      <button
+        type="button"
+        class="primary-action"
+        [disabled]="submittableCount === 0 || state() === 'submitting'"
+        (click)="submit()"
+      >
+        {{ state() === 'submitting' ? '送出中…' : '送出批次（' + submittableCount + ' 筆）' }}
+      </button>
+      }
+    </div>
+
+    @if (state() === 'done') {
+    <div class="result-summary" role="status">
+      <p>
+        送出完成：成功 <strong>{{ submittedSuccessCount }}</strong> 筆
+        @if (submittedFailCount > 0) {
+        ，失敗 <strong class="error-text">{{ submittedFailCount }}</strong> 筆
+        }
+        @if (blockedCount > 0) {
+        （另有 {{ blockedCount }} 列未送出，見上方標示）
+        }
+      </p>
+      @if (hasAnyFailure) {
+      <button type="button" class="secondary-action" (click)="downloadFailedRows()">
+        下載失敗清單（含原因，可修正後重新匯入）
+      </button>
+      }
+      <a class="primary-action" routerLink="/products">前往品項管理查看已建立的品項</a>
+    </div>
+    }
+  </section>
+  }
+</main>
