@@ -8,7 +8,10 @@
 
       <h1 id="page-title">品項管理</h1>
     </div>
-    <a class="primary-action" routerLink="/products/new"><span aria-hidden="true">＋</span> 新增品項</a>
+    <div class="header-actions">
+      <a class="secondary-action" routerLink="/products/batch-import"><span aria-hidden="true">⇪</span> 批次新增選品</a>
+      <a class="primary-action" routerLink="/products/new"><span aria-hidden="true">＋</span> 新增品項</a>
+    </div>
   </header>
 
   @if (useMockData) {

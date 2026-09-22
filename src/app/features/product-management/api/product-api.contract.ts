@@ -35,6 +35,7 @@ export const PRODUCT_API = {
   list: '/api/products',
   aiSuggested: '/api/products/ai-suggested',
   create: '/api/products',
+  batchCreate: '/api/products/batch',
   detail: (id: number | string) => `/api/products/${id}`,
   image: (id: number | string) => `/api/products/${id}/image`,
   evaluation: (id: number | string) => `/api/products/${id}/evaluation`,
@@ -361,6 +362,57 @@ export interface ProductCreateRequestPayload {
  * 前端應把這些欄位設為唯讀，而不是等使用者送出才吃 409。
  */
 export type ProductUpdateRequestPayload = ProductCreateRequestPayload;
+
+/**
+ * POST /api/products/batch 的 items part 裡，陣列的單一元素。
+ * 對應後端 ProductBatchItemRequest.java。
+ *
+ * ⚠️ product 底下的欄位規則與 ProductCreateRequestPayload 完全一致
+ * （後端 @Valid 會連帶驗證），批次匯入不會因為是批次就放寬單筆新增
+ * 既有的必填/格式規則。
+ */
+export interface ProductBatchItemRequestPayload {
+  /** 對回原始 CSV/Excel 的資料列號（不含標題列，從 1 開始），純粹供結果回報使用。 */
+  rowNumber: number;
+  /**
+   * 這一列要套用的圖片原始檔名，需與同一個 multipart 請求裡 images part
+   * 夾帶的某個檔案 File.name 完全一致（含副檔名、大小寫相符）才會配對成功。
+   * 留空代表這一列不上傳圖片。
+   */
+  imageFileName?: string | null;
+  product: ProductCreateRequestPayload;
+}
+
+/** POST /api/products/batch 的 items part 本體。對應後端 ProductBatchCreateRequest.java。 */
+export interface ProductBatchCreateRequestPayload {
+  items: ProductBatchItemRequestPayload[];
+}
+
+/** POST /api/products/batch 回應陣列中的單一列結果。對應後端 ProductBatchItemResult.java。 */
+export interface ProductBatchItemResultPayload {
+  rowNumber: number | null;
+  success: boolean;
+  /** success===false 時才有值；success===true 時一定是 null。 */
+  errorMessage: string | null;
+  /** 與 success 無關；目前唯一情境：商品建立成功但找不到對應的圖片檔案。 */
+  warningMessage: string | null;
+  /** success===true 時才有值。 */
+  product: ProductResponsePayload | null;
+}
+
+/**
+ * POST /api/products/batch 的回應本體。對應後端 ProductBatchCreateResponse.java。
+ *
+ * ⚠️ 這支 API 只要 items 本身通過格式驗證就回 200——「這一列建立商品時
+ * 失敗」是逐列結果的一部分，不代表整批請求失敗，畫面要依 results 逐列
+ * 顯示成功／失敗，不能只看這支 API 有沒有回 2xx 就判斷整批成功。
+ */
+export interface ProductBatchCreateResponsePayload {
+  totalCount: number;
+  successCount: number;
+  failCount: number;
+  results: ProductBatchItemResultPayload[];
+}
 
 /**
  * GET /api/products 的查詢參數，逐一對照 ProductController.search()。

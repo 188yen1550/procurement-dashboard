@@ -18,6 +18,10 @@ export const PRODUCT_ROUTES: Routes = [
     loadComponent: () => import('./ai-suggestions/ai-suggestions').then((m) => m.AiSuggestions),
   },
   {
+    path: 'batch-import',
+    loadComponent: () => import('./batch-import/batch-import').then((m) => m.BatchImport),
+  },
+  {
     path: ':id/edit',
     canDeactivate: [productFormCanDeactivate],
     loadComponent: () => import('./product-form/product-form').then((m) => m.ProductForm),

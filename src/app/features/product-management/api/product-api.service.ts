@@ -15,6 +15,8 @@ import {
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
   PRODUCT_API,
+  ProductBatchCreateResponsePayload,
+  ProductBatchItemRequestPayload,
   ProductCreateRequestPayload,
   ProductListQuery,
   ProductResponsePayload,
@@ -104,6 +106,37 @@ export class ProductApiService {
   create(body: ProductCreateRequestPayload): Observable<ProductResponsePayload> {
     return this.http
       .post<ApiEnvelope<ProductResponsePayload>>(PRODUCT_API.create, body)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 5b. POST /api/products/batch：批次新增品項（CSV／Excel 匯入）。
+   *
+   * ⚠️ 這支不是 JSON 而是 multipart/form-data，跟 uploadImage() 一樣
+   * **不要自己設 Content-Type header**，交給瀏覽器自動產生含 boundary 的
+   * multipart/form-data，否則後端解不出 items／images 兩個 part。
+   *
+   * items 這個 part 本身要以 Blob（type: 'application/json'）而不是純字串
+   * 附加，否則後端 @RequestPart("items") 收到的 Content-Type 會被瀏覽器
+   * 判成 text/plain，Spring 找不到對應的 HttpMessageConverter 反序列化成
+   * ProductBatchCreateRequest，會直接 415。
+   *
+   * images 用同一個欄位名重複 append 多次，後端用
+   * List&lt;MultipartFile&gt; 依 part 名稱 "images" 收集成陣列，不是每個
+   * 檔案要用不同的欄位名。
+   */
+  createBatch(
+    items: ProductBatchItemRequestPayload[],
+    images: File[],
+  ): Observable<ProductBatchCreateResponsePayload> {
+    const formData = new FormData();
+    const itemsBlob = new Blob([JSON.stringify({ items })], { type: 'application/json' });
+    formData.append('items', itemsBlob);
+    for (const file of images) {
+      formData.append('images', file, file.name);
+    }
+    return this.http
+      .post<ApiEnvelope<ProductBatchCreateResponsePayload>>(PRODUCT_API.batchCreate, formData)
       .pipe(unwrapData());
   }
 
