@@ -52,6 +52,42 @@ describe('Dashboard', () => {
       .toEqual(['/products', '/products', '/products', '/products', '/products/ai-suggestions']);
   });
 
+  // 2026-09-23 分支整併：轉換率依後端 scope 切換文案，並顯示分子／分母原始筆數。
+  it('shows conversion sample size and company scope wording', () => {
+    const text = fixture.nativeElement.querySelector('.conversion-panel').textContent;
+    expect(text).toContain('送審過的 122 件商品中，78 件審核通過');
+    expect(text).toContain('全公司口徑');
+    expect(text).not.toContain('我的選品轉換率');
+  });
+
+  it('uses personal wording when scope is PERSONAL', () => {
+    // 個人口徑只會來自真實 API：另建一個真實模式的元件。data 是 computed，
+    // 第一次讀取時就決定了模式與相依，所以要在第一次 detectChanges 前切模式；
+    // ngOnInit 發出的 API 請求在測試環境不會同步回來，這裡直接覆寫成
+    // 「已載入完成」的狀態再重新渲染。
+    const mock = component.data();
+    fixture = TestBed.createComponent(Dashboard);
+    component = fixture.componentInstance;
+    (component as unknown as { useMockData: boolean }).useMockData = false;
+    fixture.detectChanges();
+    component.realData.set({
+      ...mock,
+      statistics: { ...mock.statistics, conversionScope: 'PERSONAL', conversionRate: null },
+    });
+    component.realLoadState.set('loaded');
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('.conversion-panel').textContent;
+    expect(text).toContain('我的選品轉換率');
+    expect(text).toContain('你建立的選品目前尚未送審過');
+  });
+
+  it('splits risk messages into points', () => {
+    expect(component.riskMessagePoints('1. 認證未確認 2. 電池安全資訊不足')).toEqual([
+      '1. 認證未確認',
+      '2. 電池安全資訊不足',
+    ]);
+  });
+
   it('should lock recommendation actions in locked state', () => {
     component.setUiState('locked');
     expect(component.recommendations().every((item) => item.reviewStatus === 'APPROVED')).toBe(

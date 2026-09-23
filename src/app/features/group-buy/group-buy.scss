@@ -43,6 +43,47 @@
   margin: 0.35rem 0 0;
 }
 
+/*
+ * 彙總圖表（2026-09-23 分支整併）：卡片外觀沿用上方 .stat-card 的邊框／圓角，
+ * 兩張圖並排，窄螢幕自動改為上下堆疊。
+ */
+.chart-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.chart-panel {
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  min-width: 0;
+}
+
+.chart-panel__title {
+  margin: 0 0 0.75rem;
+  font-size: var(--t-base);
+}
+
+.chart-panel__empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: var(--t-sm);
+}
+
+.type-rate-chart-wrap,
+.result-chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+.result-chart-wrap {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
 .csv-headers {
   margin: 0.75rem 0;
   font-size: var(--t-sm);
@@ -165,18 +206,17 @@
 }
 
 /*
- * 表格欄寬——沿用 shared/_components.scss 的 .data-table 外觀（背景、
+ * 表格版面（2026-09-23 起只剩匯入錯誤清單使用；逐筆紀錄表格已改為圖表）
+ * ——沿用 shared/_components.scss 的 .data-table 外觀（背景、
  * 邊框、hover 等），但寬度改在這裡（元件層級）覆寫，不動全域檔案：
  * .data-table 同時也被 settings.html 用，兩邊欄位結構完全不同，寬度
  * 規則寫在全域會波及到不相干的頁面。Angular 元件樣式預設是 scoped
  * 的（ViewEncapsulation.Emulated），這裡寫 .data-table 只會套用到
  * 這個元件自己 render 出來的表格，不會外流到 settings 頁。
  *
- * table-layout: fixed 讓每欄寬度以下面宣告的百分比為準，不會被內容
- * 撐開；欄寬用 % 而不是寫死 px，會隨表格實際寬度等比例縮放，加上
- * th 原本共用樣式裡的 white-space: nowrap 在這裡覆寫掉，內容（不管
- * 表頭或內文）超出欄寬時就正常換行，不是被裁切看不到，也不是硬把
- * 欄位撐寬打亂其他欄。
+ * table-layout: fixed 讓欄寬不被長內容撐開，加上 th 原本共用樣式裡的
+ * white-space: nowrap 在這裡覆寫掉，內容（不管表頭或內文）超出欄寬時
+ * 就正常換行，不是被裁切看不到，也不是硬把欄位撐寬打亂其他欄。
  */
 .data-table table {
   table-layout: fixed;
@@ -188,114 +228,4 @@
 
 .data-table td {
   overflow-wrap: break-word;
-}
-
-.col-name {
-  width: 16%;
-}
-
-.col-type {
-  width: 9%;
-}
-
-.col-supplier {
-  width: 11%;
-}
-
-.col-campaign {
-  width: 10%;
-}
-
-.col-moq {
-  width: 8%;
-}
-
-.col-price {
-  width: 6%;
-}
-
-.col-cost {
-  width: 6%;
-}
-
-.col-market {
-  width: 6%;
-}
-
-.col-quantity {
-  width: 8%;
-}
-
-.col-result {
-  width: 8%;
-}
-
-.col-batch {
-  width: 7%;
-}
-
-/*
- * 整批退回——獨立於逐列操作之外的批次管理區塊：批次是這個頁面唯一的
- * 「寫入單位」，用獨立區塊呈現，避免同一批次的每一列都重複出現同樣的
- * 刪除按鈕（見 group-buy.ts 的 availableBatches 說明）。
- */
-.batch-retract-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background: #fdf5f2;
-  border: 1px solid #f0d9d0;
-  border-radius: 0.8rem;
-
-  &__heading {
-    h2 {
-      margin: 0 0 0.2rem;
-      font-size: var(--t-sm);
-      font-weight: 700;
-      color: #8a3a1f;
-    }
-
-    p {
-      margin: 0;
-      font-size: var(--t-xs);
-      color: #9a6a55;
-    }
-  }
-
-  &__controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.75rem;
-
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-      font-size: var(--t-xs);
-      font-weight: 700;
-      color: #38536a;
-    }
-
-    select {
-      min-width: 14rem;
-      height: 2.55rem;
-      padding: 0.5rem 0.7rem;
-      border: 1px solid #d4dee6;
-      border-radius: 0.4rem;
-      font-size: var(--t-sm);
-      background: #fff;
-      cursor: pointer;
-
-      &:focus-visible {
-        outline: none;
-        border-color: #1c5286;
-        box-shadow: 0 0 0 3px rgba(28, 82, 134, 0.15);
-      }
-    }
-  }
 }

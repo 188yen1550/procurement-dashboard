@@ -15,6 +15,9 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     // 尚未轉正候選，兩者互斥，用來展示「AI 建議待確認」卡片。
     aiSuggestedPending: 5,
     conversionRate: 63.7,
+    conversionScope: 'COMPANY',
+    conversionApprovedCount: 78,
+    conversionSubmittedCount: 122,
   },
   recommendations: [
     recommendation(

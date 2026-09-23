@@ -250,6 +250,13 @@ button:focus-visible {
   margin: 0.2rem 0 0;
   font-size: var(--t-base);
 }
+/* Top 10 說明副標（2026-09-23 分支整併）：提醒推薦理由是最近一次 AI 分析的快照。 */
+.panel-subtitle {
+  margin: 0.35rem 0 0;
+  color: #6b7d8a;
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
 .helper-text {
   padding: 0.35rem 0.55rem;
   color: #735d1d;
@@ -499,6 +506,18 @@ td {
   color: #526677;
   font-size: var(--t-xs);
   line-height: 1.45;
+}
+/* 高風險提示改為條列（2026-09-23 分支整併），字級與顏色沿用原本 .risk-item p。 */
+.risk-message-list {
+  margin: 0.4rem 0;
+  padding-left: 1.1rem;
+  color: #526677;
+  font-size: var(--t-xs);
+  line-height: 1.45;
+
+  li + li {
+    margin-top: 0.2rem;
+  }
 }
 .risk-item small {
   color: #7b8a96;

@@ -15,6 +15,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { DialogService } from '../../core/dialog/dialog.service';
+import { AuthService } from '../../core/auth/auth';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import { SettingsApiService } from './api/settings-api.service';
@@ -484,7 +485,14 @@ describe('Settings', () => {
   it('shares the same button to toggle an account between disable and restore', () => {
     component.setTab('accounts');
     fixture.detectChanges();
-    // 停用：呼叫 disable，文字/顏色切換成「復用帳號」。
+    // 停用：2026-09-23起先跳確認對話框，取消時不呼叫 API。
+    const confirm = vi.spyOn(dialog, 'confirm').mockReturnValue(of(false));
+    component.toggleAccountActive('buyer01');
+    expect(confirm).toHaveBeenCalled();
+    expect(userApi.disable).not.toHaveBeenCalled();
+
+    // 確認後才呼叫 disable，文字/顏色切換成「復用帳號」。
+    confirm.mockReturnValue(of(true));
     component.toggleAccountActive('buyer01');
     expect(userApi.disable).toHaveBeenCalledWith(2);
     expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(false);
@@ -495,10 +503,45 @@ describe('Settings', () => {
     expect(toggleButton?.textContent).toContain('復用帳號');
     expect(toggleButton?.classList.contains('is-restore')).toBe(true);
 
-    // 復用：同一個方法，狀態反過來時改呼叫 restore。
+    // 復用：同一個方法，狀態反過來時改呼叫 restore；復用不需要確認。
+    confirm.mockClear();
     component.toggleAccountActive('buyer01');
+    expect(confirm).not.toHaveBeenCalled();
     expect(userApi.restore).toHaveBeenCalledWith(2);
     expect(component.accounts().find((item) => item.username === 'buyer01')?.active).toBe(true);
+  });
+
+  it('does not allow disabling the signed-in account', () => {
+    // 必須在帳號分頁第一次渲染「之前」決定登入者：currentUser 被換成一般
+    // 函式（不是 signal），事後才換不會讓已渲染的畫面標記為需要更新。
+    // id 2 / buyer01 對應上方 userApi.list() 的測試資料。
+    vi.spyOn(TestBed.inject(AuthService), 'currentUser').mockReturnValue({
+      id: 2,
+      username: 'buyer01',
+      name: '陳小姐',
+      role: 'PURCHASER',
+    });
+    const confirm = vi.spyOn(dialog, 'confirm');
+    component.setTab('accounts');
+    fixture.detectChanges();
+    const buyer = component.accounts().find((item) => item.username === 'buyer01')!;
+    expect(component.isSelfAccount(buyer)).toBe(true);
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    ).find((el) => el.textContent?.includes('buyer01'))!;
+    expect((row.querySelector('button') as HTMLButtonElement).disabled).toBe(true);
+    expect(row.textContent).toContain('（本人）');
+    component.toggleAccountActive('buyer01');
+    expect(confirm).not.toHaveBeenCalled();
+    expect(userApi.disable).not.toHaveBeenCalled();
+  });
+
+  it('keeps slider snapping but accepts precise manual input', () => {
+    const setting = { key: 'shrinkage_k_category', dataType: 'INTEGER', minValue: 1, maxValue: 100 } as never;
+    (component as unknown as { onSliderDrag(s: unknown, v: unknown): void }).onSliderDrag(setting, 7);
+    expect(component.systemSettingDraftValue()).toBe('5');
+    (component as unknown as { onSliderManualInput(v: unknown): void }).onSliderManualInput(7);
+    expect(component.systemSettingDraftValue()).toBe('7');
   });
 
   it('shares the same button to toggle a product type between disable and restore', () => {

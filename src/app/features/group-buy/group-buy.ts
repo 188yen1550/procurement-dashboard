@@ -1,17 +1,41 @@
 /**
- * 檔案用途：歷史開團紀錄頁面——唯讀查詢（操作+管理）、CSV 匯入與整批回退
- * （僅管理）。這個模組先前只有 API 合約與 Service，完全沒有頁面，是「歷史
+ * 檔案用途：歷史開團紀錄頁面——唯讀查詢（操作+管理）、CSV 匯入（僅管理）。
+ * 這個模組先前只有 API 合約與 Service，完全沒有頁面，是「歷史
  * 銷售紀錄沒有實質作用」這個問題的直接成因，這支檔案補上缺的那一半。
  *
  * 職責邊界（對照後端 GroupBuyRecordController 的既有限制）：沒有單筆
- * CRUD，只有「整批匯入」「整批回退」兩種寫入路徑——不要因為使用者想改
+ * CRUD，只有「整批匯入」這一種寫入路徑——不要因為使用者想改
  * 一筆資料就在這裡加編輯功能，那不是這個系統的職責範圍。
+ *
+ * 2026-09-23 分支整併（procurement-dashboard-updated，依決策 A 採分支做法）：
+ * - 移除「整批回退」。這個頁面的資料是「歷史成團率」計分因子的唯一來源，
+ *   回退功能讓管理層可以憑一時判斷把整批已經影響過評分的歷史資料刪除、
+ *   且無法復原——對選品決策而言，這比「多一筆錯誤資料」更危險（錯誤資料
+ *   至少可追查，刪除後連錯在哪都無法回溯）。只拿掉畫面按鈕不構成實際
+ *   管控，所以後端 DELETE /api/group-buy-records/batch/{batchId} 端點也
+ *   一併移除（見 GroupBuyRecordController）。
+ * - 逐筆表格改為兩張彙總圖（各商品類型成團率、結果分布）：逐筆表格只回答
+ *   「發生過什麼」，圖表回答「哪些商品類型歷史上比較容易成團」這種可以
+ *   直接拿來比較、輔助選品判斷的問題。
+ * - 匯入是這個頁面僅存、且無法透過畫面復原的寫入動作，送出前加一道確認。
  */
 import { ListSort, SortHeader, SortRowsPipe } from '../../shared/ui/list-sort';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  afterRenderEffect,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
+import Chart from 'chart.js/auto';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { AuthService } from '../../core/auth/auth';
 import { DialogService } from '../../core/dialog/dialog.service';
@@ -48,8 +72,7 @@ interface ProductTypeFilterGroup {
   templateUrl: './group-buy.html',
   styleUrl: './group-buy.scss',
 })
-export class GroupBuy implements OnInit {
-  readonly recordSort = new ListSort();
+export class GroupBuy implements OnInit, OnDestroy {
   readonly errorSort = new ListSort();
   private readonly api = inject(GroupBuyApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
@@ -134,10 +157,129 @@ export class GroupBuy implements OnInit {
   });
   readonly resultLabel = GROUP_BUY_RESULT_LABEL;
 
-  resultBadgeClass(result: GroupBuyResultCode): string {
-    if (result === 'FULFILLED') return 'badge-success';
-    if (result === 'FAILED') return 'badge-error';
-    return 'badge-muted';
+  // ----- 彙總圖表（2026-09-23 分支整併，取代原本的逐筆表格） -----
+  // 兩張圖都吃 filteredRecords()，跟上方統計卡口徑一致，篩選後即時重算。
+  readonly resultDistribution = computed(() => {
+    const counts: Record<GroupBuyResultCode, number> = { FULFILLED: 0, FAILED: 0, CANCELLED: 0 };
+    for (const r of this.filteredRecords()) counts[r.result]++;
+    return counts;
+  });
+
+  /** 各商品類型成團率（前 10 名）——分母跟上方統計卡一致，只計成團＋未成團，不含取消開團。 */
+  readonly fulfillmentByProductType = computed(() => {
+    const stats = new Map<string, { fulfilled: number; effective: number }>();
+    for (const r of this.filteredRecords()) {
+      if (r.result !== 'FULFILLED' && r.result !== 'FAILED') continue;
+      const entry = stats.get(r.productTypeName) ?? { fulfilled: 0, effective: 0 };
+      entry.effective++;
+      if (r.result === 'FULFILLED') entry.fulfilled++;
+      stats.set(r.productTypeName, entry);
+    }
+    return Array.from(stats.entries())
+      .map(([name, { fulfilled, effective }]) => ({
+        name,
+        rate: Math.round((fulfilled / effective) * 1000) / 10,
+        effective,
+      }))
+      .sort((a, b) => b.rate - a.rate || b.effective - a.effective)
+      .slice(0, 10);
+  });
+
+  @ViewChild('resultChartCanvas') private readonly resultChartCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('typeRateChartCanvas') private readonly typeRateChartCanvas?: ElementRef<HTMLCanvasElement>;
+  private resultChart: Chart | null = null;
+  private typeRateChart: Chart | null = null;
+
+  // 用 afterRenderEffect 的理由跟 dashboard.ts 的狀態分布圖相同：canvas 要等
+  // 畫面真的渲染完成才存在，篩選條件改變也要能重新觸發。
+  // ⚠️ 圖表區塊在「沒有符合條件的紀錄」時整個不渲染，再切回來時 canvas 是
+  // 一個新的 DOM 元素——舊的 Chart 實例還綁在已經被移除的 canvas 上，直接
+  // update() 畫面不會有任何反應，所以 canvas 換了就先 destroy 再重建
+  // （比照 dashboard.ts 的同一個修正）。
+  private readonly renderChartsEffect = afterRenderEffect(() => {
+    const distribution = this.resultDistribution();
+    const byType = this.fulfillmentByProductType();
+
+    const resultCanvas = this.resultChartCanvas?.nativeElement ?? null;
+    if (this.resultChart && this.resultChart.canvas !== resultCanvas) {
+      this.resultChart.destroy();
+      this.resultChart = null;
+    }
+    if (resultCanvas) {
+      const data = {
+        labels: [this.resultLabel.FULFILLED, this.resultLabel.FAILED, this.resultLabel.CANCELLED],
+        datasets: [
+          {
+            data: [distribution.FULFILLED, distribution.FAILED, distribution.CANCELLED],
+            backgroundColor: ['#379773', '#c76661', '#9aa4af'],
+            borderWidth: 0,
+          },
+        ],
+      };
+      if (this.resultChart) {
+        this.resultChart.data = data;
+        this.resultChart.update();
+      } else {
+        this.resultChart = new Chart(resultCanvas, {
+          type: 'doughnut',
+          data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+          },
+        });
+      }
+    }
+
+    const typeCanvas = this.typeRateChartCanvas?.nativeElement ?? null;
+    if (this.typeRateChart && this.typeRateChart.canvas !== typeCanvas) {
+      this.typeRateChart.destroy();
+      this.typeRateChart = null;
+    }
+    if (typeCanvas) {
+      const data = {
+        labels: byType.map((t) => t.name),
+        datasets: [
+          {
+            label: '成團率 (%)',
+            data: byType.map((t) => t.rate),
+            backgroundColor: '#1c5286',
+            borderRadius: 4,
+          },
+        ],
+      };
+      if (this.typeRateChart) {
+        this.typeRateChart.data = data;
+        this.typeRateChart.update();
+      } else {
+        this.typeRateChart = new Chart(typeCanvas, {
+          type: 'bar',
+          data,
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { x: { min: 0, max: 100, ticks: { callback: (value) => `${value}%` } } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                // 一併顯示樣本數：100% 是「1 次中 1 次」還是「20 次中 20 次」，可信度差很多。
+                callbacks: {
+                  label: (ctx) => `成團率 ${ctx.parsed.x}%（有效樣本 ${byType[ctx.dataIndex]?.effective ?? 0} 筆）`,
+                },
+              },
+            },
+          },
+        });
+      }
+    }
+  });
+
+  ngOnDestroy(): void {
+    this.resultChart?.destroy();
+    this.typeRateChart?.destroy();
   }
 
   ngOnInit(): void {
@@ -224,15 +366,37 @@ export class GroupBuy implements OnInit {
   }
 
   /**
-   * 送出匯入。⚠️ HTTP 200 不代表成功，要看 body 的 success 欄位——這是
-   * 後端刻意的設計（失敗結果本身就是使用者要看的資料，不該用 400 蓋掉），
-   * 所以這裡不管 success 是 true 或 false 都停在 next callback 裡處理，
-   * 只有真正的請求層錯誤（沒選檔案、檔案讀不到）才會進 error callback。
+   * 送出匯入前的確認（2026-09-23 分支整併）。整批回退已移除（見檔案開頭
+   * 說明），匯入的資料會直接成為「歷史成團率」計分因子的來源、且無法透過
+   * 畫面復原，先讓使用者核對檔名，避免手滑選錯檔案就寫入正式資料；取消
+   * 則不送出，可以重新選檔。
    */
   submitImport(): void {
     const file = this.selectedFile();
     if (!file || this.isImporting()) return;
 
+    this.dialog
+      .confirm(
+        '確認匯入歷史開團紀錄',
+        [
+          `即將匯入檔案「${file.name}」。`,
+          '匯入後會立即影響「歷史成團率」評分，且畫面上沒有整批回退功能，請先確認檔案內容無誤。',
+        ],
+        '確定匯入',
+        '再檢查一次',
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) this.proceedImport(file);
+      });
+  }
+
+  /**
+   * ⚠️ HTTP 200 不代表成功，要看 body 的 success 欄位——這是後端刻意的
+   * 設計（失敗結果本身就是使用者要看的資料，不該用 400 蓋掉），所以這裡
+   * 不管 success 是 true 或 false 都停在 next callback 裡處理，只有真正
+   * 的請求層錯誤（沒選檔案、檔案讀不到）才會進 error callback。
+   */
+  private proceedImport(file: File): void {
     this.isImporting.set(true);
     this.api
       .importCsv(file)
@@ -256,71 +420,4 @@ export class GroupBuy implements OnInit {
       });
   }
 
-  // ----- 整批回退 -----
-  readonly isDeletingBatch = signal(false);
-  /** 上方「整批退回」下拉選單目前選到的批次；改用獨立區塊取代逐列重複按鈕，
-   *  同一個批次不管有幾筆資料，選單裡都只會出現一次。 */
-  readonly selectedBatchId = signal<string | null>(null);
-
-  setSelectedBatchId(value: string | null): void {
-    this.selectedBatchId.set(value);
-  }
-
-  retractSelectedBatch(): void {
-    const batchId = this.selectedBatchId();
-    if (!batchId) return;
-    this.confirmDeleteBatch(batchId);
-  }
-
-  /**
-   * 整批回退是不可復原的破壞性操作，且影響範圍可能是上百筆——確認訊息
-   * 裡明確寫出這個批次目前有幾筆資料，不是只顯示一個 batchId 讓使用者
-   * 自己猜範圍多大。
-   */
-  confirmDeleteBatch(batchId: string): void {
-    if (this.isDeletingBatch()) return;
-    const count = this.records().filter((r) => r.importBatchId === batchId).length;
-
-    this.dialog
-      .confirm(
-        '整批回退確認',
-        [
-          `即將刪除批次「${batchId}」，共 ${count} 筆歷史開團紀錄。`,
-          '此操作無法復原，刪除後這批資料在系統內將完全消失。',
-        ],
-        '確定刪除',
-        '取消',
-      )
-      .subscribe((confirmed) => {
-        if (!confirmed) return;
-        this.isDeletingBatch.set(true);
-        this.api
-          .deleteBatch(batchId)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              this.isDeletingBatch.set(false);
-              this.statusMessageState.show(`已回退批次「${batchId}」，共 ${count} 筆。`);
-              if (this.selectedBatchId() === batchId) {
-                this.selectedBatchId.set(null);
-              }
-              this.load();
-            },
-            error: (err) => {
-              this.isDeletingBatch.set(false);
-              this.statusMessageState.show(toApiError(err).message);
-            },
-          });
-      });
-  }
-
-  /** 目前清單裡出現過的匯入批次，供「整批回退」下拉選單使用。 */
-  readonly availableBatches = computed(() => {
-    const seen = new Map<string, number>();
-    for (const r of this.records()) {
-      if (!r.importBatchId) continue;
-      seen.set(r.importBatchId, (seen.get(r.importBatchId) ?? 0) + 1);
-    }
-    return Array.from(seen.entries()).map(([batchId, count]) => ({ batchId, count }));
-  });
 }

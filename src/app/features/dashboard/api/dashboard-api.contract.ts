@@ -91,16 +91,28 @@ export interface DashboardRiskAlertResponsePayload {
 /**
  * 對應後端 DashboardConversionRateResponse.java。
  *
- * ⚠️ **ratePercentage 可能是 null**（分母為 0，代表還沒有任何商品送審過）。
+ * ⚠️ 2026-09-23起依登入者角色切換口徑，由 scope 告訴前端這次算的是哪一種：
+ * - PERSONAL（操作人員）：只計 createdBy = 目前登入者的商品。同一支 API、
+ *   不同帳號呼叫會拿到不同的數字，這是後端刻意的設計（供選品人員自我檢視），
+ *   不是快取或計算錯誤；畫面文案要寫「我的」，避免誤以為在看公司整體表現。
+ * - COMPANY（管理人員）：全公司口徑。
+ * 文案一律依 scope 決定，不要在前端用角色自行推導一次，避免前後端規則分歧。
+ *
+ * ⚠️ **ratePercentage 可能是 null**（分母為 0，代表這個口徑下還沒有任何商品送審過）。
  * 前端必須顯示「尚無資料」，**不能顯示成 0%**——
  * 「還沒開始」與「轉換率是 0%」是完全不同的意思，後者代表送審的全被拒絕。
  *
  * ⚠️ ratePercentage 已經是百分比數值（33.33 代表 33.33%），**不要再 ×100**。
  */
 export interface DashboardConversionRateResponsePayload {
-  /** 分子：目前 review_status = APPROVED 的不重複商品數。 */
+  /** 計算口徑，見上方說明。 */
+  scope: ConversionRateScope;
+  /** 分子：此口徑下目前 review_status = APPROVED 的不重複商品數。 */
   approvedCount: number;
-  /** 分母：submission_count > 0（曾送審過）的不重複商品數。 */
+  /** 分母：此口徑下 submission_count > 0（曾送審過）的不重複商品數。 */
   submittedCount: number;
   ratePercentage: Decimal;
 }
+
+/** 對應後端 DashboardConversionRateResponse.SCOPE_PERSONAL／SCOPE_COMPANY。 */
+export type ConversionRateScope = 'PERSONAL' | 'COMPANY';

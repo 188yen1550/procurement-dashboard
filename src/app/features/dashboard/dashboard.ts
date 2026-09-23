@@ -13,6 +13,7 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { AuthService } from '../../core/auth/auth';
 import { toApiError } from '../../core/api/api-error';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
+import { splitAiReasonLines } from '../../core/ui/ai-reason-lines';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { DashboardApiService, DashboardData } from './api/dashboard-api.service';
 import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
@@ -36,6 +37,9 @@ const EMPTY_DASHBOARD: DashboardMockData = {
     rejectedProducts: 0,
     aiSuggestedPending: 0,
     conversionRate: null,
+    conversionScope: null,
+    conversionApprovedCount: 0,
+    conversionSubmittedCount: 0,
   },
   recommendations: [],
   riskAlerts: [],
@@ -278,6 +282,16 @@ export class Dashboard implements OnInit, OnDestroy {
     return item.finalScore !== null;
   }
 
+  /**
+   * 高風險提示的 message 是後端組合過的 AI 分析全文，本質上跟品項詳情頁的
+   * aiReasons 是同一種「LLM 條列式輸出」，換行方式由模型自由發揮，直接
+   * 當一段文字顯示常常擠成一大段看不出分項。沿用同一個拆分函式逐行呈現
+   * （2026-09-23 由 procurement-dashboard-updated 分支整併）。
+   */
+  public riskMessagePoints(message: string): string[] {
+    return splitAiReasonLines(message);
+  }
+
   ngOnDestroy(): void {
     this.chart?.destroy();
   }
@@ -304,6 +318,9 @@ function toDashboardPageData(
       // hasData 為 false 時（尚無商品送審過）維持 null，不要顯示成 0%。
       conversionRate:
         result.conversionRate?.hasData ? result.conversionRate.ratePercentage : null,
+      conversionScope: result.conversionRate?.scope ?? null,
+      conversionApprovedCount: result.conversionRate?.approvedCount ?? 0,
+      conversionSubmittedCount: result.conversionRate?.submittedCount ?? 0,
     },
     recommendations: (result.recommendations ?? []).map((item, index) => ({
       id: item.productId,

@@ -44,31 +44,6 @@
   <button type="button" class="btn" (click)="clearFilters()">清除篩選</button>
 </section>
 
-<!-- ===== 整批退回 ===== -->
-@if (isManager() && availableBatches().length > 0) {
-<section class="batch-retract-panel">
-  <div class="batch-retract-panel__heading">
-    <h2>整批退回</h2>
-    <p>選擇匯入批次後即可整批刪除，此操作無法復原。</p>
-  </div>
-  <div class="batch-retract-panel__controls">
-    <label>
-      選擇批次
-      <select [ngModel]="selectedBatchId()" (ngModelChange)="setSelectedBatchId($event)">
-        <option [ngValue]="null">請選擇批次</option>
-        @for (batch of availableBatches(); track batch.batchId) {
-        <option [ngValue]="batch.batchId">{{ batch.batchId }}（共 {{ batch.count }} 筆）</option>
-        }
-      </select>
-    </label>
-    <button type="button" class="text-action danger" [disabled]="!selectedBatchId() || isDeletingBatch()"
-      (click)="retractSelectedBatch()">
-      {{ isDeletingBatch() ? '回退中…' : '回退此批次' }}
-    </button>
-  </div>
-</section>
-}
-
 <!-- ===== 成團率統計卡 ===== -->
 <section class="stat-card-grid">
   <article class="stat-card">
@@ -113,49 +88,25 @@
   </p>
 </section>
 } @else {
-<section class="data-table">
-  <table>
-    <thead>
-      <tr>
-        <th class="col-name" appSortHeader="externalProductName" [sort]="recordSort">商品名稱</th>
-        <th class="col-type" appSortHeader="productTypeName" [sort]="recordSort">商品類型</th>
-        <th class="col-supplier" appSortHeader="supplierName" [sort]="recordSort">供應商</th>
-        <th class="col-campaign" appSortHeader="campaignStartDate:date|campaignEndDate:date" [sort]="recordSort">檔期</th>
-        <th class="num col-moq" appSortHeader="moqAtTime" [sort]="recordSort">最低訂購量</th>
-        <th class="num col-price" appSortHeader="salePriceAtTime" [sort]="recordSort">售價</th>
-        <th class="num col-cost" appSortHeader="costPriceAtTime" [sort]="recordSort">成本</th>
-        <th class="num col-market" appSortHeader="marketPriceAtTime" [sort]="recordSort">市價</th>
-        <th class="num col-quantity" appSortHeader="actualQuantity|targetQuantity" [sort]="recordSort">集單量</th>
-        <th class="col-result" appSortHeader="result" [sort]="recordSort">結果</th>
-        <th class="col-batch" appSortHeader="importBatchId" [sort]="recordSort">批次</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (r of filteredRecords() | sortRows: recordSort.state(); track r.id) {
-      <tr>
-        <td>{{ r.externalProductName }}</td>
-        <td>{{ r.productTypeName }}</td>
-        <td>{{ r.supplierName ?? '—' }}</td>
-        <td>
-          @if (r.campaignStartDate && r.campaignEndDate) {
-          {{ r.campaignStartDate }} ~ {{ r.campaignEndDate }}
-          } @else {
-          —
-          }
-        </td>
-        <td class="num">{{ r.moqAtTime ?? '—' }}</td>
-        <td class="num">{{ r.salePriceAtTime ?? '—' }}</td>
-        <td class="num">{{ r.costPriceAtTime ?? '—' }}</td>
-        <td class="num">{{ r.marketPriceAtTime ?? '—' }}</td>
-        <td class="num">{{ r.actualQuantity ?? '—' }} / {{ r.targetQuantity ?? '—' }}</td>
-        <td>
-          <span class="badge" [class]="resultBadgeClass(r.result)">{{ resultLabel[r.result] }}</span>
-        </td>
-        <td>{{ r.importBatchId ?? '—' }}</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+<!-- ===== 彙總圖表（2026-09-23 分支整併）：取代原本的逐筆表格，篩選後即時重算 ===== -->
+<section class="chart-row">
+  <section class="chart-panel" aria-labelledby="type-rate-title">
+    <h2 id="type-rate-title" class="chart-panel__title">各商品類型成團率</h2>
+    @if (fulfillmentByProductType().length === 0) {
+    <p class="chart-panel__empty">目前篩選範圍內沒有成團／未成團樣本。</p>
+    } @else {
+    <div class="type-rate-chart-wrap">
+      <canvas #typeRateChartCanvas aria-label="各商品類型成團率長條圖，最多顯示前 10 名" role="img"></canvas>
+    </div>
+    }
+  </section>
+
+  <section class="chart-panel" aria-labelledby="result-title">
+    <h2 id="result-title" class="chart-panel__title">結果分布</h2>
+    <div class="result-chart-wrap">
+      <canvas #resultChartCanvas aria-label="成團、未成團、取消開團的比例圖" role="img"></canvas>
+    </div>
+  </section>
 </section>
 }
 

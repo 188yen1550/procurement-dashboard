@@ -179,7 +179,7 @@
           @for (record of filteredRecords() | sortRows: recordTableSort.state(); track record.id) {
           <tr>
             <td>
-              <a [routerLink]="['/products', record.productId]">{{ record.name }}</a>
+              <a [routerLink]="['/products', record.productId]" [queryParams]="{ returnTo: 'review-records' }">{{ record.name }}</a>
               @if (record.result === 'REJECTED') {
               <!-- 決策紀錄本身是唯讀快照，不在這裡做重審——重審是對「商品現況」
                      的操作，集中在品項管理頁（見 product-management.html 的

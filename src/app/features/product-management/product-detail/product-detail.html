@@ -5,7 +5,11 @@
 <main class="detail-page" aria-labelledby="detail-title">
   <header class="page-header">
     <div>
+      @if (returnTo() === 'review-records') {
+      <a [routerLink]="['/review']" [queryParams]="{ tab: 'records' }" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回歷次決策紀錄</a>
+      } @else {
       <a routerLink="/products" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a>
+      }
 
       <h1 id="detail-title">{{ product()?.name ?? '品項詳情' }}</h1>
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
@@ -124,7 +128,7 @@
           <dd>{{ p.supplier }}</dd>
         </div>
         <div>
-          <dt>資料完整度</dt>
+          <dt>資料完整度<app-info-tip text="核心欄位已填寫的比例。低於 60% 視為資料待補，不進入評分；缺少的因子不會用 0 分計入，而是從加權分母中排除。" /></dt>
           <dd>{{ p.completeness }}%</dd>
         </div>
       </dl>
@@ -167,17 +171,17 @@
     </p>
     <dl class="metrics boost-breakdown">
       <div>
-        <dt>標籤命中程度</dt>
+        <dt>標籤命中程度<app-info-tip text="商品標籤與檔期標籤的命中等級：核心 1.0、一般 0.6、弱相關 0.3；同一檔期命中多個標籤時取最高等級，不會疊加。" /></dt>
         <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
       </div>
       <div>
-        <dt>檔期急迫程度</dt>
+        <dt>檔期急迫程度<app-info-tip text="檔期進行中為 1。準備期內：節慶型依「1 − 距開始天數 ÷ 準備期天數」，越接近開始越高；季節型為固定係數；天氣型再乘上預報可信度與命中區域的業務占比。" /></dt>
         <dd>
           {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
         </dd>
       </div>
       <div class="boost-result">
-        <dt>本次節慶加成</dt>
+        <dt>本次節慶加成<app-info-tip text="標籤命中權重 × 檔期急迫係數 × 加成上限；同時命中多個檔期時取加成最高的一個，不會加總。" /></dt>
         <dd>+{{ p.festivalBoost }} 分</dd>
       </div>
     </dl>
@@ -325,7 +329,7 @@
       </header>
       <dl class="metrics">
         <div>
-          <dt>毛利率</dt>
+          <dt>毛利率<app-info-tip text="此處顯示（售價－成本）÷ 售價，未扣運費。計分時會再扣除依材積估算的運費，並依商品大類的目標區間正規化，所以與評分中的毛利率分數不是同一個數字。" /></dt>
           <dd>{{ marginRate(p) === null ? '待訂價' : marginRate(p) + '%' }}</dd>
         </div>
         <div>
@@ -333,11 +337,11 @@
           <dd>{{ p.moq }} 組</dd>
         </div>
         <div>
-          <dt>供應穩定性</dt>
+          <dt>供應穩定性<app-info-tip text="採購人工評估 1～5 級（嚴重缺貨～供應充足），計分時換算為 20～100 分，反映系統看不到的供應商實際狀況。" /></dt>
           <dd>{{ p.supplyStability ? supplyStabilityLevelLabel[p.supplyStability] : '未設定' }}</dd>
         </div>
         <div>
-          <dt>價格競爭力</dt>
+          <dt>價格競爭力<app-info-tip text="採購人工評估 1～5 級。內建七項評分因子不使用此欄位；只有在設定頁建立以它為資料來源的自訂因子時才會計分。" /></dt>
           <dd>{{ p.priceCompetitiveness ? priceCompetitivenessLevelLabel[p.priceCompetitiveness] : '未設定' }}</dd>
         </div>
       </dl>
@@ -346,21 +350,21 @@
       <div class="evaluation-metrics">
         <section class="evaluation-item">
           <header>
-            <h2>核心客群匹配</h2>
+            <h2>核心客群匹配<app-info-tip text="目前生效中的核心客群關鍵字，與「目標客群描述＋商品名稱」的命中比例（命中關鍵字數 ÷ 關鍵字總數）。" /></h2>
             <strong>{{ p.audienceScore }}</strong>
           </header>
           <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
         </section>
         <section class="evaluation-item">
           <header>
-            <h2>歷史銷售資料</h2>
+            <h2>歷史銷售資料<app-info-tip text="歷史成團率的三層貝氏收縮：商品自己的成團率向所屬商品類型收斂，商品類型再向全體收斂；樣本越少越接近上一層。分母不含取消開團。" /></h2>
             <strong>{{ p.historicalScore }}</strong>
           </header>
           <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
         </section>
         <section class="evaluation-item">
           <header>
-            <h2>預估購買</h2>
+            <h2>預估購買<app-info-tip text="採購人工填寫的預估購買率（0～100%），直接換算為分數，非系統自動推算。" /></h2>
             <strong>{{ p.purchaseScore }}</strong>
           </header>
           <p>
@@ -369,7 +373,7 @@
         </section>
         <section class="evaluation-item trend">
           <header>
-            <h2>市場趨勢／熱門度</h2>
+            <h2>市場趨勢／熱門度<app-info-tip text="外部來源的相對熱度，不等於銷售量。計分時取趨勢分與熱門度的平均，並依距採集日天數做指數衰減、收斂到中性基準分。" /></h2>
             <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong>
           </header>
           <p>
@@ -442,8 +446,9 @@
     <header>
       <h2>歷次審核紀錄</h2>
     </header>
+    <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
     <ul class="review-history-list">
-      @for (record of reviewHistory(); track record.id) {
+      @for (record of reviewHistory() | sortRows: historySort.state(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
         <div class="review-history-head">
           <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>

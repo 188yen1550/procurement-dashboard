@@ -220,10 +220,23 @@
           </div>
         }
         <div>
-          <h2 id="conversion-title">選品轉換率</h2>
-          <p>以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+          <!-- 2026-09-23 分支整併：操作人員看「我建立的選品」、管理人員看全公司，
+               口徑由後端 scope 決定（見 dashboard-api.contract.ts），文案跟著切換，
+               避免操作人員誤以為在看公司整體表現。 -->
+          @if (data().statistics.conversionScope === 'PERSONAL') {
+            <h2 id="conversion-title">我的選品轉換率</h2>
+            <p>只計算我建立的選品：以其中曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+          } @else {
+            <h2 id="conversion-title">選品轉換率</h2>
+            <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+          }
           @if (data().statistics.conversionRate === null) {
-            <p class="hint">目前尚無商品送審過，因此無法計算轉換率。</p>
+            <p class="hint">{{ data().statistics.conversionScope === 'PERSONAL' ? '你建立的選品目前尚未送審過' : '目前尚無商品送審過' }}，因此無法計算轉換率。</p>
+          } @else {
+            <!-- 只顯示百分比看不出樣本大小，把原始筆數一起列出，不要讓使用者自己猜分母。 -->
+            <p class="hint conversion-sample">
+              送審過的 {{ data().statistics.conversionSubmittedCount }} 件商品中，{{ data().statistics.conversionApprovedCount }} 件審核通過。
+            </p>
           }
         </div>
       </section>
@@ -234,6 +247,10 @@
         <header class="panel-header">
           <div>
             <h2 id="recommendations-title">AI 推薦 Top 10</h2>
+            <p class="panel-subtitle">
+              依「最終分數」即時排序目前待審核的前 10 名候選商品；推薦理由取自該商品最近一次 AI
+              分析的結果，只有重新產生 AI 分析才會更新，不會隨排名自動重算。
+            </p>
           </div>
         </header>
         <app-list-sort class="mobile-table-sort" [sort]="recommendationSort" [choices]="recommendationSortChoices" label="AI 推薦" />
@@ -320,7 +337,11 @@
               @for (risk of data().riskAlerts | sortRows: riskListSort.state(); track risk.id) {
                 <article class="risk-item">
                   <strong>{{ risk.productName }}</strong>
-                  <p>{{ risk.message }}</p>
+                  <ul class="risk-message-list">
+                    @for (point of riskMessagePoints(risk.message); track $index) {
+                      <li>{{ point }}</li>
+                    }
+                  </ul>
                   <small>命中關鍵字：{{ risk.detectedKeyword }}</small>
                 </article>
               } @empty {

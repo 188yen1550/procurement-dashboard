@@ -44,6 +44,8 @@ import { UserApiService } from '../user-management/api/user-api.service';
 import { UserAccountResponsePayload } from '../user-management/api/user-api.contract';
 import { WeightFactorPayload } from '../product-management/api/product-api.contract';
 import { Icon } from '../../shared/components/icon/icon';
+import { InfoTip } from '../../shared/components/info-tip/info-tip';
+import { AuthService } from '../../core/auth/auth';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
 type SettingsTab =
@@ -84,6 +86,32 @@ const FACTOR_LABEL: Record<string, string> = {
   HISTORY_FULFILLMENT: '歷史成團率',
   PURCHASE_RATE: '預估購買率',
   TREND_HEAT: '市場趨勢熱度',
+};
+
+/**
+ * 七個內建評分因子的滑鼠提示說明（2026-09-23 由 procurement-dashboard-updated
+ * 分支整併）。整併時逐條對照後端 ProductFactorScorer／HistoricalScoreCalculator／
+ * ScoreBandResolver 的實際計算邏輯修正過文字（分支版本有兩處與後端不符：
+ * 供應穩定性 1 級是「嚴重缺貨」不是「暫時缺貨」；折扣深度是看有沒有市價，
+ * 不是看新品／再販售）。後端計算邏輯改變時，這裡要同步確認。
+ *
+ * 自訂計分因子沒有對應說明（後端 FactorDefinition 沒有說明欄位），樣板
+ * 查不到就不顯示提示圖示。
+ */
+const FACTOR_HELP: Record<string, string> = {
+  MARGIN_RATE:
+    '（售價－成本－依材積估算的運費）÷ 售價，再依商品大類的目標區間（未設定時用全域區間）正規化——同樣 30% 毛利，在不同大類的評價不同。',
+  DISCOUNT_DEPTH:
+    '（市價－售價）÷ 市價，再依目標區間正規化，數值越高代表團購價相對市價折讓越深。未填市價時此項不計分，不會用 0 分計入。',
+  SUPPLY_STABILITY:
+    '採購人工評估 1～5 級（嚴重缺貨～供應充足），換算為 20～100 分。刻意保留人工判斷，承載系統拿不到的供應商實際狀況。',
+  AUDIENCE_MATCH:
+    '目前生效中的核心客群關鍵字，與「目標客群描述＋商品名稱」的命中比例（命中關鍵字數 ÷ 關鍵字總數）。',
+  HISTORY_FULFILLMENT:
+    '歷史成團率的三層貝氏收縮：商品自己的成團率向所屬商品類型收斂，商品類型再向全體收斂；樣本越少越接近上一層，避免只開過幾次就全成團的商品被高估。分母不含取消開團。',
+  PURCHASE_RATE: '採購人工填寫的預估購買率（0～100%），直接換算為分數，非系統自動推算。',
+  TREND_HEAT:
+    '最新一筆外部熱度（趨勢分與熱門度取平均），依「距採集日天數」做指數衰減並收斂到中性基準分，避免舊資料跟今天的資料等權重影響排序。',
 };
 
 /** 後端 FactorCode.ALL 的順序，畫面上的權重編輯器沿用同一順序，避免每次渲染順序跳動。 */
@@ -333,7 +361,8 @@ const MOCK_SYSTEM_SETTINGS: readonly SystemSettingVM[] = [
     key: 'shrinkage_k_category',
     category: '貝氏收縮',
     displayName: '品類層平滑常數 k',
-    description: '要累積多少筆樣本，品類才會被信任一半以上；數字越大，愈需要更多樣本才會偏離全域平均。',
+    description:
+      '控制品類自己的成團率要收斂到全體平均多快：當這個品類累積的開團樣本數等於 k 時，最終比率剛好各半信自己、一半信全體平均；樣本數遠大於 k 時幾乎完全採信品類自己的數字，遠小於 k 時則幾乎完全採信全體平均。數字越大，代表要更多開團樣本，系統才願意相信這個品類自己的數字。',
     dataType: 'INTEGER',
     minValue: 1,
     maxValue: 100,
@@ -347,12 +376,28 @@ const MOCK_SYSTEM_SETTINGS: readonly SystemSettingVM[] = [
     key: 'shrinkage_k_product',
     category: '貝氏收縮',
     displayName: '商品層平滑常數 k',
-    description: '同上，但作用在單一商品自己的歷史上。建議小於品類層 k，否則商品層永遠不會真正發揮作用。',
+    description:
+      '同一套收斂邏輯，作用對象換成單一商品自己的歷史，上層先驗值則是該商品所屬品類「已收縮過」的成團率（商品先向品類收斂，品類再向全體收斂，兩層依序疊加）。建議設定小於品類層 k：品類的樣本數通常遠多於單一商品，若商品層 k 設得比品類層還大，等於要求商品自己的樣本比品類還多才會被採信，商品層的收縮實質上永遠派不上用場。',
     dataType: 'INTEGER',
     minValue: 1,
     maxValue: 100,
     unit: '次',
     value: '5',
+    hasStoredValue: true,
+    updatedAt: '2025-01-05T10:00:00',
+    updatedByName: '林建宏',
+  },
+  {
+    key: 'neutral_baseline_score',
+    category: '貝氏收縮',
+    displayName: '中性基準分數',
+    description:
+      '用在兩個情境的收斂目標：①商品或品類完全沒有任何歷史成團紀錄時，直接以此值當作保底比率／分數（等同貝氏收縮公式中樣本數為 0 時的先驗值）；②市場熱度等會隨時間變舊的資料，依「趨勢新鮮度半衰期」做指數衰減時，資料距今天數越多，分數越往這個值靠攏，避免已經過期的資料仍以當初的原始分數繼續影響排序。',
+    dataType: 'DECIMAL',
+    minValue: 0,
+    maxValue: 100,
+    unit: '分',
+    value: '50',
     hasStoredValue: true,
     updatedAt: '2025-01-05T10:00:00',
     updatedByName: '林建宏',
@@ -498,7 +543,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [ListSortControls, SortHeader, SortRowsPipe, FormsModule, ReactiveFormsModule, DatePipe, Icon],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, FormsModule, ReactiveFormsModule, DatePipe, Icon, InfoTip],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
@@ -515,7 +560,10 @@ export class Settings implements OnInit {
   private readonly userApi = inject(UserApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly riskOptionLookup = inject(RiskOptionLookupService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  /** 內建因子的提示說明，見 FACTOR_HELP；自訂因子查不到時樣板不顯示提示。 */
+  readonly factorHelp = FACTOR_HELP;
 
   readonly useMockData = APP_CONFIG.useMockData;
   /**
@@ -532,6 +580,21 @@ export class Settings implements OnInit {
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
   readonly activeMode = signal('BALANCED');
+
+  /**
+   * 錯誤／警告類提醒一律改用 dialog（DialogService.notify()），不再用行內
+   * status-toast——toast 貼在頁面最上方，使用者在「目標區間」「演算法參數」
+   * 這類內容較長的分頁往下滑動操作時，toast 出現在畫面外看不到，等於沒有
+   * 提醒到。dialog 是置中顯示的原生 <dialog>，不受捲動位置影響。
+   *
+   * 成功類的操作回饋（已新增／已更新／已停用…）維持原本的 statusMessageState
+   * toast：這類訊息通常緊跟在使用者剛按下的按鈕旁邊，本來就看得到，改成
+   * dialog 只會讓使用者每個成功操作都要多按一次「我知道了」才能繼續下一步，
+   * 沒有對應的好處。
+   */
+  private showAlert(message: string, title = '操作失敗'): void {
+    this.dialog.notify('error', title, [message]).subscribe();
+  }
 
   constructor() {
     // 原本呼叫 autoDismissStatusMessage(this.statusMessage) 的地方拿掉了，
@@ -823,7 +886,7 @@ export class Settings implements OnInit {
 
   setTab(tab: SettingsTab): void {
     if (tab === 'audience' && !this.audienceSettingsVisible) {
-      this.statusMessageState.show('核心客群設定目前暫不開放。');
+      this.showAlert('核心客群設定目前暫不開放。', '功能未開放');
       return;
     }
     this.activeTab.set(tab);
@@ -870,7 +933,7 @@ export class Settings implements OnInit {
 
   private handleLoadError(err: unknown): void {
     this.pageState.set('error');
-    this.statusMessageState.show(toApiError(err).message);
+    this.showAlert(toApiError(err).message);
   }
 
   // ----- 1. 評估模式 -----
@@ -1082,13 +1145,13 @@ export class Settings implements OnInit {
     // 加總檢查會先擋下來，但錯誤訊息應該講清楚真正的原因是什麼，而不是
     // 讓使用者對著「加總須為100」的訊息一頭霧水，不知道為什麼怎麼調都是0。
     if (this.enabledFactorCodes().size === 0) {
-      this.statusMessageState.show('至少要啟用一個因子，不能全部取消勾選。');
+      this.showAlert('至少要啟用一個因子，不能全部取消勾選。', '權重設定');
       return;
     }
 
     const total = this.weightDraftTotal();
     if (Math.abs(total - 100) > 0.01) {
-      this.statusMessageState.show(`全部因子權重加總須為 100，目前為 ${total}，請調整後再送出。`);
+      this.showAlert(`全部因子權重加總須為 100，目前為 ${total}，請調整後再送出。`, '權重設定');
       return;
     }
 
@@ -1140,7 +1203,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSavingWeights.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -1154,6 +1217,18 @@ export class Settings implements OnInit {
   // 影響到其他既有表單。獨立一組訊號與方法，风险更低、也更容易單獨測試。
 
   readonly factorDefinitions = signal<FactorDefinitionVM[]>([]);
+
+  /**
+   * 目標區間（scoreBands）在把後端 payload 轉成 ScoreBandVM 時，因子名稱
+   * 要能認得自訂因子（例如 SOCIAL_BUZZ → 社群聲量熱度），不能只查內建七
+   * 因子的 FACTOR_LABEL——見 toScoreBandVM()。這裡不能直接重用 factorLabel
+   * computed，那個只在「正在編輯某個評估模式的權重」時才有值（見
+   * weightEditorRows() 的 mode?.rawFactors 判斷），目標區間分頁載入時通常
+   * 沒有任何模式正在編輯中，會拿到空 map。
+   */
+  private customFactorNameByCode(): Map<string, string> {
+    return new Map(this.factorDefinitions().map((f) => [f.factorCode, f.factorName]));
+  }
   readonly isCreatingFactorDefinition = signal(false);
   readonly isSavingFactorDefinition = signal(false);
   /**
@@ -1324,16 +1399,17 @@ export class Settings implements OnInit {
     const factorCode = this.newFactorCode().trim().toUpperCase();
     const factorName = this.newFactorName().trim();
     if (!factorCode || !factorName) {
-      this.statusMessageState.show('請填寫因子代碼與名稱。');
+      this.showAlert('請填寫因子代碼與名稱。', '自訂因子');
       return;
     }
 
     const strategyCode = this.newFactorStrategy();
     if (!strategyCode) {
-      this.statusMessageState.show(
+      this.showAlert(
         this.newFactorSourceKind() === 'FIXED'
           ? '請選擇資料源。'
           : '請選擇自訂商品屬性——目前沒有可用的數值類題目，請先到下方新增一個。',
+        '自訂因子',
       );
       return;
     }
@@ -1343,7 +1419,7 @@ export class Settings implements OnInit {
       ? { scale: Number(scaleInput) }
       : undefined;
     if (scaleInput && Number.isNaN(strategyParams?.['scale'])) {
-      this.statusMessageState.show('倍率必須是數字。');
+      this.showAlert('倍率必須是數字。', '自訂因子');
       return;
     }
 
@@ -1418,7 +1494,7 @@ export class Settings implements OnInit {
           },
           error: (err) => {
             this.isSavingFactorDefinition.set(false);
-            this.statusMessageState.show(toApiError(err).message);
+            this.showAlert(toApiError(err).message);
           },
         });
       return;
@@ -1450,7 +1526,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSavingFactorDefinition.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -1471,7 +1547,7 @@ export class Settings implements OnInit {
           this.factorDefinitions.update((items) =>
             items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
           ),
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -1491,7 +1567,7 @@ export class Settings implements OnInit {
           this.factorDefinitions.update((items) =>
             items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
           ),
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -1659,7 +1735,7 @@ export class Settings implements OnInit {
     const fieldCode = this.newFieldCode().trim().toUpperCase();
     const fieldName = this.newFieldName().trim();
     if (!fieldCode || !fieldName) {
-      this.statusMessageState.show('請填寫欄位代碼與名稱。');
+      this.showAlert('請填寫欄位代碼與名稱。', '自訂屬性');
       return;
     }
 
@@ -1671,11 +1747,11 @@ export class Settings implements OnInit {
       // 之後串接計分系統時難以預期地出錯。編輯時代碼不可修改、也不會被送出，
       // 不需要重跑這兩項檢查。
       if (!/^[A-Z][A-Z0-9_]*$/.test(fieldCode)) {
-        this.statusMessageState.show('欄位代碼只能是英文字母、數字、底線，且不能以數字開頭。');
+        this.showAlert('欄位代碼只能是英文字母、數字、底線，且不能以數字開頭。', '自訂屬性');
         return;
       }
       if (this.customFieldDefinitions().some((item) => item.fieldCode === fieldCode && item.isActive)) {
-        this.statusMessageState.show(`欄位代碼「${fieldCode}」已存在，請改用其他代碼。`);
+        this.showAlert(`欄位代碼「${fieldCode}」已存在，請改用其他代碼。`, '自訂屬性');
         return;
       }
     }
@@ -1758,7 +1834,7 @@ export class Settings implements OnInit {
           },
           error: (err) => {
             this.isSavingCustomField.set(false);
-            this.statusMessageState.show(toApiError(err).message);
+            this.showAlert(toApiError(err).message);
           },
         });
       return;
@@ -1786,7 +1862,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSavingCustomField.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -1807,7 +1883,7 @@ export class Settings implements OnInit {
           this.customFieldDefinitions.update((items) =>
             items.map((item) => (item.id === id ? toCustomFieldDefinitionVM(updated) : item)),
           ),
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -1827,7 +1903,7 @@ export class Settings implements OnInit {
           this.customFieldDefinitions.update((items) =>
             items.map((item) => (item.id === id ? toCustomFieldDefinitionVM(updated) : item)),
           ),
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -1854,7 +1930,7 @@ export class Settings implements OnInit {
             `已切換為 ${mode.modeName}，所有未審核商品的即時分數將重新計算。`,
           );
         },
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -1899,7 +1975,7 @@ export class Settings implements OnInit {
   saveAudience(): void {
     if (this.form.invalid || this.ageRangeInvalid()) {
       this.form.markAllAsTouched();
-      this.statusMessageState.show('請修正客群設定欄位。');
+      this.showAlert('請修正客群設定欄位。', '核心客群');
       return;
     }
 
@@ -1933,7 +2009,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSaving.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2063,18 +2139,24 @@ export class Settings implements OnInit {
       apply();
       return;
     }
-    if (item.id === null) return;
+    if (item.id === null) {
+      // 按鈕在 id === null 時已經是 disabled 狀態（見 settings.html），
+      // 正常操作走不到這裡；保留這個防呆只是避免萬一有別的路徑繞過
+      // disabled 判斷時，使用者點了卻完全沒反應。
+      this.showAlert('這筆資料尚未就緒，請重新整理頁面後再試一次。', '無法操作');
+      return;
+    }
     const request = active ? this.api.enableRiskOption(item.id) : this.api.disableRiskOption(item.id);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: apply,
-      error: (err) => this.statusMessageState.show(toApiError(err).message),
+      error: (err) => this.showAlert(toApiError(err).message),
     });
   }
 
   private performRemoveProductType(name: string, item: ProductTypeVM): void {
     if (this.useMockData) {
       if (item.used && item.used > 0) {
-        this.statusMessageState.show('此類型已被品項使用，不可刪除，請改為停用。');
+        this.showAlert('此類型已被品項使用，不可刪除，請改為停用。', '無法刪除');
         return;
       }
       // 大類（level=1）就算自己 used=0（商品只能掛在小類，大類的 used
@@ -2082,7 +2164,7 @@ export class Settings implements OnInit {
       // 跟真實 API 的 existsByParentId() 檢查對齊。
       const hasChildren = this.productTypes().some((type) => type.parentId === item.id);
       if (hasChildren) {
-        this.statusMessageState.show('此大類底下仍有小類，請先刪除或搬移小類，無法直接刪除。');
+        this.showAlert('此大類底下仍有小類，請先刪除或搬移小類，無法直接刪除。', '無法刪除');
         return;
       }
       this.productTypes.update((items) => items.filter((type) => type.name !== name));
@@ -2104,7 +2186,7 @@ export class Settings implements OnInit {
           // 使用者而寫的可控文字，「品項使用中」跟「底下還有小類」各有專屬
           // 訊息，直接用 error.message；不要再用前端寫死的單一文案蓋掉，
           // 否則「底下還有小類」會被誤顯示成「已被品項使用」，講錯真正原因。
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2150,7 +2232,7 @@ export class Settings implements OnInit {
             item.level === 1 ? `已停用「${name}」，底下小類也一併停用。` : `已停用「${name}」。`,
           );
         },
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -2176,7 +2258,7 @@ export class Settings implements OnInit {
           this.productTypeLookup.invalidate();
           this.statusMessageState.show(`已復用「${name}」。`);
         },
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -2210,7 +2292,7 @@ export class Settings implements OnInit {
    */
   previewWeatherSignals(): void {
     if (this.useMockData) {
-      this.statusMessageState.show('Mock 模式沒有真實天氣資料可預覽，請切換到已串接後端的環境測試。');
+      this.showAlert('Mock 模式沒有真實天氣資料可預覽，請切換到已串接後端的環境測試。', '功能限制');
       return;
     }
 
@@ -2225,7 +2307,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.weatherPreviewLoading.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2238,7 +2320,7 @@ export class Settings implements OnInit {
    */
   syncWeatherCampaigns(): void {
     if (this.useMockData) {
-      this.statusMessageState.show('Mock 模式無法觸發真實天氣同步。');
+      this.showAlert('Mock 模式無法觸發真實天氣同步。', '功能限制');
       return;
     }
 
@@ -2259,7 +2341,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.weatherSyncing.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2288,7 +2370,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.regionWeightsLoading.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2313,7 +2395,7 @@ export class Settings implements OnInit {
     const drafts = this.regionWeightDrafts();
     const sum = this.regionWeightDraftSum();
     if (Math.abs(sum - 100) > 0.01) {
-      this.statusMessageState.show(`四區占比加總須為100，目前為：${sum}`);
+      this.showAlert(`四區占比加總須為100，目前為：${sum}`, '驗證失敗');
       return;
     }
 
@@ -2346,7 +2428,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.regionWeightSaving.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2373,7 +2455,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.weatherSignalTagMappingsLoading.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2388,11 +2470,11 @@ export class Settings implements OnInit {
     const weatherSignalType = this.draftWeatherSignalType();
     const tag = this.draftWeatherSignalTag().trim();
     if (!weatherSignalType) {
-      this.statusMessageState.show('請選擇天氣訊號類型。');
+      this.showAlert('請選擇天氣訊號類型。', '驗證失敗');
       return;
     }
     if (!tag) {
-      this.statusMessageState.show('請輸入標籤內容。');
+      this.showAlert('請輸入標籤內容。', '驗證失敗');
       return;
     }
     const matchTier = this.draftWeatherSignalMatchTier();
@@ -2427,7 +2509,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.weatherSignalTagMappingSaving.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2456,7 +2538,7 @@ export class Settings implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => apply(updated),
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -2486,7 +2568,7 @@ export class Settings implements OnInit {
       : this.api.disableWeatherSignalTagMapping(item.id);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: apply,
-      error: (err) => this.statusMessageState.show(toApiError(err).message),
+      error: (err) => this.showAlert(toApiError(err).message),
     });
   }
 
@@ -2527,12 +2609,45 @@ export class Settings implements OnInit {
       });
   }
 
-  /** 依目前狀態決定要停用還是復用，樣板只需要綁定同一個方法。 */
+  /**
+   * 這一列是不是目前登入的自己（2026-09-23 由分支整併）。
+   *
+   * 後端會擋「不可停用自己的帳號」（409），但那是撞到才知道；這裡先在
+   * 畫面上把自己那一列的停用按鈕 disable，讓使用者根本不會撞到這個錯誤。
+   * 後端的檢查仍是真正的防線，前端只是事先防呆。
+   */
+  isSelfAccount(item: AccountVM): boolean {
+    return item.id !== null && item.id === this.auth.currentUser()?.id;
+  }
+
+  /**
+   * 依目前狀態決定要停用還是復用，樣板只需要綁定同一個方法。
+   *
+   * 停用是即時生效的操作（對方下一個請求就會被擋下），跟同頁「刪除商品
+   * 類型」「停用風險選項」一樣先確認（2026-09-23 由分支整併）；復用沒有
+   * 這個風險，不需要確認。
+   */
   toggleAccountActive(username: string): void {
     const item = this.accounts().find((account) => account.username === username);
     if (!item) return;
-    if (item.active) this.disableAccount(username);
-    else this.restoreAccount(username);
+    if (!item.active) {
+      this.restoreAccount(username);
+      return;
+    }
+    if (this.isSelfAccount(item)) return;
+    this.dialog
+      .confirm(
+        '確認停用帳號',
+        [
+          `即將停用「${item.name}」（${item.username}）的帳號。`,
+          '停用是即時生效的：對方就算已經登入，下一個請求就會被擋下，請確認對方目前沒有操作到一半。',
+        ],
+        '確定停用',
+        '取消',
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) this.disableAccount(username);
+      });
   }
 
   disableAccount(username: string): void {
@@ -2563,7 +2678,7 @@ export class Settings implements OnInit {
           const error = toApiError(err);
           // ⚠️ 後端擋「不可停用自己的帳號」是 409，訊息要單獨顯示，
           // 不要讓使用者以為是網路問題重試。
-          this.statusMessageState.show(error.message);
+          this.showAlert(error.message, '無法停用帳號');
         },
       });
   }
@@ -2592,7 +2707,7 @@ export class Settings implements OnInit {
           );
           this.statusMessageState.show('已復用帳號。');
         },
-        error: (err) => this.statusMessageState.show(toApiError(err).message),
+        error: (err) => this.showAlert(toApiError(err).message),
       });
   }
 
@@ -2610,7 +2725,7 @@ export class Settings implements OnInit {
             .getNameMap()
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((nameById) => {
-              this.scoreBands.set(list.map((band) => toScoreBandVM(band, nameById)));
+              this.scoreBands.set(list.map((band) => toScoreBandVM(band, nameById, this.customFactorNameByCode())));
               this.markLoaded('scoreBands');
             });
         },
@@ -2712,6 +2827,16 @@ export class Settings implements OnInit {
    */
   protected nativeSliderStep(setting: SystemSettingVM): number {
     return setting.dataType === 'INTEGER' ? 1 : 0.01;
+  }
+
+  /**
+   * 滑桿旁的手動輸入框（2026-09-23 分支整併，依決策 E）：直接寫入草稿值、
+   * **不**套用 snapSettingValue() 的倍數收斂——手動輸入的用途就是讓使用者
+   * 打一個滑桿格線以外的精確數字；滑桿本身拖曳時仍維持 sliderStep() 的
+   * 業務顆粒度。範圍與型別仍由 saveSystemSetting() 在送出時檢查。
+   */
+  protected onSliderManualInput(value: unknown): void {
+    this.systemSettingDraftValue.set(this.toDraftValue(value));
   }
 
   /** 拖動滑桿：每一格都即時收斂到 sliderStep() 的倍數。 */
@@ -2817,25 +2942,25 @@ export class Settings implements OnInit {
 
     const raw = this.systemSettingDraftValue().trim();
     if (!raw) {
-      this.statusMessageState.show('設定值不可為空。');
+      this.showAlert('設定值不可為空。', '驗證失敗');
       return;
     }
     if (setting.dataType !== 'STRING') {
       const parsed = Number(raw);
       if (Number.isNaN(parsed)) {
-        this.statusMessageState.show(`${setting.displayName} 必須是數字。`);
+        this.showAlert(`${setting.displayName} 必須是數字。`, '驗證失敗');
         return;
       }
       if (setting.dataType === 'INTEGER' && !Number.isInteger(parsed)) {
-        this.statusMessageState.show(`${setting.displayName} 必須是整數。`);
+        this.showAlert(`${setting.displayName} 必須是整數。`, '驗證失敗');
         return;
       }
       if (setting.minValue !== null && parsed < setting.minValue) {
-        this.statusMessageState.show(`${setting.displayName} 不可小於 ${setting.minValue}。`);
+        this.showAlert(`${setting.displayName} 不可小於 ${setting.minValue}。`, '驗證失敗');
         return;
       }
       if (setting.maxValue !== null && parsed > setting.maxValue) {
-        this.statusMessageState.show(`${setting.displayName} 不可大於 ${setting.maxValue}。`);
+        this.showAlert(`${setting.displayName} 不可大於 ${setting.maxValue}。`, '驗證失敗');
         return;
       }
     }
@@ -2880,7 +3005,7 @@ export class Settings implements OnInit {
           this.isSavingSystemSetting.set(false);
           // 後端範圍驗證失敗的錯誤訊息（例如「不可小於 1」）直接顯示，
           // 不重新組一份文字。
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -2953,11 +3078,11 @@ export class Settings implements OnInit {
     const upperBound = this.newScoreBandUpper();
 
     if (productTypeId === null) {
-      this.statusMessageState.show('請選擇商品類型。');
+      this.showAlert('請選擇商品類型。', '驗證失敗');
       return;
     }
     if (upperBound <= lowerBound) {
-      this.statusMessageState.show('上界必須大於下界。');
+      this.showAlert('上界必須大於下界。', '驗證失敗');
       return;
     }
 
@@ -3000,7 +3125,7 @@ export class Settings implements OnInit {
             .getNameMap()
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((nameById) => {
-              this.scoreBands.update((items) => [...items, toScoreBandVM(created, nameById)]);
+              this.scoreBands.update((items) => [...items, toScoreBandVM(created, nameById, this.customFactorNameByCode())]);
               this.isSavingNewScoreBand.set(false);
               this.cancelCreateScoreBand();
               this.statusMessageState.show('已新增品類專屬目標區間。');
@@ -3009,7 +3134,7 @@ export class Settings implements OnInit {
         error: (err) => {
           this.isSavingNewScoreBand.set(false);
           // 品類×因子已存在時後端回 400，訊息已包含「請改用編輯」的提示，原樣顯示即可。
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -3059,7 +3184,7 @@ export class Settings implements OnInit {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((nameById) => {
               this.scoreBands.update((items) =>
-                items.map((item) => (item.id === id ? toScoreBandVM(updated, nameById) : item)),
+                items.map((item) => (item.id === id ? toScoreBandVM(updated, nameById, this.customFactorNameByCode()) : item)),
               );
               this.isSavingScoreBand.set(false);
               this.cancelScoreBandEdit();
@@ -3068,7 +3193,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSavingScoreBand.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -3233,7 +3358,7 @@ export class Settings implements OnInit {
         },
       ]);
     } else {
-      this.statusMessageState.show('請完整填寫必填欄位。');
+      this.showAlert('請完整填寫必填欄位。', '驗證失敗');
       return;
     }
     this.statusMessageState.show('已儲存至本地 Mock 狀態。');
@@ -3244,7 +3369,7 @@ export class Settings implements OnInit {
     if (type === 'risk') {
       const keywords = this.draftKeywordChips().join('、');
       if (!this.draftName().trim() || this.draftKeywordChips().length === 0) {
-        this.statusMessageState.show('請完整填寫必填欄位。');
+        this.showAlert('請完整填寫必填欄位。', '驗證失敗');
         return;
       }
 
@@ -3265,7 +3390,7 @@ export class Settings implements OnInit {
             },
             error: (err) => {
               this.isSavingModal.set(false);
-              this.statusMessageState.show(toApiError(err).message);
+              this.showAlert(toApiError(err).message);
             },
           });
         return;
@@ -3284,7 +3409,7 @@ export class Settings implements OnInit {
           },
           error: (err) => {
             this.isSavingModal.set(false);
-            this.statusMessageState.show(toApiError(err).message);
+            this.showAlert(toApiError(err).message);
           },
         });
       return;
@@ -3292,7 +3417,7 @@ export class Settings implements OnInit {
 
     if (type === 'productType') {
       if (!this.draftName().trim()) {
-        this.statusMessageState.show('請輸入類型名稱。');
+        this.showAlert('請輸入類型名稱。', '驗證失敗');
         return;
       }
       const editingTypeId = this.editingProductTypeId();
@@ -3300,7 +3425,7 @@ export class Settings implements OnInit {
       // ⚠️ 只在「新增」流程檢查層級：編輯既有類型（改名）不動層級/上層大類，
       // draftProductTypeLevel 只是新增用的暫存選擇，不該套用到編輯上。
       if (editingTypeId === null && this.draftProductTypeLevel() === 2 && this.draftProductTypeParentId() === null) {
-        this.statusMessageState.show('請選擇這個小類要掛在哪個大類底下。');
+        this.showAlert('請選擇這個小類要掛在哪個大類底下。', '驗證失敗');
         return;
       }
 
@@ -3321,7 +3446,7 @@ export class Settings implements OnInit {
             },
             error: (err) => {
               this.isSavingModal.set(false);
-              this.statusMessageState.show(toApiError(err).message);
+              this.showAlert(toApiError(err).message);
             },
           });
         return;
@@ -3343,7 +3468,7 @@ export class Settings implements OnInit {
           },
           error: (err) => {
             this.isSavingModal.set(false);
-            this.statusMessageState.show(toApiError(err).message);
+            this.showAlert(toApiError(err).message);
           },
         });
       return;
@@ -3351,7 +3476,7 @@ export class Settings implements OnInit {
 
     if (type === 'account') {
       if (!this.draftUsername().trim() || !this.draftName().trim() || this.draftPassword().trim().length < 8) {
-        this.statusMessageState.show('請完整填寫必填欄位，密碼至少 8 碼。');
+        this.showAlert('請完整填寫必填欄位，密碼至少 8 碼。', '驗證失敗');
         return;
       }
       this.isSavingModal.set(true);
@@ -3372,7 +3497,7 @@ export class Settings implements OnInit {
           error: (err) => {
             this.isSavingModal.set(false);
             // username 重複時後端回 400，直接顯示訊息，讓使用者知道要換一個帳號名。
-            this.statusMessageState.show(toApiError(err).message);
+            this.showAlert(toApiError(err).message);
           },
         });
       return;
@@ -3387,10 +3512,11 @@ export class Settings implements OnInit {
         !this.draftTags().some((row) => row.tag.trim()) ||
         (isCreating && !this.draftCampaignCode().trim())
       ) {
-        this.statusMessageState.show(
+        this.showAlert(
           isCreating
             ? '請完整填寫必填欄位（含檔期代碼），並至少輸入一個標籤。'
             : '請完整填寫必填欄位，並至少輸入一個標籤。',
+          '驗證失敗',
         );
         return;
       }
@@ -3430,7 +3556,7 @@ export class Settings implements OnInit {
             },
             error: (err) => {
               this.isSavingModal.set(false);
-              this.statusMessageState.show(toApiError(err).message);
+              this.showAlert(toApiError(err).message);
             },
           });
       } else {
@@ -3453,7 +3579,7 @@ export class Settings implements OnInit {
             },
             error: (err) => {
               this.isSavingModal.set(false);
-              this.statusMessageState.show(toApiError(err).message);
+              this.showAlert(toApiError(err).message);
             },
           });
       }
@@ -3505,7 +3631,7 @@ export class Settings implements OnInit {
         },
         error: (err) => {
           this.isSavingModal.set(false);
-          this.statusMessageState.show(toApiError(err).message);
+          this.showAlert(toApiError(err).message);
         },
       });
   }
@@ -3569,6 +3695,7 @@ function aggregateWeightsByGroup(
 function toScoreBandVM(
   payload: ProductTypeScoreBandResponsePayload,
   productTypeNameById: Map<number, string>,
+  customFactorNameByCode: Map<string, string>,
 ): ScoreBandVM {
   return {
     id: payload.id,
@@ -3576,7 +3703,11 @@ function toScoreBandVM(
     productTypeName:
       payload.productTypeId === null ? '全域預設' : productTypeNameById.get(payload.productTypeId) ?? '—',
     factorCode: payload.factorCode,
-    factorLabel: FACTOR_LABEL[payload.factorCode] ?? payload.factorCode,
+    // 內建七因子查 FACTOR_LABEL；查不到再查自訂因子清單（factor_definitions.
+    // factorName，例如 SOCIAL_BUZZ → 社群聲量熱度）；兩邊都查不到才顯示代碼本身
+    // ——理論上不會發生，除非目標區間引用了一個已被刪除的自訂因子。
+    factorLabel:
+      FACTOR_LABEL[payload.factorCode] ?? customFactorNameByCode.get(payload.factorCode) ?? payload.factorCode,
     lowerBound: payload.lowerBound ?? 0,
     upperBound: payload.upperBound ?? 0,
     sourceMode: payload.sourceMode,

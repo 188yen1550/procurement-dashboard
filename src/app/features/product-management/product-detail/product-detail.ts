@@ -29,6 +29,8 @@ import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { AiAnalysisModel, toProductActionAvailability } from '../api/product.mapper';
 import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
+import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
+import { InfoTip } from '../../../shared/components/info-tip/info-tip';
 import {
   DetailProduct,
   DetailState,
@@ -168,7 +170,7 @@ const INCOMPLETE: DetailProduct = {
 
 @Component({
   selector: 'app-product-detail',
-  imports: [CommonModule, RouterLink, Icon],
+  imports: [CommonModule, RouterLink, Icon, ListSortControls, SortRowsPipe, InfoTip],
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
@@ -180,10 +182,33 @@ export class ProductDetail implements OnInit {
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly productId = this.route.snapshot.paramMap.get('id') ?? '';
+  /**
+   * 從哪裡點進來的。review.html 的「歷次決策紀錄」表格點商品名稱會連到
+   * 這頁（見 review.html），但返回連結原本寫死 routerLink="/products"，
+   * 從決策紀錄點進來的人按返回卻被送去品項管理頁，不是原本的決策紀錄頁籤。
+   * 這裡讀取來源頁帶的 query param，讓返回連結能回到真正的來源。
+   */
+  readonly returnTo = signal<'review-records' | null>(
+    this.route.snapshot.queryParamMap.get('returnTo') === 'review-records'
+      ? 'review-records'
+      : null,
+  );
   readonly useMockData = APP_CONFIG.useMockData;
   readonly gateCodeLabel = GATE_CODE_LABEL;
   /** 這件商品自己的歷次審核紀錄，時間新→舊排序，供頁面下方新增的區塊顯示。 */
   readonly reviewHistory = signal<ReviewRecordModel[]>([]);
+  /**
+   * 歷次審核紀錄的排序（2026-09-23 由 procurement-dashboard-updated 分支整併）。
+   * 未選擇排序時維持後端的「新→舊」順序。
+   */
+  readonly historySort = new ListSort();
+  readonly historySortChoices = [
+    { key: 'submissionCount', label: '送審次數' },
+    { key: 'reviewStatus', label: '審核結果' },
+    { key: 'reviewedAt:date', label: '審核時間' },
+    { key: 'reviewerName', label: '審核人' },
+    { key: 'reviewComment', label: '審核留言' },
+  ];
   readonly gateStatusLabel = GATE_STATUS_LABEL;
   readonly temperatureZoneLabel = TEMPERATURE_ZONE_LABEL;
   readonly shelfLifeTierLabel = SHELF_LIFE_TIER_LABEL;

@@ -1118,12 +1118,14 @@ tr.is-editing select {
   }
 }
 
-.system-setting-slider-value {
-  min-width: 3.5rem;
+.system-setting-slider-manual {
+  width: 6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #d4dee6;
+  border-radius: 0.4rem;
   color: #1c5286;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  text-align: right;
 }
 
 /* 溫層判定：常溫／冷藏／冷凍三個固定選項的勾選方塊，跟關鍵字 chip

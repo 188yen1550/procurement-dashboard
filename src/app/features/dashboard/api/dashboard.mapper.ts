@@ -1,4 +1,5 @@
 import {
+  ConversionRateScope,
   DashboardConversionRateResponsePayload,
   DashboardRecommendationResponsePayload,
   DashboardRiskAlertResponsePayload,
@@ -89,6 +90,8 @@ export interface ConversionRateModel {
    * 混在一起會讓管理層對選品成效做出完全錯誤的判讀。
    */
   hasData: boolean;
+  /** 計算口徑（個人／全公司），決定畫面文案，見 dashboard-api.contract.ts。 */
+  scope: ConversionRateScope;
   /** 已是百分比數值（33.33 代表 33.33%），⚠️ 不要再 ×100。 */
   ratePercentage: number | null;
   approvedCount: number;
@@ -102,6 +105,7 @@ export function toConversionRateModel(
     // 同時檢查 ratePercentage 與 submittedCount：後端在分母為 0 時回 null，
     // 但雙重判斷可以擋掉「後端改成回 0」時前端誤顯示 0% 的情況。
     hasData: payload.ratePercentage !== null && payload.submittedCount > 0,
+    scope: payload.scope,
     ratePercentage: payload.ratePercentage,
     approvedCount: payload.approvedCount,
     submittedCount: payload.submittedCount,

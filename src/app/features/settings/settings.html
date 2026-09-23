@@ -150,9 +150,12 @@
           </td>
           <td>{{ item.active ? '啟用' : '已停用' }}</td>
           <td class="row-actions">
-            <button type="button" class="btn" (click)="openRiskEditModal(item)">編輯</button>
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
+              (click)="openRiskEditModal(item)">編輯</button>
             <button type="button" class="btn" [class.danger]="item.active" [class.is-restore]="!item.active"
-              (click)="toggleRiskOptionActive(item)">{{ item.active ? '停用' : '重新啟用' }}</button>
+              [disabled]="pageState() === 'disabled' || item.id === null"
+              [attr.title]="item.id === null ? '資料尚未就緒，請稍後再試' : null" (click)="toggleRiskOptionActive(item)">{{
+              item.active ? '停用' : '重新啟用' }}</button>
           </td>
         </tr>
         }
@@ -558,10 +561,9 @@
         <tr>
           <td>{{ weatherRegionLabel[item.region] ?? item.region }}</td>
           <td>
-            <input type="number" min="0" max="100" step="0.01"
-              [ngModel]="regionWeightDrafts()[item.region]"
-              (ngModelChange)="updateRegionWeightDraft(item.region, $event)"
-              [name]="'region-weight-' + item.region" [disabled]="pageState() === 'disabled'" />
+            <input type="number" min="0" max="100" step="0.01" [ngModel]="regionWeightDrafts()[item.region]"
+              (ngModelChange)="updateRegionWeightDraft(item.region, $event)" [name]="'region-weight-' + item.region"
+              [disabled]="pageState() === 'disabled'" />
           </td>
           <td>{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
         </tr>
@@ -633,8 +635,8 @@
         <thead>
           <tr>
             <th class="band-global-col-factor">因子</th>
-            <th class="num band-global-col-bound">下界</th>
-            <th class="num band-global-col-bound">上界</th>
+            <th class="num band-global-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
+            <th class="num band-global-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。" /></th>
             <th class="band-global-col-actions"></th>
           </tr>
         </thead>
@@ -642,7 +644,8 @@
           @for (band of globalScoreBands(); track band.id) {
           @if (editingScoreBandId() === band.id) {
           <tr class="is-editing">
-            <td>{{ band.factorLabel }}</td>
+            <td>{{ band.factorLabel }}<app-info-tip
+                [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td colspan="2">
               <div class="score-band-edit-grid">
                 <label>下界
@@ -675,7 +678,8 @@
           </tr>
           } @else {
           <tr>
-            <td>{{ band.factorLabel }}</td>
+            <td>{{ band.factorLabel }}<app-info-tip
+                [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td class="num">{{ band.lowerBound }}</td>
             <td class="num">{{ band.upperBound }}</td>
             <td class="row-actions">
@@ -758,8 +762,8 @@
           <tr>
             <th class="band-override-col-type">商品類型</th>
             <th class="band-override-col-factor">因子</th>
-            <th class="num band-override-col-bound">下界</th>
-            <th class="num band-override-col-bound">上界</th>
+            <th class="num band-override-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
+            <th class="num band-override-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。" /></th>
             <th class="band-override-col-actions"></th>
           </tr>
         </thead>
@@ -768,7 +772,8 @@
           @if (editingScoreBandId() === band.id) {
           <tr class="is-editing">
             <td>{{ band.productTypeName }}</td>
-            <td>{{ band.factorLabel }}</td>
+            <td>{{ band.factorLabel }}<app-info-tip
+                [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td colspan="2">
               <div class="score-band-edit-grid">
                 <label>下界
@@ -799,7 +804,8 @@
           } @else {
           <tr>
             <td>{{ band.productTypeName }}</td>
-            <td>{{ band.factorLabel }}</td>
+            <td>{{ band.factorLabel }}<app-info-tip
+                [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td class="num">{{ band.lowerBound }}</td>
             <td class="num">{{ band.upperBound }}</td>
             <td class="row-actions">
@@ -860,11 +866,16 @@
               <div class="system-setting-slider-field">
                 <input type="range" [min]="setting.minValue" [max]="setting.maxValue" [step]="nativeSliderStep(setting)"
                   [ngModel]="systemSettingDraftValue()" (ngModelChange)="onSliderDrag(setting, $event)" />
-                <span class="system-setting-slider-value">{{ systemSettingDraftValue() }}@if (setting.unit) {<span
-                    class="unit"> {{ setting.unit }}</span>}</span>
+                <!-- 手動輸入（2026-09-23 分支整併，決策 E）：滑桿拖曳維持業務顆粒度，
+                     這裡可以直接打格線以外的精確數字，兩者共用同一個草稿值。 -->
+                <input type="number" class="system-setting-slider-manual" [min]="setting.minValue"
+                  [max]="setting.maxValue" [step]="nativeSliderStep(setting)" [ngModel]="systemSettingDraftValue()"
+                  (ngModelChange)="onSliderManualInput($event)" [attr.aria-label]="setting.displayName + '（手動輸入）'" />
+                @if (setting.unit) {<span class="unit">{{ setting.unit }}</span>}
               </div>
               @if (setting.minValue !== null && setting.maxValue !== null) {
-              <span class="helper">合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}</span>
+              <span class="helper">合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}@if (sliderStep(setting) >
+                nativeSliderStep(setting)) {；滑桿每格 {{ sliderStep(setting) }}，其他數值可直接輸入}</span>
               }
               } @else {
               <label class="system-setting-edit-field">
@@ -960,10 +971,16 @@
           <td>{{ item.role === 'MANAGER' ? '管理' : '操作' }}</td>
           <td>{{ item.active ? '啟用' : '已停用' }}</td>
           <td class="row-actions">
-            <button type="button" class="btn" [class.is-restore]="!item.active" [disabled]="pageState() === 'disabled'"
+            @if (item.active && isSelfAccount(item)) {
+            <span class="helper">（本人）</span>
+            }
+            <button type="button" class="btn" [class.is-restore]="!item.active"
+              [disabled]="pageState() === 'disabled' || (item.active && isSelfAccount(item))"
+              [attr.title]="item.active && isSelfAccount(item) ? '不能停用自己的帳號' : null"
               (click)="toggleAccountActive(item.username)">
               {{ item.active ? '停用帳號' : '復用帳號' }}
             </button>
+
           </td>
         </tr>
         }
@@ -1024,6 +1041,11 @@
               [attr.aria-label]="'啟用' + (factorLabel()[factorCode] ?? factorCode)"
               (click)="$event.preventDefault(); toggleFactorEnabled(factorCode)" />
             <span>{{ factorLabel()[factorCode] ?? factorCode }}</span>
+            @if (factorHelp[factorCode]; as help) {
+            <!-- 提示圖示位在 <label> 裡：點它時要取消 label 的預設行為，
+                 否則瀏覽器會把這次點擊轉送給 checkbox，意外啟用／停用因子。 -->
+            <app-info-tip [text]="help" (click)="$event.preventDefault()" />
+            }
           </label>
           <input type="number" step="0.01" min="0" max="100" class="weight-editor-row-value"
             [ngModel]="weightDrafts()[factorCode]" [disabled]="!enabledFactorCodes().has(factorCode)"

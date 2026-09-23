@@ -242,6 +242,12 @@
   font-size: var(--t-xs);
 }
 
+/* 術語說明提示（2026-09-23 分支整併）：跟標題文字留一點間距 */
+dt app-info-tip,
+h2 app-info-tip {
+  margin-left: .3rem
+}
+
 .summary dd,
 .metrics dd {
   margin: .2rem 0 0;

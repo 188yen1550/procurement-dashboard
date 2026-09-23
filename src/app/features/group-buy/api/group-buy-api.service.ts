@@ -67,22 +67,8 @@ export class GroupBuyApiService {
       .pipe(unwrapData());
   }
 
-  /**
-   * 3. DELETE /api/group-buy-records/batch/{batchId} [僅管理]
-   *
-   * 整批回退。匯入錯誤時使用，不需要逐筆刪除。
-   *
-   * ⚠️ 這是**不可復原**的破壞性操作，且影響範圍是整批（可能上百筆）。
-   *    畫面上必須二次確認，並且在確認訊息裡寫清楚這個批次有幾筆資料，
-   *    不要只寫一個 batchId 讓使用者自己猜。
-   *
-   * 後端回 data: null，這裡不回傳內容。
-   */
-  deleteBatch(batchId: string): Observable<void> {
-    return this.http
-      .delete<ApiEnvelope<null>>(GROUP_BUY_API.deleteBatch(batchId))
-      .pipe(map(() => undefined));
-  }
+  // 3. DELETE /api/group-buy-records/batch/{batchId}（整批回退）已於 2026-09-23
+  //    分支整併時移除（前後端一併移除），理由見 group-buy.ts 檔案開頭說明。
 
   /**
    * 4. GET /api/group-buy-records/unlinked-candidates [操作+管理]

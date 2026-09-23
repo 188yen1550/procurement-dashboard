@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -134,6 +134,7 @@ export class ReviewComponent implements OnInit {
   readonly recordTableSort = new ListSort();
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
   readonly useMockData = APP_CONFIG.useMockData;
 
   readonly stateOptions: readonly ReviewState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
@@ -203,7 +204,15 @@ export class ReviewComponent implements OnInit {
   readonly categoryFilter = signal('ALL');
   readonly submittedFrom = signal('');
   readonly submittedTo = signal('');
-  readonly view = signal<'pending' | 'records'>('pending');
+  /**
+   * 預設待審清單；但從 product-detail 的「返回歷次決策紀錄」連結回來時
+   * （見 product-detail.html／product-detail.ts 的 returnTo），會帶
+   * ?tab=records，這裡要開在決策紀錄頁籤，不能讓使用者回到這頁卻又要
+   * 手動點一次頁籤才找得到剛剛看的那筆紀錄。
+   */
+  readonly view = signal<'pending' | 'records'>(
+    this.route.snapshot.queryParamMap.get('tab') === 'records' ? 'records' : 'pending',
+  );
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
   readonly totalElements = signal(0);

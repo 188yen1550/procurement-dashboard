@@ -24,6 +24,19 @@ export interface DashboardStatistics {
    * 不能直接顯示 `{{ conversionRate }}%`（會顯示成 "null%"）。
    */
   conversionRate: number | null;
+  /**
+   * 轉換率的計算口徑（2026-09-23 分支整併）：PERSONAL＝只算目前登入者
+   * 建立的商品（操作人員），COMPANY＝全公司（管理人員）。null 代表轉換率
+   * API 載入失敗，文案退回中性說法。
+   */
+  conversionScope: 'PERSONAL' | 'COMPANY' | null;
+  /**
+   * 轉換率的分子／分母原始筆數，只有 conversionRate 非 null 時才有意義。
+   * 光看百分比看不出樣本大小——63.7% 是「38 之中通過 24 件」還是「3 之中
+   * 通過 2 件」，可信度差很多，畫面要把原始筆數一起顯示。
+   */
+  conversionApprovedCount: number;
+  conversionSubmittedCount: number;
 }
 
 export interface DashboardRecommendation {

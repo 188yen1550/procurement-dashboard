@@ -7,6 +7,8 @@ import { ListSort, ListSortControls, SortHeader, sortRows } from '../../shared/u
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
@@ -165,7 +167,24 @@ export class ProductManagement implements OnInit {
   readonly statusMessage = this.statusMessageState.signal;
   readonly stateOptions: readonly PageState[] = ['default', 'locked', 'loading', 'empty', 'error'];
 
+  /**
+   * 搜尋框的節流管道（2026-09-23 由 procurement-dashboard-updated 分支整併）：
+   * 輸入時 searchTerm 照樣即時更新（畫面文字不延遲），真正打 API 的
+   * applyFilterChange() 等使用者停手 300ms 才執行一次，不再每個按鍵都
+   * 打一次後端。
+   *
+   * ⚠️ 刻意不加 distinctUntilChanged()（分支原本有）：使用者輸入「abc」後按
+   * 「清除篩選」（清除本身會立即重新查詢），再輸入同樣的「abc」時，
+   * distinctUntilChanged 會因為跟上一次送進管道的值相同而把它吞掉，畫面
+   * 就停在未篩選的清單。多打一次相同條件的查詢，代價遠小於查詢結果錯誤。
+   */
+  private readonly searchInput$ = new Subject<string>();
+
   constructor() {
+    this.searchInput$
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe(() => this.applyFilterChange());
+
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
@@ -378,9 +397,20 @@ export class ProductManagement implements OnInit {
     if (!this.useMockData) this.load();
   }
 
+  /**
+   * 搜尋框輸入。真實模式交給 searchInput$ 的 debounce 延遲觸發查詢（見上方
+   * 說明）；Mock 模式是本地即時過濾，沒有 API 成本，維持立即套用。
+   *
+   * ⚠️ 分支版本同時在輸入框加了 [disabled]="isLoading()"，會在查詢進行中
+   * 把輸入框鎖住、打字打到一半被打斷，跟 debounce 的目的相反，整併時沒有採用。
+   */
   updateSearch(value: string): void {
     this.searchTerm.set(value);
-    this.applyFilterChange();
+    if (this.useMockData) {
+      this.applyFilterChange();
+      return;
+    }
+    this.searchInput$.next(value);
   }
   updateReviewFilter(value: string): void {
     this.reviewFilter.set(value as ReviewStatus | 'ALL');
