@@ -22,7 +22,10 @@
 }
 
 .tag-toggle {
-  padding: .35rem .6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .35rem .65rem;
   color: #455b6e;
   background: #f8fafc;
   border: 1px solid #d4dee6;
@@ -39,13 +42,17 @@
 }
 
 .tag-toggle.is-selected {
-  color: #315d18;
-  background: #edf5df;
-  border-color: #a7bd7d
+  color: #fff;
+  background: #4b7a2f;
+  border-color: #3f6626
 }
 
 .tag-toggle.is-selected:hover {
-  background: #e2f0ca
+  background: #3f6626
+}
+
+.tag-toggle.is-selected app-icon {
+  color: #fff
 }
 
 .tag-toggle:focus-visible {
@@ -53,16 +60,46 @@
   outline-offset: 2px
 }
 
-.tag-toggle:disabled,
-.tag-toggle.is-selected:disabled {
+.tag-toggle.is-readonly {
   color: #8a969f;
   background: #eef1f3;
   border-color: #e0e6ea;
-  cursor: not-allowed
+  cursor: not-allowed;
 }
 
-.tag-toggle:disabled:hover {
-  background: #eef1f3
+.tag-toggle.is-readonly:hover {
+  background: #eef1f3;
+}
+
+.tag-toggle.is-readonly app-icon {
+  color: #8a969f;
+}
+
+.tag-empty-hint {
+  margin-top: .4rem;
+  color: #8a969f;
+  font-size: var(--t-xs);
+}
+
+.tag-help {
+  margin-top: .4rem;
+  color: #6c7a89;
+  font-size: var(--t-xs);
+}
+
+.tag-help summary {
+  color: #1c5286;
+  font-weight: 700;
+  cursor: pointer
+}
+
+.tag-help summary:focus-visible {
+  outline: 3px solid rgba(28, 82, 134, .24);
+  outline-offset: 2px
+}
+
+.tag-help p {
+  margin: .4rem 0 0
 }
 
 @media(max-width:600px) {

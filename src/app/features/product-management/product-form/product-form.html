@@ -183,22 +183,40 @@
       <section aria-labelledby="core-title" [class.is-core-locked]="isCoreLocked()"><header><span>{{ isResale() ? '04' : '03' }}</span><div><h2 id="core-title">其餘選品核心資料</h2><p>影響評分、排行與審核的條件。</p></div></header><div class="form-grid">
         <label class="wide"
           >節慶標籤（選填/可複選）
-          <div class="tag-toggle-group" role="group" aria-label="節慶標籤，可複選">
-            @for (tag of campaignTagOptions(); track tag) {
-              <button
-                type="button"
-                class="tag-toggle"
-                [class.is-selected]="isCampaignTagSelected(tag)"
-                [attr.aria-pressed]="isCampaignTagSelected(tag)"
-                [disabled]="isCoreLocked()"
-                [title]="campaignTagTooltip(tag)"
-                (click)="toggleCampaignTag(tag)"
-              >
-                {{ tag }}
-              </button>
+          @if (isCoreLocked()) {
+            @if (form.controls.campaignTags.value.length > 0) {
+              <div class="tag-toggle-group" role="list" aria-label="已選節慶標籤">
+                @for (tag of form.controls.campaignTags.value; track tag) {
+                  <span class="tag-toggle is-selected is-readonly" role="listitem" [title]="campaignTagTooltip(tag)">
+                    <app-icon name="check" size="sm" />{{ tag }}
+                  </span>
+                }
+              </div>
+            } @else {
+              <p class="tag-empty-hint">尚未選擇節慶標籤</p>
             }
-          </div>
-          <small class="helper">選的是關鍵字標籤，不是直接選節慶——系統會依目前生效中的節慶檔期，自動比對出符合度最高的檔期，同一件商品可隨檔期時間輪替自動對應不同節慶。滑鼠移到標籤上可查看它來自哪個節慶檔期。</small>
+          } @else {
+            <div class="tag-toggle-group" role="group" aria-label="節慶標籤，可複選">
+              @for (tag of campaignTagOptions(); track tag) {
+                <button
+                  type="button"
+                  class="tag-toggle"
+                  [class.is-selected]="isCampaignTagSelected(tag)"
+                  [attr.aria-pressed]="isCampaignTagSelected(tag)"
+                  [title]="campaignTagTooltip(tag)"
+                  (click)="toggleCampaignTag(tag)"
+                >
+                  @if (isCampaignTagSelected(tag)) { <app-icon name="check" size="sm" /> }
+                  {{ tag }}
+                </button>
+              }
+            </div>
+          }
+          <small class="helper">關鍵字標籤，非直接選節慶；系統會依生效中的檔期自動比對加分。</small>
+          <details class="tag-help">
+            <summary>標籤如何運作</summary>
+            <p>系統會依目前生效中的節慶檔期，自動比對出符合度最高的檔期，同一件商品可隨檔期時間輪替自動對應不同節慶。滑鼠移到標籤上可查看它來自哪個節慶檔期。</p>
+          </details>
         </label>
         @if (isResale()) { <div class="price-grid wide"><label>成本價 <em>*</em><input type="number" min="0" formControlName="costPrice" /></label><label>預計售價 <em>*</em><input type="number" min="0" formControlName="salePrice" /></label><label>市售價 <em>*</em><input type="number" min="0" formControlName="marketPrice" /></label><div class="margin-card"><span>預估毛利率</span><strong>{{ marginRate() === null ? '—' : marginRate() + '%' }}</strong></div></div>
           @if (priceAboveMarketWarning()) {

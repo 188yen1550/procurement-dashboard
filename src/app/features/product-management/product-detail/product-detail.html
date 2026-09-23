@@ -91,44 +91,44 @@
   </section>
   }
   <div class="product-overview">
-  <section class="product-media panel" aria-labelledby="product-image-title">
-    <header>
+    <section class="product-media panel" aria-labelledby="product-image-title">
+      <header>
+        <div>
+          <h2 id="product-image-title">商品主圖</h2>
+        </div><span>一般基本資料 · 可於編輯頁更換</span>
+      </header>
+      @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'"
+        (error)="handleImageError()" /> }
+      @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><app-icon name="image" />
+        <div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong>
+        </div>
+      </div> }
+    </section>
+    <section class="summary panel">
       <div>
-        <h2 id="product-image-title">商品主圖</h2>
-      </div><span>一般基本資料 · 可於編輯頁更換</span>
-    </header>
-    @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'"
-      (error)="handleImageError()" /> }
-    @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><app-icon name="image" />
-      <div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong>
+        <span class="status" [attr.data-status]="p.reviewStatus">{{
+          reviewLabel(p.reviewStatus)
+          }}</span><span>{{ p.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
       </div>
-    </div> }
-  </section>
-  <section class="summary panel">
-    <div>
-      <span class="status" [attr.data-status]="p.reviewStatus">{{
-        reviewLabel(p.reviewStatus)
-        }}</span><span>{{ p.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
-    </div>
-    <dl>
-      <div>
-        <dt>實際分類</dt>
-        <dd>{{ p.category }}</dd>
-      </div>
-      <div>
-        <dt>訂價分流</dt>
-        <dd>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</dd>
-      </div>
-      <div>
-        <dt>供應商</dt>
-        <dd>{{ p.supplier }}</dd>
-      </div>
-      <div>
-        <dt>資料完整度</dt>
-        <dd>{{ p.completeness }}%</dd>
-      </div>
-    </dl>
-  </section>
+      <dl>
+        <div>
+          <dt>實際分類</dt>
+          <dd>{{ p.category }}</dd>
+        </div>
+        <div>
+          <dt>訂價分流</dt>
+          <dd>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</dd>
+        </div>
+        <div>
+          <dt>供應商</dt>
+          <dd>{{ p.supplier }}</dd>
+        </div>
+        <div>
+          <dt>資料完整度</dt>
+          <dd>{{ p.completeness }}%</dd>
+        </div>
+      </dl>
+    </section>
   </div>
   <section class="score-grid" aria-label="評估分數">
     <article>
@@ -309,11 +309,11 @@
           <dt>供應商產能上限</dt>
           <dd>{{ p.supplierMaxCapacity ?? '不限制' }}</dd>
         </div>
-        <div class="wide">
+        <div class="col-half">
           <dt>處理注意事項</dt>
           <dd>{{ p.handlingFlags || '—' }}</dd>
         </div>
-        <div class="wide">
+        <div class="col-half">
           <dt>認證狀態</dt>
           <dd>{{ p.certificationFlags || '—' }}</dd>
         </div>
@@ -343,98 +343,97 @@
       </dl>
     </section>
     <section class="panel evaluation-details" aria-label="客群、銷售與市場評估">
-    <div class="evaluation-metrics">
-    <section class="evaluation-item">
-      <header>
-        <h2>核心客群匹配</h2>
-        <strong>{{ p.audienceScore }}</strong>
-      </header>
-      <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
-    </section>
-    <section class="evaluation-item">
-      <header>
-        <h2>歷史銷售資料</h2>
-        <strong>{{ p.historicalScore }}</strong>
-      </header>
-      <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
-    </section>
-    <section class="evaluation-item">
-      <header>
-        <h2>預估購買</h2>
-        <strong>{{ p.purchaseScore }}</strong>
-      </header>
-      <p>
-        {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
-      </p>
-    </section>
-    </div>
-  <section class="trend">
-    <header>
-      <div>
-
-        <h2>市場趨勢／熱門度</h2>
+      <div class="evaluation-metrics">
+        <section class="evaluation-item">
+          <header>
+            <h2>核心客群匹配</h2>
+            <strong>{{ p.audienceScore }}</strong>
+          </header>
+          <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
+        </section>
+        <section class="evaluation-item">
+          <header>
+            <h2>歷史銷售資料</h2>
+            <strong>{{ p.historicalScore }}</strong>
+          </header>
+          <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
+        </section>
+        <section class="evaluation-item">
+          <header>
+            <h2>預估購買</h2>
+            <strong>{{ p.purchaseScore }}</strong>
+          </header>
+          <p>
+            {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
+          </p>
+        </section>
+        <section class="evaluation-item trend">
+          <header>
+            <h2>市場趨勢／熱門度</h2>
+            <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong>
+          </header>
+          <p>
+            @if (!p.lastSyncedAt) {
+            尚無趨勢資料
+            } @else if (p.trendDirection === 'UP') {
+            <app-icon name="trending-up" size="sm" /> 趨勢上升
+            } @else if (p.trendDirection === 'DOWN') {
+            <app-icon name="trending-down" size="sm" /> 趨勢下降
+            } @else {
+            <app-icon name="trending-flat" size="sm" /> 趨勢持平
+            }
+            ・最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}
+          </p>
+          <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
+            {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
+          </button>
+          @if (syncState() === 'syncing') {
+          @if (useMockData) {
+          <div class="sync-actions">
+            <button type="button" (click)="completeSync(true)">模擬成功</button><button type="button"
+              (click)="completeSync(false)">模擬失敗</button>
+          </div>
+          } @else {
+          <p class="sync-loading" role="status">
+            <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
+          </p>
+          }
+          }
+          @if (syncState() === 'error') {
+          <p class="inline-error" role="alert">
+            {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
+          </p>
+          }
+        </section>
       </div>
-      <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
-        {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
-      </button>
-    </header>
-    <div class="trend-score">
-      <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong><span>
-        @if (!p.lastSyncedAt) {
-        尚無趨勢資料
-        } @else if (p.trendDirection === 'UP') {
-        <app-icon name="trending-up" size="sm" /> 趨勢上升
-        } @else if (p.trendDirection === 'DOWN') {
-        <app-icon name="trending-down" size="sm" /> 趨勢下降
-        } @else {
-        <app-icon name="trending-flat" size="sm" /> 趨勢持平
-        }
-      </span>
-    </div>
-    <p>最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}</p>
-    @if (syncState() === 'syncing') {
-    @if (useMockData) {
-    <div class="sync-actions">
-      <button type="button" (click)="completeSync(true)">模擬成功</button><button type="button"
-        (click)="completeSync(false)">模擬失敗</button>
-    </div>
-    } @else {
-    <p class="sync-loading" role="status">
-      <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
-    </p>
-    }
-    }
-    @if (syncState() === 'error') {
-    <p class="inline-error" role="alert">
-      {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
-    </p>
-    }
-  </section>
     </section>
   </div>
   @if (p.pricingType === 'RESALE') {
   <section class="panel price-compare">
-    <div><h2>市價與團購價比較</h2></div>
     <div>
-      <span>市售價 <s>NT$ {{ p.marketPrice }}</s></span><strong>團購價 NT$ {{ p.salePrice }}</strong><em>約省 {{ discountRate(p) }}%</em>
+      <h2>市價與團購價比較</h2>
+    </div>
+    <div>
+      <span>市售價 <s>NT$ {{ p.marketPrice }}</s></span><strong>團購價 NT$ {{ p.salePrice }}</strong><em>約省 {{ discountRate(p)
+        }}%</em>
     </div>
     <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
   </section>
   }
-    <section class="panel risks">
-      <header>
-        <h2>風險提示</h2>
-      </header>
-      @if (p.risks.length) {
-      <ul>
-        @for (risk of p.risks; track risk) {
-        <li>{{ risk }}</li>
-        }
-      </ul>
-      } @else {
-      <div class="no-data">目前無足夠資料進行風險提示。</div>
+  <section class="panel risks">
+    <header>
+      <h2>風險提示</h2>
+    </header>
+    @if (p.risks.length) {
+    <ul>
+      @for (risk of p.risks; track risk) {
+      <li>{{ risk }}</li>
       }
-    </section>
+    </ul>
+    } @else {
+    <div class="no-data">目前無足夠資料進行風險提示。</div>
+    }
+  </section>
   <!-- 這件商品自己的歷次審核紀錄——原本這支 API 完全沒被呼叫過，想知道
          「這件商品上次為什麼被拒」只能去問管理層或翻全站的決策紀錄分頁
          自己找，現在直接顯示在商品自己的詳情頁上。 -->
@@ -443,9 +442,8 @@
     <header>
       <h2>歷次審核紀錄</h2>
     </header>
-    <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
     <ul class="review-history-list">
-      @for (record of reviewHistory() | sortRows: historySort.state(); track record.id) {
+      @for (record of reviewHistory(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
         <div class="review-history-head">
           <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>

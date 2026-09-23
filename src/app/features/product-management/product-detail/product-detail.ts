@@ -2,7 +2,6 @@
  * 檔案用途：品項詳情的評分拆解、圖片、趨勢、AI、封存／復用與各種本地 UI 狀態。
  * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
  */
-import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -29,6 +28,7 @@ import { ProductApiService } from '../api/product-api.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { AiAnalysisModel, toProductActionAvailability } from '../api/product.mapper';
+import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
 import {
   DetailProduct,
   DetailState,
@@ -46,9 +46,11 @@ import { CandidateStatus } from '../../../core/domain/enums';
  * 不要顯示成載入失敗。
  *
  * ⚠️ 後端 reasons 是單一字串，不是陣列（跟舊版 Mock 資料的陣列形狀不同）。
- * 依換行拆成陣列只是為了沿用既有的條列樣式，不是後端保證的格式——
- * 若這段文字沒有換行，拆完就是單一元素的陣列，會顯示成一行，
- * 這是合理的降級，不是錯誤。
+ * 依 splitAiReasonLines() 拆成陣列只是為了沿用既有的條列樣式，不是後端
+ * 保證的格式——LLM 有時會把「1. …2. …3. …」擠在同一行沒有換行，
+ * splitAiReasonLines() 會退而用編號標記拆行（見該檔案註解，說明為何不用
+ * 「。」句號判斷）；兩種拆法都拆不出多行時，就是單一元素的陣列，
+ * 顯示成一行，這是合理的降級，不是錯誤。
  */
 function toAiExtras(
   analysis: AiAnalysisModel | null,
@@ -58,10 +60,7 @@ function toAiExtras(
   }
   return {
     aiSummary: analysis.summary,
-    aiReasons: analysis.reasons
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0),
+    aiReasons: splitAiReasonLines(analysis.reasons),
   };
 }
 
@@ -169,19 +168,12 @@ const INCOMPLETE: DetailProduct = {
 
 @Component({
   selector: 'app-product-detail',
-  imports: [ListSortControls, SortRowsPipe, CommonModule, RouterLink, Icon],
+  imports: [CommonModule, RouterLink, Icon],
   templateUrl: './product-detail.html',
   styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
 export class ProductDetail implements OnInit {
-  readonly historySort = new ListSort();
-  readonly historySortChoices = [
-    { key: 'submissionCount', label: '送審次數' },
-    { key: 'reviewStatus', label: '審核結果' },
-    { key: 'reviewedAt:date', label: '審核時間' },
-    { key: 'reviewComment', label: '審核留言' },
-  ];
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
   private readonly productTypes = inject(ProductTypeLookupService);

@@ -334,17 +334,13 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
-  margin-bottom: 1rem
+  margin-bottom: 1rem;
 }
 
 .panel header>strong {
   color: var(--c-brand);
   font-size: var(--t-xl);
   font-weight: 800
-}
-
-.metrics {
-  grid-template-columns: repeat(2, 1fr)
 }
 
 .price-compare {
@@ -382,35 +378,10 @@
   font-size: var(--t-xs);
 }
 
-.trend {
-  margin-bottom: 1rem
-}
-
 .trend button:disabled,
 .lifecycle button:disabled {
   opacity: .55;
   cursor: not-allowed
-}
-
-.trend-score {
-  display: flex;
-  align-items: baseline;
-  gap: .7rem;
-  margin-top: .6rem
-}
-
-.trend-score strong {
-  color: #1c5286;
-  font-size: 2rem
-}
-
-.trend-score span {
-  display: inline-flex;
-  align-items: center;
-  gap: .25rem;
-  color: #26775a;
-  font-size: var(--t-xs);
-  font-weight: 800
 }
 
 .sync-actions {
@@ -527,8 +498,7 @@ a:focus-visible {
   }
 
   .summary dl,
-  .score-grid,
-  .content-grid {
+  .score-grid {
     grid-template-columns: 1fr
   }
 
@@ -739,12 +709,13 @@ a:focus-visible {
 }
 
 .gate-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.6rem;
   margin: 0;
   padding: 0;
   list-style: none;
+  align-items: start;
 
   li {
     padding: 0.65rem 0.75rem;
@@ -767,6 +738,18 @@ a:focus-visible {
     &[data-gate-status='NOT_APPLICABLE'] {
       border-left-color: #9aa7b0;
     }
+  }
+}
+
+@media (max-width: 700px) {
+  .gate-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .gate-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -811,18 +794,27 @@ a:focus-visible {
   line-height: 1.5;
 }
 
-/* ===== 供應與物流屬性 ===== */
+/* ===== 供應與物流屬性：6 欄基準，一般欄位佔 2 欄（一列 3 欄，維持原視覺），col-half 佔 3 欄（一列 2 欄併排）。日後新增/調整欄位只需改個別項目的 span 數值。 ===== */
 .gate-attr-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 
-  .wide {
-    grid-column: 1 / -1;
+  > div {
+    grid-column: span 2;
+  }
+
+  .col-half {
+    grid-column: span 3;
   }
 }
 
 @media (max-width: 460px) {
   .gate-attr-metrics {
     grid-template-columns: 1fr;
+
+    > div,
+    .col-half {
+      grid-column: auto;
+    }
   }
 }
 
@@ -914,29 +906,22 @@ a:focus-visible {
   line-height: 1.5;
 }
 
-/* 主圖與基本資料各佔一半，缺圖時保留精簡提示。 */
+/* 主圖獨立一整欄滿版呈現；摘要資訊改為主圖下方橫向排列的統計卡（沿用 .summary dl 預設 4 欄樣式），避免主圖與摘要對分造成左空右擠。 */
 .product-overview {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
-  align-items: start;
 
   .product-media,
   .summary { margin-bottom: 0; }
 
-  .summary dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
   .product-media > header { flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
-
-  .product-media > img { max-height: 220px; }
-
-  .image-fallback { min-height: 120px; }
 }
 
 .evaluation-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -950,13 +935,14 @@ a:focus-visible {
   p { margin-bottom: 0; }
 }
 
-.evaluation-details .trend {
-  margin: 1rem 0 0;
-  padding-top: 1rem;
-  border-top: 1px solid #e0e8ee;
+.evaluation-item.trend > button {
+  margin-top: .5rem;
+}
 
-  > header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
-  p:last-child { margin-bottom: 0; }
+.evaluation-item.trend .sync-actions,
+.evaluation-item.trend .sync-loading,
+.evaluation-item.trend .inline-error {
+  margin-top: .5rem;
 }
 
 .panel.risks {
@@ -975,10 +961,5 @@ a:focus-visible {
 .panel { overflow-wrap: anywhere; }
 
 @media (max-width: 800px) {
-  .product-overview,
   .evaluation-metrics { grid-template-columns: minmax(0, 1fr); }
-}
-
-@media (max-width: 460px) {
-  .product-overview .summary dl { grid-template-columns: minmax(0, 1fr); }
 }

@@ -12,6 +12,7 @@ import { APP_CONFIG } from '../../../core/config/app-config';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ReviewApiService } from '../api/review-api.service';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
+import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
 import { Icon } from '../../../shared/components/icon/icon';
 import {
   OTHER_RISK_OPTION_NAME,
@@ -124,6 +125,14 @@ export class ReviewDetail implements OnInit {
 
   /** 上次審核留言，僅 Mock 模式有固定示範文字；真實模式資料來源是決策紀錄，這裡先留空。 */
   readonly previousComment = MOCK_PREVIOUS_COMMENT;
+
+  /**
+   * AI 推薦原因後端是單一字串，理想上每點用 \n 分隔，但 LLM 有時會把
+   * 「1. …2. …3. …」全部擠在同一行，此時單純 split('\n') 沒有效果。
+   * splitAiReasonLines() 會先試 \n，沒有才退而用編號標記（不是句號）
+   * 拆行，詳見該檔案註解說明為何不能用「。」判斷。
+   */
+  readonly aiReasonLines = computed(() => splitAiReasonLines(this.product()?.ai.reasons));
 
   ngOnInit(): void {
     this.load();

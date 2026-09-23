@@ -111,7 +111,11 @@
           <p class="ai-recommendation">建議：{{ p.ai.recommendation }}</p>
         }
         @if (p.ai.reasons) {
-          <p class="ai-reasons">{{ p.ai.reasons }}</p>
+          <ul class="ai-reasons">
+            @for (line of aiReasonLines(); track line) {
+              <li>{{ line }}</li>
+            }
+          </ul>
         }
       } @else {
         <p class="empty">尚無 AI 分析。</p>
