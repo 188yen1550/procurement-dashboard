@@ -664,3 +664,225 @@
   color: var(--c-ink-muted);
   background: #eef1f3;
 }
+
+/*
+ * ===================== 設定面板（.config-panel）=====================
+ * 2026-09-24 新增，取代系統設定「節慶檔期」分頁裡三組各自為政的
+ * .weather-sync-panel／.weather-tag-mapping-panel／.weather-preview-table
+ * （規則幾乎一模一樣、框線寫死 #e3e9ee、地域占比還借用「標籤對照」的
+ * class 名稱）。收斂成一組語意中立的「一個設定主題＝一個面板」：
+ *
+ *   .config-panel            白底卡片，一個設定主題一張
+ *   .config-panel-head       標題＋一段說明（說明限寬，長句不會橫跨整個螢幕）
+ *   .config-panel-actions    面板層級的動作按鈕列
+ *   .config-table-wrap       表格外框，窄螢幕時只讓表格自己水平捲動
+ *   .config-table            緊湊資料表格；.num 欄位靠右、等寬數字
+ *   .config-form-row         表格下方「新增一筆」的表單列，每個欄位都有可見 label
+ *   .config-sum[data-state]  加總類驗證的即時狀態（ok／error），不只靠按鈕 disabled 暗示
+ *
+ * 放在全域而不是 settings.scss：天氣連動分頁、排程作業面板各自是子元件，
+ * 放在任一元件樣式裡另一個就吃不到；放全域也不佔 anyComponentStyle 預算。
+ */
+.config-panel {
+  margin-bottom: var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+}
+
+.config-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-5);
+}
+
+.config-panel-head h3 {
+  margin: 0 0 var(--s-1);
+  color: var(--c-ink);
+  font-size: var(--t-lg);
+}
+
+.config-panel-head p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+  line-height: var(--lh-base);
+}
+
+.config-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.config-table-wrap {
+  margin-top: var(--s-4);
+  overflow-x: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+
+.config-table th,
+.config-table td {
+  padding: var(--s-2-5) var(--s-3);
+  border-bottom: 1px solid var(--c-border-soft);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.config-table th {
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.config-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.config-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.config-table tr.is-inactive td {
+  color: var(--c-ink-faint);
+}
+
+.config-table .config-table-empty {
+  padding: var(--s-4);
+  color: var(--c-ink-muted);
+  text-align: center;
+}
+
+/*
+ * 設定面板裡的表單控制項（2026-09-24 補）：原本完全沒有樣式，表格裡的下拉選單
+ * 與數字欄是瀏覽器原生外觀，跟全站 .field／.modal-card 的欄位長得不一樣、
+ * 高度也不一致。這裡比照 .field 的配色與邊框，但尺寸收斂成表格列適用的
+ * 緊湊版（高度 2.5rem，跟 .btn 對齊），下拉選單改用自繪箭頭，各瀏覽器一致。
+ */
+.config-table select,
+.config-table input,
+.config-form-row select,
+.config-form-row input {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  height: 2.5rem;
+  padding: 0 var(--s-3);
+  color: var(--c-ink);
+  background-color: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 400;
+  transition: border-color var(--motion-fast), background-color var(--motion-fast);
+}
+
+.config-table select,
+.config-form-row select {
+  padding-right: 2rem;
+  appearance: none;
+  /* 箭頭色 #5f7382 ≈ --c-ink-muted；data URI 內無法引用 CSS 變數，這裡是唯一例外。 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f7382' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.75rem;
+  cursor: pointer;
+}
+
+.config-table select:hover:not(:disabled),
+.config-table input:hover:not(:disabled),
+.config-form-row select:hover:not(:disabled),
+.config-form-row input:hover:not(:disabled) {
+  border-color: var(--c-brand);
+}
+
+.config-table select:disabled,
+.config-table input:disabled,
+.config-form-row select:disabled,
+.config-form-row input:disabled {
+  color: var(--c-ink-faint);
+  background-color: var(--c-surface-sunken);
+  cursor: not-allowed;
+}
+
+.config-table input[aria-invalid='true'],
+.config-form-row input[aria-invalid='true'] {
+  border-color: var(--c-danger);
+  background-color: var(--c-danger-tint);
+}
+
+.config-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px dashed var(--c-border-strong);
+}
+
+.config-form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  color: var(--c-ink-soft);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.config-form-row .is-grow {
+  flex: 1 1 12rem;
+}
+
+.config-sum {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.config-sum[data-state='ok'] {
+  color: var(--c-ok);
+  background: var(--c-ok-tint);
+  border-color: var(--c-ok-border);
+}
+
+.config-sum[data-state='error'] {
+  color: var(--c-danger);
+  background: var(--c-danger-tint);
+  border-color: var(--c-danger-border);
+}
+
+@media (max-width: 760px) {
+  .config-panel {
+    padding: var(--s-4);
+  }
+
+  .config-form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-form-row .btn-primary {
+    width: 100%;
+  }
+}

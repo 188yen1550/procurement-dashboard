@@ -10,6 +10,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth';
 import { Dashboard } from './dashboard';
 
 describe('Dashboard', () => {
@@ -124,4 +125,63 @@ describe('Dashboard', () => {
     expect(fixture.nativeElement.querySelector('a.table-action')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('button.table-action:disabled')).toBeTruthy();
   });
+
+  it('lets the Top 10 panel take the full row for operators (no empty side column)', () => {
+    expect(fixture.nativeElement.querySelector('.side-column')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.content-grid.operator-view .recommendations-panel')).toBeTruthy();
+  });
 });
+
+/**
+ * 2026-09-24 職責分離：同一份 Mock 資料，管理層畫面不呈現沒有對應頁面的資訊
+ * （AI 建議待確認），統計卡改連到審核頁，待審的 Top 10 直接進審核詳情。
+ */
+describe('Dashboard (manager view)', () => {
+  let component: Dashboard;
+  let fixture: ComponentFixture<Dashboard>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Dashboard],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: AuthService, useValue: { isManager: () => true, isLoggedIn: () => true } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(Dashboard);
+    component = fixture.componentInstance;
+    (component as unknown as { useMockData: boolean }).useMockData = true;
+    fixture.detectChanges();
+    await fixture.whenStable();
+  });
+
+  it('hides the AI suggestion card and chart slice, and adjusts the total accordingly', () => {
+    expect(fixture.nativeElement.textContent).not.toContain('AI 建議待確認');
+    expect(component.statusBreakdown().map((item) => item.label)).toEqual(['待人工審核', '審核通過', '審核拒絕']);
+    const stats = component.data().statistics;
+    expect(component.scopeTotal()).toBe(stats.totalProducts - stats.aiSuggestedPending);
+  });
+
+  it('links stat cards to the review page instead of product management', () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      (link) => (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(links).toEqual(['/review', '/review?tab=records', '/review?tab=records']);
+    expect(fixture.nativeElement.querySelector('a[href^="/products"].stat-card-link')).toBeNull();
+  });
+
+  it('keeps the risk side column for managers', () => {
+    expect(fixture.nativeElement.querySelector('.side-column .risk-panel')).toBeTruthy();
+  });
+
+  it('sends pending Top 10 items straight to the review detail', () => {
+    const pending = component.recommendations().find((item) => item.reviewStatus === 'PENDING');
+    if (!pending) return;
+    const link = fixture.nativeElement.querySelector(`a[href="/review/${pending.id}"]`);
+    expect(link?.textContent).toContain('開始審核');
+  });
+});
+

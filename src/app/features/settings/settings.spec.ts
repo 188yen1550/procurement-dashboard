@@ -20,6 +20,8 @@ import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import { SettingsApiService } from './api/settings-api.service';
 import { UserApiService } from '../user-management/api/user-api.service';
+import { Router, provideRouter } from '@angular/router';
+import { ProductApiService } from '../product-management/api/product-api.service';
 import { Settings } from './settings';
 
 const MOCK_MODES = [
@@ -137,44 +139,46 @@ describe('Settings', () => {
     switchFestiveCampaignStatus: vi.fn((id: number, body: { status: string }) =>
       of({ ...MOCK_CAMPAIGNS.find((c) => c.id === id)!, campaignStatus: body.status, isManualOverride: true }),
     ),
-    previewWeatherSignals: vi.fn(() =>
+    // 2026-09-24：天氣三組 API 的 mock 隨功能移到 tabs/weather-linkage/weather-linkage.spec.ts。
+    // 以下四支原本缺漏：評估模式分頁載入時會呼叫 getFactorDefinitions()，缺了就在
+    // subscribe 時丟 TypeError，連帶讓同一個測試檔其他案例出現非預期錯誤。
+    // 「天氣連動」分頁的子元件首次渲染會載入這兩支；詳細行為在子元件自己的 spec 驗證。
+    getWeatherSignalTagMappings: vi.fn(() => of([])),
+    getRegionWeights: vi.fn(() => of([])),
+    getFactorDefinitions: vi.fn(() => of([])),
+    getCustomFieldDefinitions: vi.fn(() => of([])),
+    getProductTypeScoreBands: vi.fn(() => of([])),
+    getSystemSettings: vi.fn(() =>
       of([
-        { region: 'SOUTH', type: 'HOT' as const, windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' as const },
+        {
+          key: 'shrinkage_k_category',
+          category: '貝氏收縮',
+          displayName: '品類層平滑常數 k',
+          description: '控制品類自己的成團率要收斂到全體平均多快。',
+          dataType: 'INTEGER',
+          minValue: '1',
+          maxValue: '100',
+          unit: '次',
+          value: '10',
+          hasStoredValue: true,
+          updatedAt: null,
+          updatedByName: null,
+        },
+        {
+          key: 'supported_temperature_zones',
+          category: '溫層判定',
+          displayName: '通路支援溫層',
+          description: '',
+          dataType: 'STRING',
+          minValue: null,
+          maxValue: null,
+          unit: null,
+          value: 'NORMAL,CHILLED,FROZEN',
+          hasStoredValue: false,
+          updatedAt: null,
+          updatedByName: null,
+        },
       ]),
-    ),
-    syncWeatherCampaigns: vi.fn(() =>
-      of({ totalSignalCount: 1, syncedCampaignCount: 1, expiredCampaignCount: 0 }),
-    ),
-    getWeatherSignalTagMappings: vi.fn(() =>
-      of([
-        { id: 1, weatherSignalType: 'RAINY' as const, tag: '雨具', matchTier: 'CORE' as const, isActive: true, isSystemDefault: true },
-      ]),
-    ),
-    createWeatherSignalTagMapping: vi.fn((body: { weatherSignalType: string; tag: string; matchTier: string }) =>
-      of({ id: 99, isActive: true, isSystemDefault: false, ...body }),
-    ),
-    updateWeatherSignalTagMapping: vi.fn((id: number, body: { matchTier: string }) =>
-      of({ id, weatherSignalType: 'RAINY', tag: '雨具', isActive: true, isSystemDefault: true, ...body }),
-    ),
-    disableWeatherSignalTagMapping: vi.fn((id: number) =>
-      of({ id, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: false, isSystemDefault: true }),
-    ),
-    enableWeatherSignalTagMapping: vi.fn((id: number) =>
-      of({ id, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true }),
-    ),
-    // 2026-09-23新增：地域占比設定（地域性影響評分方案B+D）。ngOnInit會跟著
-    // loadWeatherSignalTagMappings()一起觸發loadRegionWeights()，這支mock
-    // 沒有的話會直接丟例外，讓既有測試全部失敗。
-    getRegionWeights: vi.fn(() =>
-      of([
-        { region: 'NORTH', weightPercentage: 25, updatedAt: null },
-        { region: 'CENTRAL', weightPercentage: 25, updatedAt: null },
-        { region: 'SOUTH', weightPercentage: 25, updatedAt: null },
-        { region: 'EAST', weightPercentage: 25, updatedAt: null },
-      ]),
-    ),
-    updateRegionWeights: vi.fn((body: { regionWeights: Array<{ region: string; weightPercentage: number }> }) =>
-      of(body.regionWeights.map((item) => ({ ...item, updatedAt: '2026-09-23T00:00:00' }))),
     ),
   };
 
@@ -191,6 +195,9 @@ describe('Settings', () => {
     ),
   };
 
+  const productApi = {
+    triggerAiSuggestionBatch: vi.fn(() => of({ checkedCount: 10, suggestedCount: 2 })),
+  };
   const productTypeLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getName: vi.fn() };
   const riskOptionLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getNames: vi.fn() };
 
@@ -211,6 +218,8 @@ describe('Settings', () => {
     settingsApi.deleteProductType.mockReturnValue(of(undefined));
     settingsApi.getFestiveCampaigns.mockReturnValue(of(MOCK_CAMPAIGNS.map((c) => ({ ...c }))));
     userApi.list.mockReturnValue(of(MOCK_ACCOUNTS.map((a) => ({ ...a }))));
+    // 目標區間分頁載入時會查品類名稱對照（?tab= 同步測試會切到這個分頁）。
+    productTypeLookup.getNameMap.mockReturnValue(of(new Map()));
 
     await TestBed.configureTestingModule({
       imports: [Settings],
@@ -219,6 +228,9 @@ describe('Settings', () => {
         { provide: UserApiService, useValue: userApi },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
         { provide: RiskOptionLookupService, useValue: riskOptionLookup },
+        // 分頁同步到網址 ?tab= 需要路由；排程作業面板（演算法參數分頁）會注入 ProductApiService。
+        provideRouter([]),
+        { provide: ProductApiService, useValue: productApi },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Settings);
@@ -275,102 +287,6 @@ describe('Settings', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('.data-table')).toBeTruthy();
     }
-  });
-
-  it('previews weather signals without touching the campaign list', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-
-    component.previewWeatherSignals();
-    fixture.detectChanges();
-
-    expect(settingsApi.previewWeatherSignals).toHaveBeenCalled();
-    expect(component.weatherPreview()).toEqual([
-      { region: 'SOUTH', type: 'HOT', windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' },
-    ]);
-    // 預覽不寫入資料庫，不應該連帶重新載入檔期清單。
-    expect(settingsApi.getFestiveCampaigns).not.toHaveBeenCalled();
-  });
-
-  it('syncs weather campaigns and reloads the campaign list afterward', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-    settingsApi.getFestiveCampaigns.mockClear();
-
-    component.syncWeatherCampaigns();
-    fixture.detectChanges();
-
-    expect(settingsApi.syncWeatherCampaigns).toHaveBeenCalled();
-    expect(component.statusMessage()).toContain('天氣檔期同步完成');
-    // 同步後應該重新載入檔期清單，讓表格反映最新結果，不用使用者手動整理。
-    expect(settingsApi.getFestiveCampaigns).toHaveBeenCalled();
-  });
-
-  it('loads weather signal tag mappings when the campaigns tab loads', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-
-    expect(settingsApi.getWeatherSignalTagMappings).toHaveBeenCalled();
-    expect(component.weatherSignalTagMappings()).toEqual([
-      { id: 1, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true },
-    ]);
-  });
-
-  it('adds a new weather signal tag mapping and resets the draft form', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-
-    component.draftWeatherSignalType.set('HOT');
-    component.draftWeatherSignalTag.set('消暑');
-    component.draftWeatherSignalMatchTier.set('GENERAL');
-
-    component.addWeatherSignalTagMapping();
-    fixture.detectChanges();
-
-    expect(settingsApi.createWeatherSignalTagMapping).toHaveBeenCalledWith({
-      weatherSignalType: 'HOT',
-      tag: '消暑',
-      matchTier: 'GENERAL',
-    });
-    expect(component.weatherSignalTagMappings().some((m) => m.tag === '消暑')).toBe(true);
-    // 送出後應該清空草稿欄位，讓表單回到可以繼續新增下一筆的狀態。
-    expect(component.draftWeatherSignalTag()).toBe('');
-    expect(component.draftWeatherSignalType()).toBe('');
-  });
-
-  it('rejects adding a mapping with a blank tag before calling the API', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-    settingsApi.createWeatherSignalTagMapping.mockClear();
-
-    component.draftWeatherSignalType.set('HOT');
-    component.draftWeatherSignalTag.set('   ');
-    component.addWeatherSignalTagMapping();
-
-    expect(settingsApi.createWeatherSignalTagMapping).not.toHaveBeenCalled();
-    expect(component.statusMessage()).toContain('請輸入標籤內容');
-  });
-
-  it('toggles a weather signal tag mapping between active and disabled', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-    const item = component.weatherSignalTagMappings()[0];
-
-    component.toggleWeatherSignalTagMappingActive(item);
-
-    expect(settingsApi.disableWeatherSignalTagMapping).toHaveBeenCalledWith(item.id);
-    expect(component.weatherSignalTagMappings()[0].isActive).toBe(false);
-  });
-
-  it('changes the match tier of an existing weather signal tag mapping', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-    const item = component.weatherSignalTagMappings()[0];
-
-    component.changeWeatherSignalTagMappingTier(item, 'WEAK');
-
-    expect(settingsApi.updateWeatherSignalTagMapping).toHaveBeenCalledWith(item.id, { matchTier: 'WEAK' });
-    expect(component.weatherSignalTagMappings()[0].matchTier).toBe('WEAK');
   });
 
   it('contains all nine default product types', () => {
@@ -574,5 +490,56 @@ describe('Settings', () => {
     expect(fixture.nativeElement.textContent).toContain('無法載入設定');
     component.retry();
     expect(component.pageState()).toBe('default');
+  });
+
+  // ===== 2026-09-24：分頁拆分、?tab= 同步、演算法參數說明改提示泡泡 =====
+
+  it('renders the extracted extension and weather tabs as child components', () => {
+    component.setTab('extensions');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-custom-extensions')).toBeTruthy();
+    expect(settingsApi.getCustomFieldDefinitions).toHaveBeenCalled();
+
+    component.setTab('weather');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-weather-linkage')).toBeTruthy();
+  });
+
+  it('no longer renders weather panels or custom definitions inside their old tabs', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('天氣訊號標籤對照');
+
+    component.setTab('productTypes');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('自訂商品屬性');
+  });
+
+  it('writes the active tab to the ?tab= query param', async () => {
+    const router = TestBed.inject(Router);
+    component.setTab('scoreBands');
+    await fixture.whenStable();
+    expect(router.url).toContain('tab=scoreBands');
+    // 自己同步網址觸發的 NavigationEnd 不應該讓分頁跳回去或重複載入
+    expect(component.activeTab()).toBe('scoreBands');
+  });
+
+  it('marks the campaigns tab for reload after a weather sync', () => {
+    component.setTab('campaigns');
+    fixture.detectChanges();
+    settingsApi.getFestiveCampaigns.mockClear();
+
+    component.onWeatherCampaignsChanged();
+    component.setTab('campaigns');
+    expect(settingsApi.getFestiveCampaigns).toHaveBeenCalled();
+  });
+
+  it('shows algorithm parameter descriptions in info tips and skips empty ones', () => {
+    component.setTab('systemSettings');
+    fixture.detectChanges();
+    const tips = fixture.nativeElement.querySelectorAll('app-info-tip');
+    expect(tips).toHaveLength(1);
+    expect(tips[0].querySelector('button').getAttribute('aria-label')).toContain('收斂到全體平均');
+    expect(fixture.nativeElement.querySelector('app-ai-suggestion-batch-panel')).toBeTruthy();
   });
 });

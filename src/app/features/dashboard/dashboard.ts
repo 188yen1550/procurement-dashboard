@@ -96,19 +96,41 @@ export class Dashboard implements OnInit, OnDestroy {
     this.useMockData ? DASHBOARD_MOCK_DATA : this.realData(),
   );
 
+  /**
+   * 2026-09-24 職責分離：儀表板兩個角色都看得到，但不呈現「沒有對應頁面」的資訊。
+   * 「AI 建議待確認」屬於操作層的 AI 建議清單，管理層畫面不顯示這張卡、也不在
+   * 狀態分布裡出現。拿掉這一塊之後分母要跟著扣掉，否則「狀態合計 ≠ 總數」的
+   * 不一致警示會在管理層畫面常駐誤報。
+   */
+  readonly scopeTotal = computed(() => {
+    const stats = this.data().statistics;
+    return this.isManager() ? stats.totalProducts - stats.aiSuggestedPending : stats.totalProducts;
+  });
+
   readonly statusBreakdown = computed(() => {
     const stats = this.data().statistics;
-    return [
+    const total = this.scopeTotal();
+    const items = [
       { label: '待人工審核', count: stats.pendingReviews, color: '#d19a32' },
       { label: '審核通過', count: stats.approvedProducts, color: '#379773' },
       { label: '審核拒絕', count: stats.rejectedProducts, color: '#c76661' },
-      { label: 'AI 建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' },
-    ].map((item) => ({
+    ];
+    if (!this.isManager()) {
+      items.push({ label: 'AI 建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' });
+    }
+    return items.map((item) => ({
       ...item,
-      percentage: stats.totalProducts > 0
-        ? (item.count / stats.totalProducts * 100).toFixed(1) : '0.0',
+      percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0',
     }));
   });
+
+  /** 圖表的替代文字依實際呈現的狀態組成，不寫死「四種狀態」。 */
+  readonly statusChartLabel = computed(
+    () =>
+      `${this.statusBreakdown()
+        .map((item) => item.label)
+        .join('、')}的比例圖，筆數與占比詳見旁側明細`,
+  );
   readonly statusTotal = computed(() =>
     this.statusBreakdown().reduce((total, item) => total + item.count, 0),
   );

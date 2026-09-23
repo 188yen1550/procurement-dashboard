@@ -44,24 +44,28 @@
       儀表板
     </a>
 
-    <a
-      routerLink="/products"
-      routerLinkActive="active"
-      [routerLinkActiveOptions]="{ exact: true }"
-      (click)="closeRequested.emit()"
-    >
-      <span class="nav-icon"><app-icon name="list" size="md" /></span>
-      品項管理
-    </a>
+    <!-- 2026-09-24 職責分離：品項管理、AI 建議清單只給操作層；選品審核、系統設定
+         只給管理層。儀表板與歷史銷售紀錄兩邊都有，內容依角色各自呈現。 -->
+    @if (!isManager) {
+      <a
+        routerLink="/products"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeRequested.emit()"
+      >
+        <span class="nav-icon"><app-icon name="list" size="md" /></span>
+        品項管理
+      </a>
 
-    <a
-      routerLink="/products/ai-suggestions"
-      routerLinkActive="active"
-      (click)="closeRequested.emit()"
-    >
-      <span class="nav-icon"><app-icon name="sparkles" size="md" /></span>
-      AI 建議清單
-    </a>
+      <a
+        routerLink="/products/ai-suggestions"
+        routerLinkActive="active"
+        (click)="closeRequested.emit()"
+      >
+        <span class="nav-icon"><app-icon name="sparkles" size="md" /></span>
+        AI 建議清單
+      </a>
+    }
 
     <a routerLink="/group-buy" routerLinkActive="active" (click)="closeRequested.emit()">
       <span class="nav-icon"><app-icon name="clipboard-list" size="md" /></span>

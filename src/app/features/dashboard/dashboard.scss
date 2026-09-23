@@ -183,6 +183,10 @@ button:focus-visible {
   outline: 3px solid rgba(138, 99, 210, 0.35);
   outline-offset: -3px;
 }
+/* 管理層的「候選商品總數」沒有單一對應頁面，用同樣版面但不可點，也不給 hover 回饋。 */
+div.stat-card-link:hover {
+  background-color: transparent;
+}
 .stat-card-cta {
   display: inline-block;
   margin-top: 0.4rem;
@@ -790,17 +794,12 @@ td {
   .status-overview { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 1rem; }
 }
 
+/* 操作層沒有側欄（高風險提示只給管理層），Top 10 獨佔整列寬度。
+   2026-09-24：原本這裡把側欄設成 flex: 1 1 260px，但側欄裡沒有任何內容，
+   等於保留一塊空白；現在側欄在樣板層級就不渲染，這裡改成讓推薦面板
+   佔滿，並把表格的最小寬度放寬到容器寬——整列寬度夠時不需要水平捲動。 */
 .content-grid.operator-view .recommendations-panel {
-  flex: 1.6 1 0;
-}
-.content-grid.operator-view .side-column {
-  flex: 1 1 260px;
-}
-
-@media (max-width: 900px) {
-  .content-grid.operator-view {
-    flex-direction: column;
-  }
+  flex: 1 1 100%;
 }
 
 .chart-skeleton {

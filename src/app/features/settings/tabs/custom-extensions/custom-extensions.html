@@ -1,0 +1,314 @@
+<!--
+  檔案用途：「自訂屬性與因子」分頁樣板（2026-09-24 由「商品類型」「評估模式」兩個分頁合併而來）。
+  依相依順序排列：① 屬性 → ② 因子 → 評估模式權重 →（必要時）目標區間，
+  最上方的流程列就是這條順序，編號是實際的操作步驟，不是裝飾。
+-->
+<section class="extension-flow" aria-label="自訂擴充的設定順序">
+  <ol>
+    <li><strong>自訂商品屬性</strong><span>決定商品表單要多問什麼</span></li>
+    <li><strong>自訂計分因子</strong><span>把屬性或既有欄位換算成分數</span></li>
+    <li>
+      <strong>評估模式權重</strong><span>在自訂模式加入因子才會計分</span>
+      <button type="button" class="text-link" (click)="navigateTab.emit('modes')">前往評估模式</button>
+    </li>
+    <li>
+      <strong>目標區間</strong><span>僅「依目標區間正規化」的因子需要</span>
+      <button type="button" class="text-link" (click)="navigateTab.emit('scoreBands')">前往目標區間</button>
+    </li>
+  </ol>
+</section>
+
+  <section class="management-head extension-section-head" aria-labelledby="custom-field-title">
+    <div>
+      <h3 id="custom-field-title"><span class="step-no" aria-hidden="true">1</span>自訂商品屬性</h3>
+      <p class="helper">
+        在商品新增／編輯表單上多問一題（例如「保存期限天數」）。數值類的屬性可以在下方當作自訂因子的資料來源。
+      </p>
+    </div>
+    <button type="button" class="btn-primary" [disabled]="disabled()" (click)="openCreateCustomField()">
+      ＋ 新增自訂屬性
+    </button>
+  </section>
+  @if (isCreatingCustomField()) {
+  <section class="data-table factor-definition-form">
+    <h3>{{ editingCustomFieldId() ? '編輯自訂商品屬性' : '新增自訂商品屬性' }}</h3>
+    <form (ngSubmit)="submitCustomFieldDefinition()">
+      <label>欄位代碼
+        <input type="text" [ngModel]="newFieldCode()" name="newFieldCode" [disabled]="editingCustomFieldId() !== null"
+          (ngModelChange)="newFieldCode.set($event)" placeholder="例如 SHELF_LIFE_DAYS" />
+        @if (editingCustomFieldId() !== null) {
+        <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
+        }
+      </label>
+      <label>欄位名稱
+        <input type="text" [ngModel]="newFieldName()" name="newFieldName" (ngModelChange)="newFieldName.set($event)"
+          placeholder="例如 保存期限天數" />
+      </label>
+      <label>欄位型態
+        <select [ngModel]="newFieldType()" name="newFieldType" (ngModelChange)="newFieldType.set($event)">
+          @for (option of customFieldTypeOptions; track option.code) {
+          <option [value]="option.code">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label>補充說明（選填）
+        <input type="text" [ngModel]="newFieldHelpText()" name="newFieldHelpText"
+          (ngModelChange)="newFieldHelpText.set($event)" placeholder="顯示在商品表單這一題底下" />
+      </label>
+      <label class="weight-editor-row-label">
+        <input type="checkbox" [checked]="newFieldRequired()"
+          (click)="$event.preventDefault(); newFieldRequired.set(!newFieldRequired())" />
+        <span>商品表單必填</span>
+      </label>
+      @if (newFieldType() === 'SCALE_1_5') {
+      <div class="scale-label-editor form-span-all">
+        <p class="helper">
+          1~5分數說明（選填）：定義每個分數代表的意思，例如「供應穩定性」的
+          5可以填「非常穩定」，留空的分數不會顯示說明文字。
+        </p>
+        @for (key of scaleLabelKeys; track key) {
+        <label>{{ key }}分
+          <input type="text" [ngModel]="newFieldScaleLabels()[key] ?? ''" [name]="'scaleLabel' + key"
+            (ngModelChange)="updateNewFieldScaleLabel(key, $event)" placeholder="例如：非常不穩定" />
+        </label>
+        }
+      </div>
+      }
+      <p class="helper form-span-all">
+        適用品類（不勾選任何項目＝適用全部品類）
+      </p>
+      <div class="tag-picker-list form-span-all" role="group" aria-label="適用的品類">
+        @for (major of availableMajorTypes(); track major.id) {
+        <label class="tag-picker-option">
+          <input type="checkbox" [checked]="newFieldApplicableTypeIds().has(major.id!)"
+            (click)="$event.preventDefault(); toggleNewFieldApplicableType(major.id!)" />
+          <span class="tag-picker-option-text">{{ major.name || '（未命名品類）' }}</span>
+        </label>
+        }
+      </div>
+      <div class="weight-editor-actions">
+        <button type="button" class="btn" [disabled]="isSavingCustomField()" (click)="cancelCreateCustomField()">
+          取消
+        </button>
+        <button type="submit" class="btn-primary" [disabled]="isSavingCustomField()">
+          {{ isSavingCustomField() ? '儲存中…' : (editingCustomFieldId() ? '儲存編輯' : '新增') }}
+        </button>
+      </div>
+    </form>
+  </section>
+  }
+  <section class="data-table">
+    <table>
+      <thead>
+        <tr>
+          <th class="field-col-code">欄位代碼</th>
+          <th class="field-col-name">名稱</th>
+          <th class="field-col-type">型態</th>
+          <th class="field-col-scope">適用品類</th>
+          <th class="field-col-required">必填</th>
+          <th class="field-col-status">狀態</th>
+          <th class="field-col-actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (customFieldDefinitions().length === 0) {
+        <tr>
+          <td colspan="7" class="empty">目前沒有自訂屬性。</td>
+        </tr>
+        }
+        @for (field of customFieldDefinitions(); track field.id) {
+        <tr>
+          <td>{{ field.fieldCode }}</td>
+          <td>{{ field.fieldName }}</td>
+          <td>{{ customFieldTypeLabel[field.fieldType] ?? field.fieldType }}</td>
+          <td>{{ describeApplicableTypes(field.applicableRootProductTypeIds) }}</td>
+          <td>{{ field.isRequired ? '必填' : '選填' }}</td>
+          <td>
+            {{ field.isActive ? '啟用中' : '已停用' }}
+            @if (field.isSuperseded) {
+            <br /><small class="helper">已被新版本取代</small>
+            }
+          </td>
+          <td>
+            @if (!field.isSuperseded) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="openEditCustomField(field)">
+              編輯
+            </button>
+            }
+            @if (field.isActive) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="disableCustomField(field.id)">
+              停用
+            </button>
+            } @else if (!field.isSuperseded) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="enableCustomField(field.id)">
+              啟用
+            </button>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="management-head extension-section-head" aria-labelledby="factor-definition-title">
+    <div>
+      <h3 id="factor-definition-title"><span class="step-no" aria-hidden="true">2</span>自訂計分因子</h3>
+      <p class="helper">
+        新增後不會自動影響分數，還要到「評估模式」分頁，在自訂模式的「編輯權重」加入這個因子並分配權重。
+      </p>
+    </div>
+    <button type="button" class="btn-primary" [disabled]="disabled()" (click)="openCreateFactorDefinition()">
+      ＋ 新增自訂因子
+    </button>
+  </section>
+
+  <!-- 建立因子後的「下一步」：原本只有一句文字叫使用者自己去找分頁，改成可以直接前往。 -->
+  @if (lastCreatedTargetBandFactor(); as factorName) {
+  <div class="next-step" role="status">
+    <span>「{{ factorName }}」採用目標區間正規化：還沒設定區間的品類，這個因子不計分。</span>
+    <button type="button" class="btn" (click)="navigateTab.emit('scoreBands')">前往設定目標區間</button>
+  </div>
+  }
+  @if (isCreatingFactorDefinition()) {
+  <section class="data-table factor-definition-form">
+    <h3>{{ editingFactorDefinitionId() ? '編輯自訂因子' : '新增自訂因子' }}</h3>
+    <form (ngSubmit)="submitFactorDefinition()">
+      <label>因子代碼
+        <input type="text" [ngModel]="newFactorCode()" name="newFactorCode"
+          [disabled]="editingFactorDefinitionId() !== null" (ngModelChange)="newFactorCode.set($event)"
+          placeholder="例如 PRICE_COMPETITIVENESS" />
+        @if (editingFactorDefinitionId() !== null) {
+        <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
+        }
+      </label>
+      <label>因子名稱
+        <input type="text" [ngModel]="newFactorName()" name="newFactorName" (ngModelChange)="newFactorName.set($event)"
+          placeholder="例如 價格競爭力" />
+      </label>
+      <label>資料源類型
+        <select [ngModel]="newFactorSourceKind()" name="newFactorSourceKind"
+          (ngModelChange)="updateNewFactorSourceKind($event)">
+          <option value="FIXED">既有欄位</option>
+          <option value="CUSTOM_FIELD">自訂商品屬性</option>
+        </select>
+      </label>
+      @if (newFactorSourceKind() === 'FIXED') {
+      <label>資料源
+        <select [ngModel]="newFactorDataSource()" name="newFactorDataSource"
+          (ngModelChange)="newFactorDataSource.set($event)">
+          @for (option of factorDataSourceOptions; track option.code) {
+          <option [value]="option.code">{{ factorDataSourceLabel[option.code] ?? option.code }}</option>
+          }
+        </select>
+      </label>
+      } @else {
+      <label>自訂商品屬性
+        <select [ngModel]="newFactorCustomFieldId()" name="newFactorCustomFieldId"
+          [disabled]="availableCustomFieldsForFactor().length === 0"
+          (ngModelChange)="newFactorCustomFieldId.set($event)">
+          @for (field of availableCustomFieldsForFactor(); track field.id) {
+          <option [value]="field.id">{{ field.fieldName }}（{{ customFieldTypeLabel[field.fieldType] }}）</option>
+          }
+        </select>
+        @if (availableCustomFieldsForFactor().length === 0) {
+        <small class="helper is-invalid">目前沒有可用的數值類自訂商品屬性，請先在上方「自訂商品屬性」新增一個。</small>
+        }
+      </label>
+      }
+      <!--
+        2026-09-20：運算邏輯改成唯讀顯示，不再讓使用者直接選——依上面選的
+        資料源自動決定，避免選出「運算邏輯」跟「資料源」互不相容的組合。
+      -->
+      <label>運算邏輯（依資料源自動決定）
+        <input type="text"
+          [value]="newFactorStrategy() ? (factorStrategyLabel[newFactorStrategy()!] ?? newFactorStrategy()) : '請先選擇資料源'"
+          disabled />
+      </label>
+      <!--
+        倍率只有 MANUAL_SCALE／MANUAL_PERCENT 會用到（拿去乘原始值），
+        TARGET_BAND_NORMALIZE 靠目標區間正規化，不吃這個參數——選了
+        TARGET_BAND_NORMALIZE 卻還讓使用者填一個沒有效果的倍率欄位，
+        會誤導人以為它有作用。改成依運算邏輯決定要不要顯示。
+      -->
+      @if (newFactorStrategy() && newFactorStrategy() !== 'TARGET_BAND_NORMALIZE') {
+      <label>倍率（選填，留空沿用該邏輯的預設值）
+        <input type="text" [ngModel]="newFactorScale()" name="newFactorScale"
+          (ngModelChange)="newFactorScale.set($event)" placeholder="例如 20" />
+      </label>
+      }
+      @if (newFactorStrategy() === 'TARGET_BAND_NORMALIZE') {
+      <p class="helper form-span-all">
+        這類因子要先在「目標區間」分頁替各品類（或全域）設定合理的上下限才會計分；沒有設定區間的品類，
+        這個因子維持空值、不計入分母，不是計算錯誤。
+      </p>
+      }
+      <div class="weight-editor-actions">
+        <button type="button" class="btn" [disabled]="isSavingFactorDefinition()"
+          (click)="cancelCreateFactorDefinition()">
+          取消
+        </button>
+        <button type="submit" class="btn-primary" [disabled]="isSavingFactorDefinition() || !newFactorStrategy()">
+          {{ isSavingFactorDefinition() ? '儲存中…' : (editingFactorDefinitionId() ? '儲存編輯' : '新增') }}
+        </button>
+      </div>
+    </form>
+  </section>
+  }
+  <section class="data-table">
+    <table>
+      <thead>
+        <tr>
+          <th class="factor-col-code">因子代碼</th>
+          <th class="factor-col-name">名稱</th>
+          <th class="factor-col-strategy">運算邏輯</th>
+          <th class="factor-col-source">資料源</th>
+          <th class="factor-col-status">狀態</th>
+          <th class="factor-col-actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (factorDefinitions().length === 0) {
+        <tr>
+          <td colspan="6" class="empty">目前沒有自訂因子。</td>
+        </tr>
+        }
+        @for (definition of factorDefinitions(); track definition.id) {
+        <tr>
+          <td>{{ definition.factorCode }}</td>
+          <td>{{ definition.factorName }}</td>
+          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}</td>
+          <td>{{ describeFactorDataSource(definition) }}</td>
+          <td>
+            {{ definition.isActive ? '啟用中' : '已停用' }}
+            @if (definition.isSuperseded) {
+            <br /><small class="helper">已被新版本取代</small>
+            }
+          </td>
+          <td>
+            @if (!definition.isSuperseded) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="openEditFactorDefinition(definition)">
+              編輯
+            </button>
+            }
+            @if (definition.isActive) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="disableFactorDefinition(definition.id)">
+              停用
+            </button>
+            } @else if (!definition.isSuperseded) {
+            <button type="button" class="btn" [disabled]="disabled()"
+              (click)="enableFactorDefinition(definition.id)">
+              啟用
+            </button>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </section>

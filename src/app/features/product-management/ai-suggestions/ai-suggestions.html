@@ -5,20 +5,6 @@
       <h1 id="ai-title">AI 建議清單</h1>
     </div>
     <div class="header-actions">
-      <!--
-        批次觸發只對管理角色顯示。這是體驗考量（採購看到一顆按不了的按鈕
-        沒有意義），真正的權限防線在後端的 @PreAuthorize。
-      -->
-      @if (canTriggerBatch()) {
-        <button
-          type="button"
-          class="btn-primary"
-          [disabled]="isBatchRunning()"
-          (click)="triggerBatch()"
-        >
-          {{ isBatchRunning() ? '批次執行中…' : '批次篩選熱門候選' }}
-        </button>
-      }
       <a class="btn" routerLink="/products">回到正式候選清單</a>
     </div>
   </header>

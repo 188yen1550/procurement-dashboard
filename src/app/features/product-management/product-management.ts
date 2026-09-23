@@ -13,7 +13,6 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
-import { AuthService } from '../../core/auth/auth';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -114,21 +113,19 @@ export class ProductManagement implements OnInit {
     this.updateSort(state.key.replace(':date', '') + '_' + state.direction));
   private readonly api = inject(ProductApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
-  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   readonly useMockData = APP_CONFIG.useMockData;
 
-  /**
-   * 管理層的職責是全面掌握審核狀況，預設看全部；操作層的日常工作是
-   * 盯著自己送出去的東西有沒有結果，預設只看待審核——這是初始篩選值
-   * 的角色差異，使用者仍然可以自行切換篩選條件，不是鎖死的權限限制。
-   */
-  readonly isManager = computed(() => this.auth.isManager());
 
   readonly products = signal<ProductListItem[]>([]);
   readonly pageState = signal<PageState>('default');
   readonly searchTerm = signal('');
-  readonly reviewFilter = signal<ReviewStatus | 'ALL'>(this.auth.isManager() ? 'ALL' : 'PENDING');
+  /**
+   * 預設只看待審核：操作層的日常工作是盯著自己送出去的東西有沒有結果。
+   * 2026-09-24 職責分離後管理層不再進入這頁（purchaserGuard），原本「管理層
+   * 預設看全部」的角色分支已無作用，一併移除。使用者仍可自行切換篩選條件。
+   */
+  readonly reviewFilter = signal<ReviewStatus | 'ALL'>('PENDING');
   readonly itemFilter = signal<ItemStatus | 'ALL'>('ALL');
   readonly productTypeFilter = signal('ALL');
   // date input 原生格式是 'YYYY-MM-DD'，送給後端前補上時分秒——起始日補

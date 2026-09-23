@@ -2,9 +2,17 @@
  * 檔案用途：管理評估模式、人工風險、核心客群、商品類型、檔期與帳號。
  * 真實模式按分頁延遲載入資料。帳號可停用或復用；商品類型能否刪除由後端
  * 驗證引用關係；檔期內容編輯與狀態切換使用不同操作。
+ *
+ * 2026-09-24 拆分（決策 D5）：
+ *   - 「自訂屬性與因子」分頁 → tabs/custom-extensions（清單狀態在 state/custom-definitions.store）
+ *   - 「天氣連動」分頁 → tabs/weather-linkage
+ *   - 演算法參數分頁下方的「排程作業」面板 → tabs/ai-suggestion-batch-panel
+ * 只抽出這三塊，其餘分頁維持原狀（最小修改）。分頁狀態同步到網址 ?tab=，
+ * 可從其他頁面或書籤直接開到指定分頁。
  */
 import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,31 +21,20 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { DialogService } from '../../core/dialog/dialog.service';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
-import { FestiveCategory, TemperatureZone, TagMatchTier, UserRole, WeatherSignalType } from '../../core/domain/enums';
+import { FestiveCategory, TemperatureZone, UserRole } from '../../core/domain/enums';
 import {
   joinCampaignTags,
   splitKeywords,
   TEMPERATURE_ZONE_LABEL,
-  WEATHER_FORECAST_CONFIDENCE_LABEL,
-  WEATHER_REGION_LABEL,
-  WEATHER_SIGNAL_TYPE_LABEL,
 } from '../../core/domain/labels';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
-  CustomFieldDefinitionResponsePayload,
-  CustomFieldType,
-  FactorDataSource,
-  FactorDefinitionResponsePayload,
-  FactorStrategyCode,
   FestiveCampaignTagPayload,
   ProductTypeScoreBandCreateRequestPayload,
   ProductTypeScoreBandResponsePayload,
-  RegionWeightPayload,
   RiskOptionResponsePayload,
   ScoreBandSourceMode,
-  WeatherSignalPreviewPayload,
-  WeatherSignalTagMappingResponsePayload,
 } from './api/settings-api.contract';
 import { SettingsApiService } from './api/settings-api.service';
 import { UserApiService } from '../user-management/api/user-api.service';
@@ -46,6 +43,10 @@ import { WeightFactorPayload } from '../product-management/api/product-api.contr
 import { Icon } from '../../shared/components/icon/icon';
 import { InfoTip } from '../../shared/components/info-tip/info-tip';
 import { AuthService } from '../../core/auth/auth';
+import { CustomDefinitionsStore } from './state/custom-definitions.store';
+import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensions/custom-extensions';
+import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
+import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
 type SettingsTab =
@@ -56,7 +57,23 @@ type SettingsTab =
   | 'campaigns'
   | 'accounts'
   | 'scoreBands'
-  | 'systemSettings';
+  | 'systemSettings'
+  | 'extensions'
+  | 'weather';
+
+/** 可以從網址 ?tab= 直接開啟的分頁（audience 另外受 audienceSettingsVisible 控制）。 */
+const SETTINGS_TABS: readonly SettingsTab[] = [
+  'modes',
+  'extensions',
+  'scoreBands',
+  'systemSettings',
+  'productTypes',
+  'risks',
+  'audience',
+  'campaigns',
+  'weather',
+  'accounts',
+];
 
 interface EvaluationModeVM {
   id: number | null;
@@ -166,70 +183,6 @@ interface RiskOptionVM {
   isSystemDefault: boolean;
 }
 
-/** 自訂計分因子的畫面顯示模型（2026-09-20新增，方案B；V14新增編輯所需欄位）。 */
-interface FactorDefinitionVM {
-  id: number;
-  factorCode: string;
-  factorName: string;
-  category: string | null;
-  strategyCode: FactorStrategyCode;
-  dataSourceCode: FactorDataSource | null;
-  customFieldDefinitionId: number | null;
-  strategyParams: Record<string, number> | null;
-  isActive: boolean;
-  /** V14新增：已被新版本取代——true時隱藏「啟用」按鈕，只能看不能動。 */
-  isSuperseded: boolean;
-}
-
-function toFactorDefinitionVM(payload: FactorDefinitionResponsePayload): FactorDefinitionVM {
-  return {
-    id: payload.id,
-    factorCode: payload.factorCode,
-    factorName: payload.factorName,
-    category: payload.category,
-    strategyCode: payload.strategyCode,
-    dataSourceCode: payload.dataSourceCode,
-    customFieldDefinitionId: payload.customFieldDefinitionId,
-    strategyParams: payload.strategyParams,
-    isActive: payload.isActive,
-    isSuperseded: payload.isSuperseded,
-  };
-}
-
-/** 自訂商品屬性（動態問卷）的畫面顯示模型（2026-09-20新增，Phase 1；V14新增編輯/分數說明欄位）。 */
-interface CustomFieldDefinitionVM {
-  id: number;
-  fieldCode: string;
-  fieldName: string;
-  helpText: string | null;
-  fieldType: CustomFieldType;
-  isRequired: boolean;
-  isActive: boolean;
-  applicableRootProductTypeIds: number[];
-  /** V14新增：僅fieldType='SCALE_1_5'時可能有值，key為'1'~'5'、value為說明文字。 */
-  scaleLabels: Record<string, string> | null;
-  /** V14新增：已被新版本取代——true時隱藏「啟用」按鈕，只能看不能動。 */
-  isSuperseded: boolean;
-}
-
-function toCustomFieldDefinitionVM(payload: CustomFieldDefinitionResponsePayload): CustomFieldDefinitionVM {
-  return {
-    id: payload.id,
-    fieldCode: payload.fieldCode,
-    fieldName: payload.fieldName,
-    helpText: payload.helpText,
-    fieldType: payload.fieldType,
-    isRequired: payload.isRequired,
-    isActive: payload.isActive,
-    applicableRootProductTypeIds: payload.applicableRootProductTypeIds,
-    scaleLabels: payload.scaleLabels,
-    isSuperseded: payload.isSuperseded,
-  };
-}
-
-/** 1~5分數說明編輯表單用的固定五列結構，避免畫面直接操作稀疏的Record。 */
-const SCALE_LABEL_KEYS: readonly string[] = ['1', '2', '3', '4', '5'];
-
 interface ProductTypeVM {
   id: number | null;
   name: string;
@@ -257,25 +210,6 @@ const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   ACTIVE: '進行中',
   EXPIRED: '已結束',
 };
-
-/**
- * 天氣訊號標籤對照的「天氣類型」下拉選項，刻意排除 NORMAL——一般天氣不該
- * 命中任何商品（WeatherCampaignSyncService 既有規則），後端 SettingsService
- * 建立/編輯時也會拒絕 NORMAL，這裡不列出來，避免使用者選了才在送出後
- * 收到錯誤訊息。標籤文字沿用 WEATHER_SIGNAL_TYPE_LABEL，不在這裡重複維護
- * 一份文案。
- */
-const WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS: readonly WeatherSignalType[] = [
-  'HOT',
-  'HUMID_HOT',
-  'HUMID',
-  'RAINY',
-  'HEAVY_RAIN',
-  'STRONG_WIND',
-  'COOL',
-  'COLD',
-  'DRY_COOL',
-];
 
 interface CampaignVM {
   id: number | null;
@@ -519,22 +453,6 @@ const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
   },
 ];
 
-const MOCK_WEATHER_SIGNAL_TAG_MAPPINGS: readonly WeatherSignalTagMappingResponsePayload[] = [
-  { id: 1, weatherSignalType: 'RAINY', tag: '雨具', matchTier: 'CORE', isActive: true, isSystemDefault: true },
-  { id: 2, weatherSignalType: 'RAINY', tag: '防水', matchTier: 'GENERAL', isActive: true, isSystemDefault: true },
-  { id: 3, weatherSignalType: 'HOT', tag: '涼感', matchTier: 'CORE', isActive: true, isSystemDefault: true },
-  { id: 4, weatherSignalType: 'HOT', tag: '消暑', matchTier: 'GENERAL', isActive: true, isSystemDefault: true },
-  { id: 5, weatherSignalType: 'COLD', tag: '保暖', matchTier: 'CORE', isActive: true, isSystemDefault: true },
-];
-
-/** 地域占比設定的 Mock 資料（2026-09-23新增）：等權重，跟 V20 migration 的種子資料一致。 */
-const MOCK_REGION_WEIGHTS: readonly RegionWeightPayload[] = [
-  { region: 'NORTH', weightPercentage: 25, updatedAt: null },
-  { region: 'CENTRAL', weightPercentage: 25, updatedAt: null },
-  { region: 'SOUTH', weightPercentage: 25, updatedAt: null },
-  { region: 'EAST', weightPercentage: 25, updatedAt: null },
-];
-
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
   { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true },
   { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true },
@@ -543,18 +461,30 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 
 @Component({
   selector: 'app-settings',
-  imports: [ListSortControls, SortHeader, SortRowsPipe, FormsModule, ReactiveFormsModule, DatePipe, Icon, InfoTip],
+  imports: [
+    ListSortControls,
+    SortHeader,
+    SortRowsPipe,
+    FormsModule,
+    ReactiveFormsModule,
+    DatePipe,
+    Icon,
+    InfoTip,
+    CustomExtensions,
+    WeatherLinkage,
+    AiSuggestionBatchPanel,
+  ],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
+  // 自訂因子／自訂屬性清單的共用狀態：這個分頁元件與「自訂屬性與因子」子元件
+  // 注入同一個實例（見 state/custom-definitions.store.ts）。
+  providers: [CustomDefinitionsStore],
 })
 export class Settings implements OnInit {
   readonly typeSort = new ListSort();
   readonly campaignSort = new ListSort();
   readonly accountSort = new ListSort();
   readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
-  readonly weatherSignalTypeLabel = WEATHER_SIGNAL_TYPE_LABEL;
-  readonly weatherForecastConfidenceLabel = WEATHER_FORECAST_CONFIDENCE_LABEL;
-  readonly weatherRegionLabel = WEATHER_REGION_LABEL;
   private readonly api = inject(SettingsApiService);
   private readonly dialog = inject(DialogService);
   private readonly userApi = inject(UserApiService);
@@ -562,6 +492,10 @@ export class Settings implements OnInit {
   private readonly riskOptionLookup = inject(RiskOptionLookupService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly definitions = inject(CustomDefinitionsStore);
+  private readonly weatherLinkage = viewChild(WeatherLinkage);
   /** 內建因子的提示說明，見 FACTOR_HELP；自訂因子查不到時樣板不顯示提示。 */
   readonly factorHelp = FACTOR_HELP;
 
@@ -605,7 +539,42 @@ export class Settings implements OnInit {
     // loadedTabs 判斷，因為那個判斷本來是「同一個分頁只在第一次切換時載入
     // 一次」的效能優化，這裡的情境是使用者主動要求重新整理，要強制重抓
     // 目前所在的分頁，不能被「已經載入過」擋下來。Mock 模式不套用。
-    if (!this.useMockData) reloadOnRevisit(() => this.loadTab(this.activeTab()));
+    //
+    // 2026-09-24：分頁同步到網址 ?tab= 之後，setTab() 自己改網址也會觸發這個
+    // NavigationEnd。網址上的分頁等於目前分頁時就是自己剛同步的，略過；
+    // 網址帶了另一個分頁（例如從其他頁面連過來）就切過去；沒帶分頁（使用者
+    // 點側邊欄「系統設定」）則維持原本行為：強制重抓目前分頁。
+    if (!this.useMockData) {
+      reloadOnRevisit(() => {
+        const requested = this.tabFromUrl();
+        if (requested === this.activeTab()) return;
+        if (requested) {
+          this.setTab(requested);
+          return;
+        }
+        this.loadTab(this.activeTab());
+      });
+    }
+  }
+
+  /** 網址 ?tab= 的值，只接受已知且目前開放的分頁，其他值一律當作沒帶。 */
+  private tabFromUrl(): SettingsTab | null {
+    const raw = this.route.snapshot.queryParamMap.get('tab');
+    const tab = SETTINGS_TABS.find((candidate) => candidate === raw) ?? null;
+    if (tab === 'audience' && !this.audienceSettingsVisible) return null;
+    return tab;
+  }
+
+  /** 共用清單（見 CustomDefinitionsStore）：評估模式權重編輯器與目標區間要讀。 */
+  readonly factorDefinitions = this.definitions.factorDefinitions;
+
+  /**
+   * 目標區間（scoreBands）在把後端 payload 轉成 ScoreBandVM 時，因子名稱
+   * 要能認得自訂因子（例如 SOCIAL_BUZZ → 社群聲量熱度），不能只查內建七
+   * 因子的 FACTOR_LABEL——見 toScoreBandVM()。
+   */
+  private customFactorNameByCode(): Map<string, string> {
+    return new Map(this.factorDefinitions().map((f) => [f.factorCode, f.factorName]));
   }
 
   readonly modes = signal<EvaluationModeVM[]>(this.useMockData ? [...MOCK_MODES] : []);
@@ -627,7 +596,18 @@ export class Settings implements OnInit {
 
   /** 每個分頁是否已經載入過一次，避免切回去重複打 API。Mock 模式視為全部已載入。 */
   private readonly loadedTabs = new Set<SettingsTab>(this.useMockData ? (
-    ['modes', 'risks', 'audience', 'productTypes', 'campaigns', 'accounts', 'scoreBands', 'systemSettings'] as const
+    [
+      'modes',
+      'risks',
+      'audience',
+      'productTypes',
+      'campaigns',
+      'accounts',
+      'scoreBands',
+      'systemSettings',
+      'extensions',
+      'weather',
+    ] as const
   ) : []);
 
   readonly modal = signal<
@@ -708,54 +688,6 @@ export class Settings implements OnInit {
    */
   readonly draftCampaignCode = signal('');
   readonly draftTags = signal<FestiveCampaignTagPayload[]>([{ tag: '', matchTier: 'CORE' }]);
-
-  /** 天氣檔期同步面板狀態（WeatherController，2026-09-21新增）。 */
-  readonly weatherPreview = signal<WeatherSignalPreviewPayload[] | null>(null);
-  readonly weatherPreviewLoading = signal(false);
-  readonly weatherSyncing = signal(false);
-
-  /**
-   * 天氣訊號標籤對照管理（SettingsController，2026-09-22新增）——把原本
-   * 寫死在後端 WeatherCampaignSyncService.WEATHER_TAG_MAPPING 的對照表
-   * 改成管理層可自行調整。刻意獨立一組 signal／方法，不接進既有風險選項
-   * 那套共用 draft/modal 狀態機：那套是為「同一個 modal 同時服務新增與
-   * 編輯多種實體」設計的，這裡只需要一個簡單的清單＋新增列表單＋
-   * 停用/復用，接進去徒增耦合，不值得。
-   *
-   * NORMAL 不列入可選項目：一般天氣不該命中任何商品，後端也會拒絕，
-   * 見 WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS。
-   */
-  readonly weatherSignalTagMappings = signal<WeatherSignalTagMappingResponsePayload[]>(
-    this.useMockData ? [...MOCK_WEATHER_SIGNAL_TAG_MAPPINGS] : [],
-  );
-  readonly weatherSignalTagMappingsLoading = signal(false);
-  readonly weatherSignalTagMappingSaving = signal(false);
-  readonly draftWeatherSignalType = signal<WeatherSignalType | ''>('');
-  readonly draftWeatherSignalTag = signal('');
-  readonly draftWeatherSignalMatchTier = signal<TagMatchTier>('CORE');
-  readonly weatherSignalTagMappingTypeOptions = WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS;
-
-  /**
-   * 地域占比設定（SettingsController，2026-09-23新增，地域性影響評分方案B+D）：
-   * 四區固定，不開放新增/刪除，只開放調整占比，整份送出、加總須為100
-   * （語意比照因子權重編輯 updateEvaluationModeFactors()，見後端 SettingsService
-   * 同名方法的類別註解）。
-   *
-   * regionWeightDrafts 是編輯中的字串值（<input> 綁定用），跟已儲存的
-   * regionWeights 分開：儲存前允許暫時不為100（例如正在調整中間狀態），
-   * 只有按下「儲存」時才驗證＋送出，不要求每次按鍵都合法。
-   */
-  readonly regionWeights = signal<RegionWeightPayload[]>(
-    this.useMockData ? [...MOCK_REGION_WEIGHTS] : [],
-  );
-  readonly regionWeightsLoading = signal(false);
-  readonly regionWeightSaving = signal(false);
-  readonly regionWeightDrafts = signal<Record<string, string>>({});
-
-  readonly regionWeightDraftSum = computed(() => {
-    const drafts = this.regionWeightDrafts();
-    return Object.values(drafts).reduce((sum, value) => sum + (Number(value) || 0), 0);
-  });
 
   // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
   // 原本的標籤編輯是每一列自由輸入文字＋選等級，容易打錯字（跟其他檔期
@@ -879,7 +811,9 @@ export class Settings implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.useMockData) this.loadTab('modes');
+    const initialTab = this.tabFromUrl() ?? 'modes';
+    this.activeTab.set(initialTab);
+    if (!this.useMockData) this.loadTab(initialTab);
   }
 
   // ----- 分頁切換與延遲載入 -----
@@ -890,10 +824,37 @@ export class Settings implements OnInit {
       return;
     }
     this.activeTab.set(tab);
+    this.syncTabToUrl(tab);
     // 切換分頁本身不需要提示訊息——分頁內容切換的視覺回饋已經很明顯
     // （分頁按鈕的 active 樣式、內容區塊整個換掉），額外跳一句「已切換
     // 設定分類」只是雜訊，不會幫助使用者理解發生了什麼事。
     if (!this.useMockData && !this.loadedTabs.has(tab)) this.loadTab(tab);
+  }
+
+  /**
+   * 目前分頁寫回網址（replaceUrl，不在瀏覽紀錄堆疊每一次切換）。
+   * 在測試或沒有路由的環境下 navigate 失敗不影響分頁切換本身。
+   */
+  private syncTabToUrl(tab: SettingsTab): void {
+    if (this.route.snapshot.queryParamMap.get('tab') === tab) return;
+    void this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge', replaceUrl: true })
+      .catch(() => undefined);
+  }
+
+  /** 子元件「自訂屬性與因子」的下一步連結。 */
+  onExtensionsNavigate(tab: CustomExtensionsNextTab): void {
+    this.setTab(tab);
+  }
+
+  /** 子元件的成功訊息統一走這一頁頁首的 toast。 */
+  showStatus(message: string): void {
+    this.statusMessageState.show(message);
+  }
+
+  /** 天氣同步寫入了檔期：讓「節慶檔期」分頁下次切過去時重新載入。 */
+  onWeatherCampaignsChanged(): void {
+    this.loadedTabs.delete('campaigns');
   }
 
   private loadTab(tab: SettingsTab): void {
@@ -922,6 +883,18 @@ export class Settings implements OnInit {
         return;
       case 'systemSettings':
         this.loadSystemSettings();
+        return;
+      case 'extensions':
+        // 屬性的「適用品類」要顯示品類名稱，所以一併載入品類清單。
+        this.definitions.loadFactorDefinitions();
+        this.definitions.loadCustomFieldDefinitions();
+        this.loadProductTypes('extensions');
+        return;
+      case 'weather':
+        // 天氣連動子元件自己管理三個面板的載入狀態（ngOnInit 首次載入）；
+        // 這裡只處理「已經在這個分頁、使用者要求重新整理」的情況。
+        this.weatherLinkage()?.reload();
+        this.markLoaded('weather');
         return;
     }
   }
@@ -956,12 +929,10 @@ export class Settings implements OnInit {
           this.modes.set(shells);
           this.markLoaded('modes');
           this.loadCurrentMode();
-          this.loadFactorDefinitions();
-          // 新增自訂因子的表單（見下方 factorSourceKind 相關狀態）需要知道
-          // 有哪些自訂商品屬性可以選為資料源，這個訊號原本只有「商品類型」
-          // 分頁載入時才會拿到——使用者可能先進「評估模式」分頁就想新增
-          // 因子，這裡一併載入，不假設使用者一定先逛過商品類型分頁。
-          this.loadCustomFieldDefinitions();
+          // 權重編輯器要列出還沒加入這個模式的自訂因子（weightEditorRows），
+          // 目標區間也靠這份清單把因子代碼轉成名稱。自訂屬性清單不再在這裡載入：
+          // 新增因子的表單已移到「自訂屬性與因子」分頁，由那個分頁載入。
+          this.definitions.loadFactorDefinitions();
           shells.forEach((mode) => this.loadModeWeights(mode.id));
         },
         error: (err) => this.handleLoadError(err),
@@ -1208,706 +1179,6 @@ export class Settings implements OnInit {
       });
   }
 
-  // ----- 自訂計分因子（2026-09-20新增，方案B）-----
-  //
-  // 沒有沿用既有的共用 modal() 系統：既有 modal 是靠共用的 draftXxx 訊號組出
-  // 好幾種完全不同的表單（風險/品類/檔期/帳號），saveModal()／saveModalMock()
-  // 已經是一長串 if-else，硬塞一種欄位形狀差很多的新表單（選運算邏輯＋選資料源＋
-  // 選填參數）進去，只會讓那兩個已經很長的方法更難讀、也更容易在改動時不小心
-  // 影響到其他既有表單。獨立一組訊號與方法，风险更低、也更容易單獨測試。
-
-  readonly factorDefinitions = signal<FactorDefinitionVM[]>([]);
-
-  /**
-   * 目標區間（scoreBands）在把後端 payload 轉成 ScoreBandVM 時，因子名稱
-   * 要能認得自訂因子（例如 SOCIAL_BUZZ → 社群聲量熱度），不能只查內建七
-   * 因子的 FACTOR_LABEL——見 toScoreBandVM()。這裡不能直接重用 factorLabel
-   * computed，那個只在「正在編輯某個評估模式的權重」時才有值（見
-   * weightEditorRows() 的 mode?.rawFactors 判斷），目標區間分頁載入時通常
-   * 沒有任何模式正在編輯中，會拿到空 map。
-   */
-  private customFactorNameByCode(): Map<string, string> {
-    return new Map(this.factorDefinitions().map((f) => [f.factorCode, f.factorName]));
-  }
-  readonly isCreatingFactorDefinition = signal(false);
-  readonly isSavingFactorDefinition = signal(false);
-  /**
-   * V14新增：null＝目前是「新增」表單；非null＝正在編輯這個id的因子，
-   * 表單與新增共用同一組 newFactorXxx 訊號（見 openEditFactorDefinition()），
-   * 只是送出時走 updateFactorDefinition() 而不是 createFactorDefinition()，
-   * 且因子代碼欄位改為唯讀——編輯不開放修改代碼，見後端
-   * FactorDefinitionUpdateRequest 類別註解。
-   */
-  readonly editingFactorDefinitionId = signal<number | null>(null);
-  readonly newFactorCode = signal('');
-  readonly newFactorName = signal('');
-  /**
-   * 資料源類型：既有 Product 固定欄位，或自訂商品屬性（動態問卷）題目。
-   * 2026-09-20新增。運算邏輯不再由使用者直接選——見 newFactorStrategy()
-   * 下方的說明，改成依這裡選的資料源自動決定，避免選出互不相容的組合。
-   */
-  readonly newFactorSourceKind = signal<'FIXED' | 'CUSTOM_FIELD'>('FIXED');
-  readonly newFactorDataSource = signal<FactorDataSource>('PRICE_COMPETITIVENESS');
-  readonly newFactorCustomFieldId = signal<number | null>(null);
-  /** 空字串代表沿用該策略的預設倍率（MANUAL_SCALE=20／MANUAL_PERCENT=100），不送 strategyParams。 */
-  readonly newFactorScale = signal('');
-
-  /** 中文顯示名稱，對應後端 FactorStrategyCode 的三個已實作值，純顯示用（見 newFactorStrategy()）。 */
-  readonly factorStrategyLabel: Record<string, string> = {
-    MANUAL_SCALE: '人工評分 × 倍率',
-    MANUAL_PERCENT: '人工估值 × 倍率',
-    TARGET_BAND_NORMALIZE: '依品類目標區間正規化',
-  };
-
-  /** 中文顯示名稱，對應後端 FactorDataSource。 */
-  readonly factorDataSourceLabel: Record<string, string> = {
-    PRICE_COMPETITIVENESS: '價格競爭力（1~5人工評分）',
-    MOQ: '最低訂購量（原始數字，需設定目標區間）',
-    SUPPLIER_MAX_CAPACITY: '供應商最大產能（原始數字，需設定目標區間）',
-  };
-
-  /**
-   * 每個資料源相容哪一種運算邏輯，對應後端 FactorDataSource.getCompatibleStrategy()。
-   * 新增資料源時要同步更新這裡。
-   */
-  readonly factorDataSourceOptions: readonly {
-    code: FactorDataSource;
-    compatibleStrategy: FactorStrategyCode;
-  }[] = [
-    { code: 'PRICE_COMPETITIVENESS', compatibleStrategy: 'MANUAL_SCALE' },
-    { code: 'MOQ', compatibleStrategy: 'TARGET_BAND_NORMALIZE' },
-    { code: 'SUPPLIER_MAX_CAPACITY', compatibleStrategy: 'TARGET_BAND_NORMALIZE' },
-  ];
-
-  /**
-   * 依 CustomFieldType 對應的運算邏輯，鏡射後端 CustomFieldType.
-   * getCompatibleStrategy()。TEXT 型態不會出現在這裡（見
-   * availableCustomFieldsForFactor() 已經把它篩掉）。
-   */
-  readonly customFieldTypeStrategy: Record<string, FactorStrategyCode> = {
-    SCALE_1_5: 'MANUAL_SCALE',
-    PERCENT_0_1: 'MANUAL_PERCENT',
-    RAW_NUMBER: 'TARGET_BAND_NORMALIZE',
-  };
-
-  /**
-   * 可選為計分資料源的自訂商品屬性——只有數值類（排除 TEXT）且生效中的。
-   * 2026-09-20新增，「開新計分因子資料源」最後一階段：讓自訂因子除了能綁
-   * 既有 Product 固定欄位，也能綁管理層自己在「商品類型」分頁新增的自訂
-   * 商品屬性題目。
-   */
-  readonly availableCustomFieldsForFactor = computed(() =>
-    this.customFieldDefinitions().filter((f) => f.isActive && f.fieldType !== 'TEXT'),
-  );
-
-  /**
-   * 運算邏輯不再由使用者直接選——依目前選的資料源（既有欄位或自訂屬性）
-   * 自動決定。原本是「先選運算邏輯，再篩出相容的資料源」，兩種資料源
-   * 並存後反過來更簡單：使用者只需要決定「要用哪個數字來打分數」，
-   * 邏輯怎麼算是那個數字的形狀決定的，不需要使用者自己知道兩者要對得上。
-   */
-  readonly newFactorStrategy = computed<FactorStrategyCode | null>(() => {
-    if (this.newFactorSourceKind() === 'FIXED') {
-      return (
-        this.factorDataSourceOptions.find((o) => o.code === this.newFactorDataSource())?.compatibleStrategy ?? null
-      );
-    }
-    const field = this.availableCustomFieldsForFactor().find((f) => f.id === this.newFactorCustomFieldId());
-    return field ? (this.customFieldTypeStrategy[field.fieldType] ?? null) : null;
-  });
-
-  private loadFactorDefinitions(): void {
-    this.api
-      .getFactorDefinitions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        // 停用的舊版本（isSuperseded=true，因編輯而被取代）不需要在前端顯示——
-        // 它們永遠不能再被啟用（見後端 enableFactorDefinition() 的防呆），留著
-        // 只會讓清單越積越多歷史雜訊。純粹手動停用（isSuperseded=false）的
-        // 因子仍然照常顯示，管理層才能看到並重新啟用。
-        next: (list) =>
-          this.factorDefinitions.set(list.map(toFactorDefinitionVM).filter((item) => !item.isSuperseded)),
-        // 自訂因子清單載入失敗不影響評估模式卡片本身的顯示，該區塊維持空清單即可。
-        error: () => undefined,
-      });
-  }
-
-  openCreateFactorDefinition(): void {
-    this.editingFactorDefinitionId.set(null);
-    this.newFactorCode.set('');
-    this.newFactorName.set('');
-    this.newFactorSourceKind.set('FIXED');
-    this.newFactorDataSource.set('PRICE_COMPETITIVENESS');
-    this.newFactorCustomFieldId.set(null);
-    this.newFactorScale.set('');
-    this.isCreatingFactorDefinition.set(true);
-  }
-
-  /**
-   * V14新增：開啟編輯表單，用選定因子目前的內容預填同一組表單訊號。
-   * 因子代碼維持顯示但欄位在畫面上是唯讀（見 settings.html），送出時
-   * 也不會被送出——updateFactorDefinition() 沿用舊代碼，不理會這裡的值。
-   */
-  openEditFactorDefinition(item: FactorDefinitionVM): void {
-    this.editingFactorDefinitionId.set(item.id);
-    this.newFactorCode.set(item.factorCode);
-    this.newFactorName.set(item.factorName);
-    if (item.dataSourceCode) {
-      this.newFactorSourceKind.set('FIXED');
-      this.newFactorDataSource.set(item.dataSourceCode);
-      this.newFactorCustomFieldId.set(null);
-    } else {
-      this.newFactorSourceKind.set('CUSTOM_FIELD');
-      this.newFactorCustomFieldId.set(item.customFieldDefinitionId);
-    }
-    const scale = item.strategyParams?.['scale'];
-    this.newFactorScale.set(scale != null ? String(scale) : '');
-    this.isCreatingFactorDefinition.set(true);
-  }
-
-  /**
-   * 切換資料源類型（既有欄位／自訂商品屬性）時，把另一邊的選擇重置成預設值，
-   * 避免使用者先選了自訂屬性、又切回既有欄位，殘留的 newFactorCustomFieldId
-   * 被誤送出（雖然 createFactorDefinition() 只依 newFactorSourceKind() 決定
-   * 送哪一個欄位，殘留值不會真的被送出，但重置更乾淨，也讓畫面狀態更好預期）。
-   */
-  updateNewFactorSourceKind(kind: 'FIXED' | 'CUSTOM_FIELD'): void {
-    this.newFactorSourceKind.set(kind);
-    if (kind === 'FIXED') {
-      this.newFactorCustomFieldId.set(null);
-    } else {
-      this.newFactorDataSource.set('PRICE_COMPETITIVENESS');
-      const firstAvailable = this.availableCustomFieldsForFactor()[0];
-      this.newFactorCustomFieldId.set(firstAvailable ? firstAvailable.id : null);
-    }
-  }
-
-  cancelCreateFactorDefinition(): void {
-    this.isCreatingFactorDefinition.set(false);
-    this.editingFactorDefinitionId.set(null);
-  }
-
-  /**
-   * 表單送出的統一入口，依 editingFactorDefinitionId() 分派到新增或編輯。
-   * 兩者共用同一組欄位驗證（必填、策略是否可解析、倍率格式），只有送出的
-   * API 呼叫不同——編輯不送 factorCode（後端 FactorDefinitionUpdateRequest
-   * 本來就沒有這個欄位，見其類別註解，代碼不可修改）。
-   */
-  submitFactorDefinition(): void {
-    if (this.isSavingFactorDefinition()) return;
-
-    const factorCode = this.newFactorCode().trim().toUpperCase();
-    const factorName = this.newFactorName().trim();
-    if (!factorCode || !factorName) {
-      this.showAlert('請填寫因子代碼與名稱。', '自訂因子');
-      return;
-    }
-
-    const strategyCode = this.newFactorStrategy();
-    if (!strategyCode) {
-      this.showAlert(
-        this.newFactorSourceKind() === 'FIXED'
-          ? '請選擇資料源。'
-          : '請選擇自訂商品屬性——目前沒有可用的數值類題目，請先到下方新增一個。',
-        '自訂因子',
-      );
-      return;
-    }
-
-    const scaleInput = this.newFactorScale().trim();
-    const strategyParams: Record<string, number> | undefined = scaleInput
-      ? { scale: Number(scaleInput) }
-      : undefined;
-    if (scaleInput && Number.isNaN(strategyParams?.['scale'])) {
-      this.showAlert('倍率必須是數字。', '自訂因子');
-      return;
-    }
-
-    const isFixedSource = this.newFactorSourceKind() === 'FIXED';
-    const editingId = this.editingFactorDefinitionId();
-
-    if (this.useMockData) {
-      if (editingId != null) {
-        this.factorDefinitions.update((items) =>
-          items.map((item) =>
-            item.id === editingId
-              ? {
-                  ...item,
-                  factorName,
-                  strategyCode,
-                  dataSourceCode: isFixedSource ? this.newFactorDataSource() : null,
-                  customFieldDefinitionId: isFixedSource ? null : this.newFactorCustomFieldId(),
-                }
-              : item,
-          ),
-        );
-        this.cancelCreateFactorDefinition();
-        this.statusMessageState.show('已在本地編輯 Mock 自訂因子。');
-        return;
-      }
-      this.factorDefinitions.update((items) => [
-        ...items,
-        {
-          id: -(items.length + 1),
-          factorCode,
-          factorName,
-          category: null,
-          strategyCode,
-          dataSourceCode: isFixedSource ? this.newFactorDataSource() : null,
-          customFieldDefinitionId: isFixedSource ? null : this.newFactorCustomFieldId(),
-          strategyParams: strategyParams ?? null,
-          isActive: true,
-          isSuperseded: false,
-        },
-      ]);
-      this.cancelCreateFactorDefinition();
-      this.statusMessageState.show('已在本地新增 Mock 自訂因子。');
-      return;
-    }
-
-    this.isSavingFactorDefinition.set(true);
-
-    // 二選一：既有欄位或自訂商品屬性，另一個固定送 null，見後端
-    // FactorDefinitionCreateRequest／FactorDefinitionUpdateRequest 類別註解
-    // 的「資料源二選一」說明。category 固定不送，理由見下方 create 分支註解。
-    const dataSourceCode = isFixedSource ? this.newFactorDataSource() : null;
-    const customFieldDefinitionId = isFixedSource ? null : this.newFactorCustomFieldId();
-
-    if (editingId != null) {
-      this.api
-        .updateFactorDefinition(editingId, {
-          factorName,
-          strategyCode,
-          dataSourceCode,
-          customFieldDefinitionId,
-          strategyParams: strategyParams ?? null,
-        })
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: () => {
-            this.isSavingFactorDefinition.set(false);
-            this.cancelCreateFactorDefinition();
-            // 編輯會產生新版本（新id）並把舊版本標記為已取代，兩者狀態都要
-            // 反映在清單上，直接重新整份載入比在本地嘗試拼湊兩列的狀態更保險。
-            this.loadFactorDefinitions();
-            this.statusMessageState.show('自訂因子已更新。');
-          },
-          error: (err) => {
-            this.isSavingFactorDefinition.set(false);
-            this.showAlert(toApiError(err).message);
-          },
-        });
-      return;
-    }
-
-    this.api
-      .createFactorDefinition({
-        factorCode,
-        factorName,
-        // 2026-09-20拿掉分組欄位：category 的唯一用途是卡片上的四象限彙總
-        // 顯示，那個顯示已經在同一輪改成展開因子明細（見 mode-grid 樣板），
-        // 分組已經沒有任何畫面在讀，繼續讓使用者填一個沒有效果的欄位只會
-        // 造成困惑。後端 FactorDefinitionCreateRequest.category 保留可為 null，
-        // 這裡固定不送即可，不需要為此再動後端。
-        strategyCode,
-        dataSourceCode,
-        customFieldDefinitionId,
-        strategyParams: strategyParams ?? null,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (created) => {
-          this.factorDefinitions.update((items) => [...items, toFactorDefinitionVM(created)]);
-          this.isSavingFactorDefinition.set(false);
-          this.cancelCreateFactorDefinition();
-          this.statusMessageState.show(
-            '自訂因子已新增。要讓某個自訂模式開始採計，請到上方「編輯權重」加入並分配權重。',
-          );
-        },
-        error: (err) => {
-          this.isSavingFactorDefinition.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  disableFactorDefinition(id: number): void {
-    if (this.useMockData) {
-      this.factorDefinitions.update((items) =>
-        items.map((item) => (item.id === id ? { ...item, isActive: false } : item)),
-      );
-      this.statusMessageState.show('已在本地停用 Mock 自訂因子。');
-      return;
-    }
-    this.api
-      .disableFactorDefinition(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) =>
-          this.factorDefinitions.update((items) =>
-            items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
-          ),
-        error: (err) => this.showAlert(toApiError(err).message),
-      });
-  }
-
-  enableFactorDefinition(id: number): void {
-    if (this.useMockData) {
-      this.factorDefinitions.update((items) =>
-        items.map((item) => (item.id === id ? { ...item, isActive: true } : item)),
-      );
-      this.statusMessageState.show('已在本地啟用 Mock 自訂因子。');
-      return;
-    }
-    this.api
-      .enableFactorDefinition(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) =>
-          this.factorDefinitions.update((items) =>
-            items.map((item) => (item.id === id ? toFactorDefinitionVM(updated) : item)),
-          ),
-        error: (err) => this.showAlert(toApiError(err).message),
-      });
-  }
-
-  // ----- 自訂商品屬性（動態問卷，2026-09-20新增，Phase 1：僅題目管理）-----
-  //
-  // 品類勾選比照 toggleTagPickerSelection() 的既有寫法（[checked]+click+
-  // preventDefault()），是這一輪之前才確認真正可行的核取方塊寫法，直接
-  // 沿用，不再重蹈 [ngModel]/(ngModelChange) 那次的覆轍。
-
-  readonly customFieldDefinitions = signal<CustomFieldDefinitionVM[]>([]);
-  readonly isCreatingCustomField = signal(false);
-  readonly isSavingCustomField = signal(false);
-  /** V14新增：null＝新增表單；非null＝正在編輯這個id的題目，理由同editingFactorDefinitionId。 */
-  readonly editingCustomFieldId = signal<number | null>(null);
-  readonly newFieldCode = signal('');
-  readonly newFieldName = signal('');
-  readonly newFieldType = signal<CustomFieldType>('SCALE_1_5');
-  readonly newFieldHelpText = signal('');
-  readonly newFieldRequired = signal(false);
-  readonly newFieldApplicableTypeIds = signal<Set<number>>(new Set());
-  /**
-   * V14新增：1~5分數說明，key固定為'1'~'5'（見SCALE_LABEL_KEYS），value為
-   * 使用者填的文字，留空的分數不會被送出（見submitCustomFieldDefinition()）。
-   * 只有 newFieldType()==='SCALE_1_5' 時，畫面才會顯示這組輸入。
-   */
-  readonly newFieldScaleLabels = signal<Record<string, string>>({});
-  readonly scaleLabelKeys = SCALE_LABEL_KEYS;
-
-  readonly customFieldTypeLabel: Record<string, string> = {
-    SCALE_1_5: '1~5人工評分',
-    PERCENT_0_1: '0~1小數估值',
-    RAW_NUMBER: '原始數字',
-    TEXT: '純文字（不參與計分）',
-  };
-
-  /** 下拉選單用的陣列版本，直接沿用上面的 label 對照表，避免兩處各維護一份文字。 */
-  readonly customFieldTypeOptions: readonly { code: CustomFieldType; label: string }[] = (
-    ['SCALE_1_5', 'PERCENT_0_1', 'RAW_NUMBER', 'TEXT'] as const
-  ).map((code) => ({ code, label: this.customFieldTypeLabel[code] }));
-
-  private loadCustomFieldDefinitions(): void {
-    this.api
-      .getCustomFieldDefinitions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        // 理由同 loadFactorDefinitions()：被編輯取代的舊版本不需要在前端顯示。
-        next: (list) =>
-          this.customFieldDefinitions.set(
-            list.map(toCustomFieldDefinitionVM).filter((item) => !item.isSuperseded),
-          ),
-        // 自訂屬性清單載入失敗不影響商品類型管理本身的顯示，該區塊維持空清單即可。
-        error: () => undefined,
-      });
-  }
-
-  /** 把品類 id 陣列轉成畫面可讀的大類名稱，空陣列顯示「全部品類」。 */
-  /**
-   * 把品類 id 陣列轉成畫面可讀的大類名稱，空陣列顯示「全部品類」。
-   *
-   * 2026-09-20修正一個防呆缺口：原本「有 id 但一個都對不到名稱」時會
-   * 誤顯示成「全部品類」——這是錯的，「有限制但查無名稱」（品類被刪除、
-   * 或品類清單還沒載入完成）跟「本來就沒有限制」是兩種完全不同的狀態，
-   * 混在一起顯示會讓管理層誤以為一個原本有品類限制的題目其實適用全部
-   * 品類，進而做出錯誤的判斷。現在只有 ids 真的是空陣列時才顯示「全部
-   * 品類」；有 id 卻對不到名稱的，改顯示「未知品類」並標明筆數，不悄悄
-   * 吞掉、也不謊報成「沒有限制」。
-   */
-  describeApplicableTypes(ids: number[]): string {
-    if (!ids || ids.length === 0) {
-      return '全部品類';
-    }
-    const names = ids.map((id) => this.productTypes().find((t) => t.id === id)?.name).filter((name): name is string => !!name);
-    const unresolvedCount = ids.length - names.length;
-    if (names.length === 0) {
-      return `未知品類（${unresolvedCount}項，可能已被刪除）`;
-    }
-    if (unresolvedCount > 0) {
-      return `${names.join('、')}（另有${unresolvedCount}項未知品類）`;
-    }
-    return names.join('、');
-  }
-
-  /** 因子清單表格用：把資料源顯示成人類看得懂的文字，涵蓋既有欄位與自訂商品屬性兩種來源。 */
-  describeFactorDataSource(factor: FactorDefinitionVM): string {
-    if (factor.dataSourceCode) {
-      return this.factorDataSourceLabel[factor.dataSourceCode] ?? factor.dataSourceCode;
-    }
-    if (factor.customFieldDefinitionId != null) {
-      const field = this.customFieldDefinitions().find((f) => f.id === factor.customFieldDefinitionId);
-      return field ? `${field.fieldName}（自訂屬性）` : '未知的自訂屬性（可能已被刪除）';
-    }
-    return '—';
-  }
-
-  openCreateCustomField(): void {
-    this.editingCustomFieldId.set(null);
-    this.newFieldCode.set('');
-    this.newFieldName.set('');
-    this.newFieldType.set('SCALE_1_5');
-    this.newFieldHelpText.set('');
-    this.newFieldRequired.set(false);
-    this.newFieldApplicableTypeIds.set(new Set());
-    this.newFieldScaleLabels.set({});
-    this.isCreatingCustomField.set(true);
-  }
-
-  /**
-   * V14新增：開啟編輯表單，用選定題目目前的內容預填同一組表單訊號。
-   * 欄位代碼維持顯示但欄位在畫面上是唯讀——編輯不開放修改代碼，見後端
-   * CustomFieldDefinitionUpdateRequest 類別註解。
-   */
-  openEditCustomField(item: CustomFieldDefinitionVM): void {
-    this.editingCustomFieldId.set(item.id);
-    this.newFieldCode.set(item.fieldCode);
-    this.newFieldName.set(item.fieldName);
-    this.newFieldType.set(item.fieldType);
-    this.newFieldHelpText.set(item.helpText ?? '');
-    this.newFieldRequired.set(item.isRequired);
-    this.newFieldApplicableTypeIds.set(new Set(item.applicableRootProductTypeIds));
-    this.newFieldScaleLabels.set({ ...(item.scaleLabels ?? {}) });
-    this.isCreatingCustomField.set(true);
-  }
-
-  cancelCreateCustomField(): void {
-    this.isCreatingCustomField.set(false);
-    this.editingCustomFieldId.set(null);
-  }
-
-  /** V14新增：更新單一分數（'1'~'5'）的說明文字，留空代表這個分數不需要說明。 */
-  updateNewFieldScaleLabel(key: string, value: string): void {
-    this.newFieldScaleLabels.update((labels) => {
-      const next = { ...labels };
-      const trimmed = value.trim();
-      if (trimmed) {
-        next[key] = trimmed;
-      } else {
-        delete next[key];
-      }
-      return next;
-    });
-  }
-
-  toggleNewFieldApplicableType(typeId: number): void {
-    this.newFieldApplicableTypeIds.update((set) => {
-      const next = new Set(set);
-      if (next.has(typeId)) {
-        next.delete(typeId);
-      } else {
-        next.add(typeId);
-      }
-      return next;
-    });
-  }
-
-  /**
-   * 表單送出的統一入口，依 editingCustomFieldId() 分派到新增或編輯，
-   * 寫法對稱 submitFactorDefinition()。編輯時代碼不可變、也不重複查重
-   * （反正沒有送出，後端 CustomFieldDefinitionUpdateRequest 本來就沒有
-   * fieldCode 欄位）。
-   */
-  submitCustomFieldDefinition(): void {
-    if (this.isSavingCustomField()) return;
-
-    const editingId = this.editingCustomFieldId();
-    const fieldCode = this.newFieldCode().trim().toUpperCase();
-    const fieldName = this.newFieldName().trim();
-    if (!fieldCode || !fieldName) {
-      this.showAlert('請填寫欄位代碼與名稱。', '自訂屬性');
-      return;
-    }
-
-    if (editingId == null) {
-      // 2026-09-20新增防呆：格式跟重複兩項檢查都能在前端先擋，不用等後端
-      // 回應才知道錯在哪。格式比照既有計分因子代碼的既定慣例（英數字加底線，
-      // 不能以數字開頭）——欄位代碼是給程式跟未來的計分資料源對照用的鍵值，
-      // 不是給人看的顯示文字（那是 fieldName 的職責），混進空白或符號會讓
-      // 之後串接計分系統時難以預期地出錯。編輯時代碼不可修改、也不會被送出，
-      // 不需要重跑這兩項檢查。
-      if (!/^[A-Z][A-Z0-9_]*$/.test(fieldCode)) {
-        this.showAlert('欄位代碼只能是英文字母、數字、底線，且不能以數字開頭。', '自訂屬性');
-        return;
-      }
-      if (this.customFieldDefinitions().some((item) => item.fieldCode === fieldCode && item.isActive)) {
-        this.showAlert(`欄位代碼「${fieldCode}」已存在，請改用其他代碼。`, '自訂屬性');
-        return;
-      }
-    }
-
-    const fieldType = this.newFieldType();
-    // V14新增：1~5分數說明只有SCALE_1_5型態才有意義，其餘型態即使使用者
-    // 之前填過（例如先選SCALE_1_5填了說明，又切回其他型態），送出時一律
-    // 清空，不送給後端——後端也會擋（見ValidationMessage.
-    // CUSTOM_FIELD_SCALE_LABEL_NOT_APPLICABLE），這裡先擋一次，錯誤訊息
-    // 更早出現。
-    const scaleLabels = fieldType === 'SCALE_1_5' ? this.newFieldScaleLabels() : null;
-    const scaleLabelsPayload = scaleLabels && Object.keys(scaleLabels).length > 0 ? scaleLabels : null;
-
-    const applicableIds = Array.from(this.newFieldApplicableTypeIds());
-
-    if (this.useMockData) {
-      if (editingId != null) {
-        this.customFieldDefinitions.update((items) =>
-          items.map((item) =>
-            item.id === editingId
-              ? {
-                  ...item,
-                  fieldName,
-                  helpText: this.newFieldHelpText().trim() || null,
-                  fieldType,
-                  isRequired: this.newFieldRequired(),
-                  applicableRootProductTypeIds: applicableIds,
-                  scaleLabels: scaleLabelsPayload,
-                }
-              : item,
-          ),
-        );
-        this.cancelCreateCustomField();
-        this.statusMessageState.show('已在本地編輯 Mock 自訂屬性。');
-        return;
-      }
-      this.customFieldDefinitions.update((items) => [
-        ...items,
-        {
-          id: -(items.length + 1),
-          fieldCode,
-          fieldName,
-          helpText: this.newFieldHelpText().trim() || null,
-          fieldType,
-          isRequired: this.newFieldRequired(),
-          isActive: true,
-          applicableRootProductTypeIds: applicableIds,
-          scaleLabels: scaleLabelsPayload,
-          isSuperseded: false,
-        },
-      ]);
-      this.cancelCreateCustomField();
-      this.statusMessageState.show('已在本地新增 Mock 自訂屬性。');
-      return;
-    }
-
-    this.isSavingCustomField.set(true);
-
-    if (editingId != null) {
-      this.api
-        .updateCustomFieldDefinition(editingId, {
-          fieldName,
-          helpText: this.newFieldHelpText().trim() || null,
-          fieldType,
-          isRequired: this.newFieldRequired(),
-          applicableRootProductTypeIds: applicableIds,
-          scaleLabels: scaleLabelsPayload,
-        })
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: () => {
-            this.isSavingCustomField.set(false);
-            this.cancelCreateCustomField();
-            // 編輯可能連動改綁生效中的因子、也會產生新舊兩個版本，直接
-            // 重新整份載入因子清單與屬性清單，避免本地拼湊狀態失真，
-            // 理由同 submitFactorDefinition()。
-            this.loadCustomFieldDefinitions();
-            this.loadFactorDefinitions();
-            this.statusMessageState.show('自訂屬性已更新。');
-          },
-          error: (err) => {
-            this.isSavingCustomField.set(false);
-            this.showAlert(toApiError(err).message);
-          },
-        });
-      return;
-    }
-
-    this.api
-      .createCustomFieldDefinition({
-        fieldCode,
-        fieldName,
-        helpText: this.newFieldHelpText().trim() || null,
-        fieldType,
-        isRequired: this.newFieldRequired(),
-        applicableRootProductTypeIds: applicableIds,
-        scaleLabels: scaleLabelsPayload,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (created) => {
-          this.customFieldDefinitions.update((items) => [...items, toCustomFieldDefinitionVM(created)]);
-          this.isSavingCustomField.set(false);
-          this.cancelCreateCustomField();
-          this.statusMessageState.show(
-            '自訂屬性已新增。目前還不會出現在商品表單上，那是下一階段的工作。',
-          );
-        },
-        error: (err) => {
-          this.isSavingCustomField.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  disableCustomField(id: number): void {
-    if (this.useMockData) {
-      this.customFieldDefinitions.update((items) =>
-        items.map((item) => (item.id === id ? { ...item, isActive: false } : item)),
-      );
-      this.statusMessageState.show('已在本地停用 Mock 自訂屬性。');
-      return;
-    }
-    this.api
-      .disableCustomFieldDefinition(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) =>
-          this.customFieldDefinitions.update((items) =>
-            items.map((item) => (item.id === id ? toCustomFieldDefinitionVM(updated) : item)),
-          ),
-        error: (err) => this.showAlert(toApiError(err).message),
-      });
-  }
-
-  enableCustomField(id: number): void {
-    if (this.useMockData) {
-      this.customFieldDefinitions.update((items) =>
-        items.map((item) => (item.id === id ? { ...item, isActive: true } : item)),
-      );
-      this.statusMessageState.show('已在本地啟用 Mock 自訂屬性。');
-      return;
-    }
-    this.api
-      .enableCustomFieldDefinition(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) =>
-          this.customFieldDefinitions.update((items) =>
-            items.map((item) => (item.id === id ? toCustomFieldDefinitionVM(updated) : item)),
-          ),
-        error: (err) => this.showAlert(toApiError(err).message),
-      });
-  }
-
-
   selectMode(code: string): void {
     if (this.pageState() === 'disabled') return;
 
@@ -2016,7 +1287,11 @@ export class Settings implements OnInit {
 
   // ----- 4. 商品類型 -----
 
-  private loadProductTypes(): void {
+  /**
+   * @param alsoMarkLoaded 「自訂屬性與因子」分頁也需要品類清單（顯示適用品類名稱），
+   *   從那個分頁觸發時一併把該分頁標記為已載入。
+   */
+  private loadProductTypes(alsoMarkLoaded?: SettingsTab): void {
     this.api
       .getProductTypes()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -2034,7 +1309,7 @@ export class Settings implements OnInit {
             })),
           );
           this.markLoaded('productTypes');
-          this.loadCustomFieldDefinitions();
+          if (alsoMarkLoaded) this.markLoaded(alsoMarkLoaded);
         },
         error: (err) => this.handleLoadError(err),
       });
@@ -2275,301 +1550,8 @@ export class Settings implements OnInit {
         },
         error: (err) => this.handleLoadError(err),
       });
-    // 天氣訊號標籤對照跟節慶檔期同屬「檔期」分頁，一起載入，不用使用者
-    // 額外觸發——見 loadWeatherSignalTagMappings() 類別註解。
-    this.loadWeatherSignalTagMappings();
-    // 地域占比設定同理，跟天氣訊號標籤對照一起放在「檔期」分頁，一起載入。
-    this.loadRegionWeights();
-  }
-
-  /**
-   * 預覽目前會分類出的天氣訊號，不寫入資料庫（WeatherController，
-   * GET /signals/preview）。用來在正式同步前，先確認Open-Meteo資料與
-   * WeatherNormalizer門檻分類出來的結果合不合理。
-   *
-   * Mock模式下沒有真實天氣資料可以預覽——與其編造一份假訊號讓畫面「看起來
-   * 正常」，不如直接告訴使用者這個功能要接上真實後端才能用，避免誤判。
-   */
-  previewWeatherSignals(): void {
-    if (this.useMockData) {
-      this.showAlert('Mock 模式沒有真實天氣資料可預覽，請切換到已串接後端的環境測試。', '功能限制');
-      return;
-    }
-
-    this.weatherPreviewLoading.set(true);
-    this.api
-      .previewWeatherSignals()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (signals) => {
-          this.weatherPreview.set(signals);
-          this.weatherPreviewLoading.set(false);
-        },
-        error: (err) => {
-          this.weatherPreviewLoading.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 手動觸發一次完整天氣檔期同步（WeatherController，POST /sync），跟每天
-   * 05:00排程呼叫的是後端同一支方法，行為完全一致。成功後重新載入檔期
-   * 清單，讓下方表格立刻反映這次同步的結果，不用使用者自己按重新整理；
-   * 同時清空預覽結果——預覽的內容此時已經落地或過期，繼續顯示只會誤導。
-   */
-  syncWeatherCampaigns(): void {
-    if (this.useMockData) {
-      this.showAlert('Mock 模式無法觸發真實天氣同步。', '功能限制');
-      return;
-    }
-
-    this.weatherSyncing.set(true);
-    this.api
-      .syncWeatherCampaigns()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.weatherSyncing.set(false);
-          this.weatherPreview.set(null);
-          const expiredNote =
-            result.expiredCampaignCount > 0 ? `、${result.expiredCampaignCount}筆已標記結束` : '';
-          this.statusMessageState.show(
-            `天氣檔期同步完成：共${result.totalSignalCount}個訊號、更新${result.syncedCampaignCount}筆檔期${expiredNote}。`,
-          );
-          this.loadCampaigns();
-        },
-        error: (err) => {
-          this.weatherSyncing.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 地域占比設定清單載入（地域性影響評分方案B+D，2026-09-23新增）。載入後
-   * 同步把 regionWeightDrafts 初始化成目前已儲存的值（字串形式，供 <input>
-   * 綁定），使用者開始編輯前，草稿跟已儲存值是一致的。
-   */
-  loadRegionWeights(): void {
-    if (this.useMockData) {
-      const weights = [...MOCK_REGION_WEIGHTS];
-      this.regionWeights.set(weights);
-      this.resetRegionWeightDrafts(weights);
-      return;
-    }
-    this.regionWeightsLoading.set(true);
-    this.api
-      .getRegionWeights()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (list) => {
-          this.regionWeights.set(list);
-          this.resetRegionWeightDrafts(list);
-          this.regionWeightsLoading.set(false);
-        },
-        error: (err) => {
-          this.regionWeightsLoading.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  private resetRegionWeightDrafts(list: RegionWeightPayload[]): void {
-    this.regionWeightDrafts.set(
-      Object.fromEntries(list.map((item) => [item.region, String(item.weightPercentage)])),
-    );
-  }
-
-  updateRegionWeightDraft(region: string, value: string): void {
-    this.regionWeightDrafts.update((drafts) => ({ ...drafts, [region]: value }));
-  }
-
-  /**
-   * 儲存四區占比。前端先擋「加總須為100」再送出，避免使用者按了儲存才
-   * 在錯誤訊息看到這個規則——但這只是提早給回饋，不是唯一的防線，後端
-   * SettingsService.updateRegionWeights() 一樣會驗證一次（見該方法類別
-   * 註解），前端這層檢查繞過了也不影響資料正確性。
-   */
-  saveRegionWeights(): void {
-    const drafts = this.regionWeightDrafts();
-    const sum = this.regionWeightDraftSum();
-    if (Math.abs(sum - 100) > 0.01) {
-      this.showAlert(`四區占比加總須為100，目前為：${sum}`, '驗證失敗');
-      return;
-    }
-
-    const regionWeights = Object.entries(drafts).map(([region, value]) => ({
-      region,
-      weightPercentage: Number(value) || 0,
-    }));
-
-    if (this.useMockData) {
-      this.regionWeights.update((list) =>
-        list.map((item) => {
-          const updated = regionWeights.find((r) => r.region === item.region);
-          return updated ? { ...item, weightPercentage: updated.weightPercentage } : item;
-        }),
-      );
-      this.statusMessageState.show('已更新（Mock 模式，未實際送出）。');
-      return;
-    }
-
-    this.regionWeightSaving.set(true);
-    this.api
-      .updateRegionWeights({ regionWeights })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (list) => {
-          this.regionWeightSaving.set(false);
-          this.regionWeights.set(list);
-          this.resetRegionWeightDrafts(list);
-          this.statusMessageState.show('區域占比已更新。');
-        },
-        error: (err) => {
-          this.regionWeightSaving.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 天氣訊號標籤對照清單載入。跟 loadRiskOptions() 同一套 mock/真實 API
-   * 分流慣例（多數設定清單走這套，previewWeatherSignals／syncWeatherCampaigns
-   * 是例外——那兩支本質上需要真實天氣資料源，Mock 模式下沒有意義；這裡是
-   * 純設定資料，Mock 模式一樣能展示畫面，所以沿用主流慣例而非比照那兩支）。
-   */
-  loadWeatherSignalTagMappings(): void {
-    if (this.useMockData) {
-      this.weatherSignalTagMappings.set([...MOCK_WEATHER_SIGNAL_TAG_MAPPINGS]);
-      return;
-    }
-    this.weatherSignalTagMappingsLoading.set(true);
-    this.api
-      .getWeatherSignalTagMappings()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (list) => {
-          this.weatherSignalTagMappings.set(list);
-          this.weatherSignalTagMappingsLoading.set(false);
-        },
-        error: (err) => {
-          this.weatherSignalTagMappingsLoading.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 新增一筆對照。前端只做「不可為空」的基本檢查——weatherSignalType 不含
-   * NORMAL（下拉選項本來就排除，見 WEATHER_SIGNAL_TAG_MAPPING_TYPE_OPTIONS），
-   * 重複組合、NORMAL 誤送等規則性驗證留給後端 SettingsService 統一把關，
-   * 避免前後端各自維護一份判斷邏輯、日後對不齊。
-   */
-  addWeatherSignalTagMapping(): void {
-    const weatherSignalType = this.draftWeatherSignalType();
-    const tag = this.draftWeatherSignalTag().trim();
-    if (!weatherSignalType) {
-      this.showAlert('請選擇天氣訊號類型。', '驗證失敗');
-      return;
-    }
-    if (!tag) {
-      this.showAlert('請輸入標籤內容。', '驗證失敗');
-      return;
-    }
-    const matchTier = this.draftWeatherSignalMatchTier();
-
-    const resetDraft = () => {
-      this.draftWeatherSignalType.set('');
-      this.draftWeatherSignalTag.set('');
-      this.draftWeatherSignalMatchTier.set('CORE');
-    };
-
-    if (this.useMockData) {
-      const mockId = -(this.weatherSignalTagMappings().length + 1);
-      this.weatherSignalTagMappings.update((items) => [
-        ...items,
-        { id: mockId, weatherSignalType, tag, matchTier, isActive: true, isSystemDefault: false },
-      ]);
-      resetDraft();
-      this.statusMessageState.show(`已新增對照：${weatherSignalType} → ${tag}`);
-      return;
-    }
-
-    this.weatherSignalTagMappingSaving.set(true);
-    this.api
-      .createWeatherSignalTagMapping({ weatherSignalType, tag, matchTier })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (created) => {
-          this.weatherSignalTagMappingSaving.set(false);
-          this.weatherSignalTagMappings.update((items) => [...items, created]);
-          resetDraft();
-          this.statusMessageState.show(`已新增對照：${created.weatherSignalType} → ${created.tag}`);
-        },
-        error: (err) => {
-          this.weatherSignalTagMappingSaving.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 調整既有對照的命中權重層級（下拉選單 change 時直接送出，不走額外的
-   * 編輯模式/儲存按鈕——這張表的欄位少、調整頻率低，比照
-   * updateTagMatchTier() 在節慶標籤編輯裡「選了就是選了」的即時儲存體驗，
-   * 不需要多一層確認步驟）。
-   */
-  changeWeatherSignalTagMappingTier(item: WeatherSignalTagMappingResponsePayload, matchTier: TagMatchTier): void {
-    if (item.matchTier === matchTier) return;
-
-    const apply = (updated: Partial<WeatherSignalTagMappingResponsePayload> = {}) => {
-      this.weatherSignalTagMappings.update((items) =>
-        items.map((row) => (row.id === item.id ? { ...row, matchTier, ...updated } : row)),
-      );
-    };
-
-    if (this.useMockData) {
-      apply();
-      return;
-    }
-    this.api
-      .updateWeatherSignalTagMapping(item.id, { matchTier })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => apply(updated),
-        error: (err) => this.showAlert(toApiError(err).message),
-      });
-  }
-
-  /**
-   * 停用／復用。系統預設列（isSystemDefault=true）一樣可以停用——後端只擋
-   * 刪除，不擋停用（見 SettingsService.disableWeatherSignalTagMapping()
-   * 類別註解），管理層若判斷某筆系統預設對照已不合時宜，應該能關掉它，
-   * 前端沒有理由比後端更嚴格。
-   */
-  toggleWeatherSignalTagMappingActive(item: WeatherSignalTagMappingResponsePayload): void {
-    const nextActive = !item.isActive;
-    const apply = () => {
-      this.weatherSignalTagMappings.update((items) =>
-        items.map((row) => (row.id === item.id ? { ...row, isActive: nextActive } : row)),
-      );
-      this.statusMessageState.show(
-        `已${nextActive ? '啟用' : '停用'}對照：${item.weatherSignalType} → ${item.tag}`,
-      );
-    };
-
-    if (this.useMockData) {
-      apply();
-      return;
-    }
-    const request = nextActive
-      ? this.api.enableWeatherSignalTagMapping(item.id)
-      : this.api.disableWeatherSignalTagMapping(item.id);
-    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: apply,
-      error: (err) => this.showAlert(toApiError(err).message),
-    });
+    // 天氣訊號標籤對照與地域占比 2026-09-24 移到「天氣連動」分頁，由
+    // WeatherLinkage 子元件自行載入。
   }
 
   editCampaign(name: string): void {

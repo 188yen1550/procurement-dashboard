@@ -1,0 +1,234 @@
+<!--
+  檔案用途：「天氣連動」分頁樣板（2026-09-24 由「節慶檔期」分頁拆出）。
+  三個面板依連動順序排列：同步（結果）→ 標籤對照（同步產生哪些檔期）→ 地域占比（加成打幾折）。
+  表格與表單樣式用全域 .config-*（見 _components.scss），這裡只保留本分頁專屬的少量樣式。
+-->
+<section class="config-panel" aria-labelledby="weather-sync-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="weather-sync-title">天氣檔期自動同步</h3>
+      <p>
+        系統每天 05:00 依 Open-Meteo 天氣預報自動產生或結束天氣檔期。下面兩個按鈕用於手動測試與校準，
+        不影響自動排程。
+      </p>
+    </div>
+    <div class="config-panel-actions">
+      <button type="button" class="btn" [disabled]="disabled() || weatherPreviewLoading()"
+        (click)="previewWeatherSignals()">
+        {{ weatherPreviewLoading() ? '預覽中…' : '預覽天氣訊號（不寫入）' }}
+      </button>
+      <button type="button" class="btn-primary" [disabled]="disabled() || weatherSyncing()"
+        (click)="syncWeatherCampaigns()">
+        {{ weatherSyncing() ? '同步中…' : '立即同步天氣檔期' }}
+      </button>
+    </div>
+  </div>
+
+  @if (weatherPreview(); as preview) {
+  <div class="config-table-wrap">
+    <table class="config-table">
+      <caption class="sr-only">天氣訊號預覽</caption>
+      <thead>
+        <tr>
+          <th scope="col">區域</th>
+          <th scope="col">訊號類型</th>
+          <th scope="col">期間</th>
+          <th scope="col">信心度</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (signal of preview; track signal.region + signal.type + signal.windowStart) {
+        <tr>
+          <td>{{ weatherRegionLabel[signal.region] ?? signal.region }}</td>
+          <td>{{ weatherSignalTypeLabel[signal.type] }}</td>
+          <td class="weather-window">{{ signal.windowStart }} ～ {{ signal.windowEnd }}</td>
+          <td>{{ weatherForecastConfidenceLabel[signal.confidence] }}</td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="4" class="config-table-empty">
+            目前沒有符合門檻的天氣訊號，可能是天氣平穩，也可能是門檻需要調整。
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>
+
+<section class="config-panel" aria-labelledby="weather-mapping-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="weather-mapping-title">天氣訊號標籤對照</h3>
+      <p>
+        決定每種天氣訊號對應哪些商品標籤、命中等級多高。同步時只有這裡列出的天氣類型會產生檔期；
+        商品標上對應標籤才會獲得加成，比對方式與節慶標籤相同。
+      </p>
+    </div>
+  </div>
+
+  <div class="config-table-wrap">
+    <table class="config-table weather-mapping-table">
+      <caption class="sr-only">天氣訊號標籤對照</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="col-signal">天氣訊號</th>
+          <th scope="col" class="col-tag">對應標籤</th>
+          <th scope="col" class="col-tier">命中等級</th>
+          <th scope="col" class="col-source">來源</th>
+          <th scope="col" class="col-status">狀態</th>
+          <th scope="col" class="col-actions"><span class="sr-only">操作</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (weatherSignalTagMappingsLoading()) {
+        <tr>
+          <td colspan="6" class="config-table-empty" role="status">載入中…</td>
+        </tr>
+        } @else {
+        @for (item of weatherSignalTagMappings(); track item.id) {
+        <tr [class.is-inactive]="!item.isActive">
+          <td>{{ weatherSignalTypeLabel[item.weatherSignalType] }}</td>
+          <td><strong>{{ item.tag }}</strong></td>
+          <td>
+            <select class="tier-select" [attr.data-tier]="item.matchTier" [ngModel]="item.matchTier"
+              (ngModelChange)="changeWeatherSignalTagMappingTier(item, $event)"
+              [name]="'weather-tier-' + item.id" [disabled]="disabled() || !item.isActive"
+              [attr.aria-label]="weatherSignalTypeLabel[item.weatherSignalType] + '→' + item.tag + ' 的命中等級'">
+              @for (tier of matchTierOptions; track tier.value) {
+              <option [value]="tier.value">{{ tier.label }}</option>
+              }
+            </select>
+          </td>
+          <td>{{ item.isSystemDefault ? '系統預設' : '自訂' }}</td>
+          <td>
+            <span class="status-pill" [attr.data-status]="item.isActive ? 'ACTIVE' : 'ARCHIVED'">
+              {{ item.isActive ? '生效中' : '已停用' }}
+            </span>
+          </td>
+          <td class="row-actions">
+            <button type="button" class="btn" [class.is-restore]="!item.isActive" [disabled]="disabled()"
+              (click)="toggleWeatherSignalTagMappingActive(item)">
+              {{ item.isActive ? '停用' : '啟用' }}
+            </button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="6" class="config-table-empty">目前沒有任何對照，天氣同步不會產生檔期。請在下方新增第一筆。</td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <form class="config-form-row" (ngSubmit)="addWeatherSignalTagMapping()" aria-label="新增天氣訊號標籤對照">
+    <label>天氣訊號
+      <select [ngModel]="draftWeatherSignalType()" (ngModelChange)="draftWeatherSignalType.set($event)"
+        name="draftWeatherSignalType" [disabled]="disabled()">
+        <option value="" disabled>請選擇</option>
+        @for (type of weatherSignalTagMappingTypeOptions; track type) {
+        <option [value]="type">{{ weatherSignalTypeLabel[type] }}</option>
+        }
+      </select>
+    </label>
+    <label class="is-grow">對應標籤
+      <input type="text" placeholder="例如：雨具" [ngModel]="draftWeatherSignalTag()"
+        (ngModelChange)="draftWeatherSignalTag.set($event)" name="draftWeatherSignalTag" [disabled]="disabled()"
+        maxlength="50" />
+    </label>
+    <label>命中等級
+      <select class="tier-select" [attr.data-tier]="draftWeatherSignalMatchTier()" [ngModel]="draftWeatherSignalMatchTier()"
+        (ngModelChange)="draftWeatherSignalMatchTier.set($event)"
+        name="draftWeatherSignalMatchTier" [disabled]="disabled()">
+        @for (tier of matchTierOptions; track tier.value) {
+        <option [value]="tier.value">{{ tier.label }}</option>
+        }
+      </select>
+    </label>
+    <button type="submit" class="btn-primary" [disabled]="disabled() || weatherSignalTagMappingSaving()">
+      {{ weatherSignalTagMappingSaving() ? '新增中…' : '＋ 新增對照' }}
+    </button>
+  </form>
+</section>
+
+<section class="config-panel" aria-labelledby="region-weight-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="region-weight-title">地域占比設定</h3>
+      <p>
+        同一種天氣訊號命中的區域（北／中／南／東）占比加總，就是這次加成的地域覆蓋率。
+        只有單一區域命中、且該區占比低時，加成會依比例打折。四區加總須為 100。
+      </p>
+    </div>
+  </div>
+
+  <!-- 依草稿值即時畫出的比例條：一眼看出配重，不用自己加總四個數字。純視覺輔助，
+       數字本身在下方表格，所以對輔助科技隱藏。 -->
+  <div class="region-bar" aria-hidden="true">
+    @for (segment of regionWeightBar(); track segment.region) {
+    @if (segment.share > 0) {
+    <span class="region-bar-segment" [attr.data-region]="segment.region" [style.flex-basis.%]="segment.share">
+      {{ segment.label }} {{ segment.value }}%
+    </span>
+    }
+    }
+  </div>
+
+  <div class="config-table-wrap">
+    <table class="config-table region-weight-table">
+      <caption class="sr-only">地域占比</caption>
+      <thead>
+        <tr>
+          <th scope="col">區域</th>
+          <th scope="col" class="num col-weight">業務占比</th>
+          <th scope="col">最後更新</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (regionWeightsLoading()) {
+        <tr>
+          <td colspan="3" class="config-table-empty" role="status">載入中…</td>
+        </tr>
+        } @else {
+        @for (item of regionWeights(); track item.region) {
+        <tr>
+          <td>
+            <label [for]="'region-weight-' + item.region">{{ weatherRegionLabel[item.region] ?? item.region }}</label>
+          </td>
+          <td class="num">
+            <!-- 單位「%」放在欄位內右側，不再寫在表頭括號裡：數字與單位一起讀，
+                 表頭也不會因為括號變寬而換行。超出 0～100 時欄位本身標紅。 -->
+            <span class="percent-field" [class.is-disabled]="disabled()">
+              <input type="number" min="0" max="100" step="0.01" inputmode="decimal"
+                [id]="'region-weight-' + item.region" [ngModel]="regionWeightDrafts()[item.region]"
+                (ngModelChange)="updateRegionWeightDraft(item.region, $event)" [name]="'region-weight-' + item.region"
+                [attr.aria-invalid]="isRegionWeightOutOfRange(item.region)"
+                [attr.aria-describedby]="'region-weight-unit-' + item.region" [disabled]="disabled()" />
+              <span class="percent-suffix" [id]="'region-weight-unit-' + item.region">%</span>
+            </span>
+          </td>
+          <td>{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未調整' }}</td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="config-form-row region-weight-footer">
+    <span class="config-sum" [attr.data-state]="regionWeightSumState()" role="status" aria-live="polite">
+      目前加總 {{ regionWeightDraftSum() }}
+      @if (regionWeightSumState() === 'error') {
+      ，須為 100
+      }
+    </span>
+    <button type="button" class="btn-primary"
+      [disabled]="disabled() || regionWeightSaving() || regionWeightSumState() === 'error'"
+      (click)="saveRegionWeights()">
+      {{ regionWeightSaving() ? '儲存中…' : '儲存占比設定' }}
+    </button>
+  </div>
+</section>

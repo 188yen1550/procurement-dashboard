@@ -27,24 +27,31 @@
   @if (statusMessage()) {
   <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
   }
+  <!--
+    2026-09-24：分頁依關注點分成四組，組與組之間用細分隔線區隔（純視覺，
+    對輔助科技隱藏）：評分（模式／自訂擴充／目標區間／演算法參數）、
+    資料字典（商品類型／人工風險／核心客群）、檔期（節慶／天氣連動）、帳號。
+  -->
   <nav class="tabs" aria-label="設定分類">
-    <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">
-      評估模式
+    <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">評估模式</button>
+    <button type="button" [class.active]="activeTab() === 'extensions'" (click)="setTab('extensions')">
+      自訂屬性與因子
     </button>
-    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">
-      人工風險
+    <button type="button" [class.active]="activeTab() === 'scoreBands'" (click)="setTab('scoreBands')">目標區間</button>
+    <button type="button" [class.active]="activeTab() === 'systemSettings'" (click)="setTab('systemSettings')">
+      演算法參數
     </button>
+    <span class="tab-divider" aria-hidden="true"></span>
+    <button type="button" [class.active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">商品類型</button>
+    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">人工風險</button>
     @if (audienceSettingsVisible) {
     <button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
     }
-    <button type="button" [class.active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">
-      商品類型</button><button type="button" [class.active]="activeTab() === 'campaigns'" (click)="setTab('campaigns')">
-      節慶檔期</button><button type="button" [class.active]="activeTab() === 'scoreBands'" (click)="setTab('scoreBands')">
-      目標區間</button><button type="button" [class.active]="activeTab() === 'systemSettings'"
-      (click)="setTab('systemSettings')">
-      演算法參數</button><button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">
-      帳號管理
-    </button>
+    <span class="tab-divider" aria-hidden="true"></span>
+    <button type="button" [class.active]="activeTab() === 'campaigns'" (click)="setTab('campaigns')">節慶檔期</button>
+    <button type="button" [class.active]="activeTab() === 'weather'" (click)="setTab('weather')">天氣連動</button>
+    <span class="tab-divider" aria-hidden="true"></span>
+    <button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">帳號管理</button>
   </nav>
   @if (pageState() === 'error') {
   <section class="empty error" role="alert">
@@ -248,143 +255,19 @@
     </table>
   </section>
 
-  <!-- ===== 自訂商品屬性（動態問卷，2026-09-20新增，Phase 1：僅題目管理）===== -->
-  <section class="management-head custom-field-definitions">
-    <div>
-      <h2>自訂商品屬性</h2>
-      <p class="helper">
-        新增後這個屬性還不會出現在商品新增/編輯表單上（那是下一階段的工作），
-        這裡先建立題目本身。
-      </p>
-    </div>
-    <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'" (click)="openCreateCustomField()">
-      新增自訂屬性
-    </button>
-  </section>
-  @if (isCreatingCustomField()) {
-  <section class="data-table factor-definition-form">
-    <h3>{{ editingCustomFieldId() ? '編輯自訂商品屬性' : '新增自訂商品屬性' }}</h3>
-    <form (ngSubmit)="submitCustomFieldDefinition()">
-      <label>欄位代碼
-        <input type="text" [ngModel]="newFieldCode()" name="newFieldCode" [disabled]="editingCustomFieldId() !== null"
-          (ngModelChange)="newFieldCode.set($event)" placeholder="例如 SHELF_LIFE_DAYS" />
-        @if (editingCustomFieldId() !== null) {
-        <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
-        }
-      </label>
-      <label>欄位名稱
-        <input type="text" [ngModel]="newFieldName()" name="newFieldName" (ngModelChange)="newFieldName.set($event)"
-          placeholder="例如 保存期限天數" />
-      </label>
-      <label>欄位型態
-        <select [ngModel]="newFieldType()" name="newFieldType" (ngModelChange)="newFieldType.set($event)">
-          @for (option of customFieldTypeOptions; track option.code) {
-          <option [value]="option.code">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-      <label>補充說明（選填）
-        <input type="text" [ngModel]="newFieldHelpText()" name="newFieldHelpText"
-          (ngModelChange)="newFieldHelpText.set($event)" placeholder="顯示在商品表單這一題底下" />
-      </label>
-      <label class="weight-editor-row-label">
-        <input type="checkbox" [checked]="newFieldRequired()"
-          (click)="$event.preventDefault(); newFieldRequired.set(!newFieldRequired())" />
-        <span>商品表單必填</span>
-      </label>
-      @if (newFieldType() === 'SCALE_1_5') {
-      <div class="scale-label-editor" style="grid-column: 1 / -1">
-        <p class="helper">
-          1~5分數說明（選填）：定義每個分數代表的意思，例如「供應穩定性」的
-          5可以填「非常穩定」，留空的分數不會顯示說明文字。
-        </p>
-        @for (key of scaleLabelKeys; track key) {
-        <label>{{ key }}分
-          <input type="text" [ngModel]="newFieldScaleLabels()[key] ?? ''" [name]="'scaleLabel' + key"
-            (ngModelChange)="updateNewFieldScaleLabel(key, $event)" placeholder="例如：非常不穩定" />
-        </label>
-        }
-      </div>
-      }
-      <p class="helper" style="grid-column: 1 / -1">
-        適用品類（不勾選任何項目＝適用全部品類）
-      </p>
-      <div class="tag-picker-list" role="listbox" aria-label="適用的品類" style="grid-column: 1 / -1">
-        @for (major of availableMajorTypes(); track major.id) {
-        <label class="tag-picker-option">
-          <input type="checkbox" [checked]="newFieldApplicableTypeIds().has(major.id!)"
-            (click)="$event.preventDefault(); toggleNewFieldApplicableType(major.id!)" />
-          <span class="tag-picker-option-text">{{ major.name || '（未命名品類）' }}</span>
-        </label>
-        }
-      </div>
-      <div class="weight-editor-actions">
-        <button type="button" class="btn" [disabled]="isSavingCustomField()" (click)="cancelCreateCustomField()">
-          取消
-        </button>
-        <button type="submit" class="btn-primary" [disabled]="isSavingCustomField()">
-          {{ isSavingCustomField() ? '儲存中…' : (editingCustomFieldId() ? '儲存編輯' : '新增') }}
-        </button>
-      </div>
-    </form>
-  </section>
-  }
-  <section class="data-table">
-    <table>
-      <thead>
-        <tr>
-          <th class="field-col-code">欄位代碼</th>
-          <th class="field-col-name">名稱</th>
-          <th class="field-col-type">型態</th>
-          <th class="field-col-scope">適用品類</th>
-          <th class="field-col-required">必填</th>
-          <th class="field-col-status">狀態</th>
-          <th class="field-col-actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @if (customFieldDefinitions().length === 0) {
-        <tr>
-          <td colspan="7" class="empty">目前沒有自訂屬性。</td>
-        </tr>
-        }
-        @for (field of customFieldDefinitions(); track field.id) {
-        <tr>
-          <td>{{ field.fieldCode }}</td>
-          <td>{{ field.fieldName }}</td>
-          <td>{{ customFieldTypeLabel[field.fieldType] ?? field.fieldType }}</td>
-          <td>{{ describeApplicableTypes(field.applicableRootProductTypeIds) }}</td>
-          <td>{{ field.isRequired ? '必填' : '選填' }}</td>
-          <td>
-            {{ field.isActive ? '啟用中' : '已停用' }}
-            @if (field.isSuperseded) {
-            <br /><small class="helper">已被新版本取代</small>
-            }
-          </td>
-          <td>
-            @if (!field.isSuperseded) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="openEditCustomField(field)">
-              編輯
-            </button>
-            }
-            @if (field.isActive) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="disableCustomField(field.id)">
-              停用
-            </button>
-            } @else if (!field.isSuperseded) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="enableCustomField(field.id)">
-              啟用
-            </button>
-            }
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </section>
+  } @else if (activeTab() === 'extensions') {
+  <app-custom-extensions
+    [productTypes]="productTypes()"
+    [disabled]="pageState() === 'disabled'"
+    (status)="showStatus($event)"
+    (navigateTab)="onExtensionsNavigate($event)"
+  />
+  } @else if (activeTab() === 'weather') {
+  <app-weather-linkage
+    [disabled]="pageState() === 'disabled'"
+    (status)="showStatus($event)"
+    (campaignsChanged)="onWeatherCampaignsChanged()"
+  />
   } @else if (activeTab() === 'campaigns') {
   <section class="management-head">
     <div>
@@ -393,195 +276,6 @@
     <button type="button" class="btn-primary" (click)="openModal('campaign')" [disabled]="pageState() === 'disabled'">
       ＋ 新增檔期
     </button>
-  </section>
-
-  <section class="weather-sync-panel">
-    <div class="weather-sync-panel-head">
-      <h3>天氣檔期自動同步</h3>
-      <p class="scope-note">
-        WEATHER 分類的檔期由系統每天 05:00 自動呼叫 Open-Meteo
-        天氣預報同步。下面兩顆按鈕是手動測試／校準用，不影響自動排程本身。
-      </p>
-    </div>
-    <div class="weather-sync-panel-actions">
-      <button type="button" class="btn" [disabled]="pageState() === 'disabled' || weatherPreviewLoading()"
-        (click)="previewWeatherSignals()">
-        {{ weatherPreviewLoading() ? '預覽中…' : '預覽天氣訊號（不寫入）' }}
-      </button>
-      <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled' || weatherSyncing()"
-        (click)="syncWeatherCampaigns()">
-        {{ weatherSyncing() ? '同步中…' : '立即同步天氣檔期' }}
-      </button>
-    </div>
-
-    @if (weatherPreview(); as preview) {
-    <div class="weather-preview-table">
-      @if (preview.length === 0) {
-      <p class="scope-note">目前沒有符合門檻的天氣訊號（可能是真的風平浪靜，也可能是門檻常數需要調整）。</p>
-      } @else {
-      <table>
-        <thead>
-          <tr>
-            <th>區域</th>
-            <th>訊號類型</th>
-            <th>窗口</th>
-            <th>信心度</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (signal of preview; track signal.region + signal.type + signal.windowStart) {
-          <tr>
-            <td>{{ weatherRegionLabel[signal.region] ?? signal.region }}</td>
-            <td>{{ weatherSignalTypeLabel[signal.type] }}</td>
-            <td>{{ signal.windowStart }} ～ {{ signal.windowEnd }}</td>
-            <td>{{ weatherForecastConfidenceLabel[signal.confidence] }}</td>
-          </tr>
-          }
-        </tbody>
-      </table>
-      }
-    </div>
-    }
-  </section>
-
-  <section class="weather-tag-mapping-panel">
-    <div class="weather-sync-panel-head">
-      <h3>天氣訊號標籤對照</h3>
-      <p class="scope-note">
-        決定每種天氣訊號要對應到哪些商品標籤、命中權重多高——同步時只有這裡列出的
-        天氣類型才會產生檔期，商品要標上對應的標籤才會被 Festival Boost 加成
-        （比照現有「節慶標籤」的比對邏輯，共用同一套計分機制）。
-      </p>
-    </div>
-
-    <table class="weather-tag-mapping-table">
-      <thead>
-        <tr>
-          <th>天氣訊號類型</th>
-          <th>對應標籤</th>
-          <th>命中權重</th>
-          <th>來源</th>
-          <th>狀態</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        @if (weatherSignalTagMappingsLoading()) {
-        <tr>
-          <td colspan="6" class="scope-note">載入中…</td>
-        </tr>
-        } @else if (weatherSignalTagMappings().length === 0) {
-        <tr>
-          <td colspan="6" class="scope-note">
-            目前沒有任何對照，天氣同步不會產生任何檔期。
-          </td>
-        </tr>
-        } @else {
-        @for (item of weatherSignalTagMappings(); track item.id) {
-        <tr [class.is-inactive]="!item.isActive">
-          <td>{{ weatherSignalTypeLabel[item.weatherSignalType] }}</td>
-
-          <td>{{ item.tag }}</td>
-
-          <td>
-            <select [ngModel]="item.matchTier" (ngModelChange)="changeWeatherSignalTagMappingTier(item, $event)"
-              [name]="'weather-tier-' + item.id" [disabled]="pageState() === 'disabled' || !item.isActive">
-              <option value="CORE">核心</option>
-              <option value="GENERAL">一般</option>
-              <option value="WEAK">弱</option>
-            </select>
-          </td>
-
-          <td>{{ item.isSystemDefault ? '系統預設' : '自訂' }}</td>
-          <td>{{ item.isActive ? '生效中' : '已停用' }}</td>
-          <td class="row-actions">
-            <button type="button" [class.is-restore]="!item.isActive" [disabled]="pageState() === 'disabled'"
-              (click)="toggleWeatherSignalTagMappingActive(item)">
-              {{ item.isActive ? '停用' : '啟用' }}
-            </button>
-          </td>
-        </tr>
-        }
-        }
-      </tbody>
-    </table>
-
-    <div class="weather-tag-mapping-add-row">
-      <select [ngModel]="draftWeatherSignalType()" (ngModelChange)="draftWeatherSignalType.set($event)"
-        name="draftWeatherSignalType" [disabled]="pageState() === 'disabled'">
-        <option value="" disabled>選擇天氣訊號類型</option>
-        @for (type of weatherSignalTagMappingTypeOptions; track type) {
-        <option [value]="type">{{ weatherSignalTypeLabel[type] }}</option>
-        }
-      </select>
-      <input type="text" placeholder="對應標籤，例如：雨具" [ngModel]="draftWeatherSignalTag()"
-        (ngModelChange)="draftWeatherSignalTag.set($event)" name="draftWeatherSignalTag"
-        [disabled]="pageState() === 'disabled'" maxlength="50" />
-      <select [ngModel]="draftWeatherSignalMatchTier()" (ngModelChange)="draftWeatherSignalMatchTier.set($event)"
-        name="draftWeatherSignalMatchTier" [disabled]="pageState() === 'disabled'">
-        <option value="CORE">核心</option>
-        <option value="GENERAL">一般</option>
-        <option value="WEAK">弱</option>
-      </select>
-      <button type="button" class="btn-primary"
-        [disabled]="pageState() === 'disabled' || weatherSignalTagMappingSaving()"
-        (click)="addWeatherSignalTagMapping()">
-        {{ weatherSignalTagMappingSaving() ? '新增中…' : '＋ 新增對照' }}
-      </button>
-    </div>
-  </section>
-
-  <section class="weather-tag-mapping-panel">
-    <div class="weather-sync-panel-head">
-      <h3>地域占比設定</h3>
-      <p class="scope-note">
-        天氣同步時，同一種天氣訊號命中的區域（北/中/南/東）業務占比加總，決定
-        這次加成的「地域覆蓋率」——只有單一區域命中、且該區占比低時，Festival
-        Boost 會自動打折，不是每次命中都給滿額加成。四區占比加總須為100。
-      </p>
-    </div>
-
-    <table class="weather-tag-mapping-table">
-      <thead>
-        <tr>
-          <th>區域</th>
-          <th>業務占比（%）</th>
-          <th>最後更新</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        @if (regionWeightsLoading()) {
-        <tr>
-          <td colspan="3" class="scope-note">載入中…</td>
-        </tr>
-        } @else {
-        @for (item of regionWeights(); track item.region) {
-        <tr>
-          <td>{{ weatherRegionLabel[item.region] ?? item.region }}</td>
-          <td>
-            <input type="number" min="0" max="100" step="0.01" [ngModel]="regionWeightDrafts()[item.region]"
-              (ngModelChange)="updateRegionWeightDraft(item.region, $event)" [name]="'region-weight-' + item.region"
-              [disabled]="pageState() === 'disabled'" />
-          </td>
-          <td>{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
-        </tr>
-        }
-        }
-      </tbody>
-    </table>
-
-    <div class="weather-tag-mapping-add-row">
-      <span class="scope-note" [class.is-error]="regionWeightDraftSum() !== 100">
-        目前加總：{{ regionWeightDraftSum() }}（須為100）
-      </span>
-      <button type="button" class="btn-primary"
-        [disabled]="pageState() === 'disabled' || regionWeightSaving() || regionWeightDraftSum() !== 100"
-        (click)="saveRegionWeights()">
-        {{ regionWeightSaving() ? '儲存中…' : '儲存占比設定' }}
-      </button>
-    </div>
   </section>
 
   <section class="data-table">
@@ -904,9 +598,16 @@
           </tr>
           } @else {
           <tr>
+            <!-- 2026-09-24（決策 D4／D6）：檢視模式的說明改收進提示泡泡，比照
+                 「目標區間 › 全域預設」因子名稱旁的說明方式，整張表不再被長段
+                 說明撐高；編輯模式（上方 is-editing 列）仍完整內嵌說明，調整
+                 數值的當下不必再 hover 才看得到。說明為空字串（例如通路支援
+                 溫層）時不渲染圖示，避免出現點開是空白的泡泡。 -->
             <td>
               <strong>{{ setting.displayName }}</strong>
-              <p class="helper">{{ setting.description }}</p>
+              @if (setting.description) {
+              <app-info-tip [text]="setting.description" />
+              }
               @if (!setting.hasStoredValue) {
               <span class="badge badge-muted">預設值，尚未手動調整過</span>
               }
@@ -941,6 +642,9 @@
     </div>
   </section>
   }
+
+  <!-- 排程作業（2026-09-24 決策 D2）：原本在 AI 建議清單頁、只給管理層的批次觸發按鈕。 -->
+  <app-ai-suggestion-batch-panel />
   } @else if (activeTab() === 'accounts') {
   <section class="management-head">
     <div>
@@ -1092,160 +796,6 @@
     }
   </div>
 
-  <!-- ===== 自訂計分因子管理（2026-09-20新增，方案B；V14新增編輯/刪除） ===== -->
-  <section class="management-head factor-definitions">
-    <div>
-      <h2>自訂計分因子</h2>
-      <p class="helper">
-        新增後不會自動影響任何評估模式的分數，還需要在上方自訂模式的「編輯權重」
-        裡把新因子加進去並分配權重。
-      </p>
-    </div>
-    <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'"
-      (click)="openCreateFactorDefinition()">
-      新增自訂因子
-    </button>
-  </section>
-  @if (isCreatingFactorDefinition()) {
-  <section class="data-table factor-definition-form">
-    <h3>{{ editingFactorDefinitionId() ? '編輯自訂因子' : '新增自訂因子' }}</h3>
-    <form (ngSubmit)="submitFactorDefinition()">
-      <label>因子代碼
-        <input type="text" [ngModel]="newFactorCode()" name="newFactorCode"
-          [disabled]="editingFactorDefinitionId() !== null" (ngModelChange)="newFactorCode.set($event)"
-          placeholder="例如 PRICE_COMPETITIVENESS" />
-        @if (editingFactorDefinitionId() !== null) {
-        <small class="helper">代碼是穩定鍵，編輯時不可修改。</small>
-        }
-      </label>
-      <label>因子名稱
-        <input type="text" [ngModel]="newFactorName()" name="newFactorName" (ngModelChange)="newFactorName.set($event)"
-          placeholder="例如 價格競爭力" />
-      </label>
-      <label>資料源類型
-        <select [ngModel]="newFactorSourceKind()" name="newFactorSourceKind"
-          (ngModelChange)="updateNewFactorSourceKind($event)">
-          <option value="FIXED">既有欄位</option>
-          <option value="CUSTOM_FIELD">自訂商品屬性</option>
-        </select>
-      </label>
-      @if (newFactorSourceKind() === 'FIXED') {
-      <label>資料源
-        <select [ngModel]="newFactorDataSource()" name="newFactorDataSource"
-          (ngModelChange)="newFactorDataSource.set($event)">
-          @for (option of factorDataSourceOptions; track option.code) {
-          <option [value]="option.code">{{ factorDataSourceLabel[option.code] ?? option.code }}</option>
-          }
-        </select>
-      </label>
-      } @else {
-      <label>自訂商品屬性
-        <select [ngModel]="newFactorCustomFieldId()" name="newFactorCustomFieldId"
-          [disabled]="availableCustomFieldsForFactor().length === 0"
-          (ngModelChange)="newFactorCustomFieldId.set($event)">
-          @for (field of availableCustomFieldsForFactor(); track field.id) {
-          <option [value]="field.id">{{ field.fieldName }}（{{ customFieldTypeLabel[field.fieldType] }}）</option>
-          }
-        </select>
-        @if (availableCustomFieldsForFactor().length === 0) {
-        <small class="helper is-invalid">目前沒有可用的數值類自訂商品屬性，請先到下方新增一個。</small>
-        }
-      </label>
-      }
-      <!--
-        2026-09-20：運算邏輯改成唯讀顯示，不再讓使用者直接選——依上面選的
-        資料源自動決定，避免選出「運算邏輯」跟「資料源」互不相容的組合。
-      -->
-      <label>運算邏輯（依資料源自動決定）
-        <input type="text"
-          [value]="newFactorStrategy() ? (factorStrategyLabel[newFactorStrategy()!] ?? newFactorStrategy()) : '請先選擇資料源'"
-          disabled />
-      </label>
-      <!--
-        倍率只有 MANUAL_SCALE／MANUAL_PERCENT 會用到（拿去乘原始值），
-        TARGET_BAND_NORMALIZE 靠目標區間正規化，不吃這個參數——選了
-        TARGET_BAND_NORMALIZE 卻還讓使用者填一個沒有效果的倍率欄位，
-        會誤導人以為它有作用。改成依運算邏輯決定要不要顯示。
-      -->
-      @if (newFactorStrategy() && newFactorStrategy() !== 'TARGET_BAND_NORMALIZE') {
-      <label>倍率（選填，留空沿用該邏輯的預設值）
-        <input type="text" [ngModel]="newFactorScale()" name="newFactorScale"
-          (ngModelChange)="newFactorScale.set($event)" placeholder="例如 20" />
-      </label>
-      }
-      @if (newFactorStrategy() === 'TARGET_BAND_NORMALIZE') {
-      <p class="helper">
-        新增後這個因子還不會影響任何分數——目標區間正規化需要先到「設定 >
-        目標區間」頁面，替各品類（或全域）設定這個因子的合理上下限，沒有設定
-        區間的品類，這個因子會維持 null（不計入分母），不是計算錯誤。
-      </p>
-      }
-      <div class="weight-editor-actions">
-        <button type="button" class="btn" [disabled]="isSavingFactorDefinition()"
-          (click)="cancelCreateFactorDefinition()">
-          取消
-        </button>
-        <button type="submit" class="btn-primary" [disabled]="isSavingFactorDefinition() || !newFactorStrategy()">
-          {{ isSavingFactorDefinition() ? '儲存中…' : (editingFactorDefinitionId() ? '儲存編輯' : '新增') }}
-        </button>
-      </div>
-    </form>
-  </section>
-  }
-  <section class="data-table">
-    <table>
-      <thead>
-        <tr>
-          <th class="factor-col-code">因子代碼</th>
-          <th class="factor-col-name">名稱</th>
-          <th class="factor-col-strategy">運算邏輯</th>
-          <th class="factor-col-source">資料源</th>
-          <th class="factor-col-status">狀態</th>
-          <th class="factor-col-actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @if (factorDefinitions().length === 0) {
-        <tr>
-          <td colspan="6" class="empty">目前沒有自訂因子。</td>
-        </tr>
-        }
-        @for (definition of factorDefinitions(); track definition.id) {
-        <tr>
-          <td>{{ definition.factorCode }}</td>
-          <td>{{ definition.factorName }}</td>
-          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}</td>
-          <td>{{ describeFactorDataSource(definition) }}</td>
-          <td>
-            {{ definition.isActive ? '啟用中' : '已停用' }}
-            @if (definition.isSuperseded) {
-            <br /><small class="helper">已被新版本取代</small>
-            }
-          </td>
-          <td>
-            @if (!definition.isSuperseded) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="openEditFactorDefinition(definition)">
-              編輯
-            </button>
-            }
-            @if (definition.isActive) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="disableFactorDefinition(definition.id)">
-              停用
-            </button>
-            } @else if (!definition.isSuperseded) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="enableFactorDefinition(definition.id)">
-              啟用
-            </button>
-            }
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </section>
   }
   @if (modal()) {
   <div class="modal-backdrop" (click)="closeModal()">
@@ -1363,7 +913,7 @@
         </select>
         @if (draftCategory() === 'WEATHER') {
         <small class="helper">
-          天氣型檔期通常由系統每天自動同步產生（見「節慶檔期管理」上方的天氣同步面板），
+          天氣型檔期通常由系統每天自動同步產生（見「天氣連動」分頁），
           這裡手動新增/編輯的內容之後可能會被下一次自動同步覆蓋（除非切換狀態時開啟「手動覆蓋」）。
         </small>
         }

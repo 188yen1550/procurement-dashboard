@@ -55,8 +55,8 @@
              後端寫死只回 PENDING+ACTIVE，不吃篩選參數（見 review.ts 的
              loadPendingItems() 說明），選了也絕對查不到東西。只在 Mock
              模式顯示，避免使用者在真實環境誤以為這裡能查到已審核商品。
-             真的要查審核通過／審核拒絕的商品，請到品項管理頁——那裡的篩選
-             是真的送給後端做的。 -->
+             真的要查審核通過／審核拒絕的商品，請到「決策紀錄」頁籤
+             （2026-09-24 職責分離後管理層已不進入品項管理頁）。 -->
         @if (useMockData) {
         <option value="APPROVED">審核通過</option>
         <option value="REJECTED">審核拒絕</option>
@@ -76,7 +76,7 @@
   @if (!useMockData) {
   <p class="helper">
     待審清單僅顯示未審核且使用中的品項；查詢審核通過／審核拒絕的商品請至
-    <a routerLink="/products">品項管理</a>。
+    <button type="button" class="text-action" (click)="view.set('records')">決策紀錄</button>。
   </p>
   }
   @if (items().length === 0) {
@@ -185,7 +185,8 @@
                      的操作，集中在品項管理頁（見 product-management.html 的
                      canResubmit 判斷），避免這張表同時身兼決策記錄與生命週期操作
                      兩種職責。這裡只提供「點進去看該商品現況」的路徑。 -->
-              <small class="resubmit-hint">可於品項頁重審</small>
+              <!-- 2026-09-24 職責分離：重審由操作人員執行，管理層只看得到提示。 -->
+              <small class="resubmit-hint">操作人員可重新送審</small>
               }
             </td>
             <td>第 {{ record.round }} 次</td>

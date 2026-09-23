@@ -10,6 +10,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Auth } from '../../../core/auth/auth';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
@@ -86,6 +87,7 @@ describe('ProductDetail', () => {
       }),
     ),
   };
+  const auth = { isManager: vi.fn(() => false) };
   const productTypeLookup = {
     getName: vi.fn(() => of('食品／生鮮')),
     getNameMap: vi.fn(() => of(new Map([[1, '食品／生鮮']]))),
@@ -99,6 +101,8 @@ describe('ProductDetail', () => {
         provideRouter([]),
         { provide: ProductApiService, useValue: api },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
+        // 2026-09-24：品項詳情依角色決定是否唯讀，預設以操作層身分測既有行為。
+        { provide: Auth, useValue: auth },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(ProductDetail);
@@ -236,5 +240,21 @@ describe('ProductDetail', () => {
     component.generateAiAnalysis();
     dialog.handleCancel();
     expect(api.generateAiAnalysis).not.toHaveBeenCalled();
+  });
+
+  it('renders a read-only view for managers without any write entry points', async () => {
+    auth.isManager.mockReturnValue(true);
+    const managerFixture = TestBed.createComponent(ProductDetail);
+    managerFixture.detectChanges();
+    await managerFixture.whenStable();
+    managerFixture.detectChanges();
+    const root = managerFixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('唯讀檢視');
+    expect(root.querySelector('.header-actions')).toBeNull();
+    expect(root.querySelector('.lifecycle')).toBeNull();
+    expect(root.querySelector('a[href$="/edit"]')).toBeNull();
+    const buttons = Array.from(root.querySelectorAll('button'), (b) => b.textContent ?? '');
+    expect(buttons.some((text) => text.includes('AI 分析') || text.includes('立即更新'))).toBe(false);
+    auth.isManager.mockReturnValue(false);
   });
 });

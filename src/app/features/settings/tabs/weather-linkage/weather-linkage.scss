@@ -1,0 +1,194 @@
+/*
+ * 檔案用途：「天氣連動」分頁專屬樣式。
+ * 面板、表格、表單列、加總狀態都用全域 .config-*（_components.scss），
+ * 這裡只放本分頁獨有的：欄寬、地域比例條。顏色一律走 token。
+ */
+:host {
+  display: block;
+}
+
+.weather-mapping-table {
+  min-width: 640px;
+}
+
+.weather-mapping-table .col-signal {
+  width: 16%;
+}
+
+.weather-mapping-table .col-tier {
+  width: 9.5rem;
+}
+
+.weather-mapping-table .col-source,
+.weather-mapping-table .col-status {
+  width: 13%;
+}
+
+.weather-mapping-table .col-actions {
+  width: 1%;
+}
+
+.weather-window {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.region-weight-table {
+  min-width: 420px;
+}
+
+/*
+ * ----- 命中等級下拉選單 -----
+ * 2026-09-24：外觀（高度、邊框、自繪箭頭）走全域 .config-table select；
+ * 這裡只加「等級辨識」：左側 4px 色條依等級深淺，掃一眼就分得出核心／一般／弱，
+ * 不必逐格讀文字。色條只是輔助，等級文字仍在選單裡，不單靠顏色傳達。
+ */
+.tier-select {
+  width: 100%;
+  max-width: 8rem;
+  border-left-width: 4px;
+}
+
+.tier-select[data-tier='CORE'] {
+  border-left-color: var(--c-brand);
+}
+
+.tier-select[data-tier='GENERAL'] {
+  border-left-color: #6f95b8;
+}
+
+.tier-select[data-tier='WEAK'] {
+  border-left-color: var(--c-border-strong);
+}
+
+/*
+ * ----- 業務占比輸入：數字＋單位一體 -----
+ * 輸入框與「%」包在同一個外框裡（外框負責邊框與聚焦環），數字靠右、等寬，
+ * 四列上下對齊好比較。隱藏瀏覽器原生的上下箭頭：占比多半是直接打數字，
+ * 原生箭頭一次只加減 0.01（step），幾乎沒有用，還會擠壓數字顯示空間。
+ */
+.col-weight {
+  width: 11rem;
+}
+
+.percent-field {
+  display: inline-flex;
+  align-items: center;
+  width: 8.5rem;
+  height: 2.5rem;
+  overflow: hidden;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  transition: border-color var(--motion-fast);
+}
+
+.percent-field:hover:not(.is-disabled) {
+  border-color: var(--c-brand);
+}
+
+.percent-field:focus-within {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.percent-field:has(input[aria-invalid='true']) {
+  border-color: var(--c-danger);
+  background: var(--c-danger-tint);
+}
+
+.percent-field.is-disabled {
+  background: var(--c-surface-sunken);
+}
+
+/* 外框已經負責邊框與聚焦環，內層 input 取消自己的（覆蓋全域 .config-table input）。 */
+.percent-field input {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--s-1) 0 var(--s-3);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.percent-field input:focus-visible {
+  outline: none;
+}
+
+.percent-field input::-webkit-outer-spin-button,
+.percent-field input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.percent-suffix {
+  flex: 0 0 auto;
+  padding: 0 var(--s-3) 0 var(--s-1);
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.region-weight-footer {
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ----- 地域比例條：四區各一色，寬度即占比 ----- */
+.region-bar {
+  display: flex;
+  gap: 2px;
+  height: 2.25rem;
+  margin-top: var(--s-4);
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--c-surface-alt);
+}
+
+.region-bar-segment {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: flex-basis var(--motion-fast);
+}
+
+.region-bar-segment[data-region='NORTH'] {
+  background: var(--c-brand);
+}
+
+.region-bar-segment[data-region='CENTRAL'] {
+  background: #2f7d6d;
+}
+
+.region-bar-segment[data-region='SOUTH'] {
+  background: #9a5520;
+}
+
+.region-bar-segment[data-region='EAST'] {
+  background: #6a4fa3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .region-bar-segment {
+    transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .region-weight-footer {
+    align-items: stretch;
+  }
+}

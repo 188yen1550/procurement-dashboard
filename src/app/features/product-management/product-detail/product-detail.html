@@ -7,6 +7,9 @@
     <div>
       @if (returnTo() === 'review-records') {
       <a [routerLink]="['/review']" [queryParams]="{ tab: 'records' }" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回歷次決策紀錄</a>
+      } @else if (readOnly) {
+      <!-- 管理層沒有品項管理頁（purchaserGuard），從儀表板進來時返回儀表板。 -->
+      <a routerLink="/dashboard" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回儀表板</a>
       } @else {
       <a routerLink="/products" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a>
       }
@@ -14,7 +17,7 @@
       <h1 id="detail-title">{{ product()?.name ?? '品項詳情' }}</h1>
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
     </div>
-    @if (product()) {
+    @if (product() && !readOnly) {
     <div class="header-actions">
       <!-- ⚠️ 修正：這顆按鈕之前沒有依 useMockData 判斷，在真實模式下點下去
              會直接用寫死的假資料蓋掉剛載入的真實商品，等於把畫面弄壞。
@@ -82,6 +85,12 @@
   </section>
   } @else {
   @let p = product()!;
+  @if (readOnly) {
+  <section class="notice read-only-notice" role="note">
+    <strong><app-icon name="lock" size="sm" /> 唯讀檢視</strong>
+    <span>選品資料由操作人員建立與維護，審核請至「選品審核」。</span>
+  </section>
+  }
   @if (p.reviewStatus === 'APPROVED') {
   <section class="notice locked">
     <strong><app-icon name="lock" size="sm" />
@@ -90,8 +99,10 @@
   }
   @if (incomplete()) {
   <section class="notice incomplete">
-    <strong>資料待補 · {{ p.completeness }}%</strong><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span><a
-      [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
+    <strong>資料待補 · {{ p.completeness }}%</strong><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span>
+    @if (!readOnly) {
+    <a [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
+    }
   </section>
   }
   <div class="product-overview">
@@ -254,7 +265,7 @@
         <li>{{ reason }}</li>
         }
       </ul>
-      @if (!useMockData) {
+      @if (!useMockData && !readOnly) {
       <button type="button" class="secondary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
         {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
       </button>
@@ -266,7 +277,7 @@
       <!-- ⚠️ 這裡跟資料完整度門檻（60%）無關，純粹是「還沒生成過 AI 分析」，
                文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
       <div class="no-data">尚未產生 AI 分析。</div>
-      @if (!useMockData) {
+      @if (!useMockData && !readOnly) {
       <button type="button" class="btn-primary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
         @if (isGeneratingAi()) {
         產生中…（呼叫 LLM，請稍候）
@@ -388,9 +399,11 @@
             }
             ・最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}
           </p>
+          @if (!readOnly) {
           <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
             {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
           </button>
+          }
           @if (syncState() === 'syncing') {
           @if (useMockData) {
           <div class="sync-actions">
@@ -471,6 +484,7 @@
   </section>
   }
 
+  @if (!readOnly) {
   <section class="panel lifecycle">
     <div>
       <h2>品項狀態操作</h2>
@@ -489,5 +503,6 @@
       {{ p.itemStatus === 'ACTIVE' ? '封存品項' : '復用品項' }}
     </button>
   </section>
+  }
   }
 </main>

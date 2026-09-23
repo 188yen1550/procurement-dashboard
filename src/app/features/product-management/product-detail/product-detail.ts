@@ -11,6 +11,7 @@ import { APP_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { DialogService } from '../../../core/dialog/dialog.service';
+import { Auth } from '../../../core/auth/auth';
 import {
   GATE_CODE_LABEL,
   GATE_STATUS_LABEL,
@@ -194,6 +195,15 @@ export class ProductDetail implements OnInit {
       : null,
   );
   readonly useMockData = APP_CONFIG.useMockData;
+
+  /**
+   * 2026-09-24 職責分離（決策 D1／D3）：管理層可以進這頁，但只能看。
+   * 選品資料的建立與維護屬於操作層，後端 ProductController 寫入端點與
+   * AI 分析 generate 已限定 PURCHASER；這裡把所有會呼叫寫入 API 的入口
+   * （編輯／重審／補齊資料／產生 AI 分析／趨勢更新／封存復用）一併隱藏，
+   * 避免管理層按下去才收到 403。
+   */
+  readonly readOnly = inject(Auth).isManager();
   readonly gateCodeLabel = GATE_CODE_LABEL;
   /** 這件商品自己的歷次審核紀錄，時間新→舊排序，供頁面下方新增的區塊顯示。 */
   readonly reviewHistory = signal<ReviewRecordModel[]>([]);

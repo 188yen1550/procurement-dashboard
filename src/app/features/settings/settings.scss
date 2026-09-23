@@ -21,9 +21,21 @@
 
 .tabs {
   display: flex;
+  align-items: flex-end;
   gap: var(--s-1);
   margin-bottom: var(--s-4);
-  border-bottom: 1px solid #dbe4ea;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--c-border);
+  scrollbar-width: thin;
+}
+
+/* 分頁分組的細分隔線（評分／資料字典／檔期／帳號），2026-09-24 分頁增為 10 個後加入。 */
+.tab-divider {
+  flex: 0 0 1px;
+  align-self: center;
+  height: 1.25rem;
+  margin: 0 var(--s-1);
+  background: var(--c-border-strong);
 }
 
 .tabs button {
@@ -225,111 +237,9 @@
 }
 
 /*
- * ===================== 天氣檔期同步面板 =====================
- * 2026-09-21新增。刻意不共用 .data-table（那個 class 的欄寬規則是為
- * 「節慶檔期管理」表格等固定欄位的表格設計的，見下方
- * 「資料表格欄寬」段落的說明），這裡的預覽表格欄位完全不同、也不需要
- * table-layout: fixed，用自己的 class 避免互相干擾。
+ * 天氣檔期同步／天氣訊號標籤對照／地域占比的樣式，2026-09-24 隨三個面板
+ * 移到「天氣連動」分頁（tabs/weather-linkage），並改用全域 .config-*。
  */
-.weather-sync-panel {
-  margin-bottom: var(--s-4);
-  padding: var(--s-3);
-  background: var(--c-surface-alt);
-  border-radius: var(--r-md);
-}
-
-.weather-sync-panel-head h3 {
-  margin: 0 0 var(--s-1);
-  font-size: var(--t-lg);
-}
-
-.weather-sync-panel-head .scope-note {
-  margin-top: 0;
-  padding: 0;
-  background: none;
-}
-
-.weather-sync-panel-actions {
-  display: flex;
-  gap: var(--s-3);
-  margin-top: var(--s-3);
-}
-
-.weather-preview-table {
-  margin-top: var(--s-3);
-}
-
-.weather-preview-table table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--c-surface);
-  border-radius: var(--r-sm);
-  overflow: hidden;
-}
-
-.weather-preview-table th,
-.weather-preview-table td {
-  padding: var(--s-2) var(--s-3);
-  text-align: left;
-  font-size: var(--t-sm);
-  border-bottom: 1px solid #e3e9ee;
-}
-
-.weather-preview-table th {
-  color: var(--c-ink-soft);
-  font-weight: 700;
-}
-
-/*
- * 天氣訊號標籤對照面板（2026-09-22新增）。跟上面的 .weather-preview-table
- * 同樣理由不共用 .data-table：欄位形狀完全不同，且這張表多一列
- * 「新增對照」的表單列，用自己的 class 獨立維護。
- */
-.weather-tag-mapping-panel {
-  margin-bottom: var(--s-4);
-  padding: var(--s-3);
-  background: var(--c-surface-alt);
-  border-radius: var(--r-md);
-}
-
-.weather-tag-mapping-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--c-surface);
-  border-radius: var(--r-sm);
-  overflow: hidden;
-  margin-top: var(--s-3);
-}
-
-.weather-tag-mapping-table th,
-.weather-tag-mapping-table td {
-  padding: var(--s-2) var(--s-3);
-  text-align: left;
-  font-size: var(--t-sm);
-  border-bottom: 1px solid #e3e9ee;
-}
-
-.weather-tag-mapping-table th {
-  color: var(--c-ink-soft);
-  font-weight: 700;
-}
-
-.weather-tag-mapping-table tr.is-inactive {
-  opacity: 0.6;
-}
-
-.weather-tag-mapping-add-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  margin-top: var(--s-3);
-  align-items: center;
-}
-
-.weather-tag-mapping-add-row input[type='text'] {
-  flex: 1;
-  min-width: 160px;
-}
 
 /* ===================== Modal 內的專屬配置 ===================== */
 
@@ -571,80 +481,7 @@ tr.is-editing select {
   margin-top: var(--s-2);
 }
 
-/*
- * ===================== 自訂因子：新增表單 =====================
- * 2026-09-20新增。原本直接借用 .data-table 當外層容器，但 .data-table
- * 本身只對內部的 <table> 有樣式，對一般表單元素（label/input/select）
- * 沒有任何版面規則，導致所有欄位擠成一行、placeholder 跟下一個欄位的
- * label 文字黏在一起。改成響應式的 grid：每個欄位自己是一個直向排列的
- * label（文字在上、輸入框在下），欄位之間用固定間距排開，寬螢幕自動
- * 多欄、窄螢幕自動變成單欄堆疊。
- */
-.factor-definition-form {
-  padding: var(--s-3);
-  background: var(--c-surface-sunken);
-  border-radius: var(--r-sm);
-}
-
-.factor-definition-form form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--s-3);
-  align-items: start;
-}
-
-/*
- * ⚠️ 修正：這裡原本用 `.factor-definition-form label` 這個描述子選擇器，
- * 目的是統一「欄位代碼」「欄位名稱」這類最上層表單欄位的直向排列樣式，
- * 但描述子選擇器不會區分巢狀層級——巢狀在裡面、本來就有自己一套橫向排列
- * 樣式的元件（.tag-picker-option 核取方塊清單、.weight-editor-row-label
- * 必填核取方塊）恰好也是 <label>，因此被一起強制套用了 flex-direction:
- * column，覆蓋掉它們各自期待的橫向排列。具體症狀：核取方塊跟文字被迫上下
- * 堆疊、置中，畫面上看起來像是「核取方塊清單完全沒有文字標籤」或
- * 「必填核取方塊的文字掉到下面去」。
- * 這裡最上層欄位（欄位代碼／欄位名稱／...）的 <label> 都沒有加 class，
- * 巢狀元件的 <label> 都各自有 class，因此用 label:not([class]) 排除，
- * 比一個一個列舉巢狀元件的 class 更不容易在之後新增巢狀元件時重蹈覆轍。
- */
-.factor-definition-form label:not([class]) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  color: var(--c-ink-soft);
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
-
-.factor-definition-form input,
-.factor-definition-form select {
-  padding: 0.45rem 0.6rem;
-  background: var(--c-surface);
-  border: 1px solid #d4dee6;
-  border-radius: var(--r-sm);
-  font: inherit;
-  font-weight: 400;
-}
-
-.factor-definition-form input::placeholder {
-  color: var(--c-ink-muted);
-}
-
-.factor-definition-form input:disabled,
-.factor-definition-form select:disabled {
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  opacity: 0.6;
-}
-
-/* 說明文字／勾選加總這類需要橫跨整排寬度的元素，不要被切進某一欄裡。 */
-.factor-definition-form .helper,
-.factor-definition-form .weight-editor-actions {
-  grid-column: 1 / -1;
-}
-
-.factor-definition-form .helper.is-invalid {
-  color: var(--c-danger);
-}
+/* 自訂因子／自訂屬性表單樣式 2026-09-24 移到 tabs/custom-extensions。 */
 
 /* ===================== 資料表格欄寬 ===================== */
 /*

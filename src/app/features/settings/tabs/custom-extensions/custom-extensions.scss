@@ -1,0 +1,286 @@
+/*
+ * 檔案用途：「自訂屬性與因子」分頁專屬樣式（2026-09-24 拆分）。
+ *
+ * 元件樣式有封裝，settings.scss 的規則進不來，所以這裡保留本分頁用得到的
+ * 最小集合：區塊標頭、流程列、新增表單（原樣搬自 settings.scss 的
+ * .factor-definition-form 段落）、必填核取方塊、品類勾選清單。
+ * 表格外觀用全域 .data-table。顏色與尺寸一律走 token。
+ */
+:host {
+  display: block;
+}
+
+/* ----- 流程列：屬性 → 因子 → 權重 → 目標區間 ----- */
+.extension-flow ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0 0 var(--s-5);
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.extension-flow li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) var(--s-3) var(--s-3) calc(var(--s-3) + 2rem);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  counter-increment: step;
+}
+
+.extension-flow li::before {
+  content: counter(step);
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
+  border-radius: 50%;
+  font-size: var(--t-xs);
+  font-weight: 800;
+}
+
+.extension-flow strong {
+  color: var(--c-ink);
+  font-size: var(--t-sm);
+}
+
+.extension-flow span {
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+}
+
+.text-link {
+  align-self: flex-start;
+  padding: 0;
+  color: var(--c-brand);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ----- 區塊標頭（對應 settings.scss 的 .management-head） ----- */
+.management-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin: var(--s-6) 0 var(--s-3);
+}
+
+.management-head:first-of-type {
+  margin-top: 0;
+}
+
+.management-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-1);
+  font-size: var(--t-xl);
+}
+
+.step-no {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--c-surface);
+  background: var(--c-brand);
+  border-radius: 50%;
+  font-size: var(--t-sm);
+}
+
+.next-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border: 1px solid var(--c-warn-border);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+}
+
+.data-table + .management-head,
+.factor-definition-form {
+  margin-bottom: var(--s-3);
+}
+
+.form-span-all {
+  grid-column: 1 / -1;
+}
+
+/* ----- 必填核取方塊、表單按鈕列（對應 settings.scss 的 weight-editor 同名規則） ----- */
+.weight-editor-row-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  cursor: pointer;
+}
+
+.weight-editor-row-label input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+}
+
+.weight-editor-actions {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.weight-editor-actions .btn,
+.weight-editor-actions .btn-primary {
+  flex: 1;
+}
+
+/* ----- 適用品類勾選清單（對應 settings.scss 的 tag-picker 同名規則） ----- */
+.tag-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+}
+
+.tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
+.tag-picker-option input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.tag-picker-option:hover {
+  background: var(--c-brand-tint);
+}
+
+.scale-label-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--s-2);
+}
+
+.scale-label-editor .helper {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .extension-flow ol {
+    grid-template-columns: 1fr;
+  }
+
+  .management-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .management-head .btn-primary {
+    width: 100%;
+  }
+}
+
+/*
+ * ===================== 自訂因子：新增表單 =====================
+ * 2026-09-20新增。原本直接借用 .data-table 當外層容器，但 .data-table
+ * 本身只對內部的 <table> 有樣式，對一般表單元素（label/input/select）
+ * 沒有任何版面規則，導致所有欄位擠成一行、placeholder 跟下一個欄位的
+ * label 文字黏在一起。改成響應式的 grid：每個欄位自己是一個直向排列的
+ * label（文字在上、輸入框在下），欄位之間用固定間距排開，寬螢幕自動
+ * 多欄、窄螢幕自動變成單欄堆疊。
+ */
+.factor-definition-form {
+  padding: var(--s-3);
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-sm);
+}
+
+.factor-definition-form form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--s-3);
+  align-items: start;
+}
+
+/*
+ * ⚠️ 修正：這裡原本用 `.factor-definition-form label` 這個描述子選擇器，
+ * 目的是統一「欄位代碼」「欄位名稱」這類最上層表單欄位的直向排列樣式，
+ * 但描述子選擇器不會區分巢狀層級——巢狀在裡面、本來就有自己一套橫向排列
+ * 樣式的元件（.tag-picker-option 核取方塊清單、.weight-editor-row-label
+ * 必填核取方塊）恰好也是 <label>，因此被一起強制套用了 flex-direction:
+ * column，覆蓋掉它們各自期待的橫向排列。具體症狀：核取方塊跟文字被迫上下
+ * 堆疊、置中，畫面上看起來像是「核取方塊清單完全沒有文字標籤」或
+ * 「必填核取方塊的文字掉到下面去」。
+ * 這裡最上層欄位（欄位代碼／欄位名稱／...）的 <label> 都沒有加 class，
+ * 巢狀元件的 <label> 都各自有 class，因此用 label:not([class]) 排除，
+ * 比一個一個列舉巢狀元件的 class 更不容易在之後新增巢狀元件時重蹈覆轍。
+ */
+.factor-definition-form label:not([class]) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.factor-definition-form input,
+.factor-definition-form select {
+  padding: 0.45rem 0.6rem;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-weight: 400;
+}
+
+.factor-definition-form input::placeholder {
+  color: var(--c-ink-muted);
+}
+
+.factor-definition-form input:disabled,
+.factor-definition-form select:disabled {
+  color: var(--c-ink-soft);
+  background: var(--c-surface-sunken);
+  opacity: 0.6;
+}
+
+/* 說明文字／勾選加總這類需要橫跨整排寬度的元素，不要被切進某一欄裡。 */
+.factor-definition-form .helper,
+.factor-definition-form .weight-editor-actions {
+  grid-column: 1 / -1;
+}
+
+.factor-definition-form .helper.is-invalid {
+  color: var(--c-danger);
+}
+
