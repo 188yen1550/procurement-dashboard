@@ -11,198 +11,177 @@
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
     </div>
     @if (useMockData) {
-      <button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
+    <button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
     }
   </header>
 
   @if (useMockData) {
-    <section class="state-bar">
-      <div><strong>UI 狀態</strong></div>
-      <div>
-        @for (state of stateOptions; track state) {
-          <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
-            {{ state }}
-          </button>
-        }
-      </div>
-    </section>
+  <section class="state-bar">
+    <div><strong>UI 狀態</strong></div>
+    <div>
+      @for (state of stateOptions; track state) {
+      <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
+        {{ state }}
+      </button>
+      }
+    </div>
+  </section>
   }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-    <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
   }
 
   @if (pageState() === 'error') {
-    <section class="empty error" role="alert">
-      <h2>無法載入審核資料</h2>
-      @if (errorMessage()) {
-        <p>{{ errorMessage() }}</p>
-      }
-      <button type="button" (click)="retry()">重試</button>
-    </section>
-  } @else if (pageState() === 'loading') {
-    <section class="skeleton" role="status">
-      正在載入審核快照…
-      @for (x of [1, 2, 3, 4, 5]; track x) {
-        <span></span>
-      }
-    </section>
-  } @else if (product(); as p) {
-    @if (p.isResubmission) {
-      <section class="resubmit">
-        <strong>曾被拒絕 · 第 {{ p.submissionCount }} 次送審</strong>
-        @if (useMockData) {
-          <span>上次留言：{{ previousComment }}</span>
-        }
-      </section>
+  <section class="empty error" role="alert">
+    <h2>無法載入審核資料</h2>
+    @if (errorMessage()) {
+    <p>{{ errorMessage() }}</p>
     }
+    <button type="button" (click)="retry()">重試</button>
+  </section>
+  } @else if (pageState() === 'loading') {
+  <section class="skeleton" role="status">
+    正在載入審核快照…
+    @for (x of [1, 2, 3, 4, 5]; track x) {
+    <span></span>
+    }
+  </section>
+  } @else if (product(); as p) {
+  @if (p.isResubmission) {
+  <section class="resubmit">
+    <strong>曾被拒絕 · 第 {{ p.submissionCount }} 次送審</strong>
+    @if (useMockData) {
+    <span>上次留言：{{ previousComment }}</span>
+    }
+  </section>
+  }
 
-    <section class="summary panel">
-      <header>
-        <div>
-          <span>{{ p.productTypeName }}</span>
-          <h2>商品與評估快照</h2>
-        </div>
-        <span>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</span>
-      </header>
-      <div class="scores">
-        <article>
-          <span>資料完整度</span><strong>{{ p.scores.dataCompleteness ?? '—' }}%</strong>
-        </article>
-        <article>
-          <span>基本分數</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
-        </article>
-        <article>
-          <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
-        </article>
-        <article class="final">
-          <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
-        </article>
-        <article><span>商業效益</span><strong>{{ p.scores.businessScore ?? '—' }}</strong></article>
-        <article><span>客群契合</span><strong>{{ p.scores.audienceScore ?? '—' }}</strong></article>
-        <article><span>歷史表現</span><strong>{{ p.scores.historicalScore ?? '—' }}</strong></article>
-        <article><span>購買意願</span><strong>{{ p.scores.purchaseScore ?? '—' }}</strong></article>
-        <article><span>市場趨勢</span><strong>{{ p.scores.trendScore ?? '—' }}</strong></article>
-        <article><span>需求預測</span><strong>{{ p.scores.forecastScore ?? '—' }}</strong></article>
+  <section class="summary panel">
+    <header>
+      <div>
+        <span>{{ p.productTypeName }}</span>
+        <h2>商品與評估快照</h2>
       </div>
-      @if (p.matchedCampaign) {
-        <div class="campaign-match">
-          <strong>命中檔期：{{ p.matchedCampaign.campaignName }}  </strong>
-          <span>標籤：{{ p.matchedCampaign.matchedTags.join('、') }}</span>
-        </div>
+      <span>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</span>
+    </header>
+    <div class="scores">
+      <article>
+        <span>資料完整度</span><strong>{{ p.scores.dataCompleteness ?? '—' }}%</strong>
+      </article>
+      <article>
+        <span>基本分數</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
+      </article>
+      <article>
+        <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
+      </article>
+      <article class="final">
+        <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
+      </article>
+      <article><span>商業效益</span><strong>{{ p.scores.businessScore ?? '—' }}</strong></article>
+      <article><span>客群契合</span><strong>{{ p.scores.audienceScore ?? '—' }}</strong></article>
+      <article><span>歷史表現</span><strong>{{ p.scores.historicalScore ?? '—' }}</strong></article>
+      <article><span>購買意願</span><strong>{{ p.scores.purchaseScore ?? '—' }}</strong></article>
+      <article><span>市場趨勢</span><strong>{{ p.scores.trendScore ?? '—' }}</strong></article>
+      <article><span>需求預測</span><strong>{{ p.scores.forecastScore ?? '—' }}</strong></article>
+    </div>
+    @if (p.matchedCampaign) {
+    <div class="campaign-match">
+      <strong>命中檔期：{{ p.matchedCampaign.campaignName }} </strong>
+      <span>標籤：{{ p.matchedCampaign.matchedTags.join('、') }}</span>
+      @if (campaignScope(p.matchedCampaign); as scope) {
+      <span>期間：{{ scope }}</span>
       }
-      <div class="weights">
-        <strong>{{ p.scores.evaluationModeName }} · Version {{ p.scores.evaluationModeVersion ?? '—' }}</strong>
-        <small>權重為審核快照唯讀資訊。</small>
+    </div>
+    }
+    <div class="weights">
+      <strong>{{ p.scores.evaluationModeName }} · Version {{ p.scores.evaluationModeVersion ?? '—' }}</strong>
+      <small>權重為審核快照唯讀資訊。</small>
+    </div>
+  </section>
+
+  <section class="panel ai">
+    <header>
+      <div>
+        <h2>AI 推薦摘要</h2>
       </div>
-    </section>
-
-    <section class="panel ai">
-      <header>
-        <div>
-
-          <h2>AI 推薦摘要</h2>
-        </div>
-        <span>AI 不會自動核准</span>
-      </header>
-      @if (p.ai.hasAnalysis) {
-        <p>{{ p.ai.summary }}</p>
-        @if (p.ai.recommendation) {
-          <p class="ai-recommendation">建議：{{ p.ai.recommendation }}</p>
-        }
-        @if (p.ai.reasons) {
-          <ul class="ai-reasons">
-            @for (line of aiReasonLines(); track line) {
-              <li>{{ line }}</li>
-            }
-          </ul>
-        }
-      } @else {
-        <p class="empty">尚無 AI 分析。</p>
+      <span>AI 不會自動核准</span>
+    </header>
+    @if (p.ai.hasAnalysis) {
+    <p>{{ p.ai.summary }}</p>
+    @if (p.ai.recommendation) {
+    <p class="ai-recommendation">建議：{{ p.ai.recommendation }}</p>
+    }
+    @if (p.ai.reasons) {
+    <ul class="ai-reasons">
+      @for (line of aiReasonLines(); track line) {
+      <li>{{ line }}</li>
       }
-    </section>
+    </ul>
+    }
+    } @else {
+    <p class="empty">尚無 AI 分析。</p>
+    }
+  </section>
 
-    <form class="panel form" (ngSubmit)="submit()">
-      <fieldset [disabled]="pageState() === 'disabled' || submitted()">
-        <legend>1. 人工風險評估（可複選）</legend>
-        <div class="risk-grid">
-          @for (risk of p.availableRiskOptions; track risk.id) {
-            <label>
-              <input
-                type="checkbox"
-                [checked]="selectedRiskIds().includes(risk.id)"
-                (change)="toggleRisk(risk.id)"
-              />{{ risk.name }}
-            </label>
-          }
-        </div>
-        @if (hasOtherSelected()) {
-          <label class="other">
-            其他風險備註 <em>*</em>
-            <textarea
-              rows="2"
-              [ngModel]="otherNote()"
-              (ngModelChange)="otherNote.set($event)"
-              name="otherNote"
-            ></textarea>
-          </label>
+  <form class="panel form" (ngSubmit)="submit()">
+    <fieldset [disabled]="pageState() === 'disabled' || submitted()">
+      <legend>1. 人工風險評估（可複選）</legend>
+      <div class="risk-grid">
+        @for (risk of p.availableRiskOptions; track risk.id) {
+        <label>
+          <input type="checkbox" [checked]="selectedRiskIds().includes(risk.id)" (change)="toggleRisk(risk.id)" />{{
+          risk.name }}
+        </label>
         }
-      </fieldset>
+      </div>
+      @if (hasOtherSelected()) {
+      <label class="other">
+        其他風險備註 <em>*</em>
+        <textarea rows="2" [ngModel]="otherNote()" (ngModelChange)="otherNote.set($event)" name="otherNote"></textarea>
+      </label>
+      }
+    </fieldset>
 
-      <fieldset [disabled]="pageState() === 'disabled' || submitted()">
-        <legend>2. 核准結果 <em>*</em></legend>
-        <div class="decision">
-          <label>
-            <input
-              type="radio"
-              name="decision"
-              value="APPROVED"
-              [ngModel]="decision()"
-              (ngModelChange)="decision.set($event)"
-            />審核通過
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="decision"
-              value="REJECTED"
-              [ngModel]="decision()"
-              (ngModelChange)="decision.set($event)"
-            />審核拒絕
-          </label>
-        </div>
-      </fieldset>
+    <fieldset [disabled]="pageState() === 'disabled' || submitted()">
+      <legend>2. 核准結果 <em>*</em></legend>
+      <div class="decision">
+        <label>
+          <input type="radio" name="decision" value="APPROVED" [ngModel]="decision()"
+            (ngModelChange)="decision.set($event)" />審核通過
+        </label>
+        <label>
+          <input type="radio" name="decision" value="REJECTED" [ngModel]="decision()"
+            (ngModelChange)="decision.set($event)" />審核拒絕
+        </label>
+      </div>
+    </fieldset>
 
-      <fieldset [disabled]="pageState() === 'disabled' || submitted()">
-        <legend>3. 審核留言與決策依據 <em>*</em></legend>
-        <textarea
-          rows="4"
-          name="comment"
-          [ngModel]="comment()"
-          (ngModelChange)="comment.set($event)"
-          placeholder="記錄本次選品判斷依據，非銷售條款或議價條件。"
-        ></textarea>
-      </fieldset>
+    <fieldset [disabled]="pageState() === 'disabled' || submitted()">
+      <legend>3. 審核留言與決策依據 <em>*</em></legend>
+      <textarea rows="4" name="comment" [ngModel]="comment()" (ngModelChange)="comment.set($event)"
+        placeholder="記錄本次選品判斷依據，非銷售條款或議價條件。"></textarea>
+    </fieldset>
 
-      <footer>
-        <span>{{ useMockData ? '送出後將在本地產生一筆決策快照。' : '送出後將建立正式審核紀錄，無法覆蓋。' }}</span>
-        <button type="submit" [disabled]="pageState() === 'disabled' || submitted() || isSubmitting()">
-          {{ isSubmitting() ? '送出中…' : submitted() ? '審核已送出' : '送出審核決策' }}
-        </button>
-      </footer>
-    </form>
-    <!-- 驗證錯誤、送出成功都改由 DialogService 統一呈現（跟 product-form.ts
+    <footer>
+      <span>{{ useMockData ? '送出後將在本地產生一筆決策快照。' : '送出後將建立正式審核紀錄，無法覆蓋。' }}</span>
+      <button type="submit" [disabled]="pageState() === 'disabled' || submitted() || isSubmitting()">
+        {{ isSubmitting() ? '送出中…' : submitted() ? '審核已送出' : '送出審核決策' }}
+      </button>
+    </footer>
+  </form>
+  <!-- 驗證錯誤、送出成功都改由 DialogService 統一呈現（跟 product-form.ts
          的「儲存並重審」同一套樣式與流程），不在這裡重複顯示第二層。 -->
   }
 
   @if (conflictOpen()) {
-    <div class="dialog-backdrop">
-      <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
-        <span aria-hidden="true">!</span>
-        <h2 id="conflict-title">審核狀態已變更</h2>
-        <p>此品項已被其他管理人員完成審核（409 Conflict）。請返回清單重新載入。</p>
-        <button type="button" (click)="closeConflict()">我知道了</button>
-      </section>
-    </div>
+  <div class="dialog-backdrop">
+    <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+      <span aria-hidden="true">!</span>
+      <h2 id="conflict-title">審核狀態已變更</h2>
+      <p>此品項已被其他管理人員完成審核（409 Conflict）。請返回清單重新載入。</p>
+      <button type="button" (click)="closeConflict()">我知道了</button>
+    </section>
+  </div>
   }
 </main>

@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiEnvelope } from '../../../core/api/api-envelope';
 import { unwrapData } from '../../../core/api/unwrap';
+import { FestiveCategory } from '../../../core/domain/enums';
 import {
   AudienceProfileResponsePayload,
   AudienceProfileUpdateRequestPayload,
@@ -17,7 +18,11 @@ import {
   FactorDefinitionUpdateRequestPayload,
   FestiveCampaignCreateRequestPayload,
   FestiveCampaignManualStatusRequestPayload,
+  FestiveCampaignOccurrenceOverridePayload,
+  FestiveCampaignOccurrenceOverrideRequestPayload,
+  FestiveCampaignOccurrencePreviewPayload,
   FestiveCampaignResponsePayload,
+  FestiveCampaignRulePayload,
   FestiveCampaignUpdateRequestPayload,
   ProductTypeCreateRequestPayload,
   ProductTypeResponsePayload,
@@ -310,10 +315,28 @@ export class SettingsApiService {
 
   // ----- 節慶檔期 -----
 
-  /** 13. GET /api/settings/festive-campaigns [操作+管理] */
-  getFestiveCampaigns(): Observable<FestiveCampaignResponsePayload[]> {
+  /**
+   * 13. GET /api/settings/festive-campaigns [操作+管理]
+   *
+   * 2026-09-24：categories 選填，送成可重複的 `?category=FESTIVAL&category=SEASON`；
+   * 不帶＝全部類別（商品表單的可選標籤依賴這個行為，不要改預設）。
+   */
+  getFestiveCampaigns(categories?: readonly FestiveCategory[]): Observable<FestiveCampaignResponsePayload[]> {
+    let params = new HttpParams();
+    for (const category of categories ?? []) params = params.append('category', category);
     return this.http
-      .get<ApiEnvelope<FestiveCampaignResponsePayload[]>>(SETTINGS_API.festiveCampaigns)
+      .get<ApiEnvelope<FestiveCampaignResponsePayload[]>>(SETTINGS_API.festiveCampaigns, { params })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * GET /api/settings/weather-campaigns/current [操作+管理]（2026-09-24 新增）
+   * 準備期／進行中的天氣檔期，加上所有手動覆蓋中的天氣檔期（含被設為已結束的，才能恢復自動）。
+   * 切換狀態沿用 switchFestiveCampaignStatus()。
+   */
+  getCurrentWeatherCampaigns(): Observable<FestiveCampaignResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<FestiveCampaignResponsePayload[]>>(SETTINGS_API.weatherCampaignsCurrent)
       .pipe(unwrapData());
   }
 
@@ -360,6 +383,51 @@ export class SettingsApiService {
       .pipe(unwrapData());
   }
 
+  /**
+   * 2026-09-24（V21）POST /api/settings/festive-campaigns/occurrence-preview [僅管理]：
+   * 依日期規則試算由今天起的 3 期，不寫入。規則驗證與新增檔期相同，不合法時回 400。
+   */
+  previewFestiveCampaignOccurrences(
+    body: FestiveCampaignRulePayload,
+  ): Observable<FestiveCampaignOccurrencePreviewPayload[]> {
+    return this.http
+      .post<ApiEnvelope<FestiveCampaignOccurrencePreviewPayload[]>>(
+        SETTINGS_API.festiveCampaignOccurrencePreview,
+        body,
+      )
+      .pipe(unwrapData());
+  }
+
+  /** 2026-09-24（V21）GET .../{id}/occurrence-overrides [僅管理]：逐年日期覆寫清單。 */
+  getFestiveCampaignOccurrenceOverrides(id: number): Observable<FestiveCampaignOccurrenceOverridePayload[]> {
+    return this.http
+      .get<ApiEnvelope<FestiveCampaignOccurrenceOverridePayload[]>>(
+        SETTINGS_API.festiveCampaignOccurrenceOverrides(id),
+      )
+      .pipe(unwrapData());
+  }
+
+  /** 2026-09-24（V21）PUT .../{id}/occurrence-overrides/{cycleYear} [僅管理]：新增或更新某期覆寫。 */
+  upsertFestiveCampaignOccurrenceOverride(
+    id: number,
+    cycleYear: number,
+    body: FestiveCampaignOccurrenceOverrideRequestPayload,
+  ): Observable<FestiveCampaignOccurrenceOverridePayload> {
+    return this.http
+      .put<ApiEnvelope<FestiveCampaignOccurrenceOverridePayload>>(
+        SETTINGS_API.festiveCampaignOccurrenceOverride(id, cycleYear),
+        body,
+      )
+      .pipe(unwrapData());
+  }
+
+  /** 2026-09-24（V21）DELETE .../{id}/occurrence-overrides/{cycleYear} [僅管理]。 */
+  deleteFestiveCampaignOccurrenceOverride(id: number, cycleYear: number): Observable<void> {
+    return this.http
+      .delete<ApiEnvelope<null>>(SETTINGS_API.festiveCampaignOccurrenceOverride(id, cycleYear))
+      .pipe(map(() => undefined));
+  }
+
   // ----- 天氣檔期同步（WeatherController，2026-09-21新增）-----
 
   /**
@@ -376,7 +444,7 @@ export class SettingsApiService {
   /**
    * GET /api/settings/weather/signals/preview [僅管理]
    * 只預覽這次會分類出的天氣訊號，**不寫入資料庫**。想看落地後的檔期，
-   * 呼叫上面 syncWeatherCampaigns() 之後改查 getFestiveCampaigns()。
+   * 呼叫上面 syncWeatherCampaigns() 之後改查 getCurrentWeatherCampaigns()。
    */
   previewWeatherSignals(): Observable<WeatherSignalPreviewPayload[]> {
     return this.http

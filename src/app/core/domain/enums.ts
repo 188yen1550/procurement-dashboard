@@ -37,6 +37,18 @@ export type FestiveCategory = 'FESTIVAL' | 'SEASON' | 'WEATHER';
 /** enums/FestiveCampaignStatus.java。 */
 export type FestiveCampaignStatus = 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED';
 
+/** enums/CampaignDateRuleType.java（2026-09-24 V21）：節慶／季節檔期的日期規則類型。 */
+export type CampaignDateRuleType = 'FIXED_DATE' | 'NTH_WEEKDAY' | 'LUNAR_DATE' | 'SOLAR_TERM';
+
+/** enums/SolarTerm.java（V21）。 */
+export type SolarTerm = 'QINGMING' | 'DONGZHI';
+
+/** enums/ObservedHolidayRule.java（V21）：NONE／TW_STATUTORY（逢週六前一上班日、逢週日次一上班日補假）。 */
+export type ObservedHolidayRule = 'NONE' | 'TW_STATUTORY';
+
+/** enums/CampaignStatusSource.java（V21）：campaignStatus 的來源。 */
+export type CampaignStatusSource = 'AUTO' | 'MANUAL' | 'SYNC';
+
 /** enums/FestiveCampaignTagMatchTier.java。括號內為後端定義的權重值。 */
 export type TagMatchTier = 'CORE' | 'GENERAL' | 'WEAK';
 

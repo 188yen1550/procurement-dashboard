@@ -145,6 +145,8 @@ describe('Settings', () => {
     // 「天氣連動」分頁的子元件首次渲染會載入這兩支；詳細行為在子元件自己的 spec 驗證。
     getWeatherSignalTagMappings: vi.fn(() => of([])),
     getRegionWeights: vi.fn(() => of([])),
+    // 2026-09-24：天氣連動分頁載入「目前的天氣檔期」
+    getCurrentWeatherCampaigns: vi.fn(() => of([])),
     getFactorDefinitions: vi.fn(() => of([])),
     getCustomFieldDefinitions: vi.fn(() => of([])),
     getProductTypeScoreBands: vi.fn(() => of([])),

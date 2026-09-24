@@ -37,6 +37,61 @@
   min-width: 420px;
 }
 
+/* ----- 目前的天氣檔期（2026-09-24 由「節慶檔期」分頁移入） ----- */
+.weather-campaigns-head {
+  margin-top: var(--s-5);
+}
+
+.weather-campaigns-head h4 {
+  margin: 0 0 var(--s-1);
+}
+
+.weather-campaign-table {
+  min-width: 760px;
+}
+
+.manual-badge {
+  margin-left: var(--s-1);
+  padding: 0.05rem 0.4rem;
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+/* 與「節慶檔期」分頁的載入錯誤列同一外觀 */
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  color: var(--c-danger);
+  background: var(--c-danger-tint);
+  border-radius: var(--r-md);
+}
+
+.weather-status-modal {
+  width: min(480px, 100%);
+}
+
+.status-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  margin: var(--s-3) 0;
+  padding: 0;
+  border: 0;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: 400;
+  cursor: pointer;
+}
+
 /*
  * ----- 命中等級下拉選單 -----
  * 2026-09-24：外觀（高度、邊框、自繪箭頭）走全域 .config-table select；

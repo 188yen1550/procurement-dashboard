@@ -10,9 +10,15 @@
  * 邏輯分岔、日後改一邊忘記改另一邊。前端只做「必要欄位辨識不出來就無法
  * 組出送出用的資料」這一層，其餘一律送到後端，用批次 API 本來就有的
  * 逐列結果回報把錯誤訊息帶回來對應到原始列號。
+ *
+ * ## 自訂商品屬性欄位（2026-09-24，Bug A）
+ * 題目依「大類」決定適用範圍，同一份檔案可能涵蓋多個大類，因此範本表頭＝所有生效中題目的
+ * 聯集（「自訂屬性：題目名稱（適用：大類…）」）。送出時依每列自己的品類，只把適用的欄位值
+ * 放進 customFieldValues；填在不適用欄位的值只提示、不擋匯入（與單筆表單「品類切換後殘留值
+ * 不送出」同一原則）。必填與數值範圍一律交給後端檢查，錯誤訊息沿用逐列結果回顯。
  */
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { toApiError } from '../../../core/api/api-error';
@@ -28,6 +34,7 @@ import {
 } from '../../../core/domain/labels';
 import { PricingType, ScoreLevel } from '../../../core/domain/enums';
 import { Icon } from '../../../shared/components/icon/icon';
+import { CustomFieldDefinitionResponsePayload } from '../../settings/api/settings-api.contract';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
 import {
@@ -90,10 +97,87 @@ const SAMPLE_ROW: Record<string, string> = {
   imageFileName: '',
 };
 
+/** 自訂屬性欄位的表頭前綴；範本產生與檔案解析共用，避免兩處字串各自維護。 */
+export const CUSTOM_FIELD_HEADER_PREFIX = '自訂屬性：';
+
+/** BatchRow.raw 裡自訂屬性欄位的 key，與 COLUMNS[].key 分開命名避免撞名。 */
+export const customFieldRawKey = (fieldCode: string): string => `cf:${fieldCode}`;
+
+/**
+ * 自訂屬性欄位在檔案中的識別名稱：預設為題目名稱；生效中題目有同名時改附代碼，
+ * 否則兩欄表頭相同無法分辨。
+ */
+export function customFieldLabels(
+  fields: readonly CustomFieldDefinitionResponsePayload[],
+): Map<string, string> {
+  const nameCount = new Map<string, number>();
+  for (const field of fields) nameCount.set(field.fieldName, (nameCount.get(field.fieldName) ?? 0) + 1);
+  return new Map(
+    fields.map((field) => [
+      field.fieldCode,
+      (nameCount.get(field.fieldName) ?? 0) > 1 ? `${field.fieldName}［${field.fieldCode}］` : field.fieldName,
+    ]),
+  );
+}
+
+/**
+ * 範本表頭：「自訂屬性：題目名稱（適用：大類A、大類B，必填）」。括號內只是說明，
+ * 解析時只比對「前綴＋題目名稱」，品類名稱日後改了，舊範本仍能匯入。
+ */
+export function customFieldHeader(
+  field: CustomFieldDefinitionResponsePayload,
+  label: string,
+  majorNameById: ReadonlyMap<number, string>,
+): string {
+  const scope =
+    field.applicableRootProductTypeIds.length === 0
+      ? '全品類'
+      : field.applicableRootProductTypeIds.map((id) => majorNameById.get(id) ?? `#${id}`).join('、');
+  return `${CUSTOM_FIELD_HEADER_PREFIX}${label}（適用：${scope}${field.isRequired ? '，必填' : ''}）`;
+}
+
+/**
+ * 實際表頭 → 題目代碼。接受「前綴＋名稱」本身，或其後接全形括號說明；
+ * 多個名稱都符合時取最長者（例：「產地」與「產地證明」）。對不到回 null。
+ */
+export function matchCustomFieldHeader(header: string, codeByLabel: ReadonlyMap<string, string>): string | null {
+  if (!header.startsWith(CUSTOM_FIELD_HEADER_PREFIX)) return null;
+  const rest = header.slice(CUSTOM_FIELD_HEADER_PREFIX.length).trim();
+  let best: { label: string; code: string } | null = null;
+  for (const [label, code] of codeByLabel) {
+    if (rest === label || rest.startsWith(`${label}（`)) {
+      if (!best || label.length > best.label.length) best = { label, code };
+    }
+  }
+  return best?.code ?? null;
+}
+
+/**
+ * 單一自訂屬性值轉成送出格式。TEXT 原樣；數值型轉 number，SCALE_1_5 另接受設定頁定義的
+ * 分數說明文字（與單筆表單下拉選單的選項一致）。轉不成數字回 null，由呼叫端列為擋送出錯誤，
+ * 不送 NaN 或字串給後端。範圍（1~5、0~1）由後端檢查。
+ */
+export function parseCustomFieldValue(
+  field: CustomFieldDefinitionResponsePayload,
+  raw: string,
+): string | number | null {
+  if (field.fieldType === 'TEXT') return raw;
+  if (field.fieldType === 'SCALE_1_5' && field.scaleLabels) {
+    for (const [score, label] of Object.entries(field.scaleLabels)) {
+      if (raw === label || raw === `${score} - ${label}`) return Number(score);
+    }
+  }
+  const numeric = Number(raw);
+  return raw.trim() !== '' && Number.isFinite(numeric) ? numeric : null;
+}
+
 interface BatchRow {
   rowNumber: number;
   name: string;
-  /** 原始各欄位文字（key 對照 COLUMNS[].key），供「下載失敗清單」完整還原原始內容重新匯入使用。 */
+  /**
+   * 原始各欄位文字（key 對照 COLUMNS[].key；自訂屬性為 customFieldRawKey(fieldCode)），
+   * 供「下載失敗清單」完整還原原始內容重新匯入使用。
+   */
   raw: Record<string, string>;
   /** 這一列組好、可送出的 payload；null 代表必要欄位無法辨識，這一列不會被送出。 */
   payload: ProductCreateRequestPayload | null;
@@ -156,7 +240,19 @@ export class BatchImport implements OnInit {
   private readonly productTypeById = new Set<number>();
   private readonly productTypeByExactName = new Map<string, number>();
   private readonly productTypeByCombinedName = new Map<string, number>();
+  /** 小類 id → 大類 id：自訂屬性題目依大類決定適用範圍。 */
+  private readonly rootTypeIdByMinorId = new Map<number, number>();
+  /** 大類 id → 名稱：範本表頭的「適用：…」說明用。 */
+  private readonly majorNameById = new Map<number, string>();
   readonly productTypesReady = signal(false);
+
+  /** 生效中的自訂商品屬性題目（不限品類的聯集）。 */
+  readonly customFieldColumns = signal<readonly CustomFieldDefinitionResponsePayload[]>([]);
+  readonly customFieldsReady = signal(false);
+  /** 題目清單載入失敗：仍可匯入，但自訂屬性欄位無法辨識，畫面提示使用者。 */
+  readonly customFieldsLoadFailed = signal(false);
+  /** 範本與解析都要等品類與題目兩份清單就緒。 */
+  readonly lookupsReady = computed(() => this.productTypesReady() && this.customFieldsReady());
 
   /** 尚未送出、且沒有 blockingErrors 的列數——可送出的實際筆數。 */
   get submittableCount(): number {
@@ -180,10 +276,25 @@ export class BatchImport implements OnInit {
   }
 
   ngOnInit(): void {
+    this.productApi
+      .getAllActiveCustomFieldSchema()
+      .pipe(
+        catchError(() => {
+          this.customFieldsLoadFailed.set(true);
+          return of([] as CustomFieldDefinitionResponsePayload[]);
+        }),
+      )
+      .subscribe((fields) => {
+        this.customFieldColumns.set(fields);
+        this.customFieldsReady.set(true);
+      });
+
     this.productTypeLookup.getGroupedOptions().subscribe((groups) => {
       const nameCount = new Map<string, number>();
       for (const group of groups) {
+        this.majorNameById.set(group.major.id, group.major.name);
         for (const minor of group.minors) {
+          this.rootTypeIdByMinorId.set(minor.id, group.major.id);
           nameCount.set(minor.name, (nameCount.get(minor.name) ?? 0) + 1);
           this.productTypeById.add(minor.id);
           this.productTypeByCombinedName.set(`${group.major.name}/${minor.name}`, minor.id);
@@ -202,10 +313,24 @@ export class BatchImport implements OnInit {
     });
   }
 
-  /** 下載 CSV 範本，含欄位標題與一列示範資料，UTF-8 BOM 讓 Excel 開啟時中文不亂碼。 */
+  /** 範本／失敗清單的自訂屬性欄位（表頭＋raw key），依題目順序。 */
+  private customFieldTemplateColumns(): { header: string; key: string }[] {
+    const fields = this.customFieldColumns();
+    const labels = customFieldLabels(fields);
+    return fields.map((field) => ({
+      header: customFieldHeader(field, labels.get(field.fieldCode) ?? field.fieldName, this.majorNameById),
+      key: customFieldRawKey(field.fieldCode),
+    }));
+  }
+
+  /**
+   * 下載 CSV 範本，含欄位標題與一列示範資料，UTF-8 BOM 讓 Excel 開啟時中文不亂碼。
+   * 自訂屬性欄位接在固定欄位後面，示範列留空（各品類適用的題目不同，填了反而誤導）。
+   */
   downloadTemplate(): void {
-    const headerLine = COLUMNS.map((c) => this.csvEscape(c.header)).join(',');
-    const sampleLine = COLUMNS.map((c) => this.csvEscape(SAMPLE_ROW[c.key] ?? '')).join(',');
+    const columns = [...COLUMNS, ...this.customFieldTemplateColumns()];
+    const headerLine = columns.map((c) => this.csvEscape(c.header)).join(',');
+    const sampleLine = columns.map((c) => this.csvEscape(SAMPLE_ROW[c.key] ?? '')).join(',');
     const csvContent = '\uFEFF' + headerLine + '\r\n' + sampleLine + '\r\n';
     this.triggerDownload(csvContent, '批次新增選品範本.csv');
   }
@@ -231,8 +356,8 @@ export class BatchImport implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    if (!this.productTypesReady()) {
-      this.parseErrorMessage.set('商品分類清單尚未載入完成，請稍候片刻再重新選擇檔案。');
+    if (!this.lookupsReady()) {
+      this.parseErrorMessage.set('商品分類與自訂屬性清單尚未載入完成，請稍候片刻再重新選擇檔案。');
       this.state.set('parse-error');
       input.value = '';
       return;
@@ -324,13 +449,23 @@ export class BatchImport implements OnInit {
     }
   }
 
-  /** 依「標題文字完全相符」比對，找不到就視為該欄位缺席（用 defval 的空字串填補）。 */
+  /**
+   * 固定欄位依「標題文字完全相符」比對；自訂屬性欄位依「前綴＋題目名稱」比對（見
+   * matchCustomFieldHeader）。找不到就視為該欄位缺席（用 defval 的空字串填補）。
+   * 自訂屬性一律不是檔案層級的必要欄位——是否必填要看每一列的品類，由後端判斷。
+   */
   private matchHeaders(actualHeaders: string[]): Map<string, string> {
     const result = new Map<string, string>();
     for (const column of COLUMNS) {
       if (actualHeaders.includes(column.header)) {
         result.set(column.key, column.header);
       }
+    }
+    const labels = customFieldLabels(this.customFieldColumns());
+    const codeByLabel = new Map([...labels].map(([code, label]) => [label, code]));
+    for (const header of actualHeaders) {
+      const code = matchCustomFieldHeader(header, codeByLabel);
+      if (code && !result.has(customFieldRawKey(code))) result.set(customFieldRawKey(code), header);
     }
     return result;
   }
@@ -340,6 +475,9 @@ export class BatchImport implements OnInit {
     const warnings: string[] = [];
     const raw: Record<string, string> = {};
     for (const column of COLUMNS) raw[column.key] = get(column.key);
+    for (const field of this.customFieldColumns()) {
+      raw[customFieldRawKey(field.fieldCode)] = get(customFieldRawKey(field.fieldCode));
+    }
 
     const name = get('name');
     if (!name) blockingErrors.push('商品名稱未填');
@@ -369,6 +507,9 @@ export class BatchImport implements OnInit {
     if (imageFileName && !availableImages.has(imageFileName)) {
       warnings.push(`圖片檔名「${imageFileName}」目前尚未於下方選取對應的圖片檔案`);
     }
+
+    const customFieldValues =
+      productTypeId === null ? {} : this.buildCustomFieldValues(productTypeId, get, blockingErrors, warnings);
 
     if (blockingErrors.length > 0) {
       return { rowNumber, name, raw, payload: null, imageFileName, blockingErrors, warnings };
@@ -430,7 +571,44 @@ export class BatchImport implements OnInit {
     this.assignEnum(payload, 'packageSizeTier', get('packageSizeTier'), PACKAGE_SIZE_TIER_REVERSE, warnings, '包裝尺寸');
     this.assignEnum(payload, 'packingType', get('packingType'), PACKING_TYPE_REVERSE, warnings, '包裝型態');
 
+    if (Object.keys(customFieldValues).length > 0) {
+      payload.customFieldValues = customFieldValues;
+    }
+
     return { rowNumber, name, raw, payload, imageFileName, blockingErrors, warnings };
+  }
+
+  /**
+   * 依這一列的品類（小類 → 大類）挑出適用的自訂屬性值。
+   * - 適用且有填：轉成送出格式；數值型轉不成數字時擋下整列（不送 NaN／字串給後端）。
+   * - 不適用卻有填：只提示「已忽略」，不擋匯入。
+   * - 必填未填：不在這裡判斷，交給後端 CUSTOM_FIELD_REQUIRED_MISSING，錯誤回顯在該列結果。
+   */
+  private buildCustomFieldValues(
+    productTypeId: number,
+    get: (key: string) => string,
+    blockingErrors: string[],
+    warnings: string[],
+  ): Record<string, unknown> {
+    const rootTypeId = this.rootTypeIdByMinorId.get(productTypeId) ?? null;
+    const values: Record<string, unknown> = {};
+    for (const field of this.customFieldColumns()) {
+      const raw = get(customFieldRawKey(field.fieldCode));
+      if (!raw) continue;
+      const scope = field.applicableRootProductTypeIds;
+      const applicable = scope.length === 0 || (rootTypeId !== null && scope.includes(rootTypeId));
+      if (!applicable) {
+        warnings.push(`自訂屬性「${field.fieldName}」不適用於此商品品類，已忽略`);
+        continue;
+      }
+      const value = parseCustomFieldValue(field, raw);
+      if (value === null) {
+        blockingErrors.push(`自訂屬性「${field.fieldName}」必須是數字（目前為「${raw}」）`);
+        continue;
+      }
+      values[field.fieldCode] = value;
+    }
+    return values;
   }
 
   private assignOptionalString(payload: ProductCreateRequestPayload, key: keyof ProductCreateRequestPayload, value: string): void {
@@ -566,13 +744,15 @@ export class BatchImport implements OnInit {
     );
     if (failedRows.length === 0) return;
 
-    const headerLine = ['原始列號', '商品名稱', '失敗原因', ...COLUMNS.map((c) => c.header)]
+    // 自訂屬性欄位也要帶上，修正後重新匯入才不會遺失原本填的答案。
+    const columns = [...COLUMNS, ...this.customFieldTemplateColumns()];
+    const headerLine = ['原始列號', '商品名稱', '失敗原因', ...columns.map((c) => c.header)]
       .map((h) => this.csvEscape(h))
       .join(',');
     const lines = failedRows.map((row) => {
       const reason =
         row.payload === null ? row.blockingErrors.join('；') : (row.result?.errorMessage ?? '');
-      const cells = [String(row.rowNumber), row.name, reason, ...COLUMNS.map((c) => row.raw[c.key] ?? '')];
+      const cells = [String(row.rowNumber), row.name, reason, ...columns.map((c) => row.raw[c.key] ?? '')];
       return cells.map((v) => this.csvEscape(v)).join(',');
     });
     const csvContent = '\uFEFF' + headerLine + '\r\n' + lines.join('\r\n') + '\r\n';

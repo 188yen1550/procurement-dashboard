@@ -1,7 +1,7 @@
 /*
  * 檔案用途：個人資料頁。承載 PATCH /api/auth/me 與 PATCH /api/auth/me/password。
  *
- * ## 為什麼是獨立路由而不是放進系統設定
+ * ## 為什麼是獨立路由而不是放進設定
  * /settings 掛了 managerGuard，採購角色進不去。但「改自己的名字與密碼」
  * 是每個登入者都該有的功能，放進設定頁等於採購永遠改不了自己的密碼。
  * 因此獨立成 /profile，只掛 authGuard。

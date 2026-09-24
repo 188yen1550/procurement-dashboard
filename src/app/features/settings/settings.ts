@@ -21,16 +21,14 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { DialogService } from '../../core/dialog/dialog.service';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
-import { FestiveCategory, TemperatureZone, UserRole } from '../../core/domain/enums';
+import { TemperatureZone, UserRole } from '../../core/domain/enums';
 import {
-  joinCampaignTags,
   splitKeywords,
   TEMPERATURE_ZONE_LABEL,
 } from '../../core/domain/labels';
 import { ProductTypeLookupService } from './api/product-type-lookup.service';
 import { RiskOptionLookupService } from './api/risk-option-lookup.service';
 import {
-  FestiveCampaignTagPayload,
   ProductTypeScoreBandCreateRequestPayload,
   ProductTypeScoreBandResponsePayload,
   RiskOptionResponsePayload,
@@ -46,6 +44,7 @@ import { AuthService } from '../../core/auth/auth';
 import { CustomDefinitionsStore } from './state/custom-definitions.store';
 import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensions/custom-extensions';
 import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
+import { FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
 import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
@@ -198,30 +197,6 @@ interface ProductTypeVM {
 interface ProductTypeGroupVM {
   major: ProductTypeVM;
   minors: ProductTypeVM[];
-}
-
-/**
- * 節慶檔期的四個生命週期狀態，原本畫面上（清單顯示跟手動切換的下拉
- * 選單）都直接顯示這四個英文代碼給使用者看，沒有經過任何中文轉換。
- */
-const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
-  UPCOMING: '即將開始',
-  PREPARING: '準備期',
-  ACTIVE: '進行中',
-  EXPIRED: '已結束',
-};
-
-interface CampaignVM {
-  id: number | null;
-  code: string;
-  name: string;
-  category: FestiveCategory;
-  categoryLabel: string;
-  range: string;
-  status: string;
-  override: boolean;
-  leadDays: number;
-  tags: FestiveCampaignTagPayload[];
 }
 
 interface AccountVM {
@@ -414,45 +389,6 @@ const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
   { id: 6, name: '服飾配件', system: true, used: 0, active: true, parentId: 300, level: 2 },
 ];
 
-const MOCK_CAMPAIGNS: readonly CampaignVM[] = [
-  {
-    id: 1,
-    code: 'MOON2026',
-    name: '中秋節',
-    category: 'FESTIVAL',
-    categoryLabel: '節慶',
-    range: '2026/08/15–2026/09/25',
-    status: 'ACTIVE',
-    override: false,
-    leadDays: 30,
-    tags: [{ tag: 'bbq', matchTier: 'CORE' }],
-  },
-  {
-    id: 2,
-    code: 'OCT2026',
-    name: '雙十連假',
-    category: 'FESTIVAL',
-    categoryLabel: '節慶',
-    range: '2026/09/15–2026/10/10',
-    status: 'PREPARING',
-    override: false,
-    leadDays: 21,
-    tags: [{ tag: 'gift', matchTier: 'GENERAL' }],
-  },
-  {
-    id: 3,
-    code: 'AUTUMN2026',
-    name: '秋冬換季',
-    category: 'SEASON',
-    categoryLabel: '季節',
-    range: '2026/10/01–2026/11/15',
-    status: 'UPCOMING',
-    override: true,
-    leadDays: 45,
-    tags: [{ tag: 'seasonal', matchTier: 'WEAK' }],
-  },
-];
-
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
   { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true },
   { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true },
@@ -472,6 +408,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
     InfoTip,
     CustomExtensions,
     WeatherLinkage,
+    FestiveCampaigns,
     AiSuggestionBatchPanel,
   ],
   templateUrl: './settings.html',
@@ -482,9 +419,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
 })
 export class Settings implements OnInit {
   readonly typeSort = new ListSort();
-  readonly campaignSort = new ListSort();
   readonly accountSort = new ListSort();
-  readonly campaignStatusLabel = CAMPAIGN_STATUS_LABEL;
   private readonly api = inject(SettingsApiService);
   private readonly dialog = inject(DialogService);
   private readonly userApi = inject(UserApiService);
@@ -496,6 +431,7 @@ export class Settings implements OnInit {
   private readonly router = inject(Router);
   private readonly definitions = inject(CustomDefinitionsStore);
   private readonly weatherLinkage = viewChild(WeatherLinkage);
+  private readonly festiveCampaigns = viewChild(FestiveCampaigns);
   /** 內建因子的提示說明，見 FACTOR_HELP；自訂因子查不到時樣板不顯示提示。 */
   readonly factorHelp = FACTOR_HELP;
 
@@ -534,7 +470,7 @@ export class Settings implements OnInit {
     // 原本呼叫 autoDismissStatusMessage(this.statusMessage) 的地方拿掉了，
     // 現在的自動消失邏輯已經內建在 createDismissibleMessage() 裡，
     // 不需要另外註冊監看。
-    // 原地重新點擊「系統設定」連結時 ngOnInit() 不會再被觸發，要靠這裡才能
+    // 原地重新點擊「設定」連結時 ngOnInit() 不會再被觸發，要靠這裡才能
     // 重新抓資料——直接呼叫 loadTab(activeTab())、不經過 setTab() 的
     // loadedTabs 判斷，因為那個判斷本來是「同一個分頁只在第一次切換時載入
     // 一次」的效能優化，這裡的情境是使用者主動要求重新整理，要強制重抓
@@ -543,7 +479,7 @@ export class Settings implements OnInit {
     // 2026-09-24：分頁同步到網址 ?tab= 之後，setTab() 自己改網址也會觸發這個
     // NavigationEnd。網址上的分頁等於目前分頁時就是自己剛同步的，略過；
     // 網址帶了另一個分頁（例如從其他頁面連過來）就切過去；沒帶分頁（使用者
-    // 點側邊欄「系統設定」）則維持原本行為：強制重抓目前分頁。
+    // 點側邊欄「設定」）則維持原本行為：強制重抓目前分頁。
     if (!this.useMockData) {
       reloadOnRevisit(() => {
         const requested = this.tabFromUrl();
@@ -587,7 +523,6 @@ export class Settings implements OnInit {
    * 避免品類一多，畫面一開就是一長串攤平的小類清單。
    */
   readonly expandedMajorIds = signal<Set<number>>(new Set());
-  readonly campaigns = signal<CampaignVM[]>(this.useMockData ? [...MOCK_CAMPAIGNS] : []);
   readonly accounts = signal<AccountVM[]>(this.useMockData ? [...MOCK_ACCOUNTS] : []);
   readonly scoreBands = signal<ScoreBandVM[]>(this.useMockData ? [...MOCK_SCORE_BANDS] : []);
   readonly systemSettings = signal<SystemSettingVM[]>(
@@ -611,9 +546,8 @@ export class Settings implements OnInit {
   ) : []);
 
   readonly modal = signal<
-    null | 'risk' | 'productType' | 'campaign' | 'campaignStatus' | 'account'
+    null | 'risk' | 'productType' | 'account'
   >(null);
-  readonly selectedCampaign = signal('');
   readonly draftName = signal('');
   readonly draftKeywords = signal('');
 
@@ -675,123 +609,8 @@ export class Settings implements OnInit {
   readonly draftUsername = signal('');
   readonly draftRole = signal<UserRole>('PURCHASER');
   readonly draftPassword = signal('');
-  readonly draftCategory = signal<FestiveCategory>('FESTIVAL');
-  readonly draftStart = signal('');
-  readonly draftEnd = signal('');
-  readonly draftLeadDays = signal(30);
-  /**
-   * 新增檔期用的唯一代碼。原本這裡完全沒有輸入欄位——saveModal() 的
-   * else 分支只留了一句「請洽開發團隊補上欄位」的錯誤訊息，等於新增
-   * 節慶檔期這個功能從來沒有真正做完，使用者點下「新增檔期」按鈕，
-   * 填完表單送出後只會看到這句提示，永遠新增不了。這裡補上真正缺的
-   * 那個欄位，讓建立流程走得通。
-   */
-  readonly draftCampaignCode = signal('');
-  readonly draftTags = signal<FestiveCampaignTagPayload[]>([{ tag: '', matchTier: 'CORE' }]);
-
-  // ----- 節慶標籤選擇（獨立 dialog，搜尋 + 複選勾選）-----
-  // 原本的標籤編輯是每一列自由輸入文字＋選等級，容易打錯字（跟其他檔期
-  // 已經在用的標籤名稱不一致，AI 比對命中率就會受影響），也沒辦法一眼
-  //看出系統裡已經有哪些標籤在用。改成搜尋＋勾選既有標籤為主，等級歸類
-  // 屬於進階設定，不放在第一層互動裡。
-  readonly tagPickerOpen = signal(false);
-  readonly tagPickerSearch = signal('');
-  readonly tagPickerSelected = signal<Set<string>>(new Set());
-
-  /** 全站目前所有檔期用過的標籤，去重排序——不是憑空編造的固定清單。 */
-  readonly knownTags = computed(() =>
-    [...new Set(this.campaigns().flatMap((c) => c.tags.map((t) => t.tag).filter(Boolean)))].sort(),
-  );
-
-  readonly filteredKnownTags = computed(() => {
-    const keyword = this.tagPickerSearch().trim().toLocaleLowerCase('zh-Hant');
-    if (!keyword) return this.knownTags();
-    return this.knownTags().filter((t) => t.toLocaleLowerCase('zh-Hant').includes(keyword));
-  });
-
-  /**
-   * 搜尋文字本身不在已知清單裡時，允許直接新增這個新標籤。
-   *
-   * ⚠️ 原本用 knownTags().includes(keyword) 做精確比對（區分大小寫），
-   * 但上面的 filteredKnownTags 是不分大小寫比對——結果是已有「Gift」時，
-   * 打「gift」不只會在清單裡篩出「Gift」，「＋ 新增標籤」按鈕也會同時
-   * 出現，使用者一沒注意點了新增，就會多出一個大小寫不同但語意重複的
-   * 標籤，直接違背這整個 dialog 想避免「標籤名稱不一致」的初衷。改成
-   * 一樣不分大小寫比對，兩者判斷基準才會一致。
-   */
-  readonly canAddNewTag = computed(() => {
-    const keyword = this.tagPickerSearch().trim();
-    if (!keyword) return false;
-    const normalized = keyword.toLocaleLowerCase('zh-Hant');
-    return !this.knownTags().some((tag) => tag.toLocaleLowerCase('zh-Hant') === normalized);
-  });
-
-  /** 目前草稿裡實際有效（非空字串）的標籤數量，供「已選 N 項」跟顯示邏輯共用判斷。 */
-  readonly selectedTagRows = computed(() => this.draftTags().filter((r) => r.tag));
-
-  /**
-   * 「進階：調整比對等級」的下拉選單改比對等級時要用這個方法，不要在
-   * 樣板裡直接 `row.matchTier = $event`。selectedTagRows() 是
-   * computed(() => draftTags().filter(...))，篩出來的物件跟 draftTags()
-   * 陣列裡的是同一個參照——直接改屬性雖然「畫面上看起來有變」，但完全
-   * 繞過 draftTags.set()，signal 沒有真的更新，依賴 draftTags() 的其他
-   * computed／等值比較都不會正確重新運算，是很容易埋雷的寫法。
-   */
-  updateTagMatchTier(tag: string, matchTier: FestiveCampaignTagPayload['matchTier']): void {
-    this.draftTags.update((rows) => rows.map((row) => (row.tag === tag ? { ...row, matchTier } : row)));
-  }
-
-  openTagPicker(): void {
-    this.tagPickerSelected.set(new Set(this.draftTags().map((r) => r.tag).filter(Boolean)));
-    this.tagPickerSearch.set('');
-    this.tagPickerOpen.set(true);
-  }
-
-  closeTagPicker(): void {
-    this.tagPickerOpen.set(false);
-  }
-
-  toggleTagPickerSelection(tag: string): void {
-    this.tagPickerSelected.update((set) => {
-      const next = new Set(set);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
-      return next;
-    });
-  }
-
-  addNewTagFromSearch(): void {
-    const tag = this.tagPickerSearch().trim();
-    if (!tag) return;
-    this.tagPickerSelected.update((set) => new Set(set).add(tag));
-    this.tagPickerSearch.set('');
-  }
-
-  /**
-   * 確認選擇：新勾選的標籤預設等級為「一般」（GENERAL）——等級歸類是
-   * 進階設定，第一次選標籤時不該強迫使用者馬上決定；已經存在的標籤
-   * 維持原本設定過的等級，不會因為重新打開這個 dialog 就被重置。
-   */
-  confirmTagPicker(): void {
-    const selected = this.tagPickerSelected();
-    const existing = new Map(this.draftTags().map((r) => [r.tag, r.matchTier]));
-    const merged: FestiveCampaignTagPayload[] = [...selected].map((tag) => ({
-      tag,
-      matchTier: existing.get(tag) ?? 'GENERAL',
-    }));
-    this.draftTags.set(merged.length > 0 ? merged : [{ tag: '', matchTier: 'CORE' }]);
-    this.tagPickerOpen.set(false);
-  }
-  readonly draftStatus = signal('ACTIVE');
-  /**
-   * 「切換狀態」modal 用：true＝手動指定狀態（is_manual_override 開啟），
-   * false＝恢復自動判斷（is_manual_override 關閉）。原本這裡沒有反向路徑，
-   * overrideEnabled 送出時永遠是 true，一旦手動覆蓋就再也回不去，
-   * 這個 signal 補上「恢復自動判斷」這個選項。
-   */
-  readonly draftManualOverride = signal(true);
   readonly isSaving = signal(false);
-  /** risk / productType / account / campaign / campaignStatus 共用的新增/編輯 modal 存檔中狀態。 */
+  /** risk / productType / account 共用的新增/編輯 modal 存檔中狀態（檔期的 modal 已移到子元件）。 */
   readonly isSavingModal = signal(false);
 
   readonly form = this.fb().nonNullable.group({
@@ -873,7 +692,9 @@ export class Settings implements OnInit {
         this.loadProductTypes();
         return;
       case 'campaigns':
-        this.loadCampaigns();
+        // 子元件首次渲染時自行載入；這裡只處理「已在這個分頁、要求重新整理」。
+        this.festiveCampaigns()?.reload();
+        this.markLoaded('campaigns');
         return;
       case 'accounts':
         this.loadAccounts();
@@ -1538,43 +1359,8 @@ export class Settings implements OnInit {
   }
 
   // ----- 5. 節慶檔期 -----
-
-  private loadCampaigns(): void {
-    this.api
-      .getFestiveCampaigns()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (list) => {
-          this.campaigns.set(list.map((item) => toCampaignVM(item)));
-          this.markLoaded('campaigns');
-        },
-        error: (err) => this.handleLoadError(err),
-      });
-    // 天氣訊號標籤對照與地域占比 2026-09-24 移到「天氣連動」分頁，由
-    // WeatherLinkage 子元件自行載入。
-  }
-
-  editCampaign(name: string): void {
-    const campaign = this.campaigns().find((item) => item.name === name);
-    if (!campaign) return;
-    this.selectedCampaign.set(name);
-    this.draftName.set(campaign.name);
-    this.draftCategory.set(campaign.category);
-    const [start, end] = campaign.range.split('–').map((date) => date.replaceAll('/', '-'));
-    this.draftStart.set(start ?? '');
-    this.draftEnd.set(end ?? '');
-    // ⚠️ 原本這裡完全沒有回填備戰天數——CampaignVM 之前也沒有 leadDays
-    // 欄位，表單一路沿用 draftLeadDays 的殘留值（預設 30 或上一次編輯/
-    // 新增留下的數字），送出時會用這個錯的值覆蓋掉該檔期真正的備戰天數，
-    // 屬於靜默資料損毀。現在 CampaignVM 已經帶 leadDays，這裡補上回填。
-    this.draftLeadDays.set(campaign.leadDays);
-    // tags 是整份覆蓋：先把現有標籤帶進表單，讓使用者在既有基礎上增刪，
-    // 不要讓表單以空陣列開局，否則存檔會把原有標籤全部清光。
-    this.draftTags.set(
-      campaign.tags.length > 0 ? campaign.tags.map((t) => ({ ...t })) : [{ tag: '', matchTier: 'CORE' }],
-    );
-    this.modal.set('campaign');
-  }
+  // 2026-09-24（V21 檔期規則改版）：列表、表單、狀態切換、標籤選擇、逐年覆寫都搬到
+  // tabs/festive-campaigns 子元件，由子元件自行載入。
 
   // ----- 6. 帳號管理 -----
 
@@ -1715,7 +1501,7 @@ export class Settings implements OnInit {
       });
   }
 
-  // ----- 8. 系統設定（演算法參數）-----
+  // ----- 8. 設定（演算法參數）-----
 
   private loadSystemSettings(): void {
     this.api
@@ -2182,26 +1968,8 @@ export class Settings implements OnInit {
 
   // ----- Modal 通用邏輯 -----
 
-  openModal(type: Exclude<ReturnType<typeof this.modal>, null>, campaign = ''): void {
-    this.selectedCampaign.set(campaign);
+  openModal(type: Exclude<ReturnType<typeof this.modal>, null>): void {
     this.modal.set(type);
-  }
-
-  /**
-   * 開啟「切換狀態」modal：把該檔期目前的狀態與是否手動覆蓋都如實回填
-   * 進草稿——不預設任何一種模式，維持「打開來看不會意外改變設定」。
-   */
-  openCampaignStatusModal(item: CampaignVM): void {
-    this.selectedCampaign.set(item.name);
-    this.draftStatus.set(item.status);
-    // ⚠️ 修正：這裡原本寫死 set(true)，不管檔期目前實際是「手動覆蓋」
-    // 還是「自動判斷」，一律讓 modal 開起來時顯示「手動指定狀態」。使用者
-    // 只是想看一下目前狀態、確認沒問題就按「儲存」，結果會把原本設定
-    // 「自動判斷」的檔期，靜靜地改成「手動覆蓋」——畫面上確實存檔成功、
-    // 也沒有錯誤訊息，但存下去的是使用者沒打算做的變更。改成如實回填
-    // 檔期目前的 override 狀態，不做任何動作、直接按儲存時才會維持原狀。
-    this.draftManualOverride.set(item.override);
-    this.modal.set('campaignStatus');
   }
 
   /** 開啟風險選項編輯：把既有名稱與關鍵字回填進草稿狀態。 */
@@ -2232,24 +2000,12 @@ export class Settings implements OnInit {
     this.draftKeywords.set('');
     this.draftUsername.set('');
     this.draftPassword.set('');
-    this.draftTags.set([{ tag: '', matchTier: 'CORE' }]);
-    this.tagPickerSearch.set('');
-    this.tagPickerSelected.set(new Set());
     this.editingRiskOptionId.set(null);
     this.editingProductTypeId.set(null);
     this.draftProductTypeLevel.set(1);
     this.draftProductTypeParentId.set(null);
     this.draftKeywordChips.set([]);
     this.draftKeywordInput.set('');
-    this.draftCampaignCode.set('');
-    this.draftManualOverride.set(true);
-    // ⚠️ 這四個原本沒有被重置——只有 editCampaign() 會寫入它們，關閉/
-    // 新增沒有清空。結果是：編輯過某個檔期之後，直接點「＋ 新增檔期」，
-    // 表單會殘留上一個檔期的分類/日期/備戰天數，不是乾淨的新表單。
-    this.draftCategory.set('FESTIVAL');
-    this.draftStart.set('');
-    this.draftEnd.set('');
-    this.draftLeadDays.set(30);
   }
 
   saveModal(): void {
@@ -2301,28 +2057,6 @@ export class Settings implements OnInit {
           },
         ]);
       }
-    } else if (
-      type === 'campaign' &&
-      this.draftName().trim() &&
-      this.draftStart() &&
-      this.draftEnd() &&
-      this.draftTags().some((row) => row.tag.trim())
-    ) {
-      const value: Partial<CampaignVM> = {
-        name: this.draftName().trim(),
-        category: this.draftCategory(),
-        categoryLabel: this.draftCategory() === 'FESTIVAL' ? '節慶' : '季節',
-        range: `${this.draftStart()}–${this.draftEnd()}`,
-        status: 'UPCOMING',
-        override: false,
-        leadDays: this.draftLeadDays(),
-        tags: this.draftTags().filter((t) => t.tag.trim()),
-      };
-      this.campaigns.update((items) =>
-        this.selectedCampaign()
-          ? items.map((item) => (item.name === this.selectedCampaign() ? { ...item, ...value } : item))
-          : [...items, { id: null, code: this.draftCampaignCode().trim(), ...value } as CampaignVM],
-      );
     } else if (
       type === 'account' &&
       this.draftUsername().trim() &&
@@ -2484,138 +2218,6 @@ export class Settings implements OnInit {
         });
       return;
     }
-
-    if (type === 'campaign') {
-      const isCreating = !this.selectedCampaign();
-      if (
-        !this.draftName().trim() ||
-        !this.draftStart() ||
-        !this.draftEnd() ||
-        !this.draftTags().some((row) => row.tag.trim()) ||
-        (isCreating && !this.draftCampaignCode().trim())
-      ) {
-        this.showAlert(
-          isCreating
-            ? '請完整填寫必填欄位（含檔期代碼），並至少輸入一個標籤。'
-            : '請完整填寫必填欄位，並至少輸入一個標籤。',
-          '驗證失敗',
-        );
-        return;
-      }
-      // ⚠️ 防呆：festive_campaign_tags 在 (campaign_id, tag) 上有 UNIQUE 約束，
-      // 後端 saveTags() 現在會自動去重，但前端這裡也順手做一次——避免明明
-      // 知道會撞唯一約束，還是把可能重複的清單原封不動送出去，多一趟浪費
-      // 的來回請求。用 trim 後的文字當 key，同名時保留第一筆的比對等級。
-      const seenTags = new Map<string, FestiveCampaignTagPayload>();
-      for (const row of this.draftTags()) {
-        const trimmed = row.tag.trim();
-        if (!trimmed || seenTags.has(trimmed)) continue;
-        seenTags.set(trimmed, { tag: joinCampaignTags([trimmed]), matchTier: row.matchTier });
-      }
-      const tags = [...seenTags.values()];
-
-      const existing = this.campaigns().find((item) => item.name === this.selectedCampaign());
-
-      this.isSavingModal.set(true);
-      if (existing?.id) {
-        this.api
-          .updateFestiveCampaign(existing.id, {
-            campaignName: this.draftName().trim(),
-            category: this.draftCategory(),
-            startDate: this.draftStart(),
-            endDate: this.draftEnd(),
-            preparationLeadDays: this.draftLeadDays(),
-            tags,
-          })
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (updated) => {
-              this.campaigns.update((items) =>
-                items.map((item) => (item.id === existing.id ? toCampaignVM(updated) : item)),
-              );
-              this.statusMessageState.show('已更新檔期。');
-              this.closeModal();
-            },
-            error: (err) => {
-              this.isSavingModal.set(false);
-              this.showAlert(toApiError(err).message);
-            },
-          });
-      } else {
-        this.api
-          .createFestiveCampaign({
-            campaignCode: this.draftCampaignCode().trim(),
-            campaignName: this.draftName().trim(),
-            category: this.draftCategory(),
-            startDate: this.draftStart(),
-            endDate: this.draftEnd(),
-            preparationLeadDays: this.draftLeadDays(),
-            tags,
-          })
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (created) => {
-              this.campaigns.update((items) => [...items, toCampaignVM(created)]);
-              this.statusMessageState.show('已新增檔期。');
-              this.closeModal();
-            },
-            error: (err) => {
-              this.isSavingModal.set(false);
-              this.showAlert(toApiError(err).message);
-            },
-          });
-      }
-      return;
-    }
-  }
-
-  /**
-   * 手動切換檔期狀態，或恢復自動判斷。
-   *
-   * ⚠️ 恢復自動判斷時（draftManualOverride() === false）不送使用者在下拉選單
-   * 上選的狀態，一律送 target 目前的狀態——「恢復自動判斷」的語意是關掉
-   * is_manual_override 這個開關，不是順便再手動指定一次新狀態，這兩件事要
-   * 分開，否則使用者會以為選了下拉選單的值也會一併生效。
-   */
-  applyCampaignStatus(): void {
-    if (this.isSavingModal()) return;
-    const target = this.campaigns().find((item) => item.name === this.selectedCampaign());
-    if (!target) return;
-
-    const overrideEnabled = this.draftManualOverride();
-    const status = overrideEnabled ? this.draftStatus() : target.status;
-
-    if (this.useMockData) {
-      this.campaigns.update((items) =>
-        items.map((item) =>
-          item.name === this.selectedCampaign() ? { ...item, status, override: overrideEnabled } : item,
-        ),
-      );
-      this.closeModal();
-      return;
-    }
-
-    if (!target.id) return;
-    this.isSavingModal.set(true);
-    this.api
-      .switchFestiveCampaignStatus(target.id, {
-        status: status as 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED',
-        overrideEnabled,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => {
-          this.campaigns.update((items) =>
-            items.map((item) => (item.id === updated.id ? toCampaignVM(updated) : item)),
-          );
-          this.statusMessageState.show(overrideEnabled ? '已手動切換檔期狀態。' : '已恢復自動判斷。');
-          this.closeModal();
-        },
-        error: (err) => {
-          this.isSavingModal.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
   }
 
   // ----- UI 狀態切換器（Mock 模式展示用）-----
@@ -2705,34 +2307,6 @@ function toRiskOptionVM(payload: RiskOptionResponsePayload): RiskOptionVM {
     active: payload.isActive ?? true,
     keywords: payload.alertKeywords ?? '',
     isSystemDefault: payload.isSystemDefault ?? false,
-  };
-}
-
-function toCampaignVM(payload: {
-  id: number;
-  campaignCode: string;
-  campaignName: string;
-  category: FestiveCategory;
-  startDate: string;
-  endDate: string;
-  preparationLeadDays: number | null;
-  campaignStatus: string;
-  isManualOverride: boolean | null;
-  tags: FestiveCampaignTagPayload[];
-}): CampaignVM {
-  return {
-    id: payload.id,
-    code: payload.campaignCode,
-    name: payload.campaignName,
-    category: payload.category,
-    categoryLabel: payload.category === 'FESTIVAL' ? '節慶' : '季節',
-    range: `${payload.startDate}–${payload.endDate}`,
-    status: payload.campaignStatus,
-    override: payload.isManualOverride ?? false,
-    // 後端未填時預設 30（見 FestiveCampaignResponsePayload 註解），這裡跟著
-    // 用同一個保底值，避免 null 一路傳進表單的 number input 變成空白。
-    leadDays: payload.preparationLeadDays ?? 30,
-    tags: payload.tags ?? [],
   };
 }
 

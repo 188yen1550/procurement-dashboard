@@ -1,12 +1,12 @@
 <!--
-  檔案用途：系統設定分頁與 Modal。
+  檔案用途：設定分頁與 Modal。
   評估權重唯讀；檔期編輯／手動狀態分開；帳號只停用。aria-modal 與標題關聯協助輔助科技理解對話框。
 -->
 <main class="page-shell settings-page" aria-labelledby="settings-title">
   <header class="page-header">
     <div>
 
-      <h1 id="settings-title">系統設定</h1>
+      <h1 id="settings-title">設定</h1>
     </div>
   </header>
   @if (useMockData) {
@@ -269,51 +269,9 @@
     (campaignsChanged)="onWeatherCampaignsChanged()"
   />
   } @else if (activeTab() === 'campaigns') {
-  <section class="management-head">
-    <div>
-      <h2>節慶檔期管理</h2>
-    </div>
-    <button type="button" class="btn-primary" (click)="openModal('campaign')" [disabled]="pageState() === 'disabled'">
-      ＋ 新增檔期
-    </button>
-  </section>
-
-  <section class="data-table">
-    <table>
-      <thead>
-        <tr>
-          <th class="campaign-col-name" appSortHeader="name" [sort]="campaignSort">檔期</th>
-          <th class="campaign-col-category">分類</th>
-          <th class="campaign-col-range" appSortHeader="range" [sort]="campaignSort">起訖日期</th>
-          <th class="campaign-col-status">狀態</th>
-          <th class="campaign-col-override">手動覆蓋</th>
-          <th class="campaign-col-actions">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (item of campaigns() | sortRows: campaignSort.state(); track item.name) {
-        <tr>
-          <td>
-            <strong>{{ item.name }}</strong>
-          </td>
-          <td>{{ item.categoryLabel }}</td>
-          <td>{{ item.range }}</td>
-          <td>
-            <span class="status-pill" [attr.data-status]="item.status">{{ campaignStatusLabel[item.status] }}</span>
-          </td>
-          <td>{{ item.override ? '是' : '否' }}</td>
-          <td class="row-actions">
-            <button type="button" class="btn edit-change-stage" (click)="editCampaign(item.name)">編輯</button>
-            <button type="button" class="btn" (click)="openCampaignStatusModal(item)">
-              切換狀態
-            </button>
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </section>
-  <p class="scope-note">命中標籤以「標籤＋命中等級（核心／一般／弱）」逐列管理。</p>
+  <!-- 2026-09-24（V21 檔期規則改版）：節慶檔期整個分頁（列表、新增／編輯、狀態切換、
+       標籤選擇、逐年覆寫）搬到子元件。 -->
+  <app-festive-campaigns [disabled]="pageState() === 'disabled'" (status)="showStatus($event)" />
   } @else if (activeTab() === 'scoreBands') {
   <section class="management-head">
     <div>
@@ -800,7 +758,7 @@
   @if (modal()) {
   <div class="modal-backdrop" (click)="closeModal()">
     <form class="modal-card settings-modal" (click)="$event.stopPropagation()"
-      (ngSubmit)="modal() === 'campaignStatus' ? applyCampaignStatus() : saveModal()">
+      (ngSubmit)="saveModal()">
       <header>
         <h2>
           {{
@@ -808,10 +766,6 @@
           ? (editingRiskOptionId() !== null ? '編輯人工風險' : '新增人工風險')
           : modal() === 'productType'
           ? (editingProductTypeId() !== null ? '編輯商品類型' : '新增商品類型')
-          : modal() === 'campaign'
-          ? (selectedCampaign() ? '編輯節慶檔期' : '新增節慶檔期')
-          : modal() === 'campaignStatus'
-          ? '手動切換檔期狀態'
           : '新增帳號'
           }}
         </h2>
@@ -896,109 +850,6 @@
         <input type="password" required [ngModel]="draftPassword()" (ngModelChange)="draftPassword.set($event)"
           name="password" /></label>
       }
-      @if (modal() === 'campaign') {
-      @if (!selectedCampaign()) {
-      <label>檔期代碼 <em>*</em>
-        <input required placeholder="例：MID_AUTUMN_2026，建立後不可修改" [ngModel]="draftCampaignCode()"
-          (ngModelChange)="draftCampaignCode.set($event)" name="campaignCode" />
-        <small class="helper">全站唯一，用英文字母、數字、底線命名，建立後無法更改。</small></label>
-      }
-      <label>檔期名稱
-        <input required [ngModel]="draftName()" (ngModelChange)="draftName.set($event)"
-          name="campaignName" /></label><label>分類
-        <select [ngModel]="draftCategory()" (ngModelChange)="draftCategory.set($event)" name="category">
-          <option value="FESTIVAL">節慶</option>
-          <option value="SEASON">季節</option>
-          <option value="WEATHER">天氣型</option>
-        </select>
-        @if (draftCategory() === 'WEATHER') {
-        <small class="helper">
-          天氣型檔期通常由系統每天自動同步產生（見「天氣連動」分頁），
-          這裡手動新增/編輯的內容之後可能會被下一次自動同步覆蓋（除非切換狀態時開啟「手動覆蓋」）。
-        </small>
-        }
-      </label>
-      <div class="modal-grid">
-        <label>開始日期
-          <input type="date" required [ngModel]="draftStart()" (ngModelChange)="draftStart.set($event)"
-            name="start" /></label><label>結束日期
-          <input type="date" required [ngModel]="draftEnd()" (ngModelChange)="draftEnd.set($event)"
-            name="end" /></label>
-      </div>
-      <label>備戰天數
-        <input type="number" min="0" [ngModel]="draftLeadDays()" (ngModelChange)="draftLeadDays.set(+$event)"
-          name="leadDays" /></label>
-      <fieldset>
-        <legend>節慶標籤（選填）</legend>
-        <!-- 開啟獨立的搜尋＋勾選 dialog 選標籤或新增新標籤：不在這裡直接
-             自由輸入文字，是因為要先跟既有標籤清單比對、避免手誤打錯字
-             導致跟其他檔期已經在用的標籤名稱不一致（AI 比對命中率因此
-             受影響）——但 dialog 裡打不到既有標籤時，可以直接在那裡新增，
-             不是只能從既有標籤選，按鈕文字跟著改，不要讓人誤會這裡是
-             唯讀的搜尋功能。 -->
-        <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" />
-          選擇或新增標籤</button>
-        <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
-        <div class="keyword-chip-list">
-          @for (row of selectedTagRows(); track row.tag) {
-          <span class="keyword-chip">{{ row.tag }}
-            <button type="button" class="keyword-chip-remove"
-              (click)="draftTags.set(draftTags().filter((r) => r.tag !== row.tag))"
-              [attr.aria-label]="'移除標籤 ' + row.tag">
-              <app-icon name="x" size="sm" />
-            </button></span>
-          }
-        </div>
-
-        <!-- 進階：等級歸類——選標籤當下不強迫決定，新選的標籤預設是
-                 「一般」，這裡才是真的要調整比對權重時才展開的區塊。 -->
-        @if (selectedTagRows().length > 0) {
-        <details class="tag-tier-advanced">
-          <summary>進階：調整比對等級</summary>
-          @for (row of selectedTagRows(); track row.tag) {
-          <div class="tag-row">
-            <span>{{ row.tag }}</span>
-            <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)"
-              [name]="'tier-' + row.tag">
-              <option value="CORE">核心</option>
-              <option value="GENERAL">一般</option>
-              <option value="WEAK">弱</option>
-            </select>
-          </div>
-          }
-        </details>
-        }
-      </fieldset>
-      }
-      @if (modal() === 'campaignStatus') {
-      <p>
-        檔期：<strong>{{ selectedCampaign() }}</strong>
-      </p>
-      <fieldset class="campaign-status-mode">
-        <label class="radio-option">
-          <input type="radio" name="campaignStatusMode" [checked]="draftManualOverride()"
-            (change)="draftManualOverride.set(true)" />
-          手動指定狀態
-        </label>
-        <label class="radio-option">
-          <input type="radio" name="campaignStatusMode" [checked]="!draftManualOverride()"
-            (change)="draftManualOverride.set(false)" />
-          恢復自動判斷
-        </label>
-      </fieldset>
-
-      @if (draftManualOverride()) {
-      <label>目標狀態
-        <select [ngModel]="draftStatus()" (ngModelChange)="draftStatus.set($event)" name="status">
-          <option value="UPCOMING">即將開始</option>
-          <option value="PREPARING">準備期</option>
-          <option value="ACTIVE">進行中</option>
-          <option value="EXPIRED">已結束</option>
-        </select></label>
-      } @else {
-      <p>儲存後「是否手動覆蓋」將改為「否」，交由系統自動判斷狀態。</p>
-      }
-      }
       <footer>
         <button type="button" class="btn" (click)="closeModal()">取消</button><button type="submit" class="btn-primary"
           [disabled]="isSavingModal()">{{ isSavingModal() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
@@ -1007,64 +858,4 @@
   </div>
   }
 
-  <!-- 節慶標籤選擇：獨立 dialog，跟主要的新增/編輯檔期 modal 分開——
-       搜尋 + 勾選是主要互動，等級歸類另外收在主表單的「進階」摺疊區塊，
-       這裡只負責「選出哪些標籤」這一件事。 -->
-  @if (tagPickerOpen()) {
-  <div class="modal-backdrop" (click)="closeTagPicker()">
-    <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
-      <header>
-        <h2>節慶標籤（選填）</h2>
-        <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉"><app-icon
-            name="x" /></button>
-      </header>
-
-      <label class="tag-picker-search">
-        搜尋或新增標籤
-        <input type="text" placeholder="輸入關鍵字，例如：gift、sale...找不到就直接新增" [ngModel]="tagPickerSearch()"
-          (ngModelChange)="tagPickerSearch.set($event)" />
-      </label>
-      <!-- ⚠️ 改善可發現性：這顆「新增」按鈕原本放在下面 checkbox 清單的最
-           後面，使用者要先看完（甚至捲動過）整份既有標籤清單才會注意到
-           它，很容易誤以為這裡「只能從既有標籤選」。搬到搜尋框正下方、
-           永遠緊接在輸入框旁邊，打字的當下就看得到，不用往下找。 -->
-      @if (canAddNewTag()) {
-      <button type="button" class="btn-primary tag-picker-add-new" (click)="addNewTagFromSearch()">
-        ＋ 新增標籤「{{ tagPickerSearch().trim() }}」
-      </button>
-      } @else if (!tagPickerSearch().trim()) {
-      <p class="helper tag-picker-add-hint">找不到想要的標籤嗎？直接在上面輸入後即可新增。</p>
-      }
-
-      <p class="helper">已選 {{ tagPickerSelected().size }} 項</p>
-      @if (tagPickerSelected().size > 0) {
-      <div class="keyword-chip-list">
-        @for (tag of tagPickerSelected(); track tag) {
-        <span class="keyword-chip">{{ tag }}
-          <button type="button" class="keyword-chip-remove" (click)="toggleTagPickerSelection(tag)"
-            [attr.aria-label]="'取消選取 ' + tag">
-            <app-icon name="x" size="sm" />
-          </button></span>
-        }
-      </div>
-      }
-
-      <div class="tag-picker-list" role="listbox" aria-label="可選擇的標籤">
-        @for (tag of filteredKnownTags(); track tag) {
-        <label class="tag-picker-option">
-          <input type="checkbox" [checked]="tagPickerSelected().has(tag)" (change)="toggleTagPickerSelection(tag)" />
-          <span class="tag-picker-option-text">{{ tag }}</span>
-        </label>
-        } @empty {
-        <p class="helper">沒有符合的既有標籤{{ tagPickerSearch().trim() ? '，可用上方按鈕新增這個新標籤' : '' }}。</p>
-        }
-      </div>
-
-      <footer>
-        <button type="button" class="btn" (click)="closeTagPicker()">取消</button><button type="button"
-          class="btn-primary" (click)="confirmTagPicker()">確定</button>
-      </footer>
-    </div>
-  </div>
-  }
 </main>

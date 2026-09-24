@@ -14,6 +14,10 @@
  *   - 同步成功後原本直接重載檔期列表，改成 campaignsChanged 通知父元件。
  *   - 操作訊息中的天氣類型改顯示中文，不再露出 RAINY 這類代碼。
  * 樣式改用全域 .config-panel／.config-table（見 _components.scss）。
+ *
+ * 2026-09-24（決議 A）：天氣檔期從「節慶檔期」分頁移到這裡——「天氣檔期自動同步」面板下
+ * 新增「目前的天氣檔期」唯讀清單（準備期／進行中＋手動覆蓋中），保留切換狀態（主管判斷
+ * 系統誤判時的復原路徑）。切換狀態沿用既有 manual-status 端點，不另開 API。
  */
 import { Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -22,13 +26,15 @@ import { FormsModule } from '@angular/forms';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
-import { TagMatchTier, WeatherSignalType } from '../../../../core/domain/enums';
+import { FestiveCampaignStatus, TagMatchTier, WeatherSignalType } from '../../../../core/domain/enums';
 import {
   WEATHER_FORECAST_CONFIDENCE_LABEL,
   WEATHER_REGION_LABEL,
   WEATHER_SIGNAL_TYPE_LABEL,
 } from '../../../../core/domain/labels';
+import { Icon } from '../../../../shared/components/icon/icon';
 import {
+  FestiveCampaignResponsePayload,
   RegionWeightPayload,
   WeatherSignalPreviewPayload,
   WeatherSignalTagMappingResponsePayload,
@@ -70,6 +76,20 @@ const MOCK_REGION_WEIGHTS: readonly RegionWeightPayload[] = [
   { region: 'EAST', weightPercentage: 25, updatedAt: null },
 ];
 
+/**
+ * 天氣檔期狀態的中文。天氣型沒有「本期」概念，EXPIRED 顯示「已結束」（節慶頁是「本期停用」）；
+ * 同步服務只會寫 PREPARING／ACTIVE／EXPIRED，UPCOMING 僅防禦顯示用。
+ */
+export const WEATHER_CAMPAIGN_STATUS_LABEL: Record<FestiveCampaignStatus, string> = {
+  UPCOMING: '即將開始',
+  PREPARING: '準備期',
+  ACTIVE: '進行中',
+  EXPIRED: '已結束',
+};
+
+/** 手動指定時可選的狀態：與同步服務會產生的狀態一致，不提供 UPCOMING。 */
+const WEATHER_CAMPAIGN_STATUS_OPTIONS: readonly FestiveCampaignStatus[] = ['PREPARING', 'ACTIVE', 'EXPIRED'];
+
 /** 命中等級的中文。跟「節慶檔期」標籤的 核心／一般／弱 同一套用語。 */
 const MATCH_TIER_OPTIONS: readonly { value: TagMatchTier; label: string }[] = [
   { value: 'CORE', label: '核心' },
@@ -79,7 +99,7 @@ const MATCH_TIER_OPTIONS: readonly { value: TagMatchTier; label: string }[] = [
 
 @Component({
   selector: 'app-weather-linkage',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Icon],
   templateUrl: './weather-linkage.html',
   styleUrl: './weather-linkage.scss',
 })
@@ -107,6 +127,7 @@ export class WeatherLinkage implements OnInit {
 
   /** 父元件切到這個分頁、或使用者原地重點「系統設定」時呼叫。 */
   reload(): void {
+    this.loadWeatherCampaigns();
     this.loadWeatherSignalTagMappings();
     this.loadRegionWeights();
   }
@@ -144,6 +165,96 @@ export class WeatherLinkage implements OnInit {
 
   private showAlert(message: string, title = '操作失敗'): void {
     this.dialog.notify('error', title, [message]).subscribe();
+  }
+
+  // ==================================================================
+  // 目前的天氣檔期（2026-09-24，決議 A）
+  // ==================================================================
+
+  readonly campaignStatusLabel = WEATHER_CAMPAIGN_STATUS_LABEL;
+  readonly campaignStatusOptions = WEATHER_CAMPAIGN_STATUS_OPTIONS;
+  readonly weatherCampaigns = signal<FestiveCampaignResponsePayload[]>([]);
+  readonly weatherCampaignsLoading = signal(false);
+  readonly weatherCampaignsError = signal('');
+
+  loadWeatherCampaigns(): void {
+    if (this.useMockData) return;
+    this.weatherCampaignsLoading.set(true);
+    this.weatherCampaignsError.set('');
+    this.api
+      .getCurrentWeatherCampaigns()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.weatherCampaigns.set(list);
+          this.weatherCampaignsLoading.set(false);
+        },
+        error: (err) => {
+          this.weatherCampaignsLoading.set(false);
+          this.weatherCampaignsError.set(toApiError(err).message);
+        },
+      });
+  }
+
+  /** 命中標籤顯示用：「雨具、防水」。 */
+  campaignTagsText(item: FestiveCampaignResponsePayload): string {
+    return item.tags.map((t) => t.tag).join('、') || '—';
+  }
+
+  /** 地域覆蓋率（0～1）轉百分比文字；後端未給值時顯示「—」。 */
+  coverageText(item: FestiveCampaignResponsePayload): string {
+    if (item.regionCoverageRatio === null || item.regionCoverageRatio === undefined) return '—';
+    return `${Math.round(Number(item.regionCoverageRatio) * 100)}%`;
+  }
+
+  readonly statusTarget = signal<FestiveCampaignResponsePayload | null>(null);
+  readonly draftStatus = signal<FestiveCampaignStatus>('ACTIVE');
+  readonly draftManualOverride = signal(true);
+  readonly statusSaving = signal(false);
+
+  /** 如實回填目前狀態與是否手動覆蓋：打開來看、直接儲存不會意外改變設定。 */
+  openStatus(item: FestiveCampaignResponsePayload): void {
+    this.statusTarget.set(item);
+    this.draftStatus.set(item.campaignStatus);
+    this.draftManualOverride.set(item.isManualOverride ?? false);
+    this.statusSaving.set(false);
+  }
+
+  closeStatus(): void {
+    this.statusTarget.set(null);
+    this.statusSaving.set(false);
+  }
+
+  /**
+   * 恢復自動判斷時送目前狀態（後端會依實際起訖日重算），不送下拉選單的值。
+   * 成功後整份重載：恢復自動後狀態可能變成已結束而不再屬於這份清單，逐列替換會留下殘列。
+   */
+  applyStatus(): void {
+    const target = this.statusTarget();
+    if (!target || this.statusSaving()) return;
+    const overrideEnabled = this.draftManualOverride();
+    if (this.useMockData) {
+      this.closeStatus();
+      return;
+    }
+    this.statusSaving.set(true);
+    this.api
+      .switchFestiveCampaignStatus(target.id, {
+        status: overrideEnabled ? this.draftStatus() : target.campaignStatus,
+        overrideEnabled,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.status.emit(overrideEnabled ? '已手動切換天氣檔期狀態。' : '已恢復由天氣同步判斷。');
+          this.closeStatus();
+          this.loadWeatherCampaigns();
+        },
+        error: (err) => {
+          this.statusSaving.set(false);
+          this.showAlert(toApiError(err).message);
+        },
+      });
   }
 
   /** 天氣檔期同步面板狀態（WeatherController，2026-09-21新增）。 */
@@ -252,7 +363,8 @@ export class WeatherLinkage implements OnInit {
           this.status.emit(
             `天氣檔期同步完成：共${result.totalSignalCount}個訊號、更新${result.syncedCampaignCount}筆檔期${expiredNote}。`,
           );
-          // 檔期列表在另一個分頁，通知父元件下次切過去時重新載入。
+          // 同步結果直接反映在下方「目前的天氣檔期」；父元件的通知保留給其他依賴檔期資料的畫面。
+          this.loadWeatherCampaigns();
           this.campaignsChanged.emit();
         },
         error: (err) => {

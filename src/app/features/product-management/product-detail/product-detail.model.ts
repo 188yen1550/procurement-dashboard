@@ -25,6 +25,7 @@ import {
   GateResultSummaryPayload,
   ProductResponsePayload,
 } from '../api/product-api.contract';
+import { describeMatchedCampaignScope } from '../api/product.mapper';
 import {
   PackageSizeTier,
   PackingType,
@@ -63,6 +64,8 @@ export interface DetailProduct {
   urgencyFactor: number | null;
   finalScore: number | null;
   campaign: string | null;
+  /** 2026-09-24（V21）：命中期間與地域，例「2026-06-19 – 2026-06-21 · 南部」；舊快照為 null。 */
+  campaignScope: string | null;
   matchedTags: string[];
   costPrice: number | null;
   salePrice: number | null;
@@ -154,6 +157,7 @@ export function toDetailProduct(
     festivalBoost: evaluation?.festivalBoost ?? 0,
     finalScore: evaluation?.finalScore ?? null,
     campaign: festival?.matchedCampaign?.campaignName ?? null,
+    campaignScope: describeMatchedCampaignScope(festival?.matchedCampaign ?? null),
     matchedTags: festival?.matchedCampaign?.matchedTags ?? [],
     matchWeight: festival?.matchedCampaign?.matchWeight ?? null,
     urgencyFactor: festival?.matchedCampaign?.urgencyFactor ?? null,

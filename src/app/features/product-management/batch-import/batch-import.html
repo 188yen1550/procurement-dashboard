@@ -14,18 +14,30 @@
   <section class="step-card" aria-labelledby="step1-title">
     <h2 id="step1-title">1. 下載範本並填寫</h2>
     <p>範本已包含欄位標題與一列示範資料，請對照欄位說明填寫，標題列文字請勿更動。</p>
-    <button type="button" class="secondary-action" (click)="downloadTemplate()">
+    @if (customFieldColumns().length > 0) {
+    <p class="hint">
+      標示「自訂屬性：」開頭的 {{ customFieldColumns().length }} 個欄位只有部分品類需要填寫，括號內註明適用品類與是否必填。
+      商品品類不適用的欄位即使填了也會自動忽略；品類有必填的自訂屬性卻未填寫時，該列會匯入失敗並在結果中標示原因。
+    </p>
+    }
+    @if (customFieldsLoadFailed()) {
+    <p class="warning-text" role="alert">
+      <app-icon name="alert-triangle" size="sm" /> 自訂屬性題目清單載入失敗，範本與匯入暫時不含自訂屬性欄位；
+      品類有必填自訂屬性的商品會匯入失敗，請重新整理頁面後再試。
+    </p>
+    }
+    <button type="button" class="secondary-action" [disabled]="!lookupsReady()" (click)="downloadTemplate()">
       <app-icon name="list" size="sm" /> 下載 CSV 範本
     </button>
   </section>
 
   <section class="step-card" aria-labelledby="step2-title">
     <h2 id="step2-title">2. 上傳填好的檔案</h2>
-    @if (!productTypesReady()) {
-    <p class="hint">商品分類清單載入中，請稍候再選擇檔案…</p>
+    @if (!lookupsReady()) {
+    <p class="hint">商品分類與自訂屬性清單載入中，請稍候再選擇檔案…</p>
     }
     <label class="file-input">
-      <input type="file" accept=".csv,.xlsx,.xls" [disabled]="!productTypesReady()" (change)="onFileSelected($event)" />
+      <input type="file" accept=".csv,.xlsx,.xls" [disabled]="!lookupsReady()" (change)="onFileSelected($event)" />
       <span>選擇 CSV 或 Excel 檔案</span>
     </label>
     @if (fileName()) {

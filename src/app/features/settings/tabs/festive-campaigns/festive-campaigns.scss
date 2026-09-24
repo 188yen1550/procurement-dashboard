@@ -1,0 +1,365 @@
+/*
+ * 檔案用途：「節慶檔期」分頁樣式（2026-09-24 由 settings 拆出）。
+ *
+ * 元件樣式有封裝，settings.scss 的規則進不來：標頭、標籤 chip、標籤選擇 dialog 的樣式
+ * 從 settings.scss 對應段落搬來（改用 token），其餘是新表單（日期規則、預覽、地域、覆寫）。
+ * modal-backdrop／modal-card／data-table／status-pill／helper 為全域樣式。
+ */
+:host {
+  display: block;
+}
+
+.management-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.management-head h2 {
+  margin: 0 0 0.25rem;
+  font-size: var(--t-xl);
+}
+
+.scope-note {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3);
+  color: var(--c-ink-muted);
+  background: var(--c-surface-alt);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+}
+
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  color: var(--c-danger);
+  background: var(--c-danger-tint);
+  border-radius: var(--r-md);
+}
+
+/* ----- 列表 ----- */
+.col-name {
+  width: 18%;
+}
+
+.col-category {
+  width: 8%;
+}
+
+.col-rule {
+  width: 22%;
+}
+
+.col-range {
+  width: 18%;
+}
+
+.col-region {
+  width: 10%;
+}
+
+.col-status {
+  width: 12%;
+}
+
+.col-actions {
+  width: 12%;
+}
+
+.row-code,
+.status-source {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+}
+
+.rule-text {
+  color: var(--c-ink-soft);
+}
+
+.range-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mini-badge {
+  margin-left: var(--s-1);
+  padding: 0.05rem 0.4rem;
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.table-empty {
+  padding: var(--s-4);
+  color: var(--c-ink-muted);
+  text-align: center;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+/* ----- 表單 ----- */
+.campaign-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.campaign-modal.is-narrow {
+  width: min(480px, 100%);
+}
+
+.campaign-modal fieldset {
+  margin: var(--s-3) 0;
+  padding: var(--s-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+
+.campaign-modal legend {
+  padding: 0 var(--s-1);
+  font-weight: 700;
+}
+
+.form-row,
+.rule-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--s-3);
+}
+
+.rule-inputs {
+  margin-top: var(--s-3);
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+}
+
+.radio-option,
+.check-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.check-option.is-disabled {
+  color: var(--c-ink-faint);
+  cursor: not-allowed;
+}
+
+.holiday-options,
+.region-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  margin-top: var(--s-3);
+}
+
+.helper.is-invalid {
+  color: var(--c-danger);
+}
+
+.occurrence-preview {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-md);
+}
+
+.occurrence-preview ol {
+  display: grid;
+  gap: var(--s-1);
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+  transition: opacity var(--motion-fast);
+}
+
+.occurrence-preview ol.is-stale {
+  opacity: 0.55;
+}
+
+.occurrence-preview li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.preview-cycle {
+  min-width: 3rem;
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+}
+
+/* ----- 標籤 chip（搬自 settings.scss，改用 token） ----- */
+.keyword-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+}
+
+.keyword-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.keyword-chip-remove:hover {
+  color: var(--c-danger);
+}
+
+.tag-tier-advanced,
+.override-section {
+  margin-top: var(--s-3);
+  padding-top: var(--s-2);
+  border-top: 1px dashed var(--c-border-strong);
+}
+
+.tag-tier-advanced summary,
+.override-section summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: var(--s-2) 0;
+}
+
+.tag-row select {
+  width: 120px;
+}
+
+/* ----- 逐年覆寫 ----- */
+.override-table {
+  width: 100%;
+  margin: var(--s-2) 0;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+
+.override-table th,
+.override-table td {
+  padding: var(--s-2);
+  border-bottom: 1px solid var(--c-border-soft);
+  text-align: left;
+}
+
+.override-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-2);
+  margin: var(--s-2) 0;
+}
+
+.override-form .is-grow {
+  flex: 1 1 12rem;
+}
+
+/* ----- 標籤選擇 dialog（搬自 settings.scss） ----- */
+.tag-picker-backdrop {
+  z-index: 110;
+}
+
+.tag-picker-modal {
+  width: min(480px, 100%);
+}
+
+.tag-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 12rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  overflow-y: auto;
+  background: var(--c-surface-sunken);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+
+.tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
+.tag-picker-option input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.tag-picker-option span {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tag-picker-option:hover {
+  background: var(--c-brand-tint);
+}
+
+.tag-picker-add-new {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
+@media (max-width: 760px) {
+  .management-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .row-actions {
+    flex-direction: column;
+  }
+}

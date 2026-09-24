@@ -1,8 +1,12 @@
 import { Decimal, IsoDate, IsoDateTime } from '../../../core/api/api-envelope';
 import {
+  CampaignDateRuleType,
+  CampaignStatusSource,
   FestiveCampaignStatus,
   FestiveCategory,
+  ObservedHolidayRule,
   PriceSensitivity,
+  SolarTerm,
   TagMatchTier,
   WeatherForecastConfidence,
   WeatherSignalType,
@@ -45,6 +49,12 @@ export const SETTINGS_API = {
   updateFestiveCampaign: (id: number | string) => `/api/settings/festive-campaigns/${id}`,
   festiveCampaignManualStatus: (id: number | string) =>
     `/api/settings/festive-campaigns/${id}/manual-status`,
+  /** 2026-09-24（V21）：日期規則即時預覽（只試算不寫入）與逐年日期覆寫。 */
+  festiveCampaignOccurrencePreview: '/api/settings/festive-campaigns/occurrence-preview',
+  festiveCampaignOccurrenceOverrides: (id: number | string) =>
+    `/api/settings/festive-campaigns/${id}/occurrence-overrides`,
+  festiveCampaignOccurrenceOverride: (id: number | string, cycleYear: number) =>
+    `/api/settings/festive-campaigns/${id}/occurrence-overrides/${cycleYear}`,
   // ... (保留原本的)
   userEnable: (id: number | string) => `/api/users/${id}/enable`,
   productTypeEnable: (id: number | string) => `/api/settings/product-types/${id}/enable`,
@@ -82,6 +92,8 @@ export const SETTINGS_API = {
    * 但後端實際上是獨立的WeatherController類別，見該類別Javadoc。
    */
   weatherSync: '/api/settings/weather/sync',
+  /** 2026-09-24：「天氣連動 › 目前的天氣檔期」[操作+管理]，唯讀；切換狀態沿用 festiveCampaignManualStatus。 */
+  weatherCampaignsCurrent: '/api/settings/weather-campaigns/current',
   weatherSignalsPreview: '/api/settings/weather/signals/preview',
   /**
    * GET/POST [僅管理]：天氣訊號標籤對照清單／新增（2026-09-22新增，取代原本
@@ -434,37 +446,85 @@ export interface FestiveCampaignTagPayload {
   matchTier: TagMatchTier;
 }
 
-/** 對應後端 FestiveCampaignResponse.java。 */
+/**
+ * 對應後端 FestiveCampaignResponse.java。
+ *
+ * 2026-09-24（V21 檔期規則改版）：startDate／endDate／campaignStatus 欄位名稱不變，語意改為
+ * 「目前或下一期」的起訖日與推算後的有效狀態（statusSource 說明來源）；節慶／季節型改用
+ * 日期規則，另帶出規則欄位、區域、週期年、補假日與後端組好的中文規則描述。
+ */
 export interface FestiveCampaignResponsePayload {
   id: number;
   /** ⚠️ 只能新增時填，編輯時後端 DTO 沒有這個欄位、不可修改。 */
   campaignCode: string;
   campaignName: string;
   category: FestiveCategory;
-  startDate: IsoDate;
-  endDate: IsoDate;
+  /** 目前或下一期的開始日；推算不出來（規則異常、超出 2000–2099）時為 null。 */
+  startDate: IsoDate | null;
+  endDate: IsoDate | null;
   /** 備戰提前天數，未填時後端預設 30。 */
   preparationLeadDays: number | null;
   campaignStatus: FestiveCampaignStatus;
-  /** ⚠️ true 代表狀態不再由系統自動判斷，建議用圖示提示。 */
+  statusSource: CampaignStatusSource | null;
+  /** ⚠️ true 代表狀態不再由系統自動判斷；節慶／季節型只對 manualOverrideCycle 那一期有效。 */
   isManualOverride: boolean | null;
-  /** 僅category=WEATHER時有值（2026-09-23新增）。FESTIVAL/SEASON為null，代表全國性、不限地域。 */
+  manualOverrideCycle: number | null;
+  /** 僅 WEATHER：命中區域代碼。節慶／季節型的區域見 regions。 */
   region: string | null;
-  /** 僅category=WEATHER時有值（2026-09-23新增），0~1，同步當下凍結寫入。 */
+  /** 僅 WEATHER：預報可信度（2026-09-24 新增）；其餘類別為 null。 */
+  weatherConfidence: WeatherForecastConfidence | null;
+  /** WEATHER 為同步凍結值；節慶／季節型依 regions 當下計算（0~1）。 */
   regionCoverageRatio: Decimal | null;
   tags: FestiveCampaignTagPayload[];
+  dateRuleType: CampaignDateRuleType | null;
+  ruleMonth: number | null;
+  ruleDay: number | null;
+  ruleWeekOrdinal: number | null;
+  ruleWeekday: number | null;
+  ruleSolarTerm: SolarTerm | null;
+  ruleOffsetDays: number | null;
+  durationDays: number | null;
+  endMonth: number | null;
+  endDay: number | null;
+  observedHolidayRule: ObservedHolidayRule | null;
+  expandLongWeekend: boolean | null;
+  /** 季節型的受影響區域；空＝全國。節慶型一律為空（全國）。WEATHER 為 [region]。 */
+  regions: string[] | null;
+  cycleYear: number | null;
+  occurrenceOverridden: boolean | null;
+  observedHolidays: IsoDate[] | null;
+  /** 例：「每年農曆 5 月 5 日起 3 天」。 */
+  ruleDescription: string | null;
+}
+
+/**
+ * 新增、修改、預覽三支 API 共用的日期規則欄位（對應後端 FestiveCampaignRuleFields.java）。
+ * category 只接受 FESTIVAL／SEASON（WEATHER 由系統產生，後端回 400）。
+ */
+export interface FestiveCampaignRulePayload {
+  category: Exclude<FestiveCategory, 'WEATHER'>;
+  dateRuleType: CampaignDateRuleType;
+  ruleMonth?: number | null;
+  ruleDay?: number | null;
+  ruleWeekOrdinal?: number | null;
+  ruleWeekday?: number | null;
+  ruleSolarTerm?: SolarTerm | null;
+  ruleOffsetDays?: number | null;
+  durationDays?: number | null;
+  endMonth?: number | null;
+  endDay?: number | null;
+  observedHolidayRule?: ObservedHolidayRule | null;
+  expandLongWeekend?: boolean | null;
+  regions?: string[];
 }
 
 /**
  * 對應後端 FestiveCampaignCreateRequest.java。
- * 必填：campaignCode、campaignName、category、startDate、endDate。
+ * 2026-09-24：移除 startDate／endDate，改帶日期規則；campaignCode 不可帶年份（例 DRAGON_BOAT）。
  */
-export interface FestiveCampaignCreateRequestPayload {
+export interface FestiveCampaignCreateRequestPayload extends FestiveCampaignRulePayload {
   campaignCode: string;
   campaignName: string;
-  category: FestiveCategory;
-  startDate: IsoDate;
-  endDate: IsoDate;
   preparationLeadDays?: number | null;
   tags?: FestiveCampaignTagPayload[];
 }
@@ -472,20 +532,38 @@ export interface FestiveCampaignCreateRequestPayload {
 /**
  * 對應後端 FestiveCampaignUpdateRequest.java。
  *
- * ⚠️ **沒有 campaignCode**——這是刻意的，代碼不可修改。
- * 不要用 Omit<Create, never> 之類的寫法把它帶進來。
- *
- * ⚠️ tags 是**整份覆蓋**，送出的陣列會取代原本全部標籤，不是差異合併。
- * 編輯前必須先載入現有標籤，讓使用者在既有基礎上增刪；
- * 送空陣列等於刪光所有標籤，會讓該檔期永遠比不中任何商品。
+ * ⚠️ **沒有 campaignCode**——代碼不可修改。
+ * ⚠️ tags 與 regions 都是**整份覆蓋**：送出的陣列取代原本全部內容。
  */
-export interface FestiveCampaignUpdateRequestPayload {
+export interface FestiveCampaignUpdateRequestPayload extends FestiveCampaignRulePayload {
   campaignName: string;
-  category: FestiveCategory;
-  startDate: IsoDate;
-  endDate: IsoDate;
   preparationLeadDays?: number | null;
   tags?: FestiveCampaignTagPayload[];
+}
+
+/** POST /festive-campaigns/occurrence-preview 回傳的一期（只試算、不寫入）。 */
+export interface FestiveCampaignOccurrencePreviewPayload {
+  cycleYear: number;
+  startDate: IsoDate;
+  endDate: IsoDate;
+  observedHolidays: IsoDate[];
+  overridden: boolean;
+}
+
+/** 逐年日期覆寫的一列（GET／PUT .../occurrence-overrides）。 */
+export interface FestiveCampaignOccurrenceOverridePayload {
+  cycleYear: number;
+  startDate: IsoDate;
+  endDate: IsoDate;
+  note: string | null;
+  updatedAt: string | null;
+}
+
+/** PUT .../occurrence-overrides/{cycleYear} 的 body。 */
+export interface FestiveCampaignOccurrenceOverrideRequestPayload {
+  startDate: IsoDate;
+  endDate: IsoDate;
+  note?: string | null;
 }
 
 /**

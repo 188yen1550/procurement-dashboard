@@ -58,6 +58,8 @@ describe('Dashboard', () => {
     const text = fixture.nativeElement.querySelector('.conversion-panel').textContent;
     expect(text).toContain('送審過的 122 件商品中，78 件審核通過');
     expect(text).toContain('全公司口徑');
+    // 2026-09-24：管理層口徑剔除 AI 建議商品，文案需讓主管知道分母範圍。
+    expect(text).toContain('不含尚未轉正的 AI 建議商品');
     expect(text).not.toContain('我的選品轉換率');
   });
 

@@ -13,7 +13,7 @@ import {
   TemperatureZone,
   TrendDirection,
 } from '../../../core/domain/enums';
-import { joinCampaignTags, splitCampaignTags } from '../../../core/domain/labels';
+import { joinCampaignTags, splitCampaignTags, WEATHER_REGION_LABEL } from '../../../core/domain/labels';
 import {
   AiAnalysisResponsePayload,
   EvaluationResponsePayload,
@@ -113,7 +113,7 @@ export interface ProductListItem {
  * | 封存   | 非 APPROVED 也非 REJECTED／非 ACTIVE                            |
  * | 復用   | 非 APPROVED 也非 REJECTED／非 ARCHIVED                          |
  * | 加入候選 | 非 AI_SUGGESTED                                                |
- * | 刪除   | 非 PENDING 或 submissionCount > 0                              |
+ * | 刪除   | 非 PENDING 或 submissionCount > 1（1 起算，見下方 canDelete）  |
  *
  * ⚠️ 兩個最容易漏掉的條件：
  * 1. **PENDING 商品不能封存也不能復用**——必須先有審核結果
@@ -151,7 +151,9 @@ export function toProductActionAvailability(
     canArchive: payload.itemStatus === 'ACTIVE' && hasReviewResult,
     canRestore: payload.itemStatus === 'ARCHIVED' && hasReviewResult,
     canPromote: payload.candidateStatus === 'AI_SUGGESTED',
-    canDelete: payload.reviewStatus === 'PENDING' && payload.submissionCount === 0,
+    // 2026-09-24：submissionCount 改為 1 起算（建立商品即第 1 次送審），「PENDING 且第 1 次送審」
+    // 才等於「從未被審核過」，與後端 ProductService.deleteProduct() 同步由 0 改為 1。
+    canDelete: payload.reviewStatus === 'PENDING' && payload.submissionCount === 1,
     isCoreLocked: payload.reviewStatus === 'APPROVED',
   };
 }
@@ -350,6 +352,24 @@ export interface MatchedCampaignModel {
   matchedTags: string[];
   matchWeight: number | null;
   urgencyFactor: number | null;
+  /** 2026-09-24（V21）：命中期間與地域的顯示文字；舊快照沒有這些資訊時為 null。 */
+  scopeText: string | null;
+}
+
+/**
+ * 命中檔期的「期間＋地域」顯示文字，例：「2026-06-19 – 2026-06-21 · 南部」、「2026-02-17 · 全國（已覆寫）」。
+ * 審核詳情與品項詳情共用。V21 之前的舊快照沒有期間資訊，回傳 null（畫面不顯示這一行）。
+ */
+export function describeMatchedCampaignScope(payload: MatchedCampaignPayload | null): string | null {
+  if (!payload?.occurrenceStartDate) return null;
+  const end = payload.occurrenceEndDate;
+  const period =
+    end && end !== payload.occurrenceStartDate
+      ? `${payload.occurrenceStartDate} – ${end}`
+      : payload.occurrenceStartDate;
+  const regions = payload.regions ?? [];
+  const regionText = regions.length === 0 ? '全國' : regions.map((r) => WEATHER_REGION_LABEL[r] ?? r).join('、');
+  return `${period} · ${regionText}${payload.occurrenceOverridden ? '（已覆寫）' : ''}`;
 }
 
 export interface ProductDetailModel {
@@ -419,6 +439,7 @@ function toMatchedCampaignModel(
     matchedTags: payload.matchedTags ?? [],
     matchWeight: payload.matchWeight,
     urgencyFactor: payload.urgencyFactor,
+    scopeText: describeMatchedCampaignScope(payload),
   };
 }
 

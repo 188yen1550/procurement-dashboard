@@ -44,7 +44,7 @@
       儀表板
     </a>
 
-    <!-- 2026-09-24 職責分離：品項管理、AI 建議清單只給操作層；選品審核、系統設定
+    <!-- 2026-09-24 職責分離：品項管理、AI 建議清單只給操作層；選品審核、設定
          只給管理層。儀表板與歷史銷售紀錄兩邊都有，內容依角色各自呈現。 -->
     @if (!isManager) {
       <a
@@ -82,7 +82,7 @@
 
       <a routerLink="/settings" routerLinkActive="active" (click)="closeRequested.emit()">
         <span class="nav-icon"><app-icon name="settings" size="md" /></span>
-        系統設定
+        設定
       </a>
     }
   </nav>

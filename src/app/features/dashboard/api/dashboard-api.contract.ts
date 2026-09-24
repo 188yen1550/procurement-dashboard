@@ -39,7 +39,7 @@ export interface DashboardStatisticsResponsePayload {
 }
 
 /**
- * 對應後端 DashboardRecommendationItem.java（AI 推薦 Top 10）。
+ * 對應後端 DashboardRecommendationItem.java（推薦 Top 10）。
  *
  * ⚠️ reentryLabel 與 lastRejectionComment 只在 submissionCount > 1 時有值，
  * 首次送審是 null。前端要判斷有值才渲染標籤，不要顯示成空白標籤。

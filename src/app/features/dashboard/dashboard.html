@@ -259,7 +259,7 @@
             <p>只計算我建立的選品：以其中曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
           } @else {
             <h2 id="conversion-title">選品轉換率</h2>
-            <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+            <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑（不含尚未轉正的 AI 建議商品）：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
           }
           @if (data().statistics.conversionRate === null) {
             <p class="hint">{{ data().statistics.conversionScope === 'PERSONAL' ? '你建立的選品目前尚未送審過' : '目前尚無商品送審過' }}，因此無法計算轉換率。</p>
@@ -277,7 +277,7 @@
       <section class="panel recommendations-panel" aria-labelledby="recommendations-title">
         <header class="panel-header">
           <div>
-            <h2 id="recommendations-title">AI 推薦 Top 10</h2>
+            <h2 id="recommendations-title">推薦 Top 10</h2>
             <p class="panel-subtitle">
               依「最終分數」即時排序目前待審核的前 10 名候選商品；推薦理由取自該商品最近一次 AI
               分析的結果，只有重新產生 AI 分析才會更新，不會隨排名自動重算。

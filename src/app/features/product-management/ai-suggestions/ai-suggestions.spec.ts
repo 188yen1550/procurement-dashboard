@@ -47,7 +47,7 @@ function makeAiSuggestedPayload(
     candidateStatus: 'AI_SUGGESTED',
     pricingStatus: 'PENDING_PRICING',
     itemStatus: 'ACTIVE',
-    submissionCount: 0,
+    submissionCount: 1,
     createdBy: null,
     createdByName: null,
     finalScore: null,

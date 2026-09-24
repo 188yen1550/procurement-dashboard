@@ -1,8 +1,11 @@
 import {
+  CampaignDateRuleType,
+  CampaignStatusSource,
   CandidateStatus,
   DataSource,
   FestiveCampaignStatus,
   FestiveCategory,
+  SolarTerm,
   GateCode,
   GateStatus,
   ItemStatus,
@@ -96,6 +99,27 @@ export const FESTIVE_CAMPAIGN_STATUS_LABEL: Record<FestiveCampaignStatus, string
   PREPARING: '備戰期',
   ACTIVE: '進行中',
   EXPIRED: '已結束',
+};
+
+/** 2026-09-24（V21）：日期規則類型。 */
+export const CAMPAIGN_DATE_RULE_TYPE_LABEL: Record<CampaignDateRuleType, string> = {
+  FIXED_DATE: '固定國曆日期',
+  NTH_WEEKDAY: '第 N 個星期幾',
+  LUNAR_DATE: '農曆日期',
+  SOLAR_TERM: '節氣',
+};
+
+/** 2026-09-24（V21）：節氣。 */
+export const SOLAR_TERM_LABEL: Record<SolarTerm, string> = {
+  QINGMING: '清明',
+  DONGZHI: '冬至',
+};
+
+/** 2026-09-24（V21）：狀態來源，列表狀態欄的小字說明。 */
+export const CAMPAIGN_STATUS_SOURCE_LABEL: Record<CampaignStatusSource, string> = {
+  AUTO: '自動推算',
+  MANUAL: '手動（僅本期）',
+  SYNC: '天氣同步',
 };
 
 export const TAG_MATCH_TIER_LABEL: Record<TagMatchTier, string> = {

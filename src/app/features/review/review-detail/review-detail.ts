@@ -14,6 +14,7 @@ import { ReviewApiService } from '../api/review-api.service';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
 import { Icon } from '../../../shared/components/icon/icon';
+import { describeMatchedCampaignScope } from '../../product-management/api/product.mapper';
 import {
   OTHER_RISK_OPTION_NAME,
   ReviewDetailModel,
@@ -89,6 +90,9 @@ export class ReviewDetail implements OnInit {
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(DialogService);
+
+  /** 2026-09-24（V21）：命中期間與地域；V21 之前的舊快照沒有這些資訊時回傳 null、不顯示。 */
+  readonly campaignScope = describeMatchedCampaignScope;
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly productId = this.route.snapshot.paramMap.get('id') ?? '102';

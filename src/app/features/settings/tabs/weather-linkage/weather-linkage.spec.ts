@@ -3,12 +3,55 @@
  * 前五個案例原樣搬自 settings.spec.ts 的天氣相關測試，只把「重新載入檔期清單」
  * 改成驗證 campaignsChanged 輸出（檔期列表已在另一個分頁）；後面補上地域占比
  * 加總狀態與比例條的案例。
+ * 2026-09-24：補「目前的天氣檔期」清單與切換狀態（由節慶檔期分頁移入）。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DialogService } from '../../../../core/dialog/dialog.service';
+import { FestiveCampaignResponsePayload } from '../../api/settings-api.contract';
 import { SettingsApiService } from '../../api/settings-api.service';
 import { WeatherLinkage } from './weather-linkage';
+
+function weatherCampaign(overrides: Partial<FestiveCampaignResponsePayload>): FestiveCampaignResponsePayload {
+  return {
+    id: 11,
+    campaignCode: 'WEATHER_HEAVY_RAIN_NORTH_20260925',
+    campaignName: '北部大雨（系統自動）',
+    category: 'WEATHER',
+    startDate: '2026-09-25',
+    endDate: '2026-09-27',
+    preparationLeadDays: 3,
+    campaignStatus: 'PREPARING',
+    statusSource: 'SYNC',
+    isManualOverride: false,
+    manualOverrideCycle: null,
+    region: 'NORTH',
+    weatherConfidence: 'HIGH',
+    regionCoverageRatio: 0.4,
+    tags: [
+      { tag: '雨具', matchTier: 'CORE' },
+      { tag: '防水', matchTier: 'GENERAL' },
+    ],
+    dateRuleType: null,
+    ruleMonth: null,
+    ruleDay: null,
+    ruleWeekOrdinal: null,
+    ruleWeekday: null,
+    ruleSolarTerm: null,
+    ruleOffsetDays: null,
+    durationDays: null,
+    endMonth: null,
+    endDay: null,
+    observedHolidayRule: null,
+    expandLongWeekend: null,
+    regions: ['NORTH'],
+    cycleYear: 2026,
+    occurrenceOverridden: false,
+    observedHolidays: [],
+    ruleDescription: '依天氣預報',
+    ...overrides,
+  };
+}
 
 describe('WeatherLinkage', () => {
   let fixture: ComponentFixture<WeatherLinkage>;
@@ -16,6 +59,10 @@ describe('WeatherLinkage', () => {
   let dialog: DialogService;
 
   const settingsApi = {
+    getCurrentWeatherCampaigns: vi.fn(() =>
+      of([weatherCampaign({}), weatherCampaign({ id: 12, campaignName: '南部炎熱（系統自動）', campaignStatus: 'EXPIRED', isManualOverride: true })]),
+    ),
+    switchFestiveCampaignStatus: vi.fn((id: number) => of(weatherCampaign({ id, isManualOverride: true }))),
     previewWeatherSignals: vi.fn(() =>
       of([
         { region: 'SOUTH', type: 'HOT' as const, windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' as const },
@@ -70,6 +117,50 @@ describe('WeatherLinkage', () => {
     expect(fixture.nativeElement.querySelector('.weather-mapping-table tbody').textContent).not.toContain('RAINY');
   });
 
+  it('lists current weather campaigns with confidence, coverage, tags and manual badge', () => {
+    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(1);
+    const text = fixture.nativeElement.querySelector('.weather-campaign-table tbody').textContent;
+    expect(text).toContain('北部大雨（系統自動）');
+    expect(text).toContain('2026-09-25 ～ 2026-09-27');
+    expect(text).toContain('40%');
+    expect(text).toContain('雨具、防水');
+    expect(text).toContain('準備期');
+    // 手動設為已結束的列仍列出（才能恢復自動），顯示「已結束」而非節慶用語「本期停用」
+    expect(text).toContain('已結束');
+    expect(text).not.toContain('本期停用');
+    expect(fixture.nativeElement.querySelectorAll('.manual-badge')).toHaveLength(1);
+  });
+
+  it('switches a weather campaign status manually and reloads the list', () => {
+    const status = vi.fn();
+    component.status.subscribe(status);
+    component.openStatus(component.weatherCampaigns()[0]);
+    // 如實回填：這筆原本由同步判斷，打開時預設「恢復自動判斷」，要改成手動指定才出現下拉選單
+    expect(component.draftManualOverride()).toBe(false);
+    component.draftManualOverride.set(true);
+    fixture.detectChanges();
+    const options = [...fixture.nativeElement.querySelectorAll('select[name="weatherStatus"] option')].map(
+      (o) => (o as HTMLOptionElement).value,
+    );
+    expect(options).toEqual(['PREPARING', 'ACTIVE', 'EXPIRED']);
+    component.draftStatus.set('EXPIRED');
+    component.applyStatus();
+    expect(settingsApi.switchFestiveCampaignStatus).toHaveBeenCalledWith(11, { status: 'EXPIRED', overrideEnabled: true });
+    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(2);
+    expect(component.statusTarget()).toBeNull();
+    expect(status).toHaveBeenCalledWith('已手動切換天氣檔期狀態。');
+  });
+
+  it('restores automatic judgement by sending the current status, not the dropdown value', () => {
+    const target = component.weatherCampaigns()[1];
+    component.openStatus(target);
+    expect(component.draftManualOverride()).toBe(true);
+    component.draftStatus.set('ACTIVE');
+    component.draftManualOverride.set(false);
+    component.applyStatus();
+    expect(settingsApi.switchFestiveCampaignStatus).toHaveBeenCalledWith(12, { status: 'EXPIRED', overrideEnabled: false });
+  });
+
   it('previews weather signals without announcing a campaign change', () => {
     const changed = vi.fn();
     component.campaignsChanged.subscribe(changed);
@@ -90,6 +181,8 @@ describe('WeatherLinkage', () => {
     expect(settingsApi.syncWeatherCampaigns).toHaveBeenCalled();
     expect(status.mock.calls[0][0]).toContain('天氣檔期同步完成');
     expect(changed).toHaveBeenCalled();
+    // 同步後立即重載下方「目前的天氣檔期」
+    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(2);
   });
 
   it('adds a new mapping and resets the draft form', () => {

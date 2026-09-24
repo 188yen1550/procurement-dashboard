@@ -177,6 +177,10 @@
       </div>
       <span>{{ p.campaign }}</span>
     </header>
+    @if (p.campaignScope) {
+    <!-- 2026-09-24（V21）：命中的是哪一期、影響哪些地域（取自評估當下的快照）。 -->
+    <p>命中期間：<strong>{{ p.campaignScope }}</strong></p>
+    }
     <p>
       命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
     </p>
@@ -186,7 +190,7 @@
         <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
       </div>
       <div>
-        <dt>檔期急迫程度<app-info-tip text="檔期進行中為 1。準備期內：節慶型依「1 − 距開始天數 ÷ 準備期天數」，越接近開始越高；季節型為固定係數；天氣型再乘上預報可信度與命中區域的業務占比。" /></dt>
+        <dt>檔期急迫程度<app-info-tip text="時間係數：檔期進行中為 1；準備期內節慶型與天氣型依「1 − 距本期開始天數 ÷ 準備期天數」，季節型為固定 0.2。再乘上地域覆蓋率（只影響部分區域時依業務占比打折），天氣型另外乘上預報可信度。" /></dt>
         <dd>
           {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
         </dd>

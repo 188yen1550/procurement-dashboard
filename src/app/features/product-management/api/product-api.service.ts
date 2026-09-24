@@ -158,7 +158,7 @@ export class ProductApiService {
 
   /**
    * 7. DELETE /api/products/{id}
-   * 前置條件：reviewStatus === 'PENDING' 且 submissionCount === 0。
+   * 前置條件：reviewStatus === 'PENDING' 且 submissionCount === 1（1 起算：第 1 次送審、尚未被審核）。
    */
   remove(id: number | string): Observable<void> {
     return this.http
@@ -269,6 +269,17 @@ export class ProductApiService {
       .get<ApiEnvelope<CustomFieldDefinitionResponsePayload[]>>(PRODUCT_API.customFieldSchema, {
         params: buildParams({ productTypeId }),
       })
+      .pipe(unwrapData());
+  }
+
+  /**
+   * GET /api/products/custom-field-schema/all [操作+管理]（2026-09-24 新增）：不限品類，
+   * 只回傳生效中的自訂商品屬性題目。批次匯入一份檔案可能涵蓋多個品類，
+   * 用這支組出範本的「自訂屬性」聯集欄位；單筆表單仍用上面依品類過濾的那支。
+   */
+  getAllActiveCustomFieldSchema(): Observable<CustomFieldDefinitionResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<CustomFieldDefinitionResponsePayload[]>>(PRODUCT_API.customFieldSchemaAll)
       .pipe(unwrapData());
   }
 

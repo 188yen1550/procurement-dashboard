@@ -7,6 +7,7 @@
  */
 import { ProductResponsePayload } from './product-api.contract';
 import {
+  describeMatchedCampaignScope,
   toProductActionAvailability,
   toProductDetailModel,
   toProductFormModel,
@@ -59,12 +60,13 @@ function makeProduct(overrides: Partial<ProductResponsePayload> = {}): ProductRe
 }
 
 describe('toProductActionAvailability', () => {
-  it('PENDING 且未曾送審：可刪除，但不可封存或復用', () => {
+  it('PENDING 且第 1 次送審（尚未被審核）：可刪除，但不可封存或復用', () => {
+    // 2026-09-24：submissionCount 1 起算，建立商品即第 1 次送審。
     const actions = toProductActionAvailability({
       reviewStatus: 'PENDING',
       itemStatus: 'ACTIVE',
       candidateStatus: 'CANDIDATE',
-      submissionCount: 0,
+      submissionCount: 1,
     });
 
     expect(actions.canDelete).toBe(true);
@@ -75,15 +77,26 @@ describe('toProductActionAvailability', () => {
     expect(actions.isCoreLocked).toBe(false);
   });
 
-  it('PENDING 但已送審過：不可刪除', () => {
+  it('PENDING 但曾被審核過（拒絕後重送，第 2 次送審）：不可刪除', () => {
     const actions = toProductActionAvailability({
       reviewStatus: 'PENDING',
+      itemStatus: 'ACTIVE',
+      candidateStatus: 'CANDIDATE',
+      submissionCount: 2,
+    });
+
+    // 後端條件是 PENDING 且 submissionCount === 1，兩者缺一不可。
+    expect(actions.canDelete).toBe(false);
+  });
+
+  it('第 1 次送審但已有審核結果：不可刪除', () => {
+    const actions = toProductActionAvailability({
+      reviewStatus: 'REJECTED',
       itemStatus: 'ACTIVE',
       candidateStatus: 'CANDIDATE',
       submissionCount: 1,
     });
 
-    // 後端條件是 PENDING 且 submissionCount === 0，兩者缺一不可。
     expect(actions.canDelete).toBe(false);
   });
 
@@ -154,7 +167,7 @@ describe('toProductActionAvailability', () => {
       reviewStatus: 'PENDING',
       itemStatus: 'ACTIVE',
       candidateStatus: 'AI_SUGGESTED',
-      submissionCount: 0,
+      submissionCount: 1,
     });
 
     expect(actions.canPromote).toBe(true);
@@ -348,5 +361,35 @@ describe('toProductDetailModel', () => {
 
     expect(model.discountRate).toBeNull();
     expect(model.marginRate).toBeNull();
+  });
+});
+
+/** 2026-09-24（V21 檔期規則改版）：命中期間與地域的顯示文字。 */
+describe('describeMatchedCampaignScope', () => {
+  const base = { campaignId: 1, campaignName: '端午節', matchedTags: ['粽子'], matchWeight: 1, urgencyFactor: 0.5 };
+
+  it('returns null for snapshots created before V21', () => {
+    expect(describeMatchedCampaignScope(base)).toBeNull();
+    expect(describeMatchedCampaignScope(null)).toBeNull();
+  });
+
+  it('shows the occurrence period, regions and override marker', () => {
+    expect(
+      describeMatchedCampaignScope({
+        ...base,
+        occurrenceStartDate: '2026-06-19',
+        occurrenceEndDate: '2026-06-21',
+        regions: ['SOUTH', 'EAST'],
+      }),
+    ).toBe('2026-06-19 – 2026-06-21 · 南部、東部');
+    expect(
+      describeMatchedCampaignScope({
+        ...base,
+        occurrenceStartDate: '2026-02-17',
+        occurrenceEndDate: '2026-02-17',
+        regions: [],
+        occurrenceOverridden: true,
+      }),
+    ).toBe('2026-02-17 · 全國（已覆寫）');
   });
 });

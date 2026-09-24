@@ -14,6 +14,6 @@ import { DialogRoot } from './core/dialog/dialog-root';
 })
 /** 應用程式根元件；`index.html` 掛載 selector，RouterOutlet 顯示目前路由頁面。 */
 export class App {
-  /** 預設專案標題 signal；目前不代表可由後端修改的系統設定。 */
+  /** 預設專案標題 signal；目前不代表可由後端修改的設定。 */
   protected readonly title = signal('procurement-dashboard');
 }

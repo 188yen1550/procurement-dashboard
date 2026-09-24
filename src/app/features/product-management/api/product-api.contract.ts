@@ -60,6 +60,8 @@ export const PRODUCT_API = {
   aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
   /** GET：依 productTypeId 取得自訂商品屬性（動態問卷）題目清單，2026-09-20新增。 */
   customFieldSchema: '/api/products/custom-field-schema',
+  /** 2026-09-24：不限品類、只含生效中題目，批次匯入組「自訂屬性」聯集欄位用。 */
+  customFieldSchemaAll: '/api/products/custom-field-schema/all',
 } as const;
 
 // =========================================================================
@@ -210,6 +212,19 @@ export interface MatchedCampaignPayload {
   matchWeight: Decimal;
   /** 急迫係數，越接近檔期越高。 */
   urgencyFactor: Decimal;
+  /**
+   * 2026-09-24（V21 檔期規則改版）新增，全部可能缺值：V21 之前產生的舊快照沒有這些欄位。
+   * 起訖日為 ISO 字串（yyyy-MM-dd）。regions 空陣列＝全國。
+   */
+  category?: 'FESTIVAL' | 'SEASON' | 'WEATHER' | null;
+  cycleYear?: number | null;
+  occurrenceStartDate?: string | null;
+  occurrenceEndDate?: string | null;
+  occurrenceOverridden?: boolean | null;
+  regions?: string[] | null;
+  regionCoverageRatio?: Decimal;
+  timeFactor?: Decimal;
+  weatherConfidenceFactor?: Decimal;
 }
 
 /**

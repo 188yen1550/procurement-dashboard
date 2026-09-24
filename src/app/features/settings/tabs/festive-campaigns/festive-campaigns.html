@@ -1,0 +1,428 @@
+<!--
+  檔案用途：「節慶檔期」分頁（2026-09-24 檔期規則改版）。
+  列表的起訖與狀態是後端依規則推算的「目前或下一期」。只列節慶與季節；天氣檔期的檢視與
+  切換狀態在「天氣連動 › 目前的天氣檔期」（2026-09-24 決議）。
+  所有列操作以 id 識別（修正 B4：原本以名稱比對，同名檔期會改到另一筆）。
+-->
+<section class="management-head">
+  <div>
+    <h2>節慶檔期管理</h2>
+    <p class="helper">節慶與季節檔期設定一次、每年自動套用；天氣檔期由系統依預報產生，請到「天氣連動」分頁查看與調整。</p>
+  </div>
+  <button type="button" class="btn-primary" (click)="openCreate()" [disabled]="disabled()">＋ 新增檔期</button>
+</section>
+
+@if (loadError()) {
+<p class="load-error" role="alert">{{ loadError() }}
+  <button type="button" class="btn" (click)="reload()">重新載入</button>
+</p>
+}
+
+<section class="data-table">
+  <table>
+    <thead>
+      <tr>
+        <th class="col-name" appSortHeader="name" [sort]="sort">檔期</th>
+        <th class="col-category">分類</th>
+        <th class="col-rule">日期規則</th>
+        <th class="col-range" appSortHeader="rangeSortKey" [sort]="sort">本期起訖</th>
+        <th class="col-region">地域</th>
+        <th class="col-status">狀態</th>
+        <th class="col-actions">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      @if (loading() && rows().length === 0) {
+      <tr>
+        <td colspan="7" class="table-empty" role="status">載入中…</td>
+      </tr>
+      }
+      @for (item of rows() | sortRows: sort.state(); track item.id) {
+      <tr>
+        <td>
+          <strong>{{ item.name }}</strong>
+          <small class="row-code">{{ item.code }}</small>
+        </td>
+        <td>{{ item.categoryLabel }}</td>
+        <td class="rule-text">{{ item.ruleText }}</td>
+        <td class="range-cell">
+          {{ item.range }}
+          @if (item.overridden) {
+          <span class="mini-badge" title="本期起訖日來自逐年覆寫">已覆寫</span>
+          }
+        </td>
+        <td>{{ item.regionsText }}</td>
+        <td>
+          <span class="status-pill" [attr.data-status]="item.status">{{ campaignStatusLabel[item.status] }}</span>
+          @if (item.statusSourceLabel) {
+          <small class="status-source">{{ item.statusSourceLabel }}</small>
+          }
+        </td>
+        <td class="row-actions">
+          <button type="button" class="btn" (click)="openEdit(item)" [disabled]="disabled()">編輯</button>
+          <button type="button" class="btn" (click)="openStatus(item)" [disabled]="disabled()">切換狀態</button>
+        </td>
+      </tr>
+      } @empty {
+      @if (!loading()) {
+      <tr>
+        <td colspan="7" class="table-empty">尚未建立任何檔期。</td>
+      </tr>
+      }
+      }
+    </tbody>
+  </table>
+</section>
+<p class="scope-note">
+  命中標籤以「標籤＋命中等級（核心／一般／弱）」管理；節慶一律全國，季節可指定地域（未選＝全國），只影響部分區域時加成會依「天氣連動 › 地域占比」打折。
+</p>
+
+<!-- ===================== 新增／編輯檔期 ===================== -->
+@if (modal() === 'campaign') {
+<div class="modal-backdrop" (click)="closeModal()">
+  <form class="modal-card campaign-modal" (click)="$event.stopPropagation()" (ngSubmit)="save()">
+    <header>
+      <h2>{{ editingId() === null ? '新增檔期' : '編輯檔期' }}</h2>
+      <button type="button" class="modal-close" (click)="closeModal()" aria-label="關閉"><app-icon name="x" /></button>
+    </header>
+
+    <div class="form-row">
+      @if (editingId() === null) {
+      <label>檔期代碼 <em>*</em>
+        <input required placeholder="例：DRAGON_BOAT" [ngModel]="draftCode()"
+          (ngModelChange)="draftCode.set($event.toUpperCase())" name="campaignCode"
+          [attr.aria-invalid]="!!draftCode() && !!codeError()" />
+        <small class="helper" [class.is-invalid]="!!draftCode() && !!codeError()">
+          {{ draftCode() && codeError() ? codeError() : '大寫英數與底線，不要加年份（每年自動套用），建立後不可修改。' }}
+        </small>
+      </label>
+      } @else {
+      <label>檔期代碼
+        <input [value]="draftCode()" disabled name="campaignCodeReadonly" /></label>
+      }
+      <label>檔期名稱 <em>*</em>
+        <input required maxlength="100" [ngModel]="draftName()" (ngModelChange)="draftName.set($event)"
+          name="campaignName" /></label>
+    </div>
+
+    <fieldset class="segmented">
+      <legend>分類</legend>
+      <label class="radio-option"><input type="radio" name="category" [checked]="draftCategory() === 'FESTIVAL'"
+          (change)="draftCategory.set('FESTIVAL')" />節慶（持續固定天數）</label>
+      <label class="radio-option"><input type="radio" name="category" [checked]="draftCategory() === 'SEASON'"
+          (change)="draftCategory.set('SEASON')" />季節（開始日到結束日，可跨年）</label>
+    </fieldset>
+
+    <!-- ----- 日期規則 ----- -->
+    <fieldset class="rule-builder">
+      <legend>日期規則</legend>
+      @if (draftCategory() === 'FESTIVAL') {
+      <label>規則類型
+        <select [ngModel]="draftRuleType()" (ngModelChange)="draftRuleType.set($event)" name="ruleType">
+          @for (type of ruleTypes; track type) {
+          <option [value]="type">{{ ruleTypeLabel[type] }}</option>
+          }
+        </select>
+      </label>
+      }
+
+      <div class="rule-inputs">
+        @switch (effectiveRuleType()) {
+        @case ('FIXED_DATE') {
+        <label>{{ draftCategory() === 'SEASON' ? '開始月' : '月' }}
+          <select [ngModel]="draftMonth()" (ngModelChange)="draftMonth.set(toNumber($event))" name="ruleMonth">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (m of months; track m) { <option [ngValue]="m">{{ m }} 月</option> }
+          </select></label>
+        <label>{{ draftCategory() === 'SEASON' ? '開始日' : '日' }}
+          <input type="number" min="1" max="31" [ngModel]="draftDay()" (ngModelChange)="draftDay.set(toNumber($event))"
+            name="ruleDay" /></label>
+        }
+        @case ('NTH_WEEKDAY') {
+        <label>月
+          <select [ngModel]="draftMonth()" (ngModelChange)="draftMonth.set(toNumber($event))" name="ruleMonth">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (m of months; track m) { <option [ngValue]="m">{{ m }} 月</option> }
+          </select></label>
+        <label>第幾個
+          <select [ngModel]="draftWeekOrdinal()" (ngModelChange)="draftWeekOrdinal.set(toNumber($event))"
+            name="ruleWeekOrdinal">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (o of ordinals; track o.value) { <option [ngValue]="o.value">{{ o.label }}</option> }
+          </select></label>
+        <label>星期
+          <select [ngModel]="draftWeekday()" (ngModelChange)="draftWeekday.set(toNumber($event))" name="ruleWeekday">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (w of weekdays; track w.value) { <option [ngValue]="w.value">星期{{ w.label }}</option> }
+          </select></label>
+        }
+        @case ('LUNAR_DATE') {
+        <label>農曆月
+          <select [ngModel]="draftMonth()" (ngModelChange)="draftMonth.set(toNumber($event))" name="ruleMonth">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (m of months; track m) { <option [ngValue]="m">{{ m }} 月</option> }
+          </select></label>
+        <label>農曆日
+          <input type="number" min="1" max="30" [ngModel]="draftDay()" (ngModelChange)="draftDay.set(toNumber($event))"
+            name="ruleDay" /></label>
+        }
+        @case ('SOLAR_TERM') {
+        <label>節氣
+          <select [ngModel]="draftSolarTerm()" (ngModelChange)="draftSolarTerm.set($event)" name="ruleSolarTerm">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (t of solarTerms; track t) { <option [ngValue]="t">{{ solarTermLabel[t] }}</option> }
+          </select></label>
+        }
+        }
+        <!-- 偏移天數僅節慶型；季節型開始月日可直接填（2026-09-24 決議） -->
+        @if (draftCategory() === 'FESTIVAL') {
+        <label><span>偏移天數<app-info-tip [text]="offsetDaysTip" /></span>
+          <input type="number" min="-30" max="30" [ngModel]="draftOffset()"
+            (ngModelChange)="draftOffset.set(toNumber($event))" name="ruleOffsetDays" />
+        </label>
+        }
+      </div>
+
+      @if (effectiveRuleType() === 'LUNAR_DATE') {
+      <p class="helper">一律指非閏月；日數超過該月天數時取月末（例：除夕可填 12/30）。</p>
+      }
+      @if (effectiveRuleType() === 'FIXED_DATE' && draftMonth() === 2 && draftDay() === 29) {
+      <p class="helper">非閏年會以 2/28 計算。</p>
+      }
+
+      <div class="rule-inputs">
+        @if (draftCategory() === 'FESTIVAL') {
+        <label>持續天數
+          <input type="number" min="1" max="60" [ngModel]="draftDuration()"
+            (ngModelChange)="draftDuration.set(toNumber($event))" name="durationDays" /></label>
+        } @else {
+        <label>結束月
+          <select [ngModel]="draftEndMonth()" (ngModelChange)="draftEndMonth.set(toNumber($event))" name="endMonth">
+            <option [ngValue]="null" disabled>選擇</option>
+            @for (m of months; track m) { <option [ngValue]="m">{{ m }} 月</option> }
+          </select></label>
+        <label>結束日
+          <input type="number" min="1" max="31" [ngModel]="draftEndDay()"
+            (ngModelChange)="draftEndDay.set(toNumber($event))" name="endDay" />
+          <small class="helper">31＝月底；早於開始月日代表跨年</small></label>
+        }
+        <label>準備期天數
+          <input type="number" min="0" max="180" [ngModel]="draftLeadDays()"
+            (ngModelChange)="draftLeadDays.set(toNumber($event))" name="leadDays"
+            [attr.aria-invalid]="!!leadDaysError()" /></label>
+      </div>
+
+      @if (draftCategory() === 'FESTIVAL') {
+      <div class="holiday-options">
+        <label class="check-option"><input type="checkbox" [checked]="draftObserved()"
+            (change)="setObserved(!draftObserved())" name="observed" />依國定假日補假（逢週六前一上班日、逢週日次一上班日）</label>
+        <label class="check-option" [class.is-disabled]="!draftObserved()"><input type="checkbox"
+            [checked]="draftExpand()" [disabled]="!draftObserved()" (change)="draftExpand.set(!draftExpand())"
+            name="expand" />把相鄰週末與補假日併入檔期（連假展開）</label>
+      </div>
+      }
+
+      <!-- 即時預覽：規則變更後 300ms 試算，不寫入 -->
+      <div class="occurrence-preview" aria-live="polite">
+        <strong>未來 3 期預覽</strong>
+        @switch (preview().status) {
+        @case ('invalid') { <p class="helper is-invalid">{{ preview().message }}</p> }
+        @case ('error') { <p class="helper is-invalid">{{ preview().message }}</p> }
+        @case ('idle') { <p class="helper">填寫規則後顯示。</p> }
+        @default {
+        <ol [class.is-stale]="preview().status === 'loading'">
+          @for (item of preview().items; track item.cycleYear) {
+          <li>
+            <span class="preview-cycle">{{ item.cycleYear }}</span>
+            <span>{{ item.startDate }}{{ item.endDate !== item.startDate ? ' – ' + item.endDate : '' }}</span>
+            @if (item.observedHolidays.length > 0) {
+            <small class="helper">補假：{{ item.observedHolidays.join('、') }}</small>
+            }
+          </li>
+          }
+        </ol>
+        }
+        }
+      </div>
+    </fieldset>
+
+    <!-- ----- 地域（僅季節型；節慶一律全國，2026-09-24 決議） ----- -->
+    @if (draftCategory() === 'SEASON') {
+    <fieldset>
+      <legend>影響地域</legend>
+      <div class="region-options">
+        @for (code of regionCodes; track code) {
+        <label class="check-option"><input type="checkbox" [checked]="draftRegions().has(code)"
+            (change)="toggleRegion(code)" [name]="'region-' + code" />{{ regionLabel[code] }}</label>
+        }
+      </div>
+      <small class="helper">{{ draftRegions().size === 0 ? '未選＝全國性，加成不打折。' : '只影響所選區域，加成依地域占比打折。' }}</small>
+    </fieldset>
+    } @else {
+    <p class="helper">節慶檔期不區分地域，一律視為全國性，加成不打折。</p>
+    }
+
+    <!-- ----- 標籤 ----- -->
+    <fieldset>
+      <legend>節慶標籤（選填）</legend>
+      <button type="button" class="btn" (click)="openTagPicker()"><app-icon name="search" size="sm" />
+        選擇或新增標籤</button>
+      <p class="helper">已選 {{ selectedTagRows().length }} 項</p>
+      <div class="keyword-chip-list">
+        @for (row of selectedTagRows(); track row.tag) {
+        <span class="keyword-chip">{{ row.tag }}
+          <button type="button" class="keyword-chip-remove" (click)="removeTag(row.tag)"
+            [attr.aria-label]="'移除標籤 ' + row.tag"><app-icon name="x" size="sm" /></button></span>
+        }
+      </div>
+      @if (selectedTagRows().length > 0) {
+      <details class="tag-tier-advanced">
+        <summary>進階：調整比對等級</summary>
+        @for (row of selectedTagRows(); track row.tag) {
+        <div class="tag-row">
+          <span>{{ row.tag }}</span>
+          <select [ngModel]="row.matchTier" (ngModelChange)="updateTagMatchTier(row.tag, $event)"
+            [name]="'tier-' + row.tag">
+            <option value="CORE">核心</option>
+            <option value="GENERAL">一般</option>
+            <option value="WEAK">弱</option>
+          </select>
+        </div>
+        }
+      </details>
+      }
+    </fieldset>
+
+    <!-- ----- 逐年覆寫（僅編輯既有檔期） ----- -->
+    @if (editingId() !== null) {
+    <details class="override-section">
+      <summary>逐年日期覆寫（{{ overrides().length }}）</summary>
+      <p class="helper">
+        規則推算不出的年度例外，例如春節補假前移、彈性放假。填寫後該期起訖一律以覆寫為準，跟檔期其他設定分開儲存。
+      </p>
+      @if (overrides().length > 0) {
+      <table class="override-table">
+        <thead>
+          <tr>
+            <th>週期年</th>
+            <th>起訖</th>
+            <th>原因</th>
+            <th><span class="sr-only">操作</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of overrides(); track item.cycleYear) {
+          <tr>
+            <td>{{ item.cycleYear }}</td>
+            <td>{{ item.startDate }} – {{ item.endDate }}</td>
+            <td>{{ item.note ?? '—' }}</td>
+            <td class="row-actions">
+              <button type="button" class="btn" (click)="editOverride(item)">修改</button>
+              <button type="button" class="btn danger" (click)="deleteOverride(item)">刪除</button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+      }
+      <div class="override-form">
+        <label>週期年
+          <input type="number" min="2000" max="2099" [ngModel]="overrideCycleYear()"
+            (ngModelChange)="overrideCycleYear.set(toNumber($event))" name="overrideCycleYear" /></label>
+        <label>開始日
+          <input type="date" [ngModel]="overrideStart()" (ngModelChange)="overrideStart.set($event)"
+            name="overrideStart" /></label>
+        <label>結束日
+          <input type="date" [ngModel]="overrideEnd()" (ngModelChange)="overrideEnd.set($event)"
+            name="overrideEnd" /></label>
+        <label class="is-grow">原因
+          <input maxlength="200" placeholder="例：依人事總處公告春節補假改至 2/13" [ngModel]="overrideNote()"
+            (ngModelChange)="overrideNote.set($event)" name="overrideNote" /></label>
+        <button type="button" class="btn" [disabled]="isSavingOverride()" (click)="saveOverride()">
+          {{ isSavingOverride() ? '儲存中…' : '儲存覆寫' }}</button>
+      </div>
+      <small class="helper">週期年：國曆規則＝國曆年；農曆規則＝該農曆年正月初一所在的國曆年；跨年季節＝開始日所在年。</small>
+    </details>
+    }
+
+    <footer>
+      <button type="button" class="btn" (click)="closeModal()">取消</button>
+      <button type="submit" class="btn-primary" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : '儲存' }}</button>
+    </footer>
+  </form>
+</div>
+}
+
+<!-- ===================== 切換狀態 ===================== -->
+@if (modal() === 'status' && statusTarget(); as target) {
+<div class="modal-backdrop" (click)="closeStatus()">
+  <form class="modal-card campaign-modal is-narrow" (click)="$event.stopPropagation()" (ngSubmit)="applyStatus()">
+    <header>
+      <h2>手動切換檔期狀態</h2>
+      <button type="button" class="modal-close" (click)="closeStatus()" aria-label="關閉"><app-icon name="x" /></button>
+    </header>
+    <p>檔期：<strong>{{ target.name }}</strong>
+      @if (target.cycleYear) {（本期：{{ target.range }}）}
+    </p>
+    <fieldset class="segmented">
+      <label class="radio-option"><input type="radio" name="statusMode" [checked]="draftManualOverride()"
+          (change)="draftManualOverride.set(true)" />手動指定狀態</label>
+      <label class="radio-option"><input type="radio" name="statusMode" [checked]="!draftManualOverride()"
+          (change)="draftManualOverride.set(false)" />恢復自動判斷</label>
+    </fieldset>
+    @if (draftManualOverride()) {
+    <label>目標狀態
+      <select [ngModel]="draftStatus()" (ngModelChange)="draftStatus.set($event)" name="status">
+        <option value="UPCOMING">即將開始</option>
+        <option value="PREPARING">準備期</option>
+        <option value="ACTIVE">進行中</option>
+        <option value="EXPIRED">本期停用</option>
+      </select></label>
+    <p class="helper">手動狀態只對本期有效，下一期會自動恢復依規則推算。</p>
+    } @else {
+    <p class="helper">儲存後改由系統依日期規則判斷狀態。</p>
+    }
+    <footer>
+      <button type="button" class="btn" (click)="closeStatus()">取消</button>
+      <button type="submit" class="btn-primary" [disabled]="isSaving()">{{ isSaving() ? '儲存中…' : '儲存' }}</button>
+    </footer>
+  </form>
+</div>
+}
+
+<!-- ===================== 標籤選擇 ===================== -->
+@if (tagPickerOpen()) {
+<div class="modal-backdrop tag-picker-backdrop" (click)="closeTagPicker()">
+  <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
+    <header>
+      <h2>節慶標籤（選填）</h2>
+      <button type="button" class="modal-close" (click)="closeTagPicker()" aria-label="關閉"><app-icon
+          name="x" /></button>
+    </header>
+    <label class="tag-picker-search">搜尋或新增標籤
+      <input type="text" placeholder="輸入關鍵字，找不到就直接新增" [ngModel]="tagPickerSearch()"
+        (ngModelChange)="tagPickerSearch.set($event)" /></label>
+    @if (canAddNewTag()) {
+    <button type="button" class="btn-primary tag-picker-add-new" (click)="addNewTagFromSearch()">
+      ＋ 新增標籤「{{ tagPickerSearch().trim() }}」</button>
+    } @else if (!tagPickerSearch().trim()) {
+    <p class="helper">找不到想要的標籤嗎？直接在上面輸入後即可新增。</p>
+    }
+    <p class="helper">已選 {{ tagPickerSelected().size }} 項</p>
+    <div class="tag-picker-list" role="group" aria-label="可選擇的標籤">
+      @for (tag of filteredKnownTags(); track tag) {
+      <label class="tag-picker-option">
+        <input type="checkbox" [checked]="tagPickerSelected().has(tag)" (change)="toggleTagPickerSelection(tag)" />
+        <span>{{ tag }}</span>
+      </label>
+      } @empty {
+      <p class="helper">沒有符合的既有標籤{{ tagPickerSearch().trim() ? '，可用上方按鈕新增' : '' }}。</p>
+      }
+    </div>
+    <footer>
+      <button type="button" class="btn" (click)="closeTagPicker()">取消</button>
+      <button type="button" class="btn-primary" (click)="confirmTagPicker()">確定</button>
+    </footer>
+  </div>
+</div>
+}

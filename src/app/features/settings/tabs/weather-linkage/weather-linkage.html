@@ -1,6 +1,7 @@
 <!--
   檔案用途：「天氣連動」分頁樣板（2026-09-24 由「節慶檔期」分頁拆出）。
   三個面板依連動順序排列：同步（結果）→ 標籤對照（同步產生哪些檔期）→ 地域占比（加成打幾折）。
+  2026-09-24：同步面板下新增「目前的天氣檔期」（由「節慶檔期」分頁移入），唯讀＋切換狀態。
   表格與表單樣式用全域 .config-*（見 _components.scss），這裡只保留本分頁專屬的少量樣式。
 -->
 <section class="config-panel" aria-labelledby="weather-sync-title">
@@ -55,7 +56,99 @@
     </table>
   </div>
   }
+
+  <!-- 目前的天氣檔期：準備期／進行中＋手動覆蓋中（含被手動設為已結束的，才能恢復自動） -->
+  <div class="weather-campaigns-head">
+    <h4 id="weather-campaigns-title">目前的天氣檔期</h4>
+    <p class="helper">系統依預報產生，不能新增或編輯；判斷有誤時可手動切換狀態，手動期間同步不會變更這一筆。</p>
+  </div>
+  @if (weatherCampaignsError()) {
+  <p class="load-error" role="alert">{{ weatherCampaignsError() }}
+    <button type="button" class="btn" (click)="loadWeatherCampaigns()">重新載入</button>
+  </p>
+  }
+  <div class="config-table-wrap">
+    <table class="config-table weather-campaign-table" aria-labelledby="weather-campaigns-title">
+      <thead>
+        <tr>
+          <th scope="col">檔期</th>
+          <th scope="col">期間</th>
+          <th scope="col">信心度</th>
+          <th scope="col" class="num">地域覆蓋</th>
+          <th scope="col">命中標籤</th>
+          <th scope="col">狀態</th>
+          <th scope="col" class="col-actions"><span class="sr-only">操作</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (weatherCampaignsLoading() && weatherCampaigns().length === 0) {
+        <tr>
+          <td colspan="7" class="config-table-empty" role="status">載入中…</td>
+        </tr>
+        }
+        @for (item of weatherCampaigns(); track item.id) {
+        <tr>
+          <td><strong>{{ item.campaignName }}</strong></td>
+          <td class="weather-window">{{ item.startDate ?? '—' }} ～ {{ item.endDate ?? '—' }}</td>
+          <td>{{ item.weatherConfidence ? weatherForecastConfidenceLabel[item.weatherConfidence] : '—' }}</td>
+          <td class="num">{{ coverageText(item) }}</td>
+          <td>{{ campaignTagsText(item) }}</td>
+          <td>
+            <span class="status-pill" [attr.data-status]="item.campaignStatus">{{ campaignStatusLabel[item.campaignStatus] }}</span>
+            @if (item.isManualOverride) {
+            <span class="manual-badge" title="狀態為手動指定，同步不會變更">手動</span>
+            }
+          </td>
+          <td class="row-actions">
+            <button type="button" class="btn" [disabled]="disabled()" (click)="openStatus(item)">切換狀態</button>
+          </td>
+        </tr>
+        } @empty {
+        @if (!weatherCampaignsLoading() && !weatherCampaignsError()) {
+        <tr>
+          <td colspan="7" class="config-table-empty">目前沒有準備中或進行中的天氣檔期。</td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+  </div>
 </section>
+
+<!-- ===================== 天氣檔期：切換狀態 ===================== -->
+@if (statusTarget(); as target) {
+<div class="modal-backdrop" (click)="closeStatus()">
+  <form class="modal-card weather-status-modal" (click)="$event.stopPropagation()" (ngSubmit)="applyStatus()">
+    <header>
+      <h2>手動切換天氣檔期狀態</h2>
+      <button type="button" class="modal-close" (click)="closeStatus()" aria-label="關閉"><app-icon name="x" /></button>
+    </header>
+    <p>檔期：<strong>{{ target.campaignName }}</strong>（{{ target.startDate ?? '—' }} ～ {{ target.endDate ?? '—' }}）</p>
+    <fieldset class="status-mode">
+      <legend class="sr-only">狀態來源</legend>
+      <label class="radio-option"><input type="radio" name="weatherStatusMode" [checked]="draftManualOverride()"
+          (change)="draftManualOverride.set(true)" />手動指定狀態</label>
+      <label class="radio-option"><input type="radio" name="weatherStatusMode" [checked]="!draftManualOverride()"
+          (change)="draftManualOverride.set(false)" />恢復自動判斷</label>
+    </fieldset>
+    @if (draftManualOverride()) {
+    <label>目標狀態
+      <select [ngModel]="draftStatus()" (ngModelChange)="draftStatus.set($event)" name="weatherStatus">
+        @for (option of campaignStatusOptions; track option) {
+        <option [value]="option">{{ campaignStatusLabel[option] }}</option>
+        }
+      </select></label>
+    <p class="helper">手動期間每天的天氣同步不會變更這一筆，直到恢復自動判斷。</p>
+    } @else {
+    <p class="helper">儲存後改由系統依天氣同步結果判斷狀態。</p>
+    }
+    <footer>
+      <button type="button" class="btn" (click)="closeStatus()">取消</button>
+      <button type="submit" class="btn-primary" [disabled]="statusSaving()">{{ statusSaving() ? '儲存中…' : '儲存' }}</button>
+    </footer>
+  </form>
+</div>
+}
 
 <section class="config-panel" aria-labelledby="weather-mapping-title">
   <div class="config-panel-head">
