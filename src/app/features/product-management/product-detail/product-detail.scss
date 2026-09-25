@@ -951,6 +951,15 @@ a:focus-visible {
   margin-top: .5rem;
 }
 
+.evaluation-item.trend .trend-source {
+  margin-top: .25rem;
+  font-size: .8125rem;
+  color: #64748b;
+
+  // 模擬資料要看得出來，不能跟真實資料長得一樣
+  strong { color: #b45309; }
+}
+
 .panel.risks {
   margin-bottom: 1rem;
   color: #991b1b;

@@ -388,7 +388,7 @@
         </section>
         <section class="evaluation-item trend">
           <header>
-            <h2>市場趨勢／熱門度<app-info-tip text="外部來源的相對熱度，不等於銷售量。計分時取趨勢分與熱門度的平均，並依距採集日天數做指數衰減、收斂到中性基準分。" /></h2>
+            <h2>市場趨勢／熱門度<app-info-tip text="依 PTT 公開看板近 90 天的討論量（貼文＋推文）換算，是相對熱度，不等於銷售量。熱度：一般商品約 40–60 分，超過 70 分會被 AI 主動選品標記。趨勢：比較近 7 天與 90 天平均的討論速度，50 分為持平。計分時取趨勢分與熱度的平均，並依距採集日天數做指數衰減、收斂到中性基準分。" /></h2>
             <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong>
           </header>
           <p>
@@ -403,6 +403,19 @@
             }
             ・最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}
           </p>
+          @if (p.lastSyncedAt) {
+          <p class="trend-source">
+            @if (p.trendSource === 'PTT') {
+            資料來源：PTT 討論量
+            } @else if (p.trendSource === 'SIMULATED') {
+            資料來源：<strong>模擬資料</strong>（PTT 暫時無法取得，下次同步會再試）
+            } @else {
+            資料來源：{{ p.trendSource ?? '未知' }}
+            }
+            @if (p.popularityScore !== null) {・熱度 {{ p.popularityScore }} 分}
+            @if (p.trendKeyword) {・搜尋關鍵字「{{ p.trendKeyword }}」}
+          </p>
+          }
           @if (!readOnly) {
           <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
             {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
@@ -416,7 +429,7 @@
           </div>
           } @else {
           <p class="sync-loading" role="status">
-            <span class="spinner" aria-hidden="true"></span>正在同步趨勢資料…
+            <span class="spinner" aria-hidden="true"></span>正在搜尋 PTT 各看板的討論，約需 10 秒…
           </p>
           }
           }

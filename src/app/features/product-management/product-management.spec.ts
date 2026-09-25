@@ -34,16 +34,18 @@ describe('ProductManagement', () => {
     expect(component.filteredProducts().some((item) => item.name.includes('旅行用全能'))).toBe(false);
   });
 
-  it('sorts supplier, classification, completeness and status in both directions', () => {
+  // 2026-09-25 對齊現行畫面：表頭拆成「實際分類」（不排序）＋「新品／再販售」（pricingType 排序），
+  // 「審核／品項狀態」表頭不提供排序，可排序表頭由 7 個變 6 個。
+  it('sorts supplier, pricing type and completeness in both directions', () => {
     const base = component.products()[0];
     component.products.set([
-      { ...base, id: 1, name: '商品10', supplierName: '供應商10', productTypeName: 'B', dataCompleteness: 100, reviewStatus: 'REJECTED', itemStatus: 'ACTIVE' },
-      { ...base, id: 2, name: '商品2', supplierName: '供應商2', productTypeName: 'A', dataCompleteness: 9, reviewStatus: 'APPROVED', itemStatus: 'ACTIVE' },
-      { ...base, id: 3, name: '商品1', supplierName: '', productTypeName: 'C', dataCompleteness: null, reviewStatus: 'PENDING', itemStatus: 'ACTIVE' },
+      { ...base, id: 1, name: '商品10', supplierName: '供應商10', productTypeName: 'B', pricingType: 'RESALE', dataCompleteness: 100, reviewStatus: 'REJECTED', itemStatus: 'ACTIVE' },
+      { ...base, id: 2, name: '商品2', supplierName: '供應商2', productTypeName: 'A', pricingType: 'NEW', dataCompleteness: 9, reviewStatus: 'APPROVED', itemStatus: 'ACTIVE' },
+      { ...base, id: 3, name: '商品1', supplierName: '', productTypeName: 'C', pricingType: 'RESALE', dataCompleteness: null, reviewStatus: 'PENDING', itemStatus: 'ACTIVE' },
     ]);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelectorAll('th[appSortHeader]')).toHaveLength(7);
+    expect(root.querySelectorAll('th[appSortHeader]')).toHaveLength(6);
     const assertSort = (key: string, ascending: number[], descending: number[]) => {
       const header = root.querySelector('th[appSortHeader="' + key + '"]')!;
       const button = header.querySelector('button')!;
@@ -57,9 +59,8 @@ describe('ProductManagement', () => {
       expect(header.getAttribute('aria-sort')).toBe('descending');
     };
     assertSort('supplierName', [2, 1, 3], [1, 2, 3]);
-    assertSort('productTypeName|pricingType', [2, 1, 3], [3, 1, 2]);
+    assertSort('pricingType', [2, 1, 3], [1, 3, 2]);
     assertSort('dataCompleteness', [2, 1, 3], [1, 2, 3]);
-    assertSort('reviewStatus|itemStatus', [2, 3, 1], [1, 3, 2]);
     const mobileSort = root.querySelector('.mobile-table-sort')!;
     const mobileCompleteness = Array.from(mobileSort.querySelectorAll('button'))
       .find(button => button.textContent?.includes('資料完整度'))!;
@@ -117,7 +118,8 @@ describe('ProductManagement', () => {
     const disabledButtons = fixture.nativeElement.querySelectorAll('button:disabled');
     expect(disabledButtons.length).toBeGreaterThan(0);
     expect(fixture.nativeElement.textContent).toContain('核心選品資料已鎖定');
-    expect(fixture.nativeElement.textContent).toContain('已通過選品審核');
+    // 審核狀態文案統一為「審核通過／審核拒絕」（2026-09 決議），不再有「已通過選品審核」。
+    expect(fixture.nativeElement.textContent).toContain('審核通過');
   });
 
   it('keeps an accessible sticky action column for every product row', () => {

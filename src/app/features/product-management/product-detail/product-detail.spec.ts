@@ -76,13 +76,24 @@ describe('ProductDetail', () => {
     ),
     archive: vi.fn(() => of({})),
     restore: vi.fn(() => of({})),
+    // 頁面載入時讀取最新一筆趨勢（唯讀，不觸發爬蟲）。
+    getLatestTrend: vi.fn(() =>
+      of({
+        source: 'PTT',
+        keyword: '中秋炭烤海陸組合禮盒',
+        trendScore: 56,
+        popularityScore: 63.37,
+        trendDirection: 'UP' as const,
+        collectedAt: '2026-09-25T02:00:00',
+      }),
+    ),
     syncTrend: vi.fn(() =>
       of({
         source: 'GOOGLE_TRENDS',
         keyword: '中秋烤肉',
         trendScore: 92,
         popularityScore: 88,
-        trendDirection: 'UP' as const,
+        trendDirection: 'UP' as 'UP' | 'STABLE' | 'DOWN',
         collectedAt: '2026-09-02T10:00:00',
       }),
     ),
@@ -140,8 +151,17 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('不進入評估計分與 AI 推薦');
     expect(fixture.nativeElement.textContent).toContain('尚未產生 AI 分析');
   });
+  it('shows the latest trend and its source on page load without triggering a crawl', () => {
+    expect(api.getLatestTrend).toHaveBeenCalled();
+    expect(api.syncTrend).not.toHaveBeenCalled();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('資料來源：PTT 討論量');
+    expect(text).toContain('熱度 63.37 分');
+    expect(text).not.toContain('尚無趨勢資料');
+  });
+
   it('syncs trend data via the real API in formal mode', () => {
-    const response = { source: 'GOOGLE_TRENDS', keyword: '中秋烤肉', trendScore: 92, popularityScore: 88, trendDirection: 'UP' as const, collectedAt: '2026-09-02T10:00:00' };
+    const response = { source: 'PTT', keyword: '中秋烤肉', trendScore: 12.58, popularityScore: 84.37, trendDirection: 'DOWN' as const, collectedAt: '2026-09-25T10:00:00' };
     const pending = new Subject<typeof response>();
     api.syncTrend.mockReturnValueOnce(pending);
     component.syncTrend();
@@ -149,11 +169,28 @@ describe('ProductDetail', () => {
     // 這支 spec 沒有設定路由參數，productId 實際上是空字串（見同檔案
     // generateAiAnalysis 測試的說明），語意上跟其他測試保持一致。
     expect(api.syncTrend).toHaveBeenCalledWith('');
+    api.getEvaluation.mockClear();
     pending.next(response);
     pending.complete();
     expect(component.syncState()).toBe('success');
-    expect(component.product()?.trendDirection).toBe('UP');
-    expect(component.product()?.trendScore).toBe(92);
+    expect(component.product()?.trendDirection).toBe('DOWN');
+    expect(component.product()?.popularityScore).toBe(84.37);
+    expect(component.product()?.trendSource).toBe('PTT');
+    // 同步後重新讀取評估：畫面的趨勢分是評估重算後的分數（mock 為 90），
+    // 不是 sync 回傳的 PTT 原始趨勢分 12.58。
+    expect(api.getEvaluation).toHaveBeenCalledTimes(1);
+    expect(component.product()?.trendScore).toBe(90);
+  });
+
+  it('clearly labels simulated fallback data after sync', () => {
+    api.syncTrend.mockReturnValueOnce(
+      of({ source: 'SIMULATED', keyword: '中秋烤肉', trendScore: 51, popularityScore: 49, trendDirection: 'UP' as const, collectedAt: '2026-09-25T10:00:00' }),
+    );
+    component.syncTrend();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('模擬資料');
+    expect(text).toContain('PTT 暫時無法取得');
   });
 
   it('shows the real error message when trend sync fails', () => {

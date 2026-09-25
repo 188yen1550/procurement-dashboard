@@ -258,7 +258,8 @@ describe('Settings', () => {
   it('prevents normal navigation from entering the hidden audience tab', () => {
     component.setTab('audience');
     expect(component.activeTab()).toBe('modes');
-    expect(component.statusMessage()).toContain('暫不開放');
+    // 設定頁的錯誤改用 dialog 呈現（showAlert → DialogService.notify），不再走頁首 toast。
+    expect(dialog.state()?.messages[0]).toContain('暫不開放');
     // 被攔下時不該連帶觸發真實模式的分頁載入（不打 GET /audience-profile）。
     expect(settingsApi.getAudienceProfile).not.toHaveBeenCalled();
   });
@@ -268,7 +269,7 @@ describe('Settings', () => {
     component.saveAudience();
     expect(component.saved()).toBe(false);
     expect(component.ageRangeInvalid()).toBe(true);
-    expect(component.statusMessage()).toContain('請修正客群設定欄位');
+    expect(dialog.state()?.messages[0]).toContain('請修正客群設定欄位');
   });
   it('keeps the hidden audience settings logic connected to the API', () => {
     component.saveAudience();
@@ -389,7 +390,9 @@ describe('Settings', () => {
 
     expect(settingsApi.deleteProductType).toHaveBeenCalled();
     expect(component.productTypes().some((item) => item.name === '食品／生鮮')).toBe(true);
-    expect(component.statusMessage()).toContain('不可刪除');
+    // 真實模式直接顯示後端 409 的訊息（toApiError），不另外改寫文案。
+    expect(dialog.state()?.variant).toBe('error');
+    expect(dialog.state()?.messages[0]).toContain('此類型已被商品使用');
   });
 
   it('disables accounts via the API and retains their records', () => {

@@ -28,11 +28,12 @@ import { ProductTypeLookupService } from '../../settings/api/product-type-lookup
 import { ProductApiService } from '../api/product-api.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
-import { AiAnalysisModel, toProductActionAvailability } from '../api/product.mapper';
+import { AiAnalysisModel, TrendModel, toProductActionAvailability } from '../api/product.mapper';
 import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
 import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { InfoTip } from '../../../shared/components/info-tip/info-tip';
 import {
+  DetailExtras,
   DetailProduct,
   DetailState,
   ItemStatus,
@@ -64,6 +65,21 @@ function toAiExtras(
   return {
     aiSummary: analysis.summary,
     aiReasons: splitAiReasonLines(analysis.reasons),
+  };
+}
+
+/**
+ * 把 TrendModel（GET /trend 或 POST /trend/sync 的回傳）轉成 extras 的趨勢欄位。
+ * 尚無趨勢資料（null）時回傳空物件，由 toDetailProduct() 套預設值。
+ */
+function toTrendExtras(trend: TrendModel | null): Partial<DetailExtras> {
+  if (!trend) return {};
+  return {
+    trendDirection: trend.trendDirection,
+    lastSyncedAt: trend.collectedAt ?? '',
+    trendSource: trend.source,
+    trendKeyword: trend.keyword,
+    popularityScore: trend.popularityScore,
   };
 }
 
@@ -103,6 +119,9 @@ const APPROVED: DetailProduct = {
   trendScore: 90,
   trendDirection: 'UP',
   lastSyncedAt: '2026-08-31T09:20:00+08:00',
+  trendSource: 'PTT',
+  trendKeyword: '中秋炭烤海陸組合禮盒',
+  popularityScore: 78,
   aiSummary: '節慶標籤與當前檔期高度吻合，供應穩定且價格具競爭力，建議維持人工確認供貨排程。',
   aiReasons: ['中秋烤肉需求與 bbq 標籤相符', '團購價較市價低 20%', '近期搜尋熱度呈上升'],
   risks: ['最低訂購量 50 組，需確認冷鏈倉儲容量', '節前物流高峰可能延遲'],
@@ -155,6 +174,10 @@ const INCOMPLETE: DetailProduct = {
   purchaseScore: 0,
   trendScore: 0,
   trendDirection: 'STABLE',
+  lastSyncedAt: '',
+  trendSource: null,
+  trendKeyword: null,
+  popularityScore: null,
   aiSummary: null,
   aiReasons: [],
   risks: [],
@@ -302,6 +325,9 @@ export class ProductDetail implements OnInit {
             // 詳情頁完全看不到這件商品自己的歷次審核紀錄——想知道「這件
             // 商品上次為什麼被拒」只能去問管理層或翻決策紀錄分頁自己找。
             reviewHistory: this.api.getReviewHistory(this.productId).pipe(catchError(() => of([]))),
+            // 最新一筆趨勢資料（每天 02:00 排程自動抓 PTT）。唯讀，不觸發爬蟲；
+            // 以前只能靠「立即更新」拿到趨勢，重新進入頁面就顯示「尚無趨勢資料」。
+            trend: this.api.getLatestTrend(this.productId).pipe(catchError(() => of(null))),
             // 商品類型名稱：ProductResponse 只有 productTypeId，
             // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
             typeName: this.productTypes.getName(product.productTypeId),
@@ -310,9 +336,12 @@ export class ProductDetail implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName }) => {
+        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend }) => {
           this.product.set(
-            toDetailProduct(product, evaluation, festival, typeName, toAiExtras(aiAnalysis)),
+            toDetailProduct(product, evaluation, festival, typeName, {
+              ...toAiExtras(aiAnalysis),
+              ...toTrendExtras(trend),
+            }),
           );
           this.reviewHistory.set(reviewHistory);
           this.pageState.set('default');
@@ -414,21 +443,39 @@ export class ProductDetail implements OnInit {
       return;
     }
     this.syncState.set('syncing');
-    this.statusMessageState.show('正在同步趨勢資料，請稍候。');
+    this.statusMessageState.show('正在搜尋 PTT 討論，約需 10 秒，請稍候。');
     this.api
       .syncTrend(this.productId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        // 後端同步後會重算整份評估（不只趨勢分），這裡重新讀一次 evaluation 更新畫面分數。
+        // ⚠️ 不能拿 sync 回傳的 trendScore 直接蓋掉畫面上的趨勢分：那是 PTT 原始的
+        // 「趨勢分」，畫面顯示的是評估裡「趨勢分與熱度平均、再做時效衰減」後的分數，
+        // 兩者語意不同（例如行動電源原始趨勢分 12.58，評估趨勢分 48.48）。
+        switchMap((trend) =>
+          forkJoin({
+            trend: of(trend),
+            evaluation: this.api.getEvaluation(this.productId).pipe(catchError(() => of(null))),
+          }),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
-        next: (trend) => {
+        next: ({ trend, evaluation }) => {
           this.syncState.set('success');
-          this.statusMessageState.show('趨勢資料已同步更新。');
+          this.statusMessageState.show(
+            trend.source === 'PTT'
+              ? '趨勢資料已依 PTT 討論量更新。'
+              : 'PTT 暫時無法取得資料，本次先以模擬資料更新，可稍後再試。',
+          );
           this.product.update((p) =>
             p
               ? {
                   ...p,
-                  trendScore: trend.trendScore ?? p.trendScore,
-                  trendDirection: trend.trendDirection,
-                  lastSyncedAt: trend.collectedAt ?? p.lastSyncedAt,
+                  ...toTrendExtras(trend),
+                  trendScore: evaluation?.trendScore ?? p.trendScore,
+                  baseScore: evaluation?.totalScore ?? p.baseScore,
+                  festivalBoost: evaluation?.festivalBoost ?? p.festivalBoost,
+                  finalScore: evaluation?.finalScore ?? p.finalScore,
                 }
               : p,
           );

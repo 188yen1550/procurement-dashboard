@@ -113,7 +113,8 @@ describe('ReviewDetail', () => {
     // 而且此時 api.submit 還不應該被呼叫過。
     const confirmState = dialog.state();
     expect(confirmState?.variant).toBe('confirm');
-    expect(confirmState?.messages[0]).toContain('通過選品審核');
+    // 審核狀態文案統一為「審核通過／審核拒絕」（2026-09 決議）。
+    expect(confirmState?.messages[0]).toContain('審核通過');
     expect(api.submit).not.toHaveBeenCalled();
 
     dialog.handleConfirm();

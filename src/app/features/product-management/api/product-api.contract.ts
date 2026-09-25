@@ -42,6 +42,7 @@ export const PRODUCT_API = {
   festivalBoost: (id: number | string) => `/api/products/${id}/festival-boost`,
   aiAnalysis: (id: number | string) => `/api/products/${id}/ai-analysis`,
   aiAnalysisGenerate: (id: number | string) => `/api/products/${id}/ai-analysis/generate`,
+  trend: (id: number | string) => `/api/products/${id}/trend`,
   trendSync: (id: number | string) => `/api/products/${id}/trend/sync`,
   reviewHistory: (id: number | string) => `/api/products/${id}/reviews`,
   resubmit: (id: number | string) => `/api/products/${id}/resubmit`,
@@ -285,11 +286,15 @@ export interface AiAnalysisResponsePayload {
 }
 
 /**
- * 對應後端 json/TrendSnapshot.java，POST /api/products/{id}/trend/sync 的回傳。
+ * 對應後端 json/TrendSnapshot.java，POST /api/products/{id}/trend/sync 與
+ * GET /api/products/{id}/trend 的回傳（GET 尚無資料時 data 為 null）。
  * ⚠️ collectedAt 後端型別是 String 不是 LocalDateTime，需要自己 parse。
  */
 export interface TrendSnapshotPayload {
-  /** 目前固定 "SIMULATED"。 */
+  /**
+   * 資料來源："PTT"（真實 PTT 討論量）或 "SIMULATED"（PTT 暫時取不到時的模擬備援）。
+   * 舊資料可能出現其他值（例如 seed 資料的 "GOOGLE_TRENDS"），畫面請容錯處理。
+   */
   source: string | null;
   keyword: string | null;
   trendScore: Decimal;

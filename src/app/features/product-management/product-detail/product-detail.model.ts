@@ -83,6 +83,12 @@ export interface DetailProduct {
   trendScore: number;
   trendDirection: 'UP' | 'STABLE' | 'DOWN';
   lastSyncedAt: string;
+  /** 最新一筆趨勢資料的來源：'PTT'（真實討論量）或 'SIMULATED'（PTT 取不到時的備援）；尚無資料為 null。 */
+  trendSource: string | null;
+  /** 實際拿去搜尋的關鍵字（商品名稱去掉規格字樣後）。 */
+  trendKeyword: string | null;
+  /** 熱度分數 0–100，AI 主動選品以 >70 判斷。 */
+  popularityScore: number | null;
   aiSummary: string | null;
   aiReasons: string[];
   risks: string[];
@@ -126,6 +132,9 @@ export interface DetailExtras {
   aiReasons: string[];
   trendDirection: 'UP' | 'STABLE' | 'DOWN';
   lastSyncedAt: string;
+  trendSource: string | null;
+  trendKeyword: string | null;
+  popularityScore: number | null;
 }
 
 export function toDetailProduct(
@@ -177,10 +186,13 @@ export function toDetailProduct(
     historicalNote: NOT_PROVIDED,
     purchaseScore: evaluation?.purchaseScore ?? 0,
     trendScore: evaluation?.trendScore ?? 0,
-    // 趨勢方向與同步時間來自 POST /api/products/{id}/trend/sync，
-    // 那支有外部呼叫成本，不在頁面載入時觸發，所以預設 STABLE。
+    // 趨勢方向、來源與同步時間來自 GET /api/products/{id}/trend（唯讀，不觸發爬蟲）；
+    // 尚無趨勢資料時預設 STABLE、lastSyncedAt 為空字串（畫面顯示「尚無趨勢資料」）。
     trendDirection: extras?.trendDirection ?? 'STABLE',
     lastSyncedAt: extras?.lastSyncedAt ?? '',
+    trendSource: extras?.trendSource ?? null,
+    trendKeyword: extras?.trendKeyword ?? null,
+    popularityScore: extras?.popularityScore ?? null,
     aiSummary: extras?.aiSummary ?? null,
     aiReasons: extras?.aiReasons ?? [],
     // 風險是審核時由主管勾選 risk_options 的結果，不是商品屬性，

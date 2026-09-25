@@ -342,7 +342,23 @@ export class ProductApiService {
   // ----- TrendController -----
 
   /**
+   * GET /api/products/{id}/trend：讀取最新一筆趨勢資料（每天 02:00 排程自動抓 PTT）。
+   * 純讀取、不觸發爬蟲，可以在頁面載入時呼叫。尚無資料時回傳 null。
+   */
+  getLatestTrend(id: number | string): Observable<TrendModel | null> {
+    return this.http
+      .get<ApiEnvelope<TrendSnapshotPayload | null>>(PRODUCT_API.trend(id))
+      .pipe(
+        unwrapData(),
+        map((payload) => (payload ? toTrendModel(payload) : null)),
+      );
+  }
+
+  /**
    * 15. POST /api/products/{id}/trend/sync：手動同步趨勢資料。
+   *
+   * ⚠️ 後端會即時搜尋 PTT 多個看板（每次請求間隔 1 秒），每個商品約需 8–10 秒才回應，
+   * 畫面必須顯示讀取中狀態並停用按鈕，避免使用者重複點擊。
    *
    * ⚠️ 這支會呼叫外部資料源，**絕對不要在頁面載入時自動觸發**
    * （企劃書第八節：不要在一般頁面載入時無條件觸發大量 crawler request）。

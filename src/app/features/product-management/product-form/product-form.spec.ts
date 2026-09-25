@@ -38,6 +38,9 @@ describe('ProductForm', () => {
     update: vi.fn((_id: unknown, _payload: unknown) => of({ id: 201 })),
     uploadImage: vi.fn((_id: unknown, _file: unknown) => of({ id: 201 })),
     resubmit: vi.fn((_id: unknown) => of({ id: 201 })),
+    // 2026-09-25 補上：選品類後 loadCustomFieldSchema() 會呼叫這支，缺少時每個測試都會丟
+    // 「getCustomFieldSchema is not a function」的未處理錯誤（不影響斷言但會污染測試輸出）。
+    getCustomFieldSchema: vi.fn((_productTypeId: unknown) => of([])),
   };
   const settingsApi = {
     getProductTypes: vi.fn(() => of(productTypes)),
@@ -388,18 +391,18 @@ describe('ProductForm', () => {
     expect(fixture.nativeElement.querySelector('#product-image').disabled).toBe(false);
   });
 
-  it('disables the campaign tag toggle buttons when core fields are locked', () => {
-    // ⚠️ 這是這次修正的重點：節慶標籤改成 <button> 群組後不是走
-    // formControlName 綁定，單純停用底層 FormControl（lockCoreFields()）
-    // 不會讓這些按鈕真的變成不可點擊——之前只鎖了資料，沒鎖住互動。
+  it('shows only the held campaign tags as read-only chips when core fields are locked', () => {
+    // 2026-09-25 對齊現行畫面（決議：節慶標籤在無法操作時僅顯示持有標籤）：
+    // 鎖定後不再渲染可點擊的 <button>，改為唯讀標籤，只列出已選的標籤。
+    // 原本的重點（鎖定後不能再切換標籤）仍然成立——連按鈕都不存在。
+    component.form.controls.campaignTags.setValue(['daily']);
     component.isApproved.set(true);
     fixture.detectChanges();
     expect(component.isCoreLocked()).toBe(true);
-    const tagButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('.tag-toggle-group .tag-toggle'),
-    ) as HTMLButtonElement[];
-    expect(tagButtons.length).toBeGreaterThan(0);
-    expect(tagButtons.every((button) => button.disabled)).toBe(true);
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('.tag-toggle-group button.tag-toggle')).toHaveLength(0);
+    const chips = Array.from(root.querySelectorAll('.tag-toggle-group .tag-toggle.is-readonly'));
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['daily']);
   });
 
   it('blocks duplicate submissions while saving', () => {
