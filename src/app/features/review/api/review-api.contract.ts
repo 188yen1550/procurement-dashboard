@@ -199,4 +199,24 @@ export interface ReviewRecordResponsePayload {
  * 篩選條件送給後端，「結果篩選」只在已抓回來的那一頁裡做，資料量一多、
  * 篩選條件剛好不在那一頁時就會誤報「找不到」。
  */
-export type DecisionRecordQuery = PageQuery & { reviewResult?: 'APPROVED' | 'REJECTED' };
+export type DecisionRecordQuery = PageQuery & {
+  reviewResult?: 'APPROVED' | 'REJECTED';
+  /**
+   * 2026-09-24 新增：以下三項也交給後端篩選，理由同 reviewResult——
+   * 只在前端篩當頁 20 筆，跨頁結果會不一致。
+   * keyword 比對審核當下的商品名稱（product_snapshot.name）。
+   */
+  keyword?: string;
+  /** 審核日期 yyyy-MM-dd（含當天）。 */
+  reviewedFrom?: string;
+  /** 審核日期 yyyy-MM-dd（含當天）。 */
+  reviewedTo?: string;
+  /**
+   * 排序只接受 reviewedAt／submissionCount／finalScore（後端白名單，
+   * 其他欄位回 400），例如 'finalScore,desc'。未指定時後端預設 reviewedAt,desc。
+   */
+  sort?: `${DecisionRecordSortKey},${'asc' | 'desc'}`;
+};
+
+/** 決策紀錄可排序欄位，與後端 ReviewService.DECISION_RECORD_SORT_KEYS 一致。 */
+export type DecisionRecordSortKey = 'reviewedAt' | 'submissionCount' | 'finalScore';

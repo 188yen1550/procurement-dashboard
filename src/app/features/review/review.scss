@@ -6,7 +6,10 @@
 }
 
 .review-page {
-  min-width: 0
+  min-width: 0;
+  /* 篩選列依「頁面可用寬度」而非視窗寬度切換版型：側欄展開／收合時
+     視窗寬度不變，但內容區寬度會變，用 @container 才量得準。 */
+  container: review-page / inline-size
 }
 
 .page-header,
@@ -522,4 +525,156 @@ select:focus-visible {
   color: #6c7a89;
   font-size: var(--t-xs);
   font-weight: 600;
+}
+
+/* ===== 篩選列（2026-09-24）=====
+   待審清單與決策紀錄共用。原本是 flex 單行塞 7 個控制項，標籤沒有 nowrap，
+   寬度不足時文字被擠壓換行、下拉內容被截斷。改為 Grid：
+   - 標籤 white-space: nowrap，控制項 min-width: 0 吃剩餘寬度
+   - 寬版（容器 ≥ 900px）固定兩行
+   - 中寬（600–899px）兩欄
+   - 窄版（< 600px）單欄，標籤疊在控制項上方
+   欄寬比例：搜尋 1.6fr、兩個狀態下拉各 1fr、分類 1.4fr（分類名稱最長）；
+   日期區間跨兩欄，確保兩個日期輸入框不被壓縮。 */
+.toolbar.filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: .75rem 1rem
+}
+
+.pending-filters {
+  grid-template-areas:
+    "search review item category"
+    "date date . actions"
+}
+
+.record-filters {
+  grid-template-areas:
+    "search result date date"
+    ". . . actions"
+}
+
+.filter-toolbar .field-search { grid-area: search }
+.filter-toolbar .field-review { grid-area: review }
+.filter-toolbar .field-item { grid-area: item }
+.filter-toolbar .field-category { grid-area: category }
+.filter-toolbar .field-result { grid-area: result }
+.filter-toolbar .field-date { grid-area: date }
+.filter-toolbar .toolbar-actions { grid-area: actions }
+
+.filter-toolbar .field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0
+}
+
+.filter-toolbar .field-label {
+  flex: 0 0 auto;
+  color: #526677;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap
+}
+
+.filter-toolbar .field>input,
+.filter-toolbar .field>select {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0
+}
+
+.filter-toolbar .date-range {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  color: #6c7a89
+}
+
+.filter-toolbar .date-range input {
+  flex: 1 1 0;
+  /* 日期輸入框含年月日與日曆圖示，低於此寬度會被截斷 */
+  min-width: 8.75rem
+}
+
+.filter-toolbar .toolbar-actions {
+  display: flex;
+  justify-content: flex-end
+}
+
+.filter-toolbar .secondary-action {
+  white-space: nowrap
+}
+
+.filter-toolbar .field-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #8d3733;
+  font-size: var(--t-xs);
+  font-weight: 700
+}
+
+.filter-toolbar input[aria-invalid=true] {
+  border-color: #c9574f
+}
+
+@container review-page (max-width: 899.98px) {
+  .toolbar.filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .pending-filters {
+    grid-template-areas:
+      "search search"
+      "review item"
+      "category category"
+      "date date"
+      "actions actions"
+  }
+
+  .record-filters {
+    grid-template-areas:
+      "search result"
+      "date date"
+      "actions actions"
+  }
+}
+
+@container review-page (max-width: 599.98px) {
+  .toolbar.filter-toolbar {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .pending-filters {
+    grid-template-areas: "search" "review" "item" "category" "date" "actions"
+  }
+
+  .record-filters {
+    grid-template-areas: "search" "result" "date" "actions"
+  }
+
+  .filter-toolbar .field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .3rem
+  }
+
+  .filter-toolbar .date-range input {
+    min-width: 0
+  }
+
+  .filter-toolbar .toolbar-actions .secondary-action {
+    width: 100%
+  }
+}
+
+.record-sort-hint {
+  margin: 0;
+  padding: 0 1rem .75rem;
+  color: #6c7a89;
+  font-size: var(--t-xs)
 }

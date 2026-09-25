@@ -3,12 +3,20 @@
  * 待審清單預設顯示 PENDING＋ACTIVE；分類名稱由設定資料對照，分數、完整度與
  * 建立者名稱由待審 API 提供。核准只代表選品決策，不代表上架或銷售。
  */
-import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
+import {
+  ListSort,
+  SortHeader,
+  SortRowsPipe,
+  ListSortControls,
+  sortRows,
+} from '../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -17,6 +25,7 @@ import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
+import { DecisionRecordSortKey } from './api/review-api.contract';
 
 /** 待審清單的顯示模型；尚無評估紀錄時，分數與完整度為 null。 */
 export interface ReviewItem {
@@ -96,6 +105,24 @@ const MOCK_RECORDS: readonly DecisionRecordRow[] = [
   { id: 502, productId: 106, name: '可機洗抗菌涼感被', round: 1, result: 'REJECTED', reviewer: '管理員 李經理', score: 69.5, date: '2026/08/24', comment: '供應穩定性不足，請補充備援方案。' },
 ];
 
+/**
+ * 決策紀錄排序欄位 → Mock 模式下本地排序用的列欄位。
+ * 真實模式排序交給後端（API 欄位名稱），Mock 沒有後端，只能對 DecisionRecordRow
+ * 本地排序，兩邊欄位名稱不同，在這裡集中對照一次。
+ */
+const RECORD_SORT_ROW_FIELD: Record<DecisionRecordSortKey, string> = {
+  reviewedAt: 'date:date',
+  submissionCount: 'round',
+  finalScore: 'score',
+};
+
+const DEFAULT_RECORD_SORT_KEY: DecisionRecordSortKey = 'reviewedAt';
+
+/** 'yyyy/MM/dd'（Mock）或 ISO 日期時間（後端）→ 'yyyy-MM-dd'，供日期區間比較。 */
+function toDateKey(value: string | null): string {
+  return (value ?? '').replaceAll('/', '-').slice(0, 10);
+}
+
 /** PendingReviewItem（後端）→ ReviewItem（畫面）。 */
 function toReviewItem(item: PendingReviewItem): ReviewItem {
   return {
@@ -121,17 +148,24 @@ function toReviewItem(item: PendingReviewItem): ReviewItem {
 })
 export class ReviewComponent implements OnInit {
   readonly pendingSort = new ListSort();
+  /**
+   * 2026-09-24：只保留數值型排序。商品名稱、分類、送審人、送審時間、狀態改由
+   * 上方篩選列處理（搜尋、分類、送審日期、狀態下拉），不再重複提供排序。
+   */
   readonly pendingSortChoices = [
-    { key: 'name', label: '商品名稱' },
-    { key: 'category', label: '分類' },
-    { key: 'submittedBy', label: '送審人' },
-    { key: 'submittedAt:date', label: '送審時間' },
     { key: 'finalScore', label: '最終分數' },
     { key: 'completeness', label: '完整度' },
     { key: 'submissionCount', label: '送審次數' },
-    { key: 'status|itemStatus', label: '狀態' },
   ];
-  readonly recordTableSort = new ListSort();
+  /**
+   * 決策紀錄排序（2026-09-24 改為伺服器端排序）：key 直接是 API 的 sort 欄位
+   * （DecisionRecordSortKey）。原本表頭排序只排「當頁 20 筆」，跨頁順序不一致；
+   * 現在點表頭會觸發 onChange → 回第 1 頁重新查詢。預設審核時間新到舊，
+   * 「審核時間」本身不提供表頭排序（改為日期區間篩選）。
+   */
+  readonly recordTableSort = new ListSort(DEFAULT_RECORD_SORT_KEY, 'desc', () =>
+    this.onRecordQueryChange(),
+  );
   private readonly api = inject(ReviewApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
@@ -143,51 +177,84 @@ export class ReviewComponent implements OnInit {
   readonly records = signal<DecisionRecordRow[]>([]);
 
   // ----- 歷次決策紀錄：搜尋／篩選／排序 -----
+  // 2026-09-24：搜尋、審核結果、審核日期、排序全部交給後端（見
+  // loadDecisionRecords()）。原本關鍵字與排序只作用在當頁 20 筆，另外還殘留一層
+  // 沒有 UI 的 recordSort（固定日期新到舊）跟表頭排序疊在一起，已一併移除。
   readonly recordSearch = signal('');
   readonly recordResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>('ALL');
-  readonly recordSort = signal<'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'>('date_desc');
+  /** 審核日期區間（yyyy-MM-dd，兩端皆含當天）。 */
+  readonly recordReviewedFrom = signal('');
+  readonly recordReviewedTo = signal('');
 
+  /**
+   * 真實模式：後端已經篩選、排序完成，直接顯示。
+   * Mock 模式：沒有後端，在這裡用同一套條件本地篩選與排序，行為與真實模式對齊。
+   */
   readonly filteredRecords = computed(() => {
-    const keyword = this.recordSearch().trim().toLocaleLowerCase('zh-Hant');
-    // resultFilter 不在這裡再篩一次：真實模式下 loadDecisionRecords() 已經把
-    // recordResultFilter 當成查詢參數送給後端了，這裡再篩會跟 product-management.ts
-    // 的真實模式原則不一致（篩選交給後端，前端只處理關鍵字/排序這類無法送後端
-    // 的操作），也可能因為只抓了一頁而誤刪掉本來就該顯示的資料。
-    const list = this.records().filter(
-      (r) => !keyword || r.name.toLocaleLowerCase('zh-Hant').includes(keyword),
-    );
+    const records = this.records();
+    if (!this.useMockData) return records;
 
-    const sort = this.recordSort();
-    const sorted = [...list];
-    if (sort === 'date_desc' || sort === 'date_asc') {
-      const direction = sort === 'date_desc' ? -1 : 1;
-      sorted.sort((a, b) => {
-        const at = a.date ? new Date(a.date).getTime() : 0;
-        const bt = b.date ? new Date(b.date).getTime() : 0;
-        return (at - bt) * direction;
-      });
-    } else {
-      const direction = sort === 'score_desc' ? -1 : 1;
-      sorted.sort((a, b) => {
-        // 沒有分數的紀錄一律排到最後，不管排序方向，語意跟
-        // product-management.ts 的 finalScore 排序保持一致。
-        if (a.score === null && b.score === null) return 0;
-        if (a.score === null) return 1;
-        if (b.score === null) return -1;
-        return (a.score - b.score) * direction;
-      });
-    }
-    return sorted;
+    const keyword = this.recordSearch().trim().toLocaleLowerCase('zh-Hant');
+    const result = this.recordResultFilter();
+    const from = this.recordReviewedFrom();
+    const to = this.recordReviewedTo();
+    const list = records.filter(
+      (r) =>
+        (!keyword || r.name.toLocaleLowerCase('zh-Hant').includes(keyword)) &&
+        (result === 'ALL' || r.result === result) &&
+        (!from || toDateKey(r.date) >= from) &&
+        (!to || toDateKey(r.date) <= to),
+    );
+    const { key, direction } = this.recordTableSort.state();
+    const rowField = RECORD_SORT_ROW_FIELD[key as DecisionRecordSortKey];
+    return rowField ? sortRows(list, { key: rowField, direction }) : list;
   });
 
-  clearRecordFilters(): void {
-    this.recordTableSort.set('', 'asc');
-    this.recordSearch.set('');
-    const shouldReload = this.recordResultFilter() !== 'ALL' || this.recordPageNumber() !== 0;
-    this.recordResultFilter.set('ALL');
-    this.recordSort.set('date_desc');
+  /** 審核日期起日晚於迄日：不送出查詢（後端同樣會回 400），直接在篩選列提示。 */
+  readonly recordDateRangeInvalid = computed(
+    () =>
+      !!this.recordReviewedFrom() &&
+      !!this.recordReviewedTo() &&
+      this.recordReviewedFrom() > this.recordReviewedTo(),
+  );
+
+  /**
+   * 關鍵字的節流管道，做法與 product-management.ts 的 searchInput$ 相同：
+   * 畫面文字即時更新，停手 300ms 才打一次 API；刻意不加 distinctUntilChanged()，
+   * 理由見該檔說明（清除後再輸入相同關鍵字會被吞掉）。
+   */
+  private readonly recordSearchInput$ = new Subject<string>();
+  /** 進行中的決策紀錄查詢；新查詢送出前先取消，避免較慢的舊回應覆蓋新結果。 */
+  private recordRequest?: Subscription;
+
+  updateRecordSearch(value: string): void {
+    this.recordSearch.set(value);
+    if (!this.useMockData) this.recordSearchInput$.next(value);
+  }
+
+  updateRecordReviewedFrom(value: string): void {
+    this.recordReviewedFrom.set(value ?? '');
+    this.onRecordQueryChange();
+  }
+
+  updateRecordReviewedTo(value: string): void {
+    this.recordReviewedTo.set(value ?? '');
+    this.onRecordQueryChange();
+  }
+
+  /** 任一查詢條件（含排序）改變：回到第 1 頁並重新查詢；Mock 由 filteredRecords() 即時反映。 */
+  onRecordQueryChange(): void {
     this.recordPageNumber.set(0);
-    if (shouldReload && !this.useMockData) this.loadDecisionRecords();
+    if (!this.useMockData) this.loadDecisionRecords();
+  }
+
+  clearRecordFilters(): void {
+    this.recordTableSort.set(DEFAULT_RECORD_SORT_KEY, 'desc');
+    this.recordSearch.set('');
+    this.recordResultFilter.set('ALL');
+    this.recordReviewedFrom.set('');
+    this.recordReviewedTo.set('');
+    this.onRecordQueryChange();
   }
   readonly query = signal('');
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
@@ -230,8 +297,18 @@ export class ReviewComponent implements OnInit {
    */
   readonly recordPageNumber = signal(0);
   readonly recordTotalPages = signal(0);
+  /**
+   * 決策紀錄總筆數。2026-09-24 修正：loadDecisionRecords() 原本寫入待審清單
+   * 共用的 totalElements，待審清單分頁顯示的「共 N 筆」會依兩支 API 誰晚回來
+   * 而變成決策紀錄的筆數，這裡拆成獨立訊號。
+   */
+  readonly recordTotalElements = signal(0);
 
   constructor() {
+    this.recordSearchInput$
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe(() => this.onRecordQueryChange());
+
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 原地重新點擊「選品審核」連結時 ngOnInit() 不會再被觸發，要靠這裡
     // 才能重新抓最新待審清單。Mock 模式不套用，避免重置展示狀態。
@@ -330,18 +407,27 @@ export class ReviewComponent implements OnInit {
 
   /** GET /api/reviews/decision-records [僅管理]。失敗只讓紀錄分頁降級，不影響待審清單。 */
   loadDecisionRecords(): void {
+    this.recordRequest?.unsubscribe();
+    if (this.recordDateRangeInvalid()) {
+      // 篩選列已顯示錯誤提示；維持畫面上次的結果，不送出必定 400 的查詢。
+      return;
+    }
     const reviewResult = this.recordResultFilter();
-    this.api
+    const { key, direction } = this.recordTableSort.state();
+    this.recordRequest = this.api
       .listDecisionRecords({
         page: this.recordPageNumber(),
         size: 20,
-        sort: 'reviewedAt,desc',
+        sort: `${key as DecisionRecordSortKey},${direction}`,
         reviewResult: reviewResult === 'ALL' ? undefined : reviewResult,
+        keyword: this.recordSearch().trim() || undefined,
+        reviewedFrom: this.recordReviewedFrom() || undefined,
+        reviewedTo: this.recordReviewedTo() || undefined,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
-          this.totalElements.set(result.totalElements);
+          this.recordTotalElements.set(result.totalElements);
           this.recordTotalPages.set(result.totalPages);
           this.records.set(
             result.items.map((record) => ({
@@ -362,7 +448,13 @@ export class ReviewComponent implements OnInit {
             })),
           );
         },
-        error: () => this.records.set([]),
+        error: (err) => {
+          this.records.set([]);
+          this.recordTotalElements.set(0);
+          this.recordTotalPages.set(0);
+          // 原本失敗時只清空表格、沒有任何提示，使用者會誤以為「查無資料」。
+          this.statusMessageState.show(`決策紀錄載入失敗：${toApiError(err).message}`);
+        },
       });
   }
 
@@ -381,8 +473,7 @@ export class ReviewComponent implements OnInit {
   updateRecordResultFilter(value: 'ALL' | 'APPROVED' | 'REJECTED'): void {
     this.recordResultFilter.set(value);
     // 換篩選條件時重置回第一頁：沿用舊頁碼可能超出新篩選條件下的總頁數。
-    this.recordPageNumber.set(0);
-    if (!this.useMockData) this.loadDecisionRecords();
+    this.onRecordQueryChange();
   }
 
   retry(): void {
@@ -419,6 +510,7 @@ export class ReviewComponent implements OnInit {
     this.items.set(MOCK.map((item) => ({ ...item })));
     this.records.set(MOCK_RECORDS.map((record) => ({ ...record })));
     this.totalElements.set(MOCK.length);
+    this.recordTotalElements.set(MOCK_RECORDS.length);
     this.pageState.set('default');
     this.statusMessageState.show('已恢復待審核 Mock 清單。');
   }
