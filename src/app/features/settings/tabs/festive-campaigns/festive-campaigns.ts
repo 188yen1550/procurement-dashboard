@@ -51,9 +51,9 @@ import {
 } from '../../api/settings-api.contract';
 import { SettingsApiService } from '../../api/settings-api.service';
 
-type EditableCategory = Exclude<FestiveCategory, 'WEATHER'>;
+/** V26：檔期只有節慶與季節（天氣改為獨立的天氣加成，設定在「天氣連動」分頁）。 */
+type EditableCategory = FestiveCategory;
 
-/** 這一頁只管理節慶與季節；天氣檔期在「天氣連動」分頁。 */
 export const EDITABLE_CATEGORIES: readonly EditableCategory[] = ['FESTIVAL', 'SEASON'];
 
 /** 列表列的畫面模型。sortRows pipe 依欄位名稱排序，所以排序用的鍵要是扁平欄位。 */
@@ -382,7 +382,6 @@ export class FestiveCampaigns implements OnInit {
   }
 
   openEdit(row: CampaignRowVM): void {
-    if (row.category === 'WEATHER') return; // 防禦：列表已不含天氣型，天氣檔期在「天氣連動」分頁
     const raw = row.raw;
     this.resetDraft();
     this.editingId.set(row.id);

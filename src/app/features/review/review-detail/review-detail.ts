@@ -3,6 +3,7 @@
  * 送出前驗證必選結果、其他風險備註與審核留言；409 代表商品已由他人審核，
  * 需提示使用者並返回清單。AI 只提供摘要，最終決策由人工選擇。
  */
+import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -48,12 +49,14 @@ function mockDetail(productId: string): ReviewDetailModel {
       forecastScore: isSecond ? 73 : 80,
       totalScore: isSecond ? 72.8 : 78.4,
       festivalBoost: 3.3,
+      weatherBoost: 0,
       finalScore: isSecond ? 76.1 : 81.7,
       dataCompleteness: isSecond ? 88 : 78,
       evaluationModeName: '均衡模式',
       evaluationModeVersion: 1,
     },
     matchedCampaign: null,
+    weatherDetail: null,
     ai: {
       hasAnalysis: true,
       summary: '市場熱度與核心客群具中高度匹配，但仍需人工確認供貨穩定性與實際商業條件。',
@@ -80,7 +83,7 @@ const MOCK_PREVIOUS_COMMENT = '上次因備援供應方案不足而未通過，�
 
 @Component({
   selector: 'app-review-detail',
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, DatePipe],
   templateUrl: './review-detail.html',
   styleUrl: './review-detail.scss',
 })

@@ -258,7 +258,8 @@ h2 app-info-tip {
 
 .score-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* V26：基本分數／節慶／天氣／最終分數四格 */
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   margin-bottom: 1rem
 }

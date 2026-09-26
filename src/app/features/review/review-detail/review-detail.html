@@ -75,6 +75,9 @@
       <article>
         <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
       </article>
+      <article>
+        <span>天氣分數</span><strong>{{ p.scores.weatherBoost === null ? '—' : '+' + p.scores.weatherBoost }}</strong>
+      </article>
       <article class="final">
         <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
       </article>
@@ -92,6 +95,15 @@
       @if (campaignScope(p.matchedCampaign); as scope) {
       <span>期間：{{ scope }}</span>
       }
+    </div>
+    }
+    @if (p.weatherDetail; as w) {
+    <!-- V26：天氣加成（與節慶加成並列）。送出審核時會以當下的值凍結進審核紀錄。 -->
+    <div class="campaign-match weather-match">
+      <strong>天氣加成：+{{ w.weatherBoost }} 分</strong>
+      <span>命中標籤：{{ w.matchedTags.length > 0 ? w.matchedTags.join('、') : '無' }}</span>
+      <span>歷史 {{ w.historyScore ?? '無資料' }}（{{ w.historyWeightPercentage }}%）· 預測 {{ w.forecastScore ?? '無資料' }}（{{ w.forecastWeightPercentage }}%）</span>
+      <span>資料更新：{{ w.dataUpdatedAt ? (w.dataUpdatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}</span>
     </div>
     }
     <div class="weights">

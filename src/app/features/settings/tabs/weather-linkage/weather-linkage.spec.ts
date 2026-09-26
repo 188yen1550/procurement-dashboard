@@ -1,57 +1,13 @@
 /**
- * 檔案用途：驗證「天氣連動」分頁（2026-09-24 由 settings 拆出）。
- * 前五個案例原樣搬自 settings.spec.ts 的天氣相關測試，只把「重新載入檔期清單」
- * 改成驗證 campaignsChanged 輸出（檔期列表已在另一個分頁）；後面補上地域占比
- * 加總狀態與比例條的案例。
- * 2026-09-24：補「目前的天氣檔期」清單與切換狀態（由節慶檔期分頁移入）。
+ * 檔案用途：驗證「天氣連動」分頁（2026-09-24 由 settings 拆出；V26 改版）。
+ * V26：天氣檔期移除，原本的「目前的天氣檔期／切換狀態／訊號預覽」案例改為
+ * 天氣資料狀態、手動同步與天氣加成設定；標籤對照與地域占比的案例維持不變。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DialogService } from '../../../../core/dialog/dialog.service';
-import { FestiveCampaignResponsePayload } from '../../api/settings-api.contract';
 import { SettingsApiService } from '../../api/settings-api.service';
-import { WeatherLinkage } from './weather-linkage';
-
-function weatherCampaign(overrides: Partial<FestiveCampaignResponsePayload>): FestiveCampaignResponsePayload {
-  return {
-    id: 11,
-    campaignCode: 'WEATHER_HEAVY_RAIN_NORTH_20260925',
-    campaignName: '北部大雨（系統自動）',
-    category: 'WEATHER',
-    startDate: '2026-09-25',
-    endDate: '2026-09-27',
-    preparationLeadDays: 3,
-    campaignStatus: 'PREPARING',
-    statusSource: 'SYNC',
-    isManualOverride: false,
-    manualOverrideCycle: null,
-    region: 'NORTH',
-    weatherConfidence: 'HIGH',
-    regionCoverageRatio: 0.4,
-    tags: [
-      { tag: '雨具', matchTier: 'CORE' },
-      { tag: '防水', matchTier: 'GENERAL' },
-    ],
-    dateRuleType: null,
-    ruleMonth: null,
-    ruleDay: null,
-    ruleWeekOrdinal: null,
-    ruleWeekday: null,
-    ruleSolarTerm: null,
-    ruleOffsetDays: null,
-    durationDays: null,
-    endMonth: null,
-    endDay: null,
-    observedHolidayRule: null,
-    expandLongWeekend: null,
-    regions: ['NORTH'],
-    cycleYear: 2026,
-    occurrenceOverridden: false,
-    observedHolidays: [],
-    ruleDescription: '依天氣預報',
-    ...overrides,
-  };
-}
+import { WeatherLinkage, syncResultMessage } from './weather-linkage';
 
 describe('WeatherLinkage', () => {
   let fixture: ComponentFixture<WeatherLinkage>;
@@ -59,16 +15,33 @@ describe('WeatherLinkage', () => {
   let dialog: DialogService;
 
   const settingsApi = {
-    getCurrentWeatherCampaigns: vi.fn(() =>
-      of([weatherCampaign({}), weatherCampaign({ id: 12, campaignName: '南部炎熱（系統自動）', campaignStatus: 'EXPIRED', isManualOverride: true })]),
+    getWeatherStatus: vi.fn(() =>
+      of({
+        historyDays: 30,
+        forecastDays: 14,
+        coldStartThresholdDays: 27,
+        lastFetchedAt: '2026-09-25T05:00:12',
+        regions: [
+          { region: 'NORTH', regionLabel: '北部', historyDayCount: 30, forecastDayCount: 14, lastFetchedAt: '2026-09-25T05:00:12' },
+          { region: 'EAST', regionLabel: '東部', historyDayCount: 3, forecastDayCount: 14, lastFetchedAt: '2026-09-25T05:00:12' },
+        ],
+      }),
     ),
-    switchFestiveCampaignStatus: vi.fn((id: number) => of(weatherCampaign({ id, isManualOverride: true }))),
-    previewWeatherSignals: vi.fn(() =>
-      of([
-        { region: 'SOUTH', type: 'HOT' as const, windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' as const },
-      ]),
+    syncWeatherData: vi.fn(() =>
+      of({
+        syncedRegions: ['NORTH', 'EAST'],
+        failedRegions: [],
+        coldStartRegions: ['EAST'],
+        upsertedDays: 60,
+        syncedAt: '2026-09-25T10:00:00',
+      }),
     ),
-    syncWeatherCampaigns: vi.fn(() => of({ totalSignalCount: 1, syncedCampaignCount: 1, expiredCampaignCount: 0 })),
+    getWeatherBoostSettings: vi.fn(() =>
+      of({ historyWeightPercentage: 60, forecastWeightPercentage: 40, boostCap: 5, historyDays: 30, forecastDays: 14, updatedAt: null }),
+    ),
+    updateWeatherBoostSettings: vi.fn((body: { historyWeightPercentage: number; forecastWeightPercentage: number; boostCap: number }) =>
+      of({ ...body, historyDays: 30, forecastDays: 14, updatedAt: '2026-09-25T10:00:00' }),
+    ),
     getWeatherSignalTagMappings: vi.fn(() =>
       of([{ id: 1, weatherSignalType: 'RAINY' as const, tag: '雨具', matchTier: 'CORE' as const, isActive: true, isSystemDefault: true }]),
     ),
@@ -109,7 +82,9 @@ describe('WeatherLinkage', () => {
     fixture.detectChanges();
   });
 
-  it('loads tag mappings and region weights on init', () => {
+  it('loads weather status, boost settings, tag mappings and region weights on init', () => {
+    expect(settingsApi.getWeatherStatus).toHaveBeenCalled();
+    expect(settingsApi.getWeatherBoostSettings).toHaveBeenCalled();
     expect(settingsApi.getWeatherSignalTagMappings).toHaveBeenCalled();
     expect(settingsApi.getRegionWeights).toHaveBeenCalled();
     expect(component.weatherSignalTagMappings()).toHaveLength(1);
@@ -117,72 +92,54 @@ describe('WeatherLinkage', () => {
     expect(fixture.nativeElement.querySelector('.weather-mapping-table tbody').textContent).not.toContain('RAINY');
   });
 
-  it('lists current weather campaigns with confidence, coverage, tags and manual badge', () => {
-    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(1);
-    const text = fixture.nativeElement.querySelector('.weather-campaign-table tbody').textContent;
-    expect(text).toContain('北部大雨（系統自動）');
-    expect(text).toContain('2026-09-25 ～ 2026-09-27');
-    expect(text).toContain('40%');
-    expect(text).toContain('雨具、防水');
-    expect(text).toContain('準備期');
-    // 手動設為已結束的列仍列出（才能恢復自動），顯示「已結束」而非節慶用語「本期停用」
-    expect(text).toContain('已結束');
-    expect(text).not.toContain('本期停用');
-    expect(fixture.nativeElement.querySelectorAll('.manual-badge')).toHaveLength(1);
+  it('shows the data update time and flags regions with too little history', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.weather-updated-at')?.textContent).toContain('2026-09-25 05:00');
+    const rows = root.querySelectorAll('.weather-status-table tbody tr');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).not.toContain('資料不足');
+    expect(rows[1].textContent).toContain('資料不足');
+    expect(root.textContent).not.toContain('天氣檔期');
   });
 
-  it('switches a weather campaign status manually and reloads the list', () => {
+  it('syncs weather data, reports cold-started regions and reloads the status', () => {
     const status = vi.fn();
     component.status.subscribe(status);
-    component.openStatus(component.weatherCampaigns()[0]);
-    // 如實回填：這筆原本由同步判斷，打開時預設「恢復自動判斷」，要改成手動指定才出現下拉選單
-    expect(component.draftManualOverride()).toBe(false);
-    component.draftManualOverride.set(true);
-    fixture.detectChanges();
-    const options = [...fixture.nativeElement.querySelectorAll('select[name="weatherStatus"] option')].map(
-      (o) => (o as HTMLOptionElement).value,
+    component.syncWeatherData();
+    expect(settingsApi.syncWeatherData).toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(expect.stringContaining('東部已補齊過去 30 天'));
+    expect(settingsApi.getWeatherStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('builds a readable sync message including failed regions', () => {
+    expect(syncResultMessage(['NORTH'], ['SOUTH'], [])).toBe(
+      '天氣資料同步完成：北部已更新；南部取得失敗（保留既有資料，下次排程重試）。',
     );
-    expect(options).toEqual(['PREPARING', 'ACTIVE', 'EXPIRED']);
-    component.draftStatus.set('EXPIRED');
-    component.applyStatus();
-    expect(settingsApi.switchFestiveCampaignStatus).toHaveBeenCalledWith(11, { status: 'EXPIRED', overrideEnabled: true });
-    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(2);
-    expect(component.statusTarget()).toBeNull();
-    expect(status).toHaveBeenCalledWith('已手動切換天氣檔期狀態。');
   });
 
-  it('restores automatic judgement by sending the current status, not the dropdown value', () => {
-    const target = component.weatherCampaigns()[1];
-    component.openStatus(target);
-    expect(component.draftManualOverride()).toBe(true);
-    component.draftStatus.set('ACTIVE');
-    component.draftManualOverride.set(false);
-    component.applyStatus();
-    expect(settingsApi.switchFestiveCampaignStatus).toHaveBeenCalledWith(12, { status: 'EXPIRED', overrideEnabled: false });
-  });
+  it('validates boost weights before saving and saves valid settings', () => {
+    expect(component.draftHistoryWeight()).toBe('60');
+    expect(component.boostSettingsError()).toBe('');
 
-  it('previews weather signals without announcing a campaign change', () => {
-    const changed = vi.fn();
-    component.campaignsChanged.subscribe(changed);
-    component.previewWeatherSignals();
-    fixture.detectChanges();
-    expect(component.weatherPreview()).toEqual([
-      { region: 'SOUTH', type: 'HOT', windowStart: '2026-09-22', windowEnd: '2026-09-24', confidence: 'HIGH' },
-    ]);
-    expect(changed).not.toHaveBeenCalled();
-  });
+    component.draftForecastWeight.set('30');
+    expect(component.boostSettingsError()).toContain('加總須為 100');
+    component.saveBoostSettings();
+    expect(settingsApi.updateWeatherBoostSettings).not.toHaveBeenCalled();
 
-  it('syncs weather campaigns, reports the result and notifies the parent', () => {
-    const changed = vi.fn();
+    component.draftHistoryWeight.set('70');
+    component.draftBoostCap.set('12');
+    expect(component.boostSettingsError()).toContain('0～10');
+
+    component.draftBoostCap.set('4');
     const status = vi.fn();
-    component.campaignsChanged.subscribe(changed);
     component.status.subscribe(status);
-    component.syncWeatherCampaigns();
-    expect(settingsApi.syncWeatherCampaigns).toHaveBeenCalled();
-    expect(status.mock.calls[0][0]).toContain('天氣檔期同步完成');
-    expect(changed).toHaveBeenCalled();
-    // 同步後立即重載下方「目前的天氣檔期」
-    expect(settingsApi.getCurrentWeatherCampaigns).toHaveBeenCalledTimes(2);
+    component.saveBoostSettings();
+    expect(settingsApi.updateWeatherBoostSettings).toHaveBeenCalledWith({
+      historyWeightPercentage: 70,
+      forecastWeightPercentage: 30,
+      boostCap: 4,
+    });
+    expect(status).toHaveBeenCalledWith(expect.stringContaining('重新計算'));
   });
 
   it('adds a new mapping and resets the draft form', () => {
@@ -221,7 +178,7 @@ describe('WeatherLinkage', () => {
   it('shows a visible error state when region weights do not add up to 100', () => {
     component.updateRegionWeightDraft('NORTH', '40');
     fixture.detectChanges();
-    const sum = fixture.nativeElement.querySelector('.config-sum');
+    const sum = fixture.nativeElement.querySelector('.region-weight-footer .config-sum');
     expect(sum.getAttribute('data-state')).toBe('error');
     expect(sum.textContent).toContain('須為 100');
     const saveButton = fixture.nativeElement.querySelector('.region-weight-footer .btn-primary');

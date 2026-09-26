@@ -31,8 +31,11 @@ export type PricingStatus = 'PENDING_PRICING' | 'PRICED';
 /** enums/ReviewRecordReviewStatus.java。⚠️ 只有兩個值，沒有 PENDING——審核紀錄必然有結果。 */
 export type ReviewDecision = 'APPROVED' | 'REJECTED';
 
-/** enums/FestiveCategory.java。2026-09-16新增 WEATHER：天氣型檔期，由 WeatherCampaignSyncService 自動 upsert。 */
-export type FestiveCategory = 'FESTIVAL' | 'SEASON' | 'WEATHER';
+/**
+ * enums/FestiveCategory.java。V26（2026-09-25）：天氣型檔期（WEATHER）移除，檔期只有節慶與季節；
+ * 天氣改為依每日天氣數據計算的獨立「天氣加成」。
+ */
+export type FestiveCategory = 'FESTIVAL' | 'SEASON';
 
 /** enums/FestiveCampaignStatus.java。 */
 export type FestiveCampaignStatus = 'UPCOMING' | 'PREPARING' | 'ACTIVE' | 'EXPIRED';
@@ -47,7 +50,7 @@ export type SolarTerm = 'QINGMING' | 'DONGZHI';
 export type ObservedHolidayRule = 'NONE' | 'TW_STATUTORY';
 
 /** enums/CampaignStatusSource.java（V21）：campaignStatus 的來源。 */
-export type CampaignStatusSource = 'AUTO' | 'MANUAL' | 'SYNC';
+export type CampaignStatusSource = 'AUTO' | 'MANUAL';
 
 /** enums/FestiveCampaignTagMatchTier.java。括號內為後端定義的權重值。 */
 export type TagMatchTier = 'CORE' | 'GENERAL' | 'WEAK';
@@ -147,10 +150,3 @@ export type WeatherSignalType =
   | 'DRY_COOL'
   | 'NORMAL';
 
-/**
- * enums/WeatherForecastConfidence.java（2026-09-21新增）。天氣預報可信度分級，
- * 依預測距離現在的天數決定：HIGH=0～7天、MEDIUM=8～14天、LOW=15天以上。
- * 後端另外把這三級對應到 confidenceFactor（1.0／0.7／0.4）直接參與
- * ScoringService.calculateUrgencyFactor() 計算，前端目前只需要顯示用的代碼。
- */
-export type WeatherForecastConfidence = 'HIGH' | 'MEDIUM' | 'LOW';

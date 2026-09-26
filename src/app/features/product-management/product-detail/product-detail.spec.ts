@@ -147,6 +147,50 @@ describe('ProductDetail', () => {
     expect(component.filteredReviewHistory()).toHaveLength(3);
   });
 
+  it('shows the weather boost card and its breakdown alongside the festival boost (V26)', () => {
+    component.product.update((p) =>
+      p
+        ? {
+            ...p,
+            weatherBoost: 3,
+            weatherDetail: {
+              historyScore: 100,
+              forecastScore: 0,
+              combinedScore: 60,
+              historyWeightPercentage: 60,
+              forecastWeightPercentage: 40,
+              boostCap: 5,
+              weatherBoost: 3,
+              matchedTags: ['涼感'],
+              historyDays: 30,
+              forecastDays: 14,
+              historyFrom: '2026-08-26',
+              forecastTo: '2026-10-08',
+              dataUpdatedAt: '2026-09-25T05:00:00',
+            },
+          }
+        : p,
+    );
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const card = Array.from(root.querySelectorAll('.score-grid article')).find((a) => a.textContent?.includes('天氣分數'));
+    expect(card?.textContent).toContain('+3');
+    expect(card?.textContent).toContain('涼感');
+    const panel = root.querySelector('.weather-boost');
+    expect(panel?.textContent).toContain('天氣加成明細');
+    expect(panel?.textContent).toContain('2026-09-25 05:00');
+    expect(component.weatherBoostCaption({ ...component.product()!.weatherDetail!, combinedScore: null })).toBe('尚無天氣資料');
+  });
+
+  it('shows a dash instead of zero when an approved snapshot predates the weather boost (V26)', () => {
+    component.product.update((p) => (p ? { ...p, weatherBoost: null, weatherDetail: null } : p));
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const card = Array.from(root.querySelectorAll('.score-grid article')).find((a) => a.textContent?.includes('天氣分數'));
+    expect(card?.textContent).toContain('—');
+    expect(root.querySelector('.weather-boost')).toBeNull();
+  });
+
   it('renders a complete product evaluation', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('總分');

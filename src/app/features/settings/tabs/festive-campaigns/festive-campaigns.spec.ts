@@ -31,8 +31,6 @@ function campaign(overrides: Partial<FestiveCampaignResponsePayload>): FestiveCa
     statusSource: 'AUTO',
     isManualOverride: false,
     manualOverrideCycle: null,
-    region: null,
-    weatherConfidence: null,
     regionCoverageRatio: 1,
     tags: [{ tag: '粽子', matchTier: 'CORE' }],
     dateRuleType: 'LUNAR_DATE',

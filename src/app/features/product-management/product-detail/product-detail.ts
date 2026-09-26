@@ -26,6 +26,7 @@ import {
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
+import { WeatherBoostDetailPayload } from '../api/product-api.contract';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { AiAnalysisModel, TrendModel, toProductActionAvailability } from '../api/product.mapper';
@@ -98,6 +99,8 @@ const APPROVED: DetailProduct = {
   completeness: 96,
   baseScore: 88.2,
   festivalBoost: 4.2,
+  weatherBoost: 0,
+  weatherDetail: null,
   finalScore: 92.4,
   campaign: '中秋節',
   campaignScope: '2026-09-25 · 全國',
@@ -162,6 +165,8 @@ const INCOMPLETE: DetailProduct = {
   completeness: 48,
   baseScore: null,
   festivalBoost: 0,
+  weatherBoost: 0,
+  weatherDetail: null,
   finalScore: null,
   campaign: null,
   campaignScope: null,
@@ -526,6 +531,7 @@ export class ProductDetail implements OnInit {
                   trendScore: evaluation?.trendScore ?? p.trendScore,
                   baseScore: evaluation?.totalScore ?? p.baseScore,
                   festivalBoost: evaluation?.festivalBoost ?? p.festivalBoost,
+                  weatherBoost: evaluation ? (evaluation.weatherBoost ?? null) : p.weatherBoost,
                   finalScore: evaluation?.finalScore ?? p.finalScore,
                 }
               : p,
@@ -599,6 +605,13 @@ export class ProductDetail implements OnInit {
    * 不是每個商品各自不同的數字，所以放常數不放進 DetailProduct。
    */
   readonly festivalBoostCap = 5;
+
+  /** V26：天氣分數卡片的小字——命中哪些標籤，或說明為何沒有加成。 */
+  weatherBoostCaption(detail: WeatherBoostDetailPayload | null): string {
+    if (!detail) return '天氣加成';
+    if (detail.combinedScore === null) return '尚無天氣資料';
+    return detail.matchedTags.length > 0 ? detail.matchedTags.join('、') : '未命中天氣相關標籤';
+  }
 
   /**
    * matchWeight 只有三個離散值，對照 MatchedCampaignPayload 的註解：

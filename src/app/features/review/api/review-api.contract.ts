@@ -3,6 +3,7 @@ import { PageQuery } from '../../../core/api/unwrap';
 import { ReviewDecision, ScoreLevel } from '../../../core/domain/enums';
 import {
   MatchedCampaignPayload,
+  WeatherBoostDetailPayload,
   ProductResponsePayload,
   TrendSnapshotPayload,
   WeightSnapshotPayload,
@@ -65,6 +66,9 @@ export interface ReviewDetailResponsePayload {
   festivalBoost: Decimal;
   /** 可為 null（未命中檔期），整個節慶區塊不顯示。 */
   matchedCampaign: MatchedCampaignPayload | null;
+  /** V26：天氣加成（讀即時評估）與即時明細；finalScore 已包含天氣加成。 */
+  weatherBoost?: Decimal | null;
+  weatherBoostDetail?: WeatherBoostDetailPayload | null;
   finalScore: Decimal;
 
   /** 三個 AI 欄位都可能為 null（尚未生成分析）。 */
@@ -171,6 +175,9 @@ export interface ReviewRecordResponsePayload {
 
   festivalBoostSnapshot: Decimal;
   matchedCampaignSnapshot: MatchedCampaignPayload | null;
+  /** V26：審核當時的天氣加成與明細；V26 前的紀錄為 null（顯示「—」，不是 0）。 */
+  weatherBoostSnapshot?: Decimal | null;
+  weatherBoostDetailSnapshot?: WeatherBoostDetailPayload | null;
   finalScoreSnapshot: Decimal;
   dataCompleteness: Decimal;
 

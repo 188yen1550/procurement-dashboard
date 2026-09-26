@@ -8,7 +8,6 @@ import {
   PriceSensitivity,
   SolarTerm,
   TagMatchTier,
-  WeatherForecastConfidence,
   WeatherSignalType,
 } from '../../../core/domain/enums';
 import { WeightSnapshotPayload } from '../../product-management/api/product-api.contract';
@@ -87,14 +86,15 @@ export const SETTINGS_API = {
   updateSystemSetting: (key: string) =>
     `/api/settings/system-settings/${encodeURIComponent(key)}`,
   /**
-   * WeatherController（非SettingsController，2026-09-21新增）的兩支維運端點。
-   * URL沿用/api/settings命名空間是刻意的（跟festive-campaigns同屬「檔期」概念），
-   * 但後端實際上是獨立的WeatherController類別，見該類別Javadoc。
+   * WeatherController（V26 改版：天氣不再產生檔期，只同步每日天氣資料並計算天氣加成）。
+   * 原本的 weather-campaigns/current 與 weather/signals/preview 已隨天氣檔期移除。
    */
+  /** POST [僅管理]：手動觸發每日天氣資料同步（與 05:00 排程同一個方法）。 */
   weatherSync: '/api/settings/weather/sync',
-  /** 2026-09-24：「天氣連動 › 目前的天氣檔期」[操作+管理]，唯讀；切換狀態沿用 festiveCampaignManualStatus。 */
-  weatherCampaignsCurrent: '/api/settings/weather-campaigns/current',
-  weatherSignalsPreview: '/api/settings/weather/signals/preview',
+  /** GET [操作+管理]：四區資料涵蓋天數與資料更新時間。 */
+  weatherStatus: '/api/settings/weather/status',
+  /** GET [操作+管理]／PUT [僅管理]：天氣加成的歷史／預測比重與加成上限。 */
+  weatherBoostSettings: '/api/settings/weather/boost-settings',
   /**
    * GET/POST [僅管理]：天氣訊號標籤對照清單／新增（2026-09-22新增，取代原本
    * 寫死在後端WeatherCampaignSyncService裡的WEATHER_TAG_MAPPING）。
@@ -469,11 +469,7 @@ export interface FestiveCampaignResponsePayload {
   /** ⚠️ true 代表狀態不再由系統自動判斷；節慶／季節型只對 manualOverrideCycle 那一期有效。 */
   isManualOverride: boolean | null;
   manualOverrideCycle: number | null;
-  /** 僅 WEATHER：命中區域代碼。節慶／季節型的區域見 regions。 */
-  region: string | null;
-  /** 僅 WEATHER：預報可信度（2026-09-24 新增）；其餘類別為 null。 */
-  weatherConfidence: WeatherForecastConfidence | null;
-  /** WEATHER 為同步凍結值；節慶／季節型依 regions 當下計算（0~1）。 */
+  /** 依 regions 當下計算（0~1）；節慶型一律 1。V26：天氣檔期移除，region／weatherConfidence 一併移除。 */
   regionCoverageRatio: Decimal | null;
   tags: FestiveCampaignTagPayload[];
   dateRuleType: CampaignDateRuleType | null;
@@ -578,27 +574,58 @@ export interface FestiveCampaignManualStatusRequestPayload {
 }
 
 /**
- * 對應後端 WeatherSyncResponse.java。POST /api/settings/weather/sync 的回應內容，
- * 不是festive_campaigns的資料本身——想看實際落地結果要另外呼叫getFestiveCampaigns()。
+ * 對應後端 WeatherSyncResponse.java（V26 改版）。POST /api/settings/weather/sync 的回應。
+ * 區域代碼畫面顯示請查 WEATHER_REGION_LABEL。
  */
 export interface WeatherSyncResponsePayload {
-  totalSignalCount: number;
-  syncedCampaignCount: number;
-  expiredCampaignCount: number;
+  syncedRegions: string[];
+  /** 所有代表城市都取得失敗而跳過的區域；該區既有資料保留，下次排程重試。 */
+  failedRegions: string[];
+  /** 本次以冷啟動方式補齊過去 30 天的區域。 */
+  coldStartRegions: string[];
+  upsertedDays: number;
+  syncedAt: IsoDateTime;
+}
+
+/** 對應後端 WeatherDataStatusResponse.RegionStatus。 */
+export interface WeatherRegionStatusPayload {
+  region: string;
+  regionLabel: string;
+  /** 歷史窗口內已有資料的天數（不足 coldStartThresholdDays 時，下次同步會補齊）。 */
+  historyDayCount: number;
+  forecastDayCount: number;
+  lastFetchedAt: IsoDateTime | null;
+}
+
+/** 對應後端 WeatherDataStatusResponse（GET /api/settings/weather/status）。 */
+export interface WeatherDataStatusPayload {
+  historyDays: number;
+  forecastDays: number;
+  coldStartThresholdDays: number;
+  /** 四區中最近一次取得資料的時間；尚未同步過為 null。畫面顯示為「資料更新時間」。 */
+  lastFetchedAt: IsoDateTime | null;
+  regions: WeatherRegionStatusPayload[];
 }
 
 /**
- * 對應後端 dto/weather/WeatherSignal.java。只有GET /signals/preview這支debug端點
- * 會回傳，不寫入資料庫，欄位形狀跟festive_campaigns完全無關，不要跟
- * FestiveCampaignResponsePayload搞混。
+ * 對應後端 WeatherBoostSettingsResponse（V26）。
+ * 天氣加成 = (歷史分 × 歷史比重% + 預測分 × 預測比重%) ÷ 100 × 加成上限。
+ * historyDays／forecastDays 為唯讀的計算窗口天數。
  */
-export interface WeatherSignalPreviewPayload {
-  /** WeatherRegionConfig.java的區域代碼（NORTH/CENTRAL/SOUTH/EAST），畫面顯示請查WEATHER_REGION_LABEL。 */
-  region: string;
-  type: WeatherSignalType;
-  windowStart: IsoDate;
-  windowEnd: IsoDate;
-  confidence: WeatherForecastConfidence;
+export interface WeatherBoostSettingsPayload {
+  historyWeightPercentage: Decimal;
+  forecastWeightPercentage: Decimal;
+  boostCap: Decimal;
+  historyDays: number;
+  forecastDays: number;
+  updatedAt: IsoDateTime | null;
+}
+
+/** 對應後端 WeatherBoostSettingsUpdateRequest：比重加總必須為 100，上限 0～10。 */
+export interface WeatherBoostSettingsUpdateRequestPayload {
+  historyWeightPercentage: number;
+  forecastWeightPercentage: number;
+  boostCap: number;
 }
 
 /**

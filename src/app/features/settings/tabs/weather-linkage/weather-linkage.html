@@ -1,162 +1,135 @@
 <!--
-  檔案用途：「天氣連動」分頁樣板（2026-09-24 由「節慶檔期」分頁拆出）。
-  三個面板依連動順序排列：同步（結果）→ 標籤對照（同步產生哪些檔期）→ 地域占比（加成打幾折）。
-  2026-09-24：同步面板下新增「目前的天氣檔期」（由「節慶檔期」分頁移入），唯讀＋切換狀態。
+  檔案用途：「天氣連動」分頁樣板（V26，2026-09-25 改版：天氣不再產生檔期，改為獨立的天氣加成）。
+  四個面板依計算鏈排列：天氣資料 → 加成設定（比重與上限）→ 標籤對照（逐日命中）→ 地域占比（四區加權）。
   表格與表單樣式用全域 .config-*（見 _components.scss），這裡只保留本分頁專屬的少量樣式。
 -->
-<section class="config-panel" aria-labelledby="weather-sync-title">
+<section class="config-panel" aria-labelledby="weather-data-title">
   <div class="config-panel-head">
     <div>
-      <h3 id="weather-sync-title">天氣檔期自動同步</h3>
+      <h3 id="weather-data-title">天氣資料</h3>
       <p>
-        系統每天 05:00 依 Open-Meteo 天氣預報自動產生或結束天氣檔期。下面兩個按鈕用於手動測試與校準，
-        不影響自動排程。
+        系統每天 05:00 從 Open-Meteo 取得四區過去與未來的每日天氣，作為天氣加成的計算依據；
+        完成後會自動重算尚未核准商品的加成。資料不足 {{ weatherStatus()?.coldStartThresholdDays ?? 27 }} 天的區域，
+        下次同步會自動補齊過去 30 天。
       </p>
     </div>
     <div class="config-panel-actions">
-      <button type="button" class="btn" [disabled]="disabled() || weatherPreviewLoading()"
-        (click)="previewWeatherSignals()">
-        {{ weatherPreviewLoading() ? '預覽中…' : '預覽天氣訊號（不寫入）' }}
-      </button>
-      <button type="button" class="btn-primary" [disabled]="disabled() || weatherSyncing()"
-        (click)="syncWeatherCampaigns()">
-        {{ weatherSyncing() ? '同步中…' : '立即同步天氣檔期' }}
+      <button type="button" class="btn-primary" [disabled]="disabled() || weatherSyncing()" (click)="syncWeatherData()">
+        {{ weatherSyncing() ? '同步中…' : '立即同步天氣資料' }}
       </button>
     </div>
   </div>
 
-  @if (weatherPreview(); as preview) {
+  @if (useMockData) {
+  <p class="helper">Mock 模式沒有真實天氣資料。</p>
+  } @else if (weatherStatusError()) {
+  <p class="load-error" role="alert">{{ weatherStatusError() }}
+    <button type="button" class="btn" (click)="loadWeatherStatus()">重新載入</button>
+  </p>
+  } @else {
+  <p class="weather-updated-at" role="status">
+    資料更新時間：
+    <strong>{{ weatherStatus()?.lastFetchedAt ? (weatherStatus()!.lastFetchedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}</strong>
+  </p>
   <div class="config-table-wrap">
-    <table class="config-table">
-      <caption class="sr-only">天氣訊號預覽</caption>
+    <table class="config-table weather-status-table">
+      <caption class="sr-only">各區天氣資料涵蓋天數</caption>
       <thead>
         <tr>
           <th scope="col">區域</th>
-          <th scope="col">訊號類型</th>
-          <th scope="col">期間</th>
-          <th scope="col">信心度</th>
+          <th scope="col" class="num">歷史天數（近 {{ weatherStatus()?.historyDays ?? 30 }} 天）</th>
+          <th scope="col" class="num">預報天數</th>
+          <th scope="col">最後取得</th>
         </tr>
       </thead>
       <tbody>
-        @for (signal of preview; track signal.region + signal.type + signal.windowStart) {
+        @if (weatherStatusLoading() && !weatherStatus()) {
         <tr>
-          <td>{{ weatherRegionLabel[signal.region] ?? signal.region }}</td>
-          <td>{{ weatherSignalTypeLabel[signal.type] }}</td>
-          <td class="weather-window">{{ signal.windowStart }} ～ {{ signal.windowEnd }}</td>
-          <td>{{ weatherForecastConfidenceLabel[signal.confidence] }}</td>
+          <td colspan="4" class="config-table-empty" role="status">載入中…</td>
         </tr>
-        } @empty {
+        } @else {
+        @for (region of weatherStatus()?.regions ?? []; track region.region) {
         <tr>
-          <td colspan="4" class="config-table-empty">
-            目前沒有符合門檻的天氣訊號，可能是天氣平穩，也可能是門檻需要調整。
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  }
-
-  <!-- 目前的天氣檔期：準備期／進行中＋手動覆蓋中（含被手動設為已結束的，才能恢復自動） -->
-  <div class="weather-campaigns-head">
-    <h4 id="weather-campaigns-title">目前的天氣檔期</h4>
-    <p class="helper">系統依預報產生，不能新增或編輯；判斷有誤時可手動切換狀態，手動期間同步不會變更這一筆。</p>
-  </div>
-  @if (weatherCampaignsError()) {
-  <p class="load-error" role="alert">{{ weatherCampaignsError() }}
-    <button type="button" class="btn" (click)="loadWeatherCampaigns()">重新載入</button>
-  </p>
-  }
-  <div class="config-table-wrap">
-    <table class="config-table weather-campaign-table" aria-labelledby="weather-campaigns-title">
-      <thead>
-        <tr>
-          <th scope="col">檔期</th>
-          <th scope="col">期間</th>
-          <th scope="col">信心度</th>
-          <th scope="col" class="num">地域覆蓋</th>
-          <th scope="col">命中標籤</th>
-          <th scope="col">狀態</th>
-          <th scope="col" class="col-actions"><span class="sr-only">操作</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        @if (weatherCampaignsLoading() && weatherCampaigns().length === 0) {
-        <tr>
-          <td colspan="7" class="config-table-empty" role="status">載入中…</td>
-        </tr>
-        }
-        @for (item of weatherCampaigns(); track item.id) {
-        <tr>
-          <td><strong>{{ item.campaignName }}</strong></td>
-          <td class="weather-window">{{ item.startDate ?? '—' }} ～ {{ item.endDate ?? '—' }}</td>
-          <td>{{ item.weatherConfidence ? weatherForecastConfidenceLabel[item.weatherConfidence] : '—' }}</td>
-          <td class="num">{{ coverageText(item) }}</td>
-          <td>{{ campaignTagsText(item) }}</td>
-          <td>
-            <span class="status-pill" [attr.data-status]="item.campaignStatus">{{ campaignStatusLabel[item.campaignStatus] }}</span>
-            @if (item.isManualOverride) {
-            <span class="manual-badge" title="狀態為手動指定，同步不會變更">手動</span>
+          <td>{{ region.regionLabel }}</td>
+          <td class="num" [class.is-incomplete]="isHistoryIncomplete(region.historyDayCount)">
+            {{ region.historyDayCount }}
+            @if (isHistoryIncomplete(region.historyDayCount)) {
+            <span class="helper">（資料不足，下次同步補齊）</span>
             }
           </td>
-          <td class="row-actions">
-            <button type="button" class="btn" [disabled]="disabled()" (click)="openStatus(item)">切換狀態</button>
-          </td>
-        </tr>
-        } @empty {
-        @if (!weatherCampaignsLoading() && !weatherCampaignsError()) {
-        <tr>
-          <td colspan="7" class="config-table-empty">目前沒有準備中或進行中的天氣檔期。</td>
+          <td class="num">{{ region.forecastDayCount }}</td>
+          <td>{{ region.lastFetchedAt ? (region.lastFetchedAt | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
         </tr>
         }
         }
       </tbody>
     </table>
   </div>
+  }
 </section>
 
-<!-- ===================== 天氣檔期：切換狀態 ===================== -->
-@if (statusTarget(); as target) {
-<div class="modal-backdrop" (click)="closeStatus()">
-  <form class="modal-card weather-status-modal" (click)="$event.stopPropagation()" (ngSubmit)="applyStatus()">
-    <header>
-      <h2>手動切換天氣檔期狀態</h2>
-      <button type="button" class="modal-close" (click)="closeStatus()" aria-label="關閉"><app-icon name="x" /></button>
-    </header>
-    <p>檔期：<strong>{{ target.campaignName }}</strong>（{{ target.startDate ?? '—' }} ～ {{ target.endDate ?? '—' }}）</p>
-    <fieldset class="status-mode">
-      <legend class="sr-only">狀態來源</legend>
-      <label class="radio-option"><input type="radio" name="weatherStatusMode" [checked]="draftManualOverride()"
-          (change)="draftManualOverride.set(true)" />手動指定狀態</label>
-      <label class="radio-option"><input type="radio" name="weatherStatusMode" [checked]="!draftManualOverride()"
-          (change)="draftManualOverride.set(false)" />恢復自動判斷</label>
-    </fieldset>
-    @if (draftManualOverride()) {
-    <label>目標狀態
-      <select [ngModel]="draftStatus()" (ngModelChange)="draftStatus.set($event)" name="weatherStatus">
-        @for (option of campaignStatusOptions; track option) {
-        <option [value]="option">{{ campaignStatusLabel[option] }}</option>
+<section class="config-panel" aria-labelledby="weather-boost-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="weather-boost-title">天氣加成設定</h3>
+      <p>
+        天氣加成與節慶加成並列，直接加在最終分數上，不屬於七項評分因子。
+        天氣分（0～100）＝歷史天氣分 × 歷史比重 ＋ 預測天氣分 × 預測比重；
+        天氣加成＝天氣分 ÷ 100 × 加成上限。已核准商品維持審核當時的加成，不受調整影響。
+      </p>
+    </div>
+  </div>
+
+  <form class="boost-settings-form" (ngSubmit)="saveBoostSettings()">
+    <label class="boost-field">
+      <span>歷史比重（近 {{ boostSettings()?.historyDays ?? 30 }} 天）</span>
+      <span class="percent-field" [class.is-disabled]="disabled()">
+        <input type="number" min="0" max="100" step="1" inputmode="decimal" name="historyWeight"
+          [ngModel]="draftHistoryWeight()" (ngModelChange)="draftHistoryWeight.set(($event ?? '') + '')"
+          [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
+        <span class="percent-suffix">%</span>
+      </span>
+    </label>
+    <label class="boost-field">
+      <span>預測比重（未來 {{ boostSettings()?.forecastDays ?? 14 }} 天）</span>
+      <span class="percent-field" [class.is-disabled]="disabled()">
+        <input type="number" min="0" max="100" step="1" inputmode="decimal" name="forecastWeight"
+          [ngModel]="draftForecastWeight()" (ngModelChange)="draftForecastWeight.set(($event ?? '') + '')"
+          [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
+        <span class="percent-suffix">%</span>
+      </span>
+    </label>
+    <label class="boost-field">
+      <span>加成上限（分）</span>
+      <span class="percent-field" [class.is-disabled]="disabled()">
+        <input type="number" min="0" max="10" step="0.5" inputmode="decimal" name="boostCap"
+          [ngModel]="draftBoostCap()" (ngModelChange)="draftBoostCap.set(($event ?? '') + '')"
+          [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
+        <span class="percent-suffix">分</span>
+      </span>
+    </label>
+    <div class="config-form-row boost-settings-footer">
+      <span class="config-sum" [attr.data-state]="boostSettingsError() ? 'error' : 'ok'" role="status" aria-live="polite">
+        @if (boostSettingsError()) {
+        {{ boostSettingsError() }}
+        } @else {
+        比重加總 100；整段期間每天都命中核心標籤時，加成為 {{ boostExample() }} 分。
         }
-      </select></label>
-    <p class="helper">手動期間每天的天氣同步不會變更這一筆，直到恢復自動判斷。</p>
-    } @else {
-    <p class="helper">儲存後改由系統依天氣同步結果判斷狀態。</p>
-    }
-    <footer>
-      <button type="button" class="btn" (click)="closeStatus()">取消</button>
-      <button type="submit" class="btn-primary" [disabled]="statusSaving()">{{ statusSaving() ? '儲存中…' : '儲存' }}</button>
-    </footer>
+      </span>
+      <button type="submit" class="btn-primary" [disabled]="disabled() || boostSettingsSaving() || !!boostSettingsError()">
+        {{ boostSettingsSaving() ? '儲存中…' : '儲存加成設定' }}
+      </button>
+    </div>
   </form>
-</div>
-}
+</section>
 
 <section class="config-panel" aria-labelledby="weather-mapping-title">
   <div class="config-panel-head">
     <div>
       <h3 id="weather-mapping-title">天氣訊號標籤對照</h3>
       <p>
-        決定每種天氣訊號對應哪些商品標籤、命中等級多高。同步時只有這裡列出的天氣類型會產生檔期；
-        商品標上對應標籤才會獲得加成，比對方式與節慶標籤相同。
+        決定每種天氣訊號對應哪些商品標籤、命中等級多高。某天出現的天氣訊號對應到商品標籤時，
+        當天的命中分數取最高等級（核心 1.0／一般 0.6／弱 0.3，不疊加）；變更後立即重算加成。
       </p>
     </div>
   </div>

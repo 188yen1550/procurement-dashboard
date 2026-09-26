@@ -297,6 +297,7 @@ describe('toProductDetailModel', () => {
     totalScore: 88.2,
     dataCompleteness: 96,
     festivalBoost: 4.2,
+    weatherBoost: 1.5,
     finalScore: 92.4,
   };
 

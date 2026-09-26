@@ -1,6 +1,9 @@
 import { ReviewDecision } from '../../../core/domain/enums';
 import { splitCampaignTags } from '../../../core/domain/labels';
-import { MatchedCampaignPayload } from '../../product-management/api/product-api.contract';
+import {
+  MatchedCampaignPayload,
+  WeatherBoostDetailPayload,
+} from '../../product-management/api/product-api.contract';
 import {
   NOT_PROVIDED,
   ProductListItem,
@@ -53,6 +56,8 @@ export interface ReviewScoreBreakdown {
   /** Base Score。 */
   totalScore: number | null;
   festivalBoost: number | null;
+  /** V26 天氣加成；null＝V26 前或尚未計算。 */
+  weatherBoost: number | null;
   finalScore: number | null;
   dataCompleteness: number | null;
   evaluationModeName: string;
@@ -81,6 +86,8 @@ export interface ReviewDetailModel {
 
   scores: ReviewScoreBreakdown;
   matchedCampaign: MatchedCampaignPayload | null;
+  /** V26：審核頁即時計算的天氣加成明細；沒有時不顯示天氣區塊。 */
+  weatherDetail: WeatherBoostDetailPayload | null;
   ai: ReviewAiSection;
 
   /** ⚠️ 只含啟用中的選項，直接用這份渲染勾選清單。 */
@@ -116,6 +123,7 @@ export function toReviewDetailModel(
       forecastScore: payload.forecastScore,
       totalScore: payload.totalScore,
       festivalBoost: payload.festivalBoost,
+      weatherBoost: payload.weatherBoost ?? null,
       finalScore: payload.finalScore,
       dataCompleteness: payload.dataCompleteness,
       evaluationModeName: payload.evaluationModeName ?? NOT_PROVIDED,
@@ -123,6 +131,7 @@ export function toReviewDetailModel(
     },
 
     matchedCampaign: payload.matchedCampaign,
+    weatherDetail: payload.weatherBoostDetail ?? null,
 
     ai: {
       hasAnalysis,
@@ -262,6 +271,8 @@ export interface ReviewRecordModel {
   forecastScore: number | null;
   totalScore: number | null;
   festivalBoost: number | null;
+  /** V26：審核當時的天氣加成；V26 前的紀錄為 null。 */
+  weatherBoost: number | null;
   finalScore: number | null;
   dataCompleteness: number | null;
 
@@ -305,6 +316,7 @@ export function toReviewRecordModel(
     forecastScore: payload.forecastScore,
     totalScore: payload.totalScore,
     festivalBoost: payload.festivalBoostSnapshot,
+    weatherBoost: payload.weatherBoostSnapshot ?? null,
     finalScore: payload.finalScoreSnapshot,
     dataCompleteness: payload.dataCompleteness,
 

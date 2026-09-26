@@ -1,23 +1,18 @@
 /**
- * 檔案用途：系統設定 › 「天氣連動」分頁：天氣檔期同步、天氣訊號標籤對照、地域占比。
+ * 檔案用途：系統設定 › 「天氣連動」分頁（V26，2026-09-25 改版）。
  *
- * 2026-09-24 拆分（決策 D5）。三塊原本擠在「節慶檔期」分頁、檔期列表上方，
- * 抽成獨立分頁的理由：
- *   1. 三者是同一條連動鏈——對照表決定同步時會產生哪些天氣檔期，地域占比
- *      決定加成的地域覆蓋率打幾折（後端只有 WeatherCampaignSyncService
- *      使用 RegionWeight）。
- *   2. 設定頻率不同：這裡是設一次就少動的參數，檔期列表才是日常操作對象，
- *      放在同一頁讓主角被擠到最下方。
+ * 決議：系統不再有天氣檔期，天氣改為依每日天氣數據直接計算的獨立「天氣加成」，與節慶加成並列：
+ *   最終分數 = 加權總分 + 節慶加成 + 天氣加成
+ *   天氣加成 = (歷史天氣分 × 歷史比重% + 預測天氣分 × 預測比重%) ÷ 100 × 加成上限
  *
- * 程式邏輯原樣搬自 settings.ts（2026-09-21～23 新增的三組功能），差異只有：
- *   - 成功訊息改用 status 輸出交給父元件 toast；錯誤仍直接開 dialog。
- *   - 同步成功後原本直接重載檔期列表，改成 campaignsChanged 通知父元件。
- *   - 操作訊息中的天氣類型改顯示中文，不再露出 RAINY 這類代碼。
- * 樣式改用全域 .config-panel／.config-table（見 _components.scss）。
+ * 這個分頁由上而下是同一條計算鏈的四個設定：
+ *   1. 天氣資料：四區每日天氣資料的涵蓋天數與「資料更新時間」，可手動觸發同步。
+ *   2. 天氣加成設定：歷史／預測比重（加總 100）與加成上限（0～10）。
+ *   3. 天氣訊號標籤對照：哪種天氣命中哪些商品標籤、命中等級（決定逐日命中分數）。
+ *   4. 地域占比：四區天氣分的加權依據（季節檔期的區域覆蓋率也用同一份占比）。
  *
- * 2026-09-24（決議 A）：天氣檔期從「節慶檔期」分頁移到這裡——「天氣檔期自動同步」面板下
- * 新增「目前的天氣檔期」唯讀清單（準備期／進行中＋手動覆蓋中），保留切換狀態（主管判斷
- * 系統誤判時的復原路徑）。切換狀態沿用既有 manual-status 端點，不另開 API。
+ * 原本的「天氣檔期自動同步／訊號預覽／目前的天氣檔期與切換狀態」隨天氣檔期一併移除。
+ * 成功訊息用 status 輸出交給父元件 toast；錯誤直接開 dialog。
  */
 import { Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -26,24 +21,19 @@ import { FormsModule } from '@angular/forms';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
-import { FestiveCampaignStatus, TagMatchTier, WeatherSignalType } from '../../../../core/domain/enums';
+import { TagMatchTier, WeatherSignalType } from '../../../../core/domain/enums';
+import { WEATHER_REGION_LABEL, WEATHER_SIGNAL_TYPE_LABEL } from '../../../../core/domain/labels';
 import {
-  WEATHER_FORECAST_CONFIDENCE_LABEL,
-  WEATHER_REGION_LABEL,
-  WEATHER_SIGNAL_TYPE_LABEL,
-} from '../../../../core/domain/labels';
-import { Icon } from '../../../../shared/components/icon/icon';
-import {
-  FestiveCampaignResponsePayload,
   RegionWeightPayload,
-  WeatherSignalPreviewPayload,
+  WeatherBoostSettingsPayload,
+  WeatherDataStatusPayload,
   WeatherSignalTagMappingResponsePayload,
 } from '../../api/settings-api.contract';
 import { SettingsApiService } from '../../api/settings-api.service';
 
 /**
  * 天氣訊號標籤對照的「天氣類型」下拉選項，刻意排除 NORMAL——一般天氣不該
- * 命中任何商品（WeatherCampaignSyncService 既有規則），後端 SettingsService
+ * 命中任何商品（WeatherBoostService 的逐日命中本來就不會用到），後端 SettingsService
  * 建立/編輯時也會拒絕 NORMAL，這裡不列出來，避免使用者選了才在送出後
  * 收到錯誤訊息。標籤文字沿用 WEATHER_SIGNAL_TYPE_LABEL，不在這裡重複維護
  * 一份文案。
@@ -76,19 +66,27 @@ const MOCK_REGION_WEIGHTS: readonly RegionWeightPayload[] = [
   { region: 'EAST', weightPercentage: 25, updatedAt: null },
 ];
 
-/**
- * 天氣檔期狀態的中文。天氣型沒有「本期」概念，EXPIRED 顯示「已結束」（節慶頁是「本期停用」）；
- * 同步服務只會寫 PREPARING／ACTIVE／EXPIRED，UPCOMING 僅防禦顯示用。
- */
-export const WEATHER_CAMPAIGN_STATUS_LABEL: Record<FestiveCampaignStatus, string> = {
-  UPCOMING: '即將開始',
-  PREPARING: '準備期',
-  ACTIVE: '進行中',
-  EXPIRED: '已結束',
+/** 天氣加成上限的範圍上限（後端 WeatherBoostService 同一個值）。 */
+const BOOST_CAP_MAX = 10;
+
+/** Mock 模式的天氣加成設定：與 V26 migration 的預設值一致。 */
+const MOCK_BOOST_SETTINGS: WeatherBoostSettingsPayload = {
+  historyWeightPercentage: 60,
+  forecastWeightPercentage: 40,
+  boostCap: 5,
+  historyDays: 30,
+  forecastDays: 14,
+  updatedAt: null,
 };
 
-/** 手動指定時可選的狀態：與同步服務會產生的狀態一致，不提供 UPCOMING。 */
-const WEATHER_CAMPAIGN_STATUS_OPTIONS: readonly FestiveCampaignStatus[] = ['PREPARING', 'ACTIVE', 'EXPIRED'];
+/** 同步結果訊息：區域代碼轉中文；失敗與冷啟動的區域另外註明。 */
+export function syncResultMessage(synced: string[], failed: string[], coldStart: string[]): string {
+  const label = (codes: string[]) => codes.map((code) => WEATHER_REGION_LABEL[code] ?? code).join('、');
+  const parts = [`天氣資料同步完成：${synced.length > 0 ? label(synced) : '無'}已更新`];
+  if (coldStart.length > 0) parts.push(`${label(coldStart)}已補齊過去 30 天`);
+  if (failed.length > 0) parts.push(`${label(failed)}取得失敗（保留既有資料，下次排程重試）`);
+  return `${parts.join('；')}。`;
+}
 
 /** 命中等級的中文。跟「節慶檔期」標籤的 核心／一般／弱 同一套用語。 */
 const MATCH_TIER_OPTIONS: readonly { value: TagMatchTier; label: string }[] = [
@@ -99,7 +97,7 @@ const MATCH_TIER_OPTIONS: readonly { value: TagMatchTier; label: string }[] = [
 
 @Component({
   selector: 'app-weather-linkage',
-  imports: [FormsModule, DatePipe, Icon],
+  imports: [FormsModule, DatePipe],
   templateUrl: './weather-linkage.html',
   styleUrl: './weather-linkage.scss',
 })
@@ -110,7 +108,6 @@ export class WeatherLinkage implements OnInit {
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly weatherSignalTypeLabel = WEATHER_SIGNAL_TYPE_LABEL;
-  readonly weatherForecastConfidenceLabel = WEATHER_FORECAST_CONFIDENCE_LABEL;
   readonly weatherRegionLabel = WEATHER_REGION_LABEL;
   readonly matchTierOptions = MATCH_TIER_OPTIONS;
 
@@ -118,8 +115,6 @@ export class WeatherLinkage implements OnInit {
   readonly disabled = input(false);
   /** 成功類操作回饋，交給父元件既有的 toast 顯示。 */
   readonly status = output<string>();
-  /** 天氣同步寫入了檔期，父元件據此讓「節慶檔期」分頁下次重新載入。 */
-  readonly campaignsChanged = output<void>();
 
   ngOnInit(): void {
     this.reload();
@@ -127,7 +122,8 @@ export class WeatherLinkage implements OnInit {
 
   /** 父元件切到這個分頁、或使用者原地重點「系統設定」時呼叫。 */
   reload(): void {
-    this.loadWeatherCampaigns();
+    this.loadWeatherStatus();
+    this.loadBoostSettings();
     this.loadWeatherSignalTagMappings();
     this.loadRegionWeights();
   }
@@ -168,103 +164,157 @@ export class WeatherLinkage implements OnInit {
   }
 
   // ==================================================================
-  // 目前的天氣檔期（2026-09-24，決議 A）
+  // 天氣資料狀態與手動同步（V26：天氣不再產生檔期，只同步每日天氣資料）
   // ==================================================================
 
-  readonly campaignStatusLabel = WEATHER_CAMPAIGN_STATUS_LABEL;
-  readonly campaignStatusOptions = WEATHER_CAMPAIGN_STATUS_OPTIONS;
-  readonly weatherCampaigns = signal<FestiveCampaignResponsePayload[]>([]);
-  readonly weatherCampaignsLoading = signal(false);
-  readonly weatherCampaignsError = signal('');
+  readonly weatherStatus = signal<WeatherDataStatusPayload | null>(null);
+  readonly weatherStatusLoading = signal(false);
+  readonly weatherStatusError = signal('');
+  readonly weatherSyncing = signal(false);
 
-  loadWeatherCampaigns(): void {
+  loadWeatherStatus(): void {
     if (this.useMockData) return;
-    this.weatherCampaignsLoading.set(true);
-    this.weatherCampaignsError.set('');
+    this.weatherStatusLoading.set(true);
+    this.weatherStatusError.set('');
     this.api
-      .getCurrentWeatherCampaigns()
+      .getWeatherStatus()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (list) => {
-          this.weatherCampaigns.set(list);
-          this.weatherCampaignsLoading.set(false);
+        next: (status) => {
+          this.weatherStatus.set(status);
+          this.weatherStatusLoading.set(false);
         },
         error: (err) => {
-          this.weatherCampaignsLoading.set(false);
-          this.weatherCampaignsError.set(toApiError(err).message);
+          this.weatherStatusLoading.set(false);
+          this.weatherStatusError.set(toApiError(err).message);
         },
       });
   }
 
-  /** 命中標籤顯示用：「雨具、防水」。 */
-  campaignTagsText(item: FestiveCampaignResponsePayload): string {
-    return item.tags.map((t) => t.tag).join('、') || '—';
-  }
-
-  /** 地域覆蓋率（0～1）轉百分比文字；後端未給值時顯示「—」。 */
-  coverageText(item: FestiveCampaignResponsePayload): string {
-    if (item.regionCoverageRatio === null || item.regionCoverageRatio === undefined) return '—';
-    return `${Math.round(Number(item.regionCoverageRatio) * 100)}%`;
-  }
-
-  readonly statusTarget = signal<FestiveCampaignResponsePayload | null>(null);
-  readonly draftStatus = signal<FestiveCampaignStatus>('ACTIVE');
-  readonly draftManualOverride = signal(true);
-  readonly statusSaving = signal(false);
-
-  /** 如實回填目前狀態與是否手動覆蓋：打開來看、直接儲存不會意外改變設定。 */
-  openStatus(item: FestiveCampaignResponsePayload): void {
-    this.statusTarget.set(item);
-    this.draftStatus.set(item.campaignStatus);
-    this.draftManualOverride.set(item.isManualOverride ?? false);
-    this.statusSaving.set(false);
-  }
-
-  closeStatus(): void {
-    this.statusTarget.set(null);
-    this.statusSaving.set(false);
+  /** 某區歷史天數未達冷啟動門檻：下次同步會自動補齊過去 30 天。 */
+  isHistoryIncomplete(historyDayCount: number): boolean {
+    const status = this.weatherStatus();
+    return !!status && historyDayCount < status.coldStartThresholdDays;
   }
 
   /**
-   * 恢復自動判斷時送目前狀態（後端會依實際起訖日重算），不送下拉選單的值。
-   * 成功後整份重載：恢復自動後狀態可能變成已結束而不再屬於這份清單，逐列替換會留下殘列。
+   * 手動觸發一次每日天氣資料同步（POST /sync），與每天 05:00 排程是後端同一支方法。
+   * 完成後後端會重算尚未核准商品的加成；這裡重新載入資料狀態，讓「資料更新時間」立即反映。
    */
-  applyStatus(): void {
-    const target = this.statusTarget();
-    if (!target || this.statusSaving()) return;
-    const overrideEnabled = this.draftManualOverride();
+  syncWeatherData(): void {
     if (this.useMockData) {
-      this.closeStatus();
+      this.showAlert('Mock 模式無法觸發真實天氣同步。', '功能限制');
       return;
     }
-    this.statusSaving.set(true);
+    this.weatherSyncing.set(true);
     this.api
-      .switchFestiveCampaignStatus(target.id, {
-        status: overrideEnabled ? this.draftStatus() : target.campaignStatus,
-        overrideEnabled,
-      })
+      .syncWeatherData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.status.emit(overrideEnabled ? '已手動切換天氣檔期狀態。' : '已恢復由天氣同步判斷。');
-          this.closeStatus();
-          this.loadWeatherCampaigns();
+        next: (result) => {
+          this.weatherSyncing.set(false);
+          this.status.emit(syncResultMessage(result.syncedRegions, result.failedRegions, result.coldStartRegions));
+          this.loadWeatherStatus();
         },
         error: (err) => {
-          this.statusSaving.set(false);
+          this.weatherSyncing.set(false);
           this.showAlert(toApiError(err).message);
         },
       });
   }
 
-  /** 天氣檔期同步面板狀態（WeatherController，2026-09-21新增）。 */
-  readonly weatherPreview = signal<WeatherSignalPreviewPayload[] | null>(null);
-  readonly weatherPreviewLoading = signal(false);
-  readonly weatherSyncing = signal(false);
+  // ==================================================================
+  // 天氣加成設定（V26）：歷史／預測比重（加總 100）與加成上限
+  // ==================================================================
+
+  readonly boostSettings = signal<WeatherBoostSettingsPayload | null>(this.useMockData ? MOCK_BOOST_SETTINGS : null);
+  readonly boostSettingsLoading = signal(false);
+  readonly boostSettingsSaving = signal(false);
+  readonly draftHistoryWeight = signal(this.useMockData ? String(MOCK_BOOST_SETTINGS.historyWeightPercentage) : '');
+  readonly draftForecastWeight = signal(this.useMockData ? String(MOCK_BOOST_SETTINGS.forecastWeightPercentage) : '');
+  readonly draftBoostCap = signal(this.useMockData ? String(MOCK_BOOST_SETTINGS.boostCap) : '');
+
+  /** 比重加總（0.01 容差，理由同地域占比）與上限範圍的即時驗證。 */
+  readonly boostWeightSum = computed(
+    () => Math.round(((Number(this.draftHistoryWeight()) || 0) + (Number(this.draftForecastWeight()) || 0)) * 100) / 100,
+  );
+  readonly boostSettingsError = computed(() => {
+    const history = Number(this.draftHistoryWeight());
+    const forecast = Number(this.draftForecastWeight());
+    const cap = Number(this.draftBoostCap());
+    if ([this.draftHistoryWeight(), this.draftForecastWeight(), this.draftBoostCap()].some((v) => v.trim() === '')) {
+      return '三個欄位皆為必填。';
+    }
+    if ([history, forecast, cap].some((v) => Number.isNaN(v))) return '請輸入數字。';
+    if (history < 0 || forecast < 0) return '比重不可為負數。';
+    if (Math.abs(this.boostWeightSum() - 100) > 0.01) return `歷史與預測比重加總須為 100（目前 ${this.boostWeightSum()}）。`;
+    if (cap < 0 || cap > BOOST_CAP_MAX) return `加成上限須介於 0～${BOOST_CAP_MAX} 分。`;
+    return '';
+  });
+
+  /** 試算說明：天氣分 100（整段期間每天都命中核心標籤）時的加成，讓主管理解上限的意義。 */
+  readonly boostExample = computed(() => {
+    const cap = Number(this.draftBoostCap());
+    return Number.isNaN(cap) ? null : cap;
+  });
+
+  loadBoostSettings(): void {
+    if (this.useMockData) return;
+    this.boostSettingsLoading.set(true);
+    this.api
+      .getWeatherBoostSettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.applyBoostSettings(settings);
+          this.boostSettingsLoading.set(false);
+        },
+        error: (err) => {
+          this.boostSettingsLoading.set(false);
+          this.showAlert(toApiError(err).message);
+        },
+      });
+  }
+
+  saveBoostSettings(): void {
+    if (this.boostSettingsError() || this.boostSettingsSaving()) return;
+    const body = {
+      historyWeightPercentage: Number(this.draftHistoryWeight()),
+      forecastWeightPercentage: Number(this.draftForecastWeight()),
+      boostCap: Number(this.draftBoostCap()),
+    };
+    if (this.useMockData) {
+      this.boostSettings.set({ ...MOCK_BOOST_SETTINGS, ...body });
+      this.status.emit('已更新天氣加成設定。');
+      return;
+    }
+    this.boostSettingsSaving.set(true);
+    this.api
+      .updateWeatherBoostSettings(body)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.boostSettingsSaving.set(false);
+          this.applyBoostSettings(settings);
+          this.status.emit('已更新天氣加成設定，尚未核准商品的加成將重新計算。');
+        },
+        error: (err) => {
+          this.boostSettingsSaving.set(false);
+          this.showAlert(toApiError(err).message);
+        },
+      });
+  }
+
+  private applyBoostSettings(settings: WeatherBoostSettingsPayload): void {
+    this.boostSettings.set(settings);
+    this.draftHistoryWeight.set(String(Number(settings.historyWeightPercentage)));
+    this.draftForecastWeight.set(String(Number(settings.forecastWeightPercentage)));
+    this.draftBoostCap.set(String(Number(settings.boostCap)));
+  }
 
   /**
    * 天氣訊號標籤對照管理（SettingsController，2026-09-22新增）——把原本
-   * 寫死在後端 WeatherCampaignSyncService.WEATHER_TAG_MAPPING 的對照表
+   * 寫死在後端的天氣標籤對照表（V26 起決定天氣加成的逐日命中分數）
    * 改成管理層可自行調整。刻意獨立一組 signal／方法，不接進既有風險選項
    * 那套共用 draft/modal 狀態機：那套是為「同一個 modal 同時服務新增與
    * 編輯多種實體」設計的，這裡只需要一個簡單的清單＋新增列表單＋
@@ -306,73 +356,6 @@ export class WeatherLinkage implements OnInit {
     const raw = Object.values(drafts).reduce((sum, value) => sum + (Number(value) || 0), 0);
     return Math.round(raw * 100) / 100;
   });
-
-  /**
-   * 預覽目前會分類出的天氣訊號，不寫入資料庫（WeatherController，
-   * GET /signals/preview）。用來在正式同步前，先確認Open-Meteo資料與
-   * WeatherNormalizer門檻分類出來的結果合不合理。
-   *
-   * Mock模式下沒有真實天氣資料可以預覽——與其編造一份假訊號讓畫面「看起來
-   * 正常」，不如直接告訴使用者這個功能要接上真實後端才能用，避免誤判。
-   */
-  previewWeatherSignals(): void {
-    if (this.useMockData) {
-      this.showAlert('Mock 模式沒有真實天氣資料可預覽，請切換到已串接後端的環境測試。', '功能限制');
-      return;
-    }
-
-    this.weatherPreviewLoading.set(true);
-    this.api
-      .previewWeatherSignals()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (signals) => {
-          this.weatherPreview.set(signals);
-          this.weatherPreviewLoading.set(false);
-        },
-        error: (err) => {
-          this.weatherPreviewLoading.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
-
-  /**
-   * 手動觸發一次完整天氣檔期同步（WeatherController，POST /sync），跟每天
-   * 05:00排程呼叫的是後端同一支方法，行為完全一致。成功後重新載入檔期
-   * 清單，讓下方表格立刻反映這次同步的結果，不用使用者自己按重新整理；
-   * 同時清空預覽結果——預覽的內容此時已經落地或過期，繼續顯示只會誤導。
-   * 2026-09-24：檔期列表已在另一個分頁，改為發出 campaignsChanged 讓父元件標記重載。
-   */
-  syncWeatherCampaigns(): void {
-    if (this.useMockData) {
-      this.showAlert('Mock 模式無法觸發真實天氣同步。', '功能限制');
-      return;
-    }
-
-    this.weatherSyncing.set(true);
-    this.api
-      .syncWeatherCampaigns()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.weatherSyncing.set(false);
-          this.weatherPreview.set(null);
-          const expiredNote =
-            result.expiredCampaignCount > 0 ? `、${result.expiredCampaignCount}筆已標記結束` : '';
-          this.status.emit(
-            `天氣檔期同步完成：共${result.totalSignalCount}個訊號、更新${result.syncedCampaignCount}筆檔期${expiredNote}。`,
-          );
-          // 同步結果直接反映在下方「目前的天氣檔期」；父元件的通知保留給其他依賴檔期資料的畫面。
-          this.loadWeatherCampaigns();
-          this.campaignsChanged.emit();
-        },
-        error: (err) => {
-          this.weatherSyncing.set(false);
-          this.showAlert(toApiError(err).message);
-        },
-      });
-  }
 
   /**
    * 地域占比設定清單載入（地域性影響評分方案B+D，2026-09-23新增）。載入後
@@ -463,9 +446,8 @@ export class WeatherLinkage implements OnInit {
 
   /**
    * 天氣訊號標籤對照清單載入。跟 loadRiskOptions() 同一套 mock/真實 API
-   * 分流慣例（多數設定清單走這套，previewWeatherSignals／syncWeatherCampaigns
-   * 是例外——那兩支本質上需要真實天氣資料源，Mock 模式下沒有意義；這裡是
-   * 純設定資料，Mock 模式一樣能展示畫面，所以沿用主流慣例而非比照那兩支）。
+   * 分流慣例（多數設定清單走這套；天氣資料狀態與同步是例外——那兩支本質上需要
+   * 真實天氣資料源，Mock 模式下沒有意義；這裡是純設定資料，Mock 模式一樣能展示畫面）。
    */
   loadWeatherSignalTagMappings(): void {
     if (this.useMockData) {

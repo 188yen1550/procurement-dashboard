@@ -152,6 +152,10 @@
     <article>
       <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
     </article>
+    <article>
+      <span>天氣分數</span><strong>{{ p.weatherBoost === null ? '—' : '+' + p.weatherBoost }}</strong>
+      <small>{{ p.weatherBoost === null ? '審核時尚無天氣加成' : weatherBoostCaption(p.weatherDetail) }}</small>
+    </article>
     <article class="final">
       <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
         {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
@@ -190,7 +194,7 @@
         <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
       </div>
       <div>
-        <dt>檔期急迫程度<app-info-tip text="時間係數：檔期進行中為 1；準備期內節慶型與天氣型依「1 − 距本期開始天數 ÷ 準備期天數」，季節型為固定 0.2。再乘上地域覆蓋率（只影響部分區域時依業務占比打折），天氣型另外乘上預報可信度。" /></dt>
+        <dt>檔期急迫程度<app-info-tip text="時間係數：檔期進行中為 1；準備期內節慶型依「1 − 距本期開始天數 ÷ 準備期天數」，季節型為固定 0.2。再乘上地域覆蓋率（只影響部分區域時依業務占比打折）。" /></dt>
         <dd>
           {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
         </dd>
@@ -210,6 +214,43 @@
         標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
         加成上限 {{ festivalBoostCap }} 分 =
         <strong>{{ p.festivalBoost }} 分</strong>
+      </div>
+    </details>
+  </section>
+  }
+  @if (p.weatherDetail; as w) {
+  <!-- V26：天氣加成明細。與節慶加成並列，不屬於七項評分因子；SNAPSHOT 時為審核當時凍結的值。 -->
+  <section class="panel campaign weather-boost">
+    <header>
+      <div>
+        <p class="eyebrow">天氣分數</p>
+        <h2>天氣加成明細</h2>
+      </div>
+      <span>{{ w.matchedTags.length > 0 ? w.matchedTags.join(' · ') : '未命中天氣相關標籤' }}</span>
+    </header>
+    <dl class="metrics boost-breakdown">
+      <div>
+        <dt>歷史天氣分<app-info-tip text="過去一段期間（預設 30 天）四區每日天氣對應到商品標籤的命中分數平均（核心 1.0、一般 0.6、弱 0.3，同一天取最高），再依四區業務占比加權，換算成 0～100 分。沒有資料的日子不列入平均。" /></dt>
+        <dd>{{ w.historyScore ?? '無資料' }}</dd>
+      </div>
+      <div>
+        <dt>預測天氣分<app-info-tip text="今天起的預報期間（預設 14 天）以同樣方式計算的 0～100 分。" /></dt>
+        <dd>{{ w.forecastScore ?? '無資料' }}</dd>
+      </div>
+      <div class="boost-result">
+        <dt>本次天氣加成<app-info-tip text="天氣分 ÷ 100 × 加成上限；天氣分＝歷史天氣分 × 歷史比重 ＋ 預測天氣分 × 預測比重（只有一邊有資料時直接用那一邊）。" /></dt>
+        <dd>+{{ w.weatherBoost }} 分</dd>
+      </div>
+    </dl>
+    <p class="boost-hint">
+      天氣資料更新時間：{{ w.dataUpdatedAt ? (w.dataUpdatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}
+    </p>
+    <details class="formula-detail">
+      <summary>查看詳細計算方式</summary>
+      <div class="formula">
+        (歷史 {{ w.historyScore ?? '—' }} × {{ w.historyWeightPercentage }}% ＋ 預測 {{ w.forecastScore ?? '—' }} ×
+        {{ w.forecastWeightPercentage }}%) = 天氣分 {{ w.combinedScore ?? '—' }}；
+        {{ w.combinedScore ?? 0 }} ÷ 100 × 加成上限 {{ w.boostCap }} 分 = <strong>{{ w.weatherBoost }} 分</strong>
       </div>
     </details>
   </section>

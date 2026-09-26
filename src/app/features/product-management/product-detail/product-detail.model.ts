@@ -22,6 +22,7 @@
 import {
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
+  WeatherBoostDetailPayload,
   GateResultSummaryPayload,
   ProductResponsePayload,
 } from '../api/product-api.contract';
@@ -55,6 +56,10 @@ export interface DetailProduct {
   completeness: number;
   baseScore: number | null;
   festivalBoost: number;
+  /** V26 天氣加成；null＝V26 前核准、審核快照沒有這一項（畫面顯示「—」，不是 0）。 */
+  weatherBoost: number | null;
+  /** V26 天氣加成明細（festival-boost 端點附帶）；沒有時整個天氣區塊不顯示。 */
+  weatherDetail: WeatherBoostDetailPayload | null;
   /**
    * ⚠️ 之前樣板把這兩個值寫死成 1.0／0.84，但後端 MatchedCampaignPayload
    * 其實有真實資料（見 api/product-api.contract.ts）。這裡補上正確欄位，
@@ -164,6 +169,8 @@ export function toDetailProduct(
     // 分數一律以 evaluation 為單一真實來源；festival-boost 只取檔期明細，
     // 避免兩支 API 不同步時畫面出現互相矛盾的數字。
     festivalBoost: evaluation?.festivalBoost ?? 0,
+    weatherBoost: evaluation ? (evaluation.weatherBoost ?? null) : 0,
+    weatherDetail: festival?.weatherBoostDetail ?? null,
     finalScore: evaluation?.finalScore ?? null,
     campaign: festival?.matchedCampaign?.campaignName ?? null,
     campaignScope: describeMatchedCampaignScope(festival?.matchedCampaign ?? null),

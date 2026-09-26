@@ -40,7 +40,9 @@ import {
   SystemSettingUpdateRequestPayload,
   SwitchEvaluationModeRequestPayload,
   WeightSnapshotPayload,
-  WeatherSignalPreviewPayload,
+  WeatherBoostSettingsPayload,
+  WeatherBoostSettingsUpdateRequestPayload,
+  WeatherDataStatusPayload,
   WeatherSignalTagMappingCreateRequestPayload,
   WeatherSignalTagMappingResponsePayload,
   WeatherSignalTagMappingUpdateRequestPayload,
@@ -329,17 +331,6 @@ export class SettingsApiService {
       .pipe(unwrapData());
   }
 
-  /**
-   * GET /api/settings/weather-campaigns/current [操作+管理]（2026-09-24 新增）
-   * 準備期／進行中的天氣檔期，加上所有手動覆蓋中的天氣檔期（含被設為已結束的，才能恢復自動）。
-   * 切換狀態沿用 switchFestiveCampaignStatus()。
-   */
-  getCurrentWeatherCampaigns(): Observable<FestiveCampaignResponsePayload[]> {
-    return this.http
-      .get<ApiEnvelope<FestiveCampaignResponsePayload[]>>(SETTINGS_API.weatherCampaignsCurrent)
-      .pipe(unwrapData());
-  }
-
   /** 14. POST /api/settings/festive-campaigns [僅管理]：campaignCode 必須唯一。 */
   createFestiveCampaign(
     body: FestiveCampaignCreateRequestPayload,
@@ -428,27 +419,39 @@ export class SettingsApiService {
       .pipe(map(() => undefined));
   }
 
-  // ----- 天氣檔期同步（WeatherController，2026-09-21新增）-----
+  // ----- 天氣資料與天氣加成（WeatherController，V26 改版）-----
 
   /**
-   * POST /api/settings/weather/sync [僅管理]
-   * 手動觸發一次完整天氣檔期同步，與每天05:00排程呼叫的是後端同一支方法，
-   * 行為完全一致，只是觸發時機從cron換成這支HTTP請求。
+   * POST /api/settings/weather/sync [僅管理]：手動觸發每日天氣資料同步，與 05:00 排程同一支方法。
+   * 完成後後端會重算尚未核准商品的節慶與天氣加成。
    */
-  syncWeatherCampaigns(): Observable<WeatherSyncResponsePayload> {
+  syncWeatherData(): Observable<WeatherSyncResponsePayload> {
     return this.http
       .post<ApiEnvelope<WeatherSyncResponsePayload>>(SETTINGS_API.weatherSync, {})
       .pipe(unwrapData());
   }
 
-  /**
-   * GET /api/settings/weather/signals/preview [僅管理]
-   * 只預覽這次會分類出的天氣訊號，**不寫入資料庫**。想看落地後的檔期，
-   * 呼叫上面 syncWeatherCampaigns() 之後改查 getCurrentWeatherCampaigns()。
-   */
-  previewWeatherSignals(): Observable<WeatherSignalPreviewPayload[]> {
+  /** GET /api/settings/weather/status [操作+管理]：四區資料涵蓋天數與資料更新時間。 */
+  getWeatherStatus(): Observable<WeatherDataStatusPayload> {
     return this.http
-      .get<ApiEnvelope<WeatherSignalPreviewPayload[]>>(SETTINGS_API.weatherSignalsPreview)
+      .get<ApiEnvelope<WeatherDataStatusPayload>>(SETTINGS_API.weatherStatus)
+      .pipe(unwrapData());
+  }
+
+  /** GET /api/settings/weather/boost-settings [操作+管理]：歷史／預測比重與加成上限。 */
+  getWeatherBoostSettings(): Observable<WeatherBoostSettingsPayload> {
+    return this.http
+      .get<ApiEnvelope<WeatherBoostSettingsPayload>>(SETTINGS_API.weatherBoostSettings)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * PUT /api/settings/weather/boost-settings [僅管理]：比重加總須為 100、上限 0～10（400）。
+   * 成功後後端重算尚未核准商品的加成（已核准商品讀審核快照，不受影響）。
+   */
+  updateWeatherBoostSettings(body: WeatherBoostSettingsUpdateRequestPayload): Observable<WeatherBoostSettingsPayload> {
+    return this.http
+      .put<ApiEnvelope<WeatherBoostSettingsPayload>>(SETTINGS_API.weatherBoostSettings, body)
       .pipe(unwrapData());
   }
 

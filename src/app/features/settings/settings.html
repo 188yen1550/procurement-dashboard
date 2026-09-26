@@ -273,7 +273,6 @@
   <app-weather-linkage
     [disabled]="pageState() === 'disabled'"
     (status)="showStatus($event)"
-    (campaignsChanged)="onWeatherCampaignsChanged()"
   />
   } @else if (activeTab() === 'campaigns') {
   <!-- 2026-09-24（V21 檔期規則改版）：節慶檔期整個分頁（列表、新增／編輯、狀態切換、

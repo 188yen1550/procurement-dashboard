@@ -678,11 +678,6 @@ export class Settings implements OnInit {
     this.statusMessageState.show(message);
   }
 
-  /** 天氣同步寫入了檔期：讓「節慶檔期」分頁下次切過去時重新載入。 */
-  onWeatherCampaignsChanged(): void {
-    this.loadedTabs.delete('campaigns');
-  }
-
   private loadTab(tab: SettingsTab): void {
     this.pageState.set('loading');
     switch (tab) {

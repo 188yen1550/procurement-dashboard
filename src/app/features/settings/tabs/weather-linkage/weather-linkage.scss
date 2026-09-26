@@ -28,36 +28,8 @@
   width: 1%;
 }
 
-.weather-window {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .region-weight-table {
   min-width: 420px;
-}
-
-/* ----- 目前的天氣檔期（2026-09-24 由「節慶檔期」分頁移入） ----- */
-.weather-campaigns-head {
-  margin-top: var(--s-5);
-}
-
-.weather-campaigns-head h4 {
-  margin: 0 0 var(--s-1);
-}
-
-.weather-campaign-table {
-  min-width: 760px;
-}
-
-.manual-badge {
-  margin-left: var(--s-1);
-  padding: 0.05rem 0.4rem;
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border-radius: var(--r-pill);
-  font-size: var(--t-xs);
-  font-weight: 700;
 }
 
 /* 與「節慶檔期」分頁的載入錯誤列同一外觀 */
@@ -69,27 +41,6 @@
   color: var(--c-danger);
   background: var(--c-danger-tint);
   border-radius: var(--r-md);
-}
-
-.weather-status-modal {
-  width: min(480px, 100%);
-}
-
-.status-mode {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-4);
-  margin: var(--s-3) 0;
-  padding: 0;
-  border: 0;
-}
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-weight: 400;
-  cursor: pointer;
 }
 
 /*
@@ -246,4 +197,31 @@
   .region-weight-footer {
     align-items: stretch;
   }
+}
+
+/* V26：天氣資料狀態與天氣加成設定 */
+.weather-updated-at {
+  margin: 0 0 .5rem;
+  font-size: var(--t-sm);
+}
+
+.weather-status-table .is-incomplete {
+  color: var(--c-warning, #b45309);
+}
+
+.boost-settings-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.boost-field {
+  display: grid;
+  gap: .35rem;
+  font-size: var(--t-sm);
+}
+
+.boost-settings-footer {
+  flex-basis: 100%;
 }

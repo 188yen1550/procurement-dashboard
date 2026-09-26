@@ -147,7 +147,13 @@ describe('Settings', () => {
     getWeatherSignalTagMappings: vi.fn(() => of([])),
     getRegionWeights: vi.fn(() => of([])),
     // 2026-09-24：天氣連動分頁載入「目前的天氣檔期」
-    getCurrentWeatherCampaigns: vi.fn(() => of([])),
+    // V26：「天氣連動」子元件載入天氣資料狀態與加成設定。
+    getWeatherStatus: vi.fn(() =>
+      of({ historyDays: 30, forecastDays: 14, coldStartThresholdDays: 27, lastFetchedAt: null, regions: [] }),
+    ),
+    getWeatherBoostSettings: vi.fn(() =>
+      of({ historyWeightPercentage: 60, forecastWeightPercentage: 40, boostCap: 5, historyDays: 30, forecastDays: 14, updatedAt: null }),
+    ),
     getFactorDefinitions: vi.fn(() => of([])),
     getCustomFieldDefinitions: vi.fn(() => of([])),
     getProductTypeScoreBands: vi.fn(() => of([])),
@@ -599,16 +605,6 @@ describe('Settings', () => {
     expect(router.url).toContain('tab=scoreBands');
     // 自己同步網址觸發的 NavigationEnd 不應該讓分頁跳回去或重複載入
     expect(component.activeTab()).toBe('scoreBands');
-  });
-
-  it('marks the campaigns tab for reload after a weather sync', () => {
-    component.setTab('campaigns');
-    fixture.detectChanges();
-    settingsApi.getFestiveCampaigns.mockClear();
-
-    component.onWeatherCampaignsChanged();
-    component.setTab('campaigns');
-    expect(settingsApi.getFestiveCampaigns).toHaveBeenCalled();
   });
 
   it('shows algorithm parameter descriptions in info tips and skips empty ones', () => {

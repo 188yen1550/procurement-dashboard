@@ -23,7 +23,6 @@ import {
   TemperatureZone,
   TrendDirection,
   UserRole,
-  WeatherForecastConfidence,
   WeatherSignalType,
 } from './enums';
 
@@ -91,7 +90,6 @@ export const REVIEW_DECISION_LABEL: Record<ReviewDecision, string> = {
 export const FESTIVE_CATEGORY_LABEL: Record<FestiveCategory, string> = {
   FESTIVAL: '節慶型',
   SEASON: '季節型',
-  WEATHER: '天氣型',
 };
 
 export const FESTIVE_CAMPAIGN_STATUS_LABEL: Record<FestiveCampaignStatus, string> = {
@@ -119,7 +117,6 @@ export const SOLAR_TERM_LABEL: Record<SolarTerm, string> = {
 export const CAMPAIGN_STATUS_SOURCE_LABEL: Record<CampaignStatusSource, string> = {
   AUTO: '自動推算',
   MANUAL: '手動（僅本期）',
-  SYNC: '天氣同步',
 };
 
 export const TAG_MATCH_TIER_LABEL: Record<TagMatchTier, string> = {
@@ -293,17 +290,6 @@ export const WEATHER_SIGNAL_TYPE_LABEL: Record<WeatherSignalType, string> = {
   COLD: '寒冷',
   DRY_COOL: '乾冷',
   NORMAL: '一般',
-};
-
-/**
- * enums/WeatherForecastConfidence.java 的顯示文案（2026-09-21新增）。
- * 後端這個 enum 只帶 confidenceFactor（計算用常數），沒有中文文案，這裡
- * 依後端類別註解的天數分級（0～7天／8～14天／15天以上）自訂 UI 文字。
- */
-export const WEATHER_FORECAST_CONFIDENCE_LABEL: Record<WeatherForecastConfidence, string> = {
-  HIGH: '高（短期）',
-  MEDIUM: '中（中期）',
-  LOW: '低（長期）',
 };
 
 /**

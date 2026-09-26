@@ -238,6 +238,7 @@ export interface MatchedCampaignPayload {
   /**
    * 2026-09-24（V21 檔期規則改版）新增，全部可能缺值：V21 之前產生的舊快照沒有這些欄位。
    * 起訖日為 ISO 字串（yyyy-MM-dd）。regions 空陣列＝全國。
+   * 'WEATHER' 與 weatherConfidenceFactor 只會出現在 V26 前凍結的審核快照（天氣檔期已移除）。
    */
   category?: 'FESTIVAL' | 'SEASON' | 'WEATHER' | null;
   cycleYear?: number | null;
@@ -273,8 +274,37 @@ export interface EvaluationResponsePayload {
   /** 百分比數值（0–100）。 */
   dataCompleteness: Decimal;
   festivalBoost: Decimal;
-  /** finalScore = totalScore + festivalBoost。 */
+  /**
+   * V26 天氣加成：LIVE 讀即時評估；SNAPSHOT 讀審核快照（V26 前核准的商品為 null）。
+   * 與節慶加成並列，不是七因子之一。
+   */
+  weatherBoost: Decimal | null;
+  /** finalScore = totalScore + festivalBoost + weatherBoost（V26）。 */
   finalScore: Decimal;
+}
+
+/**
+ * 對應後端 json/WeatherBoostSnapshot.java（V26）：天氣加成明細。
+ * 天氣加成 = combinedScore ÷ 100 × boostCap；
+ * combinedScore = historyScore × historyWeight% + forecastScore × forecastWeight%（只有一邊有資料時直接用那一邊）。
+ * 分數 null＝該期間沒有天氣資料（不是 0 分）。
+ */
+export interface WeatherBoostDetailPayload {
+  historyScore: Decimal | null;
+  forecastScore: Decimal | null;
+  combinedScore: Decimal | null;
+  historyWeightPercentage: Decimal;
+  forecastWeightPercentage: Decimal;
+  boostCap: Decimal;
+  weatherBoost: Decimal;
+  /** 計算期間內至少一天被天氣訊號命中的商品標籤。 */
+  matchedTags: string[];
+  historyDays: number | null;
+  forecastDays: number | null;
+  historyFrom: string | null;
+  forecastTo: string | null;
+  /** 天氣資料最近一次同步時間（ISO 日期時間）。 */
+  dataUpdatedAt: string | null;
 }
 
 /**
@@ -286,6 +316,9 @@ export interface FestivalBoostResponsePayload {
   dataSource: DataSource;
   matchedCampaign: MatchedCampaignPayload | null;
   festivalBoost: Decimal;
+  /** V26：天氣加成與明細（finalScore 已含這一項）；SNAPSHOT 且為 V26 前的紀錄時皆為 null。 */
+  weatherBoost?: Decimal | null;
+  weatherBoostDetail?: WeatherBoostDetailPayload | null;
   finalScore: Decimal;
 }
 

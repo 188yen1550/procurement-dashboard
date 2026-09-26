@@ -421,6 +421,8 @@ export interface ProductDetailModel {
   totalScore: number | null;
   dataCompleteness: number | null;
   festivalBoost: number | null;
+  /** V26 天氣加成（evaluation；V26 前核准的商品為 null）。 */
+  weatherBoost: number | null;
   finalScore: number | null;
 
   // --- 節慶（GET /api/products/{id}/festival-boost）---
@@ -521,6 +523,7 @@ export function toProductDetailModel(
     totalScore: evaluation?.totalScore ?? null,
     dataCompleteness: evaluation?.dataCompleteness ?? null,
     festivalBoost: evaluation?.festivalBoost ?? null,
+    weatherBoost: evaluation?.weatherBoost ?? null,
     finalScore: evaluation?.finalScore ?? null,
 
     matchedCampaign: toMatchedCampaignModel(festival?.matchedCampaign ?? null),

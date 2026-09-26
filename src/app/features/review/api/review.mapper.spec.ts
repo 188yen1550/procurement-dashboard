@@ -156,6 +156,11 @@ describe('toReviewRecordModel', () => {
     };
   }
 
+  it('天氣加成快照：V26 前的紀錄為 null（不是 0），V26 後讀快照值', () => {
+    expect(toReviewRecordModel(makeRecord()).weatherBoost).toBeNull();
+    expect(toReviewRecordModel({ ...makeRecord(), weatherBoostSnapshot: 1.8 }).weatherBoost).toBe(1.8);
+  });
+
   it('把 Snapshot 後綴的分數欄位統一成一般命名', () => {
     const model = toReviewRecordModel(makeRecord());
 
