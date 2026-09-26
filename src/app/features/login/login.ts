@@ -6,6 +6,7 @@ import { defer, finalize } from 'rxjs';
 import { Auth, MockUsername } from '../../core/auth/auth';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { Icon } from '../../shared/components/icon/icon';
+import { ModalSurface } from '../../core/dialog/modal-surface';
 
 interface LoginErrorLike {
   status?: number;
@@ -14,9 +15,9 @@ interface LoginErrorLike {
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, Icon],
+  imports: [ReactiveFormsModule, Icon, ModalSurface],
   templateUrl: './login.html',
-  styleUrl: './login.scss',
+  styleUrls: ['./login.scss', './login-reset.scss'],
 })
 export class Login implements AfterViewInit {
   private fb = inject(FormBuilder);
@@ -35,6 +36,48 @@ export class Login implements AfterViewInit {
 
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');
+
+  // ----- 忘記密碼：申請重設（V27）-----
+  // 忘記密碼的人無法登入，所以申請入口在登入頁。管理者只能重設「本人已申請」的帳號，
+  // 處理後會透過其他管道（口頭、通訊軟體）提供臨時密碼，登入後必須先改掉。
+  readonly resetPanelOpen = signal(false);
+  readonly resetUsername = signal('');
+  readonly resetSubmitting = signal(false);
+  /** 送出後的訊息：不論帳號是否存在，後端都回同一段文字（不透露帳號是否存在）。 */
+  readonly resetMessage = signal('');
+  readonly resetError = signal('');
+
+  openResetPanel(): void {
+    // 帶入登入欄位已輸入的帳號，少打一次字。
+    this.resetUsername.set(this.loginForm.controls.username.value?.trim() ?? '');
+    this.resetMessage.set('');
+    this.resetError.set('');
+    this.resetPanelOpen.set(true);
+  }
+
+  closeResetPanel(): void {
+    // 送出中不可關閉（appModal 的 modalBusy 也會擋 Esc 與點背景）。
+    if (this.resetSubmitting()) return;
+    this.resetPanelOpen.set(false);
+  }
+
+  submitResetRequest(): void {
+    const username = this.resetUsername().trim();
+    if (!username) {
+      this.resetError.set('請輸入登入帳號');
+      return;
+    }
+    if (this.resetSubmitting()) return;
+    this.resetError.set('');
+    this.resetSubmitting.set(true);
+    this.auth
+      .applyPasswordReset(username)
+      .pipe(finalize(() => this.resetSubmitting.set(false)))
+      .subscribe({
+        next: (message) => this.resetMessage.set(message),
+        error: () => this.resetError.set('申請送出失敗，請確認網路連線後再試一次。'),
+      });
+  }
 
   loginForm = this.fb.group({
     username: ['', Validators.required],

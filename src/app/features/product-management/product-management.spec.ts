@@ -279,6 +279,32 @@ describe('ProductManagement (formal API mode)', () => {
     expect(cleared.neverExported).toBeUndefined();
   });
 
+  it('keeps advanced filters collapsed and lists active ones as removable chips (2026-09-26)', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    // 預設收合：第一列只剩常用條件
+    expect(root.querySelector('#advanced-filters')).toBeNull();
+    expect(root.querySelector('#batch-filter')).toBeNull();
+
+    component.toggleAdvancedFilters();
+    fixture.detectChanges();
+    expect(root.querySelector('#batch-filter')).not.toBeNull();
+    expect(root.querySelector('#updated-from')).not.toBeNull();
+
+    component.updateReviewedFrom('2026-09-01');
+    component.updateNeverExported(true);
+    component.toggleAdvancedFilters();
+    fixture.detectChanges();
+    const chips = Array.from(root.querySelectorAll('.filter-chips li span')).map((el) => el.textContent?.trim());
+    expect(chips).toEqual(['審核日期：2026-09-01 ～ 不限', '只看未曾匯出']);
+    expect(root.querySelector('.advanced-count')?.textContent?.trim()).toBe('2');
+
+    const callsBefore = api.list.mock.calls.length;
+    component.clearAdvancedFilter('reviewed');
+    expect(component.reviewedFromDraft()).toBe('');
+    expect(api.list.mock.calls.length).toBe(callsBefore + 1);
+    expect(component.advancedFilterChips().map((chip) => chip.key)).toEqual(['neverExported']);
+  });
+
   it('blocks CSV export while the review filter is pending or rejected (2026-09)', () => {
     // 頁面預設只看「未審核」。
     expect(component.reviewFilter()).toBe('PENDING');

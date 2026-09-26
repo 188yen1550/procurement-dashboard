@@ -48,7 +48,10 @@
   <!-- 2026-09-24：篩選列改為 Grid 兩行（第 1 行：搜尋／審核狀態／品項狀態／分類；
        第 2 行：送審日期區間＋恢復預設），標籤不換行、縮短字數；窄版依容器寬度
        改兩欄／單欄，見 review.scss 的 .filter-toolbar。 -->
-  <section class="toolbar filter-toolbar pending-filters" aria-label="待審清單篩選">
+  <!-- 2026-09-26：真實模式只剩搜尋／分類／送審日期三個條件，改為單行（pending-filters--single-row）；
+       Mock 模式多了審核狀態／品項狀態兩個下拉，維持原本兩行。 -->
+  <section class="toolbar filter-toolbar pending-filters" [class.pending-filters--single-row]="!useMockData"
+    aria-label="待審清單篩選">
     <!-- 2026-09-26：真實模式的搜尋／分類／送審日期改由後端篩選（分頁資訊才會正確）。 -->
     <label class="field field-search"><span class="field-label">搜尋</span><input type="search"
         placeholder="品項名稱或送審人" [ngModel]="query()" (ngModelChange)="updatePendingQuery($event)" /></label>
@@ -201,6 +204,14 @@
       </div>
       <div class="toolbar-actions">
         <button type="button" class="secondary-action" (click)="clearRecordFilters()">恢復預設</button>
+        <!-- 2026-09-26：管理層唯讀匯出目前篩選條件下的全部決策紀錄（不影響品項管理的「未曾匯出」）。 -->
+        @if (!useMockData) {
+        <button type="button" class="secondary-action" (click)="exportDecisionRecords()"
+          [disabled]="isExportingRecords() || recordDateRangeInvalid()" [attr.aria-busy]="isExportingRecords()"
+          title="匯出目前篩選條件下的全部決策紀錄；僅供檢視，不會標記商品為已匯出">
+          {{ isExportingRecords() ? '匯出中…' : '匯出 CSV' }}
+        </button>
+        }
       </div>
       @if (recordDateRangeInvalid()) {
       <p class="field-error" role="alert">審核日期起日不可晚於迄日。</p>

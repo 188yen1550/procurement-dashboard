@@ -93,7 +93,7 @@ const MOCK_CAMPAIGNS = [
 
 const MOCK_ACCOUNTS = [
   { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER' as const, enabled: true, mustChangePassword: false, createdAt: null },
-  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER' as const, enabled: true, mustChangePassword: false, createdAt: null },
+  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER' as const, enabled: true, mustChangePassword: false, passwordResetRequestedAt: '2026-09-26T09:00:00', createdAt: null },
   { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER' as const, enabled: false, mustChangePassword: false, createdAt: null },
 ];
 
@@ -211,7 +211,10 @@ describe('Settings', () => {
       of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: true }),
     ),
     resetPassword: vi.fn((id: number, _body: { newPassword: string }) =>
-      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, mustChangePassword: true }),
+      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, mustChangePassword: true, passwordResetRequestedAt: null }),
+    ),
+    rejectPasswordResetRequest: vi.fn((id: number) =>
+      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, passwordResetRequestedAt: null }),
     ),
   };
 
@@ -498,6 +501,49 @@ describe('Settings', () => {
       fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
     ).find((el) => el.textContent?.includes('buyer01'))!;
     expect(row.textContent).toContain('待使用者修改密碼');
+  });
+
+  it('only allows resetting accounts that requested it, and can reject the request (V27)', () => {
+    component.setTab('accounts');
+    fixture.detectChanges();
+    const manager = component.accounts().find((item) => item.username === 'manager01')!;
+    // manager01 沒有申請：不能重設
+    expect(component.canResetPassword({ ...manager, id: 99 })).toBe(false);
+    component.openResetPasswordModal({ ...manager, id: 99 });
+    expect(component.modal()).toBeNull();
+
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    ).find((el) => el.textContent?.includes('buyer01'))!;
+    expect(row.textContent).toContain('申請重設密碼');
+
+    vi.spyOn(dialog, 'confirm').mockReturnValue(of(true));
+    const buyer = component.accounts().find((item) => item.username === 'buyer01')!;
+    component.rejectPasswordResetRequest(buyer);
+    expect(userApi.rejectPasswordResetRequest).toHaveBeenCalledWith(2);
+    expect(component.accounts().find((item) => item.username === 'buyer01')?.passwordResetRequestedAt).toBeNull();
+  });
+
+  it('reloads accounts when the reset request was already cancelled by the user logging in (V28)', () => {
+    component.setTab('accounts');
+    fixture.detectChanges();
+    const buyer = component.accounts().find((item) => item.username === 'buyer01')!;
+    component.openResetPasswordModal(buyer);
+    userApi.resetPassword.mockReturnValueOnce(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { success: false, message: '此帳號沒有待處理的重設密碼申請（可能已由使用者登入而自動取消）' },
+          }),
+      ) as never,
+    );
+    const listCalls = userApi.list.mock.calls.length;
+    component.draftPassword.set('Temp-1234');
+    component.saveModal();
+    expect(component.modal()).toBeNull();
+    expect(userApi.list.mock.calls.length).toBe(listCalls + 1);
+    expect(dialog.state()?.messages[0]).toContain('自動取消');
   });
 
   it('does not open password reset for the signed-in account', () => {

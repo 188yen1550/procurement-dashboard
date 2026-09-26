@@ -1,4 +1,5 @@
 /** 驗證登入成功、各類錯誤、Loading 收尾、可重試及重複提交防護。 */
+import '../../core/dialog/modal-test-setup';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -18,10 +19,14 @@ describe('Login', () => {
     role: 'MANAGER',
     mustChangePassword: false,
   };
-  const auth = { login: vi.fn<(username: string, password: string) => Observable<CurrentUser>>() };
+  const auth = {
+    login: vi.fn<(username: string, password: string) => Observable<CurrentUser>>(),
+    applyPasswordReset: vi.fn<(username: string) => Observable<string>>(),
+  };
 
   beforeEach(async () => {
     auth.login.mockReset();
+    auth.applyPasswordReset.mockReset();
     await TestBed.configureTestingModule({
       imports: [Login],
       providers: [provideRouter([]), { provide: Auth, useValue: auth }],
@@ -92,5 +97,59 @@ describe('Login', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.btn-primary').disabled).toBe(true);
     expect(fixture.nativeElement.querySelector('#username').readOnly).toBe(true);
+  });
+
+  describe('忘記密碼：申請重設（V27）', () => {
+    it('prefills the username and shows the generic backend message after submitting', () => {
+      auth.applyPasswordReset.mockReturnValue(of('已送出申請'));
+      component.openResetPanel();
+      expect(component.resetUsername()).toBe('manager');
+      component.submitResetRequest();
+      expect(auth.applyPasswordReset).toHaveBeenCalledWith('manager');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.reset-done').textContent).toContain('已送出申請');
+      expect(component.resetSubmitting()).toBe(false);
+    });
+
+    it('opens the request form in a modal dialog and closes it (2026-09-26)', async () => {
+      const root = fixture.nativeElement as HTMLElement;
+      expect(root.querySelector('dialog.reset-dialog-backdrop')).toBeNull();
+      root.querySelector<HTMLButtonElement>('.reset-link')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog = root.querySelector('dialog.reset-dialog-backdrop')!;
+      expect(dialog).not.toBeNull();
+      expect(dialog.getAttribute('aria-modal')).toBe('true');
+      expect(dialog.hasAttribute('open')).toBe(true);
+      expect(dialog.querySelector('#reset-username')).not.toBeNull();
+
+      component.closeResetPanel();
+      fixture.detectChanges();
+      expect(root.querySelector('dialog.reset-dialog-backdrop')).toBeNull();
+    });
+
+    it('cannot be closed while the request is being sent', () => {
+      auth.applyPasswordReset.mockReturnValue(new Subject<string>());
+      component.openResetPanel();
+      component.submitResetRequest();
+      component.closeResetPanel();
+      expect(component.resetPanelOpen()).toBe(true);
+    });
+
+    it('requires a username before sending', () => {
+      component.loginForm.setValue({ username: '', password: '' });
+      component.openResetPanel();
+      component.submitResetRequest();
+      expect(auth.applyPasswordReset).not.toHaveBeenCalled();
+      expect(component.resetError()).toBe('請輸入登入帳號');
+    });
+
+    it('shows a retry message when the request fails', () => {
+      auth.applyPasswordReset.mockReturnValue(throwError(() => new Error('offline')));
+      component.openResetPanel();
+      component.submitResetRequest();
+      expect(component.resetMessage()).toBe('');
+      expect(component.resetError()).toContain('再試一次');
+    });
   });
 });

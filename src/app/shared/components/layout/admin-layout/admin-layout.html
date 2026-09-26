@@ -2,7 +2,8 @@
 <div class="admin-layout">
   <a class="skip-link" href="#main-content">跳到主要內容</a>
 
-  <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager()" (closeRequested)="closeMenu()" />
+  <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager()" [locked]="mustChangePassword()"
+    (closeRequested)="closeMenu()" />
 
   @if (isMenuOpen()) {
     <button

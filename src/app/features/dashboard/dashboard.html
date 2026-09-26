@@ -256,7 +256,7 @@
                避免操作人員誤以為在看公司整體表現。 -->
           @if (data().statistics.conversionScope === 'PERSONAL') {
             <h2 id="conversion-title">我的選品轉換率</h2>
-            <p>只計算我建立的選品：以其中曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+            <p>自身曾送審的不重複商品為分母，商品審核通過者為分子。</p>
           } @else {
             <h2 id="conversion-title">選品轉換率</h2>
             <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑（不含尚未轉正的 AI 建議商品）：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>

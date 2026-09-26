@@ -286,17 +286,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 2026-09 送審與匯出條件：第二列篩選；窄螢幕改兩欄，避免四欄擠在一起。 */
-.filter-grid--export {
-  grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(120px, 1fr)) auto;
-  margin-top: .75rem;
-}
-
-@media (max-width: 700px) {
-  .filter-grid--export {
-    grid-template-columns: 1fr 1fr;
-  }
-}
+/* 2026-09-26：第二列篩選（送審與匯出）改收進「進階篩選」，樣式見 product-management-filters.scss。 */
 
 .field-checkbox {
   display: inline-flex;

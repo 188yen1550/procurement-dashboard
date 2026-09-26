@@ -7,6 +7,7 @@ import { ReviewApiService } from './api/review-api.service';
 import { Review, toReviewItem } from './review';
 import { PendingReviewItem } from './api/review.mapper';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
+import { FileDownloadService } from '../../core/ui/file-download.service';
 describe('Review', () => {
   let fixture: ComponentFixture<Review>;
   let component: Review;
@@ -327,9 +328,70 @@ describe('Review（真實模式）待審清單後端篩選', () => {
       fixture.nativeElement.querySelectorAll('.field-category option') as NodeListOf<HTMLOptionElement>,
     ).map((o) => o.textContent?.trim());
     expect(options).toEqual(['全部', '生鮮']);
+    // 2026-09-26：真實模式只有三個條件，篩選列採單行版面。
+    expect(fixture.nativeElement.querySelector('.pending-filters')?.classList).toContain('pending-filters--single-row');
     // 真實模式不顯示審核狀態／品項狀態下拉（後端固定未審核＋使用中）。
     expect(fixture.nativeElement.querySelector('.field-review')).toBeNull();
     expect(fixture.nativeElement.querySelector('.field-item')).toBeNull();
+  });
+});
+
+/** 2026-09-26：管理層唯讀匯出決策紀錄（不影響品項管理的「未曾匯出」）。 */
+describe('Review（真實模式）決策紀錄匯出', () => {
+  const emptyPage = { items: [], totalElements: 0, totalPages: 0, pageNumber: 0, pageSize: 20 };
+  const api = {
+    listPending: vi.fn(() => of(emptyPage)),
+    listDecisionRecords: vi.fn(() => of(emptyPage)),
+    exportDecisionRecords: vi.fn(() => of({ blob: new Blob(['csv']), rowCount: 12 })),
+  };
+  const fileDownload = { save: vi.fn() };
+  let fixture: ComponentFixture<Review>;
+  let component: Review;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await TestBed.configureTestingModule({
+      imports: [Review],
+      providers: [
+        provideRouter([]),
+        { provide: ReviewApiService, useValue: api },
+        { provide: ProductTypeLookupService, useValue: { getGroupedOptions: vi.fn(() => of([])) } },
+        { provide: FileDownloadService, useValue: fileDownload },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Review);
+    component = fixture.componentInstance;
+    Object.defineProperty(component, 'useMockData', { value: false });
+    fixture.detectChanges();
+  });
+
+  it('exports all records matching the current filters and downloads the file', () => {
+    component.updateRecordResultFilter('APPROVED');
+    component.updateRecordReviewedFrom('2026-09-01');
+    component.exportDecisionRecords();
+    expect(api.exportDecisionRecords).toHaveBeenCalledWith({
+      reviewResult: 'APPROVED',
+      keyword: undefined,
+      reviewedFrom: '2026-09-01',
+      reviewedTo: undefined,
+    });
+    expect(fileDownload.save).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^決策紀錄_\d{8}-\d{4}\.csv$/));
+    expect(component.statusMessage()).toContain('已匯出 12 筆');
+    expect(component.isExportingRecords()).toBe(false);
+  });
+
+  it('does not download when nothing matches', () => {
+    api.exportDecisionRecords.mockReturnValueOnce(of({ blob: new Blob(['']), rowCount: 0 }));
+    component.exportDecisionRecords();
+    expect(fileDownload.save).not.toHaveBeenCalled();
+    expect(component.statusMessage()).toContain('未產生檔案');
+  });
+
+  it('does not export with an inverted date range', () => {
+    component.updateRecordReviewedFrom('2026-09-20');
+    component.updateRecordReviewedTo('2026-09-01');
+    component.exportDecisionRecords();
+    expect(api.exportDecisionRecords).not.toHaveBeenCalled();
   });
 });
 

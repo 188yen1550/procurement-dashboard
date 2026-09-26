@@ -17,6 +17,11 @@ export const AUTH_API = {
   /** PATCH /api/auth/me：修改自己的顯示名稱。與 GET 同路徑、不同 method。 */
   updateProfile: '/api/auth/me',
   changePassword: '/api/auth/me/password',
+  /**
+   * POST（V27，不需登入）：忘記密碼時申請由管理者重設。不論帳號是否存在一律回 202 與同一段訊息，
+   * 前端直接顯示後端訊息即可，不要依結果推論帳號是否存在。
+   */
+  passwordResetRequests: '/api/auth/password-reset-requests',
 } as const;
 
 /** 對應後端 LoginRequest.java。兩個欄位都是 @NotBlank。 */
@@ -90,6 +95,12 @@ export interface ChangePasswordRequestPayload {
  * （RestSecurityHandlers.PASSWORD_CHANGE_REQUIRED_MESSAGE），兩邊需同步。
  */
 export const PASSWORD_CHANGE_REQUIRED_MESSAGE = '請先修改密碼後再使用系統功能';
+
+/**
+ * 申請重設密碼後的固定訊息（後端 AuthController.PASSWORD_RESET_APPLIED_MESSAGE，兩邊需同步）。
+ * 真實模式直接顯示後端回傳的訊息；這個常數給 Mock 模式與網路錯誤以外的後備使用。
+ */
+export const PASSWORD_RESET_APPLIED_MESSAGE = '已送出申請';
 
 /** 後端 ChangePasswordRequest 的 @Size(min = 8)。前端驗證共用同一個常數。 */
 export const PASSWORD_MIN_LENGTH = 8;

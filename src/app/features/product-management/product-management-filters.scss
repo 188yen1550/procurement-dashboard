@@ -1,0 +1,166 @@
+/*
+ * 檔案用途：品項管理「搜尋與篩選」版面（2026-09-26 方案 A）。
+ * 第一列只放常用條件，其餘收進可展開的「進階篩選」；收合時以小標籤列出生效中的進階條件。
+ * 獨立成檔：product-management.scss 已接近單一元件樣式的 budget 門檻。
+ *
+ * 斷點與 product-management-actions.scss 一致（1100px 兩欄、700px 單欄）。這個檔案排在
+ * styleUrls 最後，所以第一列的欄寬規則要連同斷點一起寫在這裡，否則會蓋掉 actions 檔的斷點。
+ */
+.filter-grid--primary {
+  grid-template-columns: minmax(200px, 1.6fr) repeat(3, minmax(120px, 1fr)) auto;
+}
+
+.filter-actions {
+  display: flex;
+  gap: .5rem;
+  align-items: end;
+}
+
+.advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  height: 2.55rem;
+  padding: 0 .8rem;
+  color: #38536a;
+  background: #fff;
+  border: 1px solid #aebfc9;
+  border-radius: .5rem;
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.advanced-toggle[aria-expanded='true'] {
+  background: #eef4f9;
+  border-color: #1c5286;
+}
+
+.advanced-count {
+  min-width: 1.25rem;
+  padding: 0 .35rem;
+  color: #fff;
+  background: #1c5286;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.advanced-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem 1.5rem;
+  margin-top: .75rem;
+  padding: .85rem 1rem;
+  background: #f8fafc;
+  border: 1px dashed #d4dee6;
+  border-radius: .6rem;
+}
+
+.advanced-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .6rem .75rem;
+  align-items: end;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.advanced-group legend {
+  margin-bottom: .45rem;
+  padding: 0;
+  color: #243447;
+  font-size: var(--t-xs);
+  font-weight: 800;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: .35rem;
+  color: #455b6e;
+  font-size: var(--t-xs);
+  font-weight: 800;
+}
+
+/* 日期區間合併成一格「起 ～ 訖」 */
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.date-range input {
+  flex: 1 1 0;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: .65rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .25rem .2rem .6rem;
+  color: #1c3d5a;
+  background: #eef4f9;
+  border: 1px solid #c8d8e6;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+}
+
+.filter-chips button {
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  color: #455b6e;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.filter-chips button:hover {
+  background: #d9e6f1;
+}
+
+@media (max-width: 1100px) {
+  .filter-grid--primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: span 2;
+    justify-content: flex-end;
+  }
+
+  .advanced-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .filter-grid--primary,
+  .advanced-group {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    grid-column: auto;
+  }
+
+  .filter-actions button {
+    flex: 1;
+  }
+}

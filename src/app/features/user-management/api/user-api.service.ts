@@ -81,4 +81,14 @@ export class UserApiService {
       .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.resetPassword(id), body)
       .pipe(unwrapData());
   }
+
+  /**
+   * 6. PUT /api/users/{id}/password-reset-request/reject [僅管理]：駁回重設密碼申請（V27）。
+   * 密碼不變；沒有待處理申請回 409。
+   */
+  rejectPasswordResetRequest(id: number): Observable<UserAccountResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.rejectPasswordResetRequest(id), {})
+      .pipe(unwrapData());
+  }
 }

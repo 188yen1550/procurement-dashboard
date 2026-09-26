@@ -101,12 +101,15 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
   mockItem(107, '旅行用全能轉接充電器', '3C／家電', 'RESALE', '沐光科技', 79.1, 82, 'PENDING', 'ACTIVE', 'AI_SUGGESTED', '2026-08-31T07:10:00+08:00', 1),
 ];
 
+/** 進階篩選的條件群組（清除單一條件時使用；日期區間起訖一起清除）。 */
+type AdvancedFilterKey = 'updated' | 'reviewed' | 'batch' | 'neverExported';
+
 @Component({
   selector: 'app-product-management',
   standalone: true,
   imports: [ListSortControls, SortHeader, CommonModule, FormsModule, RouterLink, Icon],
   templateUrl: './product-management.html',
-  styleUrls: ['./product-management.scss', './product-management-actions.scss'],
+  styleUrls: ['./product-management.scss', './product-management-actions.scss', './product-management-filters.scss'],
 })
 export class ProductManagement implements OnInit {
   readonly productSortChoices = [
@@ -404,6 +407,58 @@ export class ProductManagement implements OnInit {
       this.neverExportedFilter(),
   );
   readonly isLoading = computed(() => this.pageState() === 'loading');
+
+  // ----- 進階篩選（2026-09-26 版面整理，方案 A）-----
+  // 常用條件（關鍵字、審核狀態、品項狀態、商品分類）留在第一列；修改時間、審核日期、
+  // 送審批次、只看未曾匯出收進可展開的「進階篩選」。收合時條件照樣生效：按鈕上顯示生效
+  // 數量，下方以小標籤列出（可單獨移除），使用者不會因為看不到而誤以為沒有套用。
+  readonly advancedFiltersOpen = signal(false);
+
+  /** 進階篩選中目前生效的條件（標籤文字＋移除用的 key）。日期區間各算一個條件。 */
+  readonly advancedFilterChips = computed(() => {
+    const chips: { key: AdvancedFilterKey; label: string }[] = [];
+    const range = (from: string, to: string) => `${from || '不限'} ～ ${to || '不限'}`;
+    if (this.updatedFromDraft() || this.updatedToDraft()) {
+      chips.push({ key: 'updated', label: `修改時間：${range(this.updatedFromDraft(), this.updatedToDraft())}` });
+    }
+    if (this.reviewedFromDraft() || this.reviewedToDraft()) {
+      chips.push({ key: 'reviewed', label: `審核日期：${range(this.reviewedFromDraft(), this.reviewedToDraft())}` });
+    }
+    const batchId = this.submissionBatchFilter();
+    if (batchId !== 'ALL') {
+      const batch = this.submissionBatches().find((item) => item.batchId === batchId);
+      chips.push({ key: 'batch', label: `送審批次：${batch ? this.batchOptionLabel(batch) : batchId}` });
+    }
+    if (this.neverExportedFilter()) {
+      chips.push({ key: 'neverExported', label: '只看未曾匯出' });
+    }
+    return chips;
+  });
+
+  toggleAdvancedFilters(): void {
+    this.advancedFiltersOpen.update((open) => !open);
+  }
+
+  /** 移除單一進階條件（小標籤上的 ×）。 */
+  clearAdvancedFilter(key: AdvancedFilterKey): void {
+    switch (key) {
+      case 'updated':
+        this.updatedFromDraft.set('');
+        this.updatedToDraft.set('');
+        break;
+      case 'reviewed':
+        this.reviewedFromDraft.set('');
+        this.reviewedToDraft.set('');
+        break;
+      case 'batch':
+        this.submissionBatchFilter.set('ALL');
+        break;
+      case 'neverExported':
+        this.neverExportedFilter.set(false);
+        break;
+    }
+    this.applyFilterChange();
+  }
   readonly hasLoadError = computed(() => this.pageState() === 'error');
 
   /** All columns sort the loaded page; name/date also request the corresponding server order. */

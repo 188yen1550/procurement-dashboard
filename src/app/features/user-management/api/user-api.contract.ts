@@ -21,6 +21,8 @@ export const USER_API = {
   enable: (id: number | string) => `/api/users/${id}/enable`,
   /** V24：對應 UserController.resetPassword()，管理者代重設密碼。 */
   resetPassword: (id: number | string) => `/api/users/${id}/reset-password`,
+  /** V27：駁回使用者的重設密碼申請（UserController.rejectPasswordResetRequest()）。 */
+  rejectPasswordResetRequest: (id: number | string) => `/api/users/${id}/password-reset-request/reject`,
 } as const;
 
 /**
@@ -39,6 +41,11 @@ export interface UserAccountResponsePayload {
    * 帳號管理表格以「待修改密碼」標示。
    */
   mustChangePassword: boolean;
+  /**
+   * V27：使用者本人在登入頁提出、尚待處理的重設密碼申請時間；沒有申請為 null。
+   * 只有這個欄位有值的帳號才能被重設密碼（後端沒有申請會回 409）。
+   */
+  passwordResetRequestedAt?: IsoDateTime | null;
   createdAt: IsoDateTime | null;
 }
 

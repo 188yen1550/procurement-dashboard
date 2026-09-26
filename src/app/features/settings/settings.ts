@@ -190,6 +190,8 @@ interface AccountVM {
   active: boolean;
   /** V24：密碼仍是管理者設定的，使用者尚未自行修改。 */
   mustChangePassword: boolean;
+  /** V27：使用者在登入頁申請重設密碼的時間；沒有待處理申請為 null（此時不能重設）。 */
+  passwordResetRequestedAt: string | null;
 }
 
 /** 固定三套模式的展示殼；真實模式的 weights 另外呼叫 factors 端點補上。 */
@@ -375,9 +377,9 @@ const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
 ];
 
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
-  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true, mustChangePassword: false },
-  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true, mustChangePassword: false },
-  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER', active: false, mustChangePassword: false },
+  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true, mustChangePassword: false, passwordResetRequestedAt: null },
+  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true, mustChangePassword: false, passwordResetRequestedAt: '2026-09-26T09:00:00' },
+  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER', active: false, mustChangePassword: false, passwordResetRequestedAt: null },
 ];
 
 @Component({
@@ -1996,11 +1998,70 @@ export class Settings implements OnInit {
   }
 
   /**
+   * V27：只能重設「本人已在登入頁申請」的帳號，且不能是自己。
+   * 前端停用按鈕只是防呆；後端沒有待處理申請一律回 409。
+   */
+  canResetPassword(item: AccountVM): boolean {
+    return !this.isSelfAccount(item) && !!item.passwordResetRequestedAt;
+  }
+
+  /** 重設密碼按鈕停用時的說明（hover 提示）。 */
+  resetPasswordDisabledReason(item: AccountVM): string | null {
+    if (this.isSelfAccount(item)) return '自己的密碼請到個人資料頁修改';
+    if (!item.passwordResetRequestedAt) return '使用者尚未申請重設密碼（申請入口在登入頁「忘記密碼」）';
+    return null;
+  }
+
+  /**
+   * V27：駁回重設密碼申請（例如無法確認是本人提出）。密碼不變，使用者之後可以再申請。
+   * 駁回是可回復的操作（使用者重新申請即可），但仍先確認，避免誤點。
+   */
+  rejectPasswordResetRequest(item: AccountVM): void {
+    if (!item.passwordResetRequestedAt) return;
+    this.dialog
+      .confirm(
+        '駁回重設密碼申請',
+        [`即將駁回「${item.name}」（${item.username}）的重設密碼申請。`, '密碼不會變更；對方之後可以再次申請。'],
+        '確定駁回',
+        '取消',
+      )
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        if (this.useMockData || !item.id) {
+          this.accounts.update((items) =>
+            items.map((account) =>
+              account.username === item.username ? { ...account, passwordResetRequestedAt: null } : account,
+            ),
+          );
+          this.statusMessageState.show('已駁回重設密碼申請。');
+          return;
+        }
+        this.userApi
+          .rejectPasswordResetRequest(item.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (updated) => {
+              this.accounts.update((items) =>
+                items.map((account) => (account.id === updated.id ? toAccountVM(updated) : account)),
+              );
+              this.statusMessageState.show('已駁回重設密碼申請。');
+            },
+            error: (err) => {
+              const error = toApiError(err);
+              this.showAlert(error.message, '無法駁回申請');
+              // V28：409 可能是使用者已用原密碼登入、申請自動取消；重新載入讓標示同步。
+              if (error.status === 409) this.loadAccounts();
+            },
+          });
+      });
+  }
+
+  /**
    * V24：開啟「重設密碼」modal。臨時密碼由管理者輸入（沿用新增帳號的密碼欄位），
    * 對方下次登入時必須先改掉它，管理者不會長期知道對方正在使用的密碼。
    */
   openResetPasswordModal(item: AccountVM): void {
-    if (this.isSelfAccount(item)) return;
+    if (!this.canResetPassword(item)) return;
     this.resettingAccount.set(item);
     this.draftPassword.set('');
     this.modal.set('resetPassword');
@@ -2086,12 +2147,15 @@ export class Settings implements OnInit {
           role: this.draftRole(),
           active: true,
           mustChangePassword: true,
+          passwordResetRequestedAt: null,
         },
       ]);
     } else if (type === 'resetPassword' && this.draftPassword().length >= PASSWORD_MIN_LENGTH) {
       const target = this.resettingAccount()?.username;
       this.accounts.update((items) =>
-        items.map((item) => (item.username === target ? { ...item, mustChangePassword: true } : item)),
+        items.map((item) =>
+          item.username === target ? { ...item, mustChangePassword: true, passwordResetRequestedAt: null } : item,
+        ),
       );
     } else {
       this.showAlert('請完整填寫必填欄位。', '驗證失敗');
@@ -2234,7 +2298,14 @@ export class Settings implements OnInit {
           error: (err) => {
             this.isSavingModal.set(false);
             // 不可重設自己（409）等業務錯誤直接顯示後端訊息。
-            this.showAlert(toApiError(err).message, '無法重設密碼');
+            const error = toApiError(err);
+            this.showAlert(error.message, '無法重設密碼');
+            // V28：申請可能已因使用者用原密碼登入而自動取消；關閉視窗並重新載入帳號清單，
+            // 讓「申請重設密碼」標示與按鈕狀態回到最新。
+            if (error.status === 409) {
+              this.closeModal();
+              this.loadAccounts();
+            }
           },
         });
       return;
@@ -2368,6 +2439,7 @@ function toAccountVM(payload: UserAccountResponsePayload): AccountVM {
     role: payload.role,
     active: payload.enabled ?? true,
     mustChangePassword: payload.mustChangePassword === true,
+    passwordResetRequestedAt: payload.passwordResetRequestedAt ?? null,
   };
 }
 

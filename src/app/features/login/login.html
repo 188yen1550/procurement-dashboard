@@ -32,7 +32,7 @@
           </svg>
 
           <!-- 頁面主標題 -->
-          <h1 id="login-title" class="card-title">AI 選品決策輔助系統</h1>
+          <h1 id="login-title" class="card-title">團購選品決策輔助系統</h1>
         </header>
 
         <!-- 原型階段提供兩種角色快速登入，串接後端後移除此區塊。 -->
@@ -138,13 +138,53 @@
             {{ isLoading() ? '登入中...' : '登入' }}
           </button>
         </form>
+
+        <!-- V27：忘記密碼 → 申請由管理者重設。管理者只能重設本人已申請的帳號。
+             2026-09-26：申請表單改為彈出視窗，沿用全站共用的 appModal（焦點鎖定、Esc 關閉、
+             點背景關閉、關閉後焦點回到觸發按鈕、鎖定頁面捲動），送出中不可關閉。 -->
+        <div class="reset-request">
+          <button type="button" class="reset-link" (click)="openResetPanel()">忘記密碼？</button>
+        </div>
+        @if (resetPanelOpen()) {
+        <dialog appModal class="reset-dialog-backdrop" role="dialog" aria-labelledby="reset-request-title"
+          [modalBusy]="resetSubmitting()" (dismissed)="closeResetPanel()">
+          <section class="reset-dialog" (click)="$event.stopPropagation()">
+            <h2 id="reset-request-title" class="reset-title">申請重設密碼</h2>
+            @if (resetMessage()) {
+            <p class="reset-done" role="status">{{ resetMessage() }}</p>
+            <div class="reset-actions">
+              <button type="button" class="reset-submit" (click)="closeResetPanel()">返回登入</button>
+            </div>
+            } @else {
+            <p class="reset-hint">送出後由管理者審核，請與管理者確認臨時密碼，登入後需先改成自己的密碼。</p>
+            <!-- 不是 formGroup 表單，用原生 submit 並阻止預設（避免整頁重新載入）。 -->
+            <form class="reset-form" (submit)="$event.preventDefault(); submitResetRequest()" novalidate>
+              <label for="reset-username">登入帳號</label>
+              <input id="reset-username" name="resetUsername" type="text" autocomplete="username" autofocus
+                [value]="resetUsername()" (input)="resetUsername.set($any($event.target).value)"
+                [readOnly]="resetSubmitting()" [attr.aria-invalid]="!!resetError()"
+                [attr.aria-describedby]="resetError() ? 'reset-error' : null" />
+              @if (resetError()) {
+              <p id="reset-error" class="field-error" role="alert">{{ resetError() }}</p>
+              }
+              <div class="reset-actions">
+                <button type="button" class="reset-cancel" [disabled]="resetSubmitting()"
+                  (click)="closeResetPanel()">取消</button>
+                <button type="submit" class="reset-submit" [disabled]="resetSubmitting()"
+                  [attr.aria-busy]="resetSubmitting()">{{ resetSubmitting() ? '送出中…' : '送出申請' }}</button>
+              </div>
+            </form>
+            }
+          </section>
+        </dialog>
+        }
       </section>
 
       <!-- =====================================
            頁尾資訊
            隱私權頁面完成後替換 href
            ===================================== -->
-      <footer class="system-footer">AI 選品決策輔助系統 © 2026</footer>
+      <footer class="system-footer">團購選品決策輔助系統 © 2026</footer>
     </main>
   </div>
 </div>

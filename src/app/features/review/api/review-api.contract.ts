@@ -29,7 +29,15 @@ export const REVIEW_API = {
   detail: (productId: number | string) => `/api/reviews/${productId}`,
   submit: '/api/reviews',
   decisionRecords: '/api/reviews/decision-records',
+  /**
+   * POST [僅管理]（2026-09-26）：決策紀錄唯讀匯出 CSV。body 為目前的篩選條件；
+   * 不寫入任何匯出紀錄（不影響品項管理「只看未曾匯出」）。
+   */
+  decisionRecordsExport: '/api/reviews/decision-records/export',
 } as const;
+
+/** POST /api/reviews/decision-records/export 的 body：與決策紀錄查詢同一組條件（不含分頁／排序）。 */
+export type DecisionRecordExportRequestPayload = Omit<DecisionRecordQuery, 'page' | 'size' | 'sort'>;
 
 /**
  * GET /api/reviews/pending 的查詢參數（2026-09-26 起後端篩選）。

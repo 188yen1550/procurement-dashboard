@@ -114,4 +114,14 @@ export class AuthApiService {
       .patch<ApiEnvelope<CurrentUser>>(AUTH_API.changePassword, payload)
       .pipe(unwrapData());
   }
+
+  /**
+   * POST /api/auth/password-reset-requests（V27，不需登入）：申請由管理者重設密碼。
+   * 回傳後端的固定訊息（不透露帳號是否存在）。
+   */
+  applyPasswordReset(username: string): Observable<string> {
+    return this.http
+      .post<ApiEnvelope<null>>(AUTH_API.passwordResetRequests, { username })
+      .pipe(map((envelope) => envelope.message));
+  }
 }

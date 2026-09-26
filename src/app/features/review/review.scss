@@ -555,6 +555,25 @@ select:focus-visible {
     ". . . actions"
 }
 
+/*
+ * 2026-09-26：真實模式的待審清單只剩搜尋／分類／送審日期（審核狀態、品項狀態只在 Mock 顯示），
+ * 改為單行：搜尋｜分類｜送審日期｜恢復預設。日期區間兩個輸入框最窄 8.75rem，所以單行需要
+ * 約 1100px 的內容寬度；900–1100px 改兩行，900px 以下沿用下方既有的兩欄／單欄規則。
+ */
+.toolbar.filter-toolbar.pending-filters--single-row {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto auto;
+  grid-template-areas: "search category date actions"
+}
+
+@container review-page (max-width: 1099.98px) {
+  .toolbar.filter-toolbar.pending-filters--single-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "search category"
+      "date actions"
+  }
+}
+
 .filter-toolbar .field-search { grid-area: search }
 .filter-toolbar .field-review { grid-area: review }
 .filter-toolbar .field-item { grid-area: item }
@@ -642,6 +661,13 @@ select:focus-visible {
       "date date"
       "actions actions"
   }
+
+  .toolbar.filter-toolbar.pending-filters--single-row {
+    grid-template-areas:
+      "search category"
+      "date date"
+      "actions actions"
+  }
 }
 
 @container review-page (max-width: 599.98px) {
@@ -655,6 +681,11 @@ select:focus-visible {
 
   .record-filters {
     grid-template-areas: "search" "result" "date" "actions"
+  }
+
+  .toolbar.filter-toolbar.pending-filters--single-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "search" "category" "date" "actions"
   }
 
   .filter-toolbar .field {

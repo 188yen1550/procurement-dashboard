@@ -4,11 +4,13 @@ import { Observable, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
 import { buildParams } from '../../../core/api/http-params';
+import { CsvExportResult, postForCsv } from '../../../core/api/csv-export';
 import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
 import { ProductResponsePayload } from '../../product-management/api/product-api.contract';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { RiskOptionLookupService } from '../../settings/api/risk-option-lookup.service';
 import {
+  DecisionRecordExportRequestPayload,
   DecisionRecordQuery,
   PendingReviewQuery,
   REVIEW_API,
@@ -160,5 +162,13 @@ export class ReviewApiService {
         ),
       })),
     );
+  }
+
+  /**
+   * POST /api/reviews/decision-records/export [僅管理]（2026-09-26）：決策紀錄唯讀匯出。
+   * 回應處理（檔案本體、筆數 header、Blob 錯誤訊息）見 core/api/csv-export.ts。
+   */
+  exportDecisionRecords(body: DecisionRecordExportRequestPayload): Observable<CsvExportResult> {
+    return postForCsv(this.http, REVIEW_API.decisionRecordsExport, body);
   }
 }

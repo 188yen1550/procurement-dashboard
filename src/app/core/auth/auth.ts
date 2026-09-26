@@ -4,7 +4,12 @@ import { Router } from '@angular/router';
 import { Observable, catchError, of, tap, throwError } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
 import { AuthApiService } from './auth-api';
-import { ChangePasswordRequestPayload, CurrentUser, UserRole } from './auth.contract';
+import {
+  ChangePasswordRequestPayload,
+  CurrentUser,
+  PASSWORD_RESET_APPLIED_MESSAGE,
+  UserRole,
+} from './auth.contract';
 
 export type MockUsername = 'purchaser' | 'manager';
 
@@ -131,6 +136,15 @@ export class Auth {
    * mock 帳號是常數，改了下次登入反而登不進去。這裡只驗證目前密碼正確，
    * 讓「填錯目前密碼會被擋下」這條防呆在 demo 時也看得到。
    */
+  /**
+   * 忘記密碼：申請由管理者重設（V27，不需登入）。回傳要顯示給使用者的固定訊息。
+   * Mock 模式沒有後端，直接回同一段訊息。
+   */
+  applyPasswordReset(username: string): Observable<string> {
+    if (this.useMockData) return of(PASSWORD_RESET_APPLIED_MESSAGE);
+    return this.api.applyPasswordReset(username);
+  }
+
   changePassword(payload: ChangePasswordRequestPayload): Observable<CurrentUser> {
     if (this.useMockData) {
       const current = this.currentUserState();

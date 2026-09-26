@@ -110,6 +110,29 @@
   }
 }
 
+/* 2026-09-26：必須先修改密碼時鎖定導覽（inert 已擋操作，這裡負責視覺）。 */
+.navigation.is-locked {
+  opacity: 0.4;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  user-select: none;
+
+  a {
+    pointer-events: none;
+  }
+}
+
+.locked-notice {
+  margin: 1rem 0.75rem 0;
+  padding: 0.6rem 0.75rem;
+  color: #fff4d6;
+  background: rgba(255, 196, 61, 0.14);
+  border: 1px solid rgba(255, 196, 61, 0.35);
+  border-radius: 0.5rem;
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+
 .nav-label {
   margin: 0 0 0.5rem;
   padding: 0 0.9rem;

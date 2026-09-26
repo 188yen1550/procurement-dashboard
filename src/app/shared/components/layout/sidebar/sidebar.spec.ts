@@ -22,4 +22,19 @@ describe('Sidebar', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('greys out and disables navigation while a password change is required (2026-09-26)', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('nav.navigation')?.hasAttribute('inert')).toBe(false);
+    expect(root.querySelector('.locked-notice')).toBeNull();
+
+    fixture.componentRef.setInput('locked', true);
+    fixture.detectChanges();
+
+    const nav = root.querySelector('nav.navigation')!;
+    expect(nav.classList).toContain('is-locked');
+    expect(nav.hasAttribute('inert')).toBe(true);
+    expect(nav.getAttribute('aria-disabled')).toBe('true');
+    expect(root.querySelector('.locked-notice')?.textContent).toContain('請先修改密碼');
+  });
 });

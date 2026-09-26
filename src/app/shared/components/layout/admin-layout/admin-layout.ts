@@ -24,6 +24,8 @@ export class AdminLayout {
    */
   readonly isManager = computed(() => this.auth.isManager());
   readonly roleLabel = computed(() => (this.isManager() ? '管理人員' : '操作人員'));
+  /** 2026-09-26：必須先修改密碼時鎖定側邊欄（修改成功後 currentUser 更新，自動解除）。 */
+  readonly mustChangePassword = computed(() => this.auth.mustChangePassword());
   readonly userName = computed(() => this.auth.currentUser()?.name ?? '');
 
   toggleMenu(): void {

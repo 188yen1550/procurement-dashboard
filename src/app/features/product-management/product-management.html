@@ -70,7 +70,9 @@
         <h2 id="filter-title">搜尋與篩選</h2>
       </div>
     </div>
-    <div class="filter-grid">
+    <!-- 2026-09-26 版面整理（方案 A）：常用條件一列；其餘收進「進階篩選」。
+         條件邏輯不變（清單與匯出共用 currentFilterQuery()），只調整呈現方式。 -->
+    <div class="filter-grid filter-grid--primary">
       <div class="field search-field">
         <label for="product-search">關鍵字搜尋</label><input id="product-search" type="search" placeholder="搜尋商品或供應商名稱"
           [ngModel]="searchTerm()" (ngModelChange)="updateSearch($event)" />
@@ -105,46 +107,81 @@
           }
         </select>
       </div>
-      <div class="field">
-        <label for="updated-from">修改時間（起）</label><input id="updated-from" type="date" [ngModel]="updatedFromDraft()"
-          (ngModelChange)="updateUpdatedFrom($event)" [disabled]="isLoading()" [max]="updatedToDraft() || undefined" />
-      </div>
-      <div class="field">
-        <label for="updated-to">修改時間（訖）</label><input id="updated-to" type="date" [ngModel]="updatedToDraft()"
-          (ngModelChange)="updateUpdatedTo($event)" [disabled]="isLoading()" [min]="updatedFromDraft() || undefined" />
-      </div>
-      <button type="button" class="clear-button" (click)="clearFilters()"
-        [disabled]="!hasActiveFilters() || isLoading()">
-        清除篩選
-      </button>
-    </div>
-    <!-- 2026-09（V25）：送審批次／審核日期／未曾匯出。同時套用在清單與 CSV 匯出。 -->
-    <div class="filter-grid filter-grid--export" role="group" aria-label="送審與匯出條件">
-      <div class="field">
-        <label for="batch-filter">送審批次</label><select id="batch-filter" [ngModel]="submissionBatchFilter()"
-          (ngModelChange)="updateSubmissionBatchFilter($event)" [disabled]="isLoading()">
-          <option value="ALL">全部批次</option>
-          @for (batch of submissionBatches(); track batch.batchId) {
-          <option [value]="batch.batchId">{{ batchOptionLabel(batch) }}</option>
+      <div class="filter-actions">
+        <button type="button" class="advanced-toggle" (click)="toggleAdvancedFilters()"
+          [attr.aria-expanded]="advancedFiltersOpen()" aria-controls="advanced-filters">
+          進階篩選
+          @if (advancedFilterChips().length > 0) {
+          <span class="advanced-count" aria-label="已套用 {{ advancedFilterChips().length }} 個進階條件">{{
+            advancedFilterChips().length }}</span>
           }
-        </select>
+          <span aria-hidden="true">{{ advancedFiltersOpen() ? '▴' : '▾' }}</span>
+        </button>
+        <button type="button" class="clear-button" (click)="clearFilters()"
+          [disabled]="!hasActiveFilters() || isLoading()">
+          清除篩選
+        </button>
       </div>
-      <div class="field">
-        <label for="reviewed-from">審核日期（起）</label><input id="reviewed-from" type="date"
-          [ngModel]="reviewedFromDraft()" (ngModelChange)="updateReviewedFrom($event)" [disabled]="isLoading()"
-          [max]="reviewedToDraft() || undefined" [attr.aria-invalid]="reviewedDateRangeInvalid()" />
-      </div>
-      <div class="field">
-        <label for="reviewed-to">審核日期（訖）</label><input id="reviewed-to" type="date" [ngModel]="reviewedToDraft()"
-          (ngModelChange)="updateReviewedTo($event)" [disabled]="isLoading()" [min]="reviewedFromDraft() || undefined"
-          [attr.aria-invalid]="reviewedDateRangeInvalid()" />
-      </div>
-      <label class="field-checkbox">
-        <input type="checkbox" [ngModel]="neverExportedFilter()" (ngModelChange)="updateNeverExported($event)"
-          [disabled]="isLoading()" />
-        只看未曾匯出
-      </label>
     </div>
+
+    @if (advancedFiltersOpen()) {
+    <div id="advanced-filters" class="advanced-filters" role="group" aria-label="進階篩選">
+      <fieldset class="advanced-group">
+        <legend>時間</legend>
+        <div class="field">
+          <span class="field-label" id="updated-range-label">修改時間</span>
+          <span class="date-range" role="group" aria-labelledby="updated-range-label">
+            <input id="updated-from" type="date" aria-label="修改時間（起）" [ngModel]="updatedFromDraft()"
+              (ngModelChange)="updateUpdatedFrom($event)" [disabled]="isLoading()" [max]="updatedToDraft() || undefined" />
+            <span aria-hidden="true">～</span>
+            <input id="updated-to" type="date" aria-label="修改時間（訖）" [ngModel]="updatedToDraft()"
+              (ngModelChange)="updateUpdatedTo($event)" [disabled]="isLoading()" [min]="updatedFromDraft() || undefined" />
+          </span>
+        </div>
+        <div class="field">
+          <span class="field-label" id="reviewed-range-label">審核日期</span>
+          <span class="date-range" role="group" aria-labelledby="reviewed-range-label">
+            <input id="reviewed-from" type="date" aria-label="審核日期（起）" [ngModel]="reviewedFromDraft()"
+              (ngModelChange)="updateReviewedFrom($event)" [disabled]="isLoading()"
+              [max]="reviewedToDraft() || undefined" [attr.aria-invalid]="reviewedDateRangeInvalid()" />
+            <span aria-hidden="true">～</span>
+            <input id="reviewed-to" type="date" aria-label="審核日期（訖）" [ngModel]="reviewedToDraft()"
+              (ngModelChange)="updateReviewedTo($event)" [disabled]="isLoading()" [min]="reviewedFromDraft() || undefined"
+              [attr.aria-invalid]="reviewedDateRangeInvalid()" />
+          </span>
+        </div>
+      </fieldset>
+      <!-- 送審批次／未曾匯出（V25）：主要搭配「匯出 CSV」挑出要交接的商品，同時也套用在清單上。 -->
+      <fieldset class="advanced-group">
+        <legend>送審與匯出</legend>
+        <div class="field">
+          <label for="batch-filter">送審批次</label><select id="batch-filter" [ngModel]="submissionBatchFilter()"
+            (ngModelChange)="updateSubmissionBatchFilter($event)" [disabled]="isLoading()">
+            <option value="ALL">全部批次</option>
+            @for (batch of submissionBatches(); track batch.batchId) {
+            <option [value]="batch.batchId">{{ batchOptionLabel(batch) }}</option>
+            }
+          </select>
+        </div>
+        <label class="field-checkbox">
+          <input type="checkbox" [ngModel]="neverExportedFilter()" (ngModelChange)="updateNeverExported($event)"
+            [disabled]="isLoading()" />
+          只看未曾匯出
+        </label>
+      </fieldset>
+    </div>
+    } @else if (advancedFilterChips().length > 0) {
+    <!-- 收合時列出生效中的進階條件，可單獨移除（展開時欄位本身就看得到，不重複列出）。 -->
+    <ul class="filter-chips" aria-label="已套用的進階條件">
+      @for (chip of advancedFilterChips(); track chip.key) {
+      <li>
+        <span>{{ chip.label }}</span>
+        <button type="button" [attr.aria-label]="'移除條件：' + chip.label" [disabled]="isLoading()"
+          (click)="clearAdvancedFilter(chip.key)">×</button>
+      </li>
+      }
+    </ul>
+    }
     @if (reviewedDateRangeInvalid()) {
     <p class="filter-hint" role="alert">審核日期起日晚於訖日，暫不套用審核日期條件。</p>
     }

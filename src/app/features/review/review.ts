@@ -16,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, finalize } from 'rxjs/operators';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
@@ -26,6 +26,7 @@ import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
+import { FileDownloadService } from '../../core/ui/file-download.service';
 import { DecisionRecordSortKey } from './api/review-api.contract';
 
 /** 待審清單的顯示模型；尚無評估紀錄時，分數與完整度為 null。 */
@@ -173,6 +174,7 @@ export class ReviewComponent implements OnInit {
   );
   private readonly api = inject(ReviewApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
+  private readonly fileDownload = inject(FileDownloadService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   readonly useMockData = APP_CONFIG.useMockData;
@@ -547,6 +549,39 @@ export class ReviewComponent implements OnInit {
       });
   }
 
+  // ----- 決策紀錄唯讀匯出（2026-09-26，僅管理層）-----
+  // 與品項管理（操作層）的「匯出 CSV」分工：那邊是交接用、會標記已匯出；這裡是報表用、
+  // 只讀、不寫任何匯出紀錄，匯出內容＝目前篩選條件下的全部決策紀錄（不受分頁限制）。
+  readonly isExportingRecords = signal(false);
+
+  exportDecisionRecords(): void {
+    if (this.useMockData || this.isExportingRecords() || this.recordDateRangeInvalid()) return;
+    const reviewResult = this.recordResultFilter();
+    this.isExportingRecords.set(true);
+    this.api
+      .exportDecisionRecords({
+        reviewResult: reviewResult === 'ALL' ? undefined : reviewResult,
+        keyword: this.recordSearch().trim() || undefined,
+        reviewedFrom: this.recordReviewedFrom() || undefined,
+        reviewedTo: this.recordReviewedTo() || undefined,
+      })
+      .pipe(
+        finalize(() => this.isExportingRecords.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: ({ blob, rowCount }) => {
+          if (rowCount === 0) {
+            this.statusMessageState.show('沒有符合目前篩選條件的決策紀錄，未產生檔案。');
+            return;
+          }
+          this.fileDownload.save(blob, decisionRecordFilename(new Date()));
+          this.statusMessageState.show(`已匯出 ${rowCount} 筆決策紀錄（僅供檢視，不影響品項管理的匯出標記）。`);
+        },
+        error: (err) => this.statusMessageState.show(`決策紀錄匯出失敗：${toApiError(err).message}`),
+      });
+  }
+
   /** 決策紀錄分頁：切頁時重新呼叫 API，比照 goToPage() 對待審清單的既有做法。 */
   goToRecordPage(page: number): void {
     if (page < 0 || page >= this.recordTotalPages() || this.useMockData) return;
@@ -629,3 +664,10 @@ export class ReviewComponent implements OnInit {
 }
 
 export { ReviewComponent as Review };
+
+/** 決策紀錄匯出檔名：決策紀錄_20260926-1530.csv（本地時間）。 */
+function decisionRecordFilename(now: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `決策紀錄_${stamp}.csv`;
+}

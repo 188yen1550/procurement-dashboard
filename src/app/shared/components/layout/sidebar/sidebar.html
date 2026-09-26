@@ -31,7 +31,12 @@
     </button>
   </div>
 
-  <nav class="navigation" aria-label="後台功能">
+  <!-- 2026-09-26：必須先修改密碼時整個導覽鎖定（淡灰色、不可點取），見 sidebar.ts 的 locked。 -->
+  @if (locked) {
+    <p class="locked-notice" role="status">請先修改密碼，完成後即可使用其他功能。</p>
+  }
+  <nav class="navigation" aria-label="後台功能" [class.is-locked]="locked" [attr.inert]="locked ? '' : null"
+    [attr.aria-disabled]="locked ? 'true' : null">
     <p class="nav-label">工作區</p>
 
     <a

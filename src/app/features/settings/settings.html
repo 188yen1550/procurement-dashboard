@@ -642,6 +642,10 @@
             @if (item.mustChangePassword) {
             <span class="helper">・待使用者修改密碼</span>
             }
+            @if (item.passwordResetRequestedAt) {
+            <!-- V27：使用者在登入頁申請重設密碼；只有這種帳號可以被重設。 -->
+            <span class="helper reset-requested">・申請重設密碼（{{ item.passwordResetRequestedAt | date: 'MM-dd HH:mm' }}）</span>
+            }
           </td>
           <td class="row-actions">
             @if (item.active && isSelfAccount(item)) {
@@ -653,11 +657,16 @@
               (click)="toggleAccountActive(item.username)">
               {{ item.active ? '停用帳號' : '復用帳號' }}
             </button>
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled' || isSelfAccount(item)"
-              [attr.title]="isSelfAccount(item) ? '自己的密碼請到個人資料頁修改' : null"
-              (click)="openResetPasswordModal(item)">
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled' || !canResetPassword(item)"
+              [attr.title]="resetPasswordDisabledReason(item)" (click)="openResetPasswordModal(item)">
               重設密碼
             </button>
+            @if (item.passwordResetRequestedAt && !isSelfAccount(item)) {
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
+              (click)="rejectPasswordResetRequest(item)">
+              駁回申請
+            </button>
+            }
 
           </td>
         </tr>
