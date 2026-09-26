@@ -7,13 +7,14 @@ import { ListSort, ListSortControls, SortHeader, sortRows } from '../../shared/u
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { Observable, Subject } from 'rxjs';
+import { debounceTime, finalize, map, switchMap } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
+import { FileDownloadService } from '../../core/ui/file-download.service';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { ItemStatus, ReviewStatus } from '../../core/domain/enums';
 import {
@@ -23,6 +24,11 @@ import {
   isDataIncomplete,
 } from '../../core/domain/labels';
 import { ProductApiService } from './api/product-api.service';
+import {
+  ProductExportRequestPayload,
+  SUBMISSION_BATCH_NONE,
+  SubmissionBatchResponsePayload,
+} from './api/product-api.contract';
 import { ProductListItem, toProductActionAvailability } from './api/product.mapper';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { Icon } from '../../shared/components/icon/icon';
@@ -73,6 +79,8 @@ function mockItem(
     pricingStatus: pricingType === 'NEW' ? 'PENDING_PRICING' : 'PRICED',
     submissionCount,
     updatedAt,
+    submittedAt: updatedAt,
+    submittedByName: '林小美',
     actions: toProductActionAvailability({
       reviewStatus,
       itemStatus,
@@ -115,6 +123,7 @@ export class ProductManagement implements OnInit {
   private readonly api = inject(ProductApiService);
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fileDownload = inject(FileDownloadService);
   readonly useMockData = APP_CONFIG.useMockData;
 
 
@@ -134,6 +143,132 @@ export class ProductManagement implements OnInit {
   // 範圍，不是後端拿到年月日相同的兩個時間點做 >= / <= 比對後篩出 0 筆。
   readonly updatedFromDraft = signal('');
   readonly updatedToDraft = signal('');
+
+  // ----- 2026-09 送審批次／審核日期／未曾匯出（V25，品項清單與 CSV 匯出共用）-----
+  // 這三組條件同時套用在清單與匯出：畫面上看到的清單（加上「審核通過」）就是匯出的內容，
+  // 使用者不會遇到「清單顯示 12 筆、匯出卻是 30 筆」的落差。
+
+  /** 送審批次下拉的值：'ALL'＝不篩；其餘是後端給的 batchId（含 'NONE'），原樣帶回。 */
+  readonly submissionBatchFilter = signal('ALL');
+  readonly submissionBatches = signal<SubmissionBatchResponsePayload[]>([]);
+  readonly reviewedFromDraft = signal('');
+  readonly reviewedToDraft = signal('');
+  readonly neverExportedFilter = signal(false);
+  readonly isExporting = signal(false);
+
+  /** 審核狀態選了「未審核／審核拒絕」時，匯出按鈕停用——這顆按鈕只匯出審核通過的商品。 */
+  readonly exportBlockedByReviewFilter = computed(
+    () => this.reviewFilter() === 'PENDING' || this.reviewFilter() === 'REJECTED',
+  );
+  readonly canExport = computed(
+    () => !this.useMockData && !this.isExporting() && !this.isLoading() && !this.exportBlockedByReviewFilter(),
+  );
+  readonly exportDisabledReason = computed(() => {
+    if (this.useMockData) return 'Mock 模式不支援匯出';
+    if (this.exportBlockedByReviewFilter()) return '僅可匯出審核通過的商品，請將審核狀態切換為「全部」或「審核通過」';
+    return null;
+  });
+
+  batchOptionLabel(batch: SubmissionBatchResponsePayload): string {
+    if (batch.batchId === SUBMISSION_BATCH_NONE) return `（無批次資料）${batch.productCount} 筆`;
+    return `${batch.submittedDate ?? ''} ${batch.submitterName ?? ''}（${batch.productCount} 筆）`.trim();
+  }
+
+  updateSubmissionBatchFilter(value: string): void {
+    this.submissionBatchFilter.set(value);
+    this.applyFilterChange();
+  }
+  updateReviewedFrom(value: string): void {
+    this.reviewedFromDraft.set(value ?? '');
+    this.applyFilterChange();
+  }
+  updateReviewedTo(value: string): void {
+    this.reviewedToDraft.set(value ?? '');
+    this.applyFilterChange();
+  }
+  updateNeverExported(value: boolean): void {
+    this.neverExportedFilter.set(value);
+    this.applyFilterChange();
+  }
+
+  private loadSubmissionBatches(): void {
+    if (this.useMockData) return;
+    this.api
+      .listSubmissionBatches()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (batches) => this.submissionBatches.set(batches),
+        // 批次選項載入失敗不影響清單本身，只是下拉少了選項；不打斷使用者。
+        error: () => this.submissionBatches.set([]),
+      });
+  }
+
+  /**
+   * 目前畫面上的篩選條件（不含審核狀態與分頁／排序）。清單查詢與匯出共用，
+   * 確保兩邊條件一致。審核日期起日晚於迄日時不送日期條件（後端會回 400），
+   * 由畫面提示使用者修正。
+   */
+  private currentFilterQuery(productTypeId: number | undefined): ProductExportRequestPayload {
+    const itemStatus = this.itemFilter();
+    const batch = this.submissionBatchFilter();
+    const reviewedRangeValid = !this.reviewedDateRangeInvalid();
+    return {
+      keyword: this.searchTerm().trim() || undefined,
+      itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
+      productTypeId,
+      updatedFrom: this.updatedFromDraft() ? `${this.updatedFromDraft()}T00:00:00` : undefined,
+      updatedTo: this.updatedToDraft() ? `${this.updatedToDraft()}T23:59:59` : undefined,
+      submissionBatch: batch === 'ALL' ? undefined : batch,
+      reviewedFrom: reviewedRangeValid ? this.reviewedFromDraft() || undefined : undefined,
+      reviewedTo: reviewedRangeValid ? this.reviewedToDraft() || undefined : undefined,
+      neverExported: this.neverExportedFilter() || undefined,
+    };
+  }
+
+  readonly reviewedDateRangeInvalid = computed(
+    () => !!this.reviewedFromDraft() && !!this.reviewedToDraft() && this.reviewedFromDraft() > this.reviewedToDraft(),
+  );
+
+  /** 分類篩選存的是名稱（畫面顯示用），後端要 id：用 ProductTypeLookupService 的對照表反查。 */
+  private resolveProductTypeId(): Observable<number | undefined> {
+    const productTypeName = this.productTypeFilter();
+    return this.productTypeLookup.getNameMap().pipe(
+      map((nameById) =>
+        productTypeName === 'ALL'
+          ? undefined
+          : [...nameById.entries()].find(([, name]) => name === productTypeName)?.[0],
+      ),
+    );
+  }
+
+  /**
+   * 匯出審核通過商品 CSV（後端全量匯出，不受每頁 20 筆限制）。
+   *
+   * 匯出的是「目前篩選條件＋審核通過」的全部商品。成功後後端已在同一個請求內寫入
+   * 匯出紀錄；若畫面正在看「未曾匯出」的清單，這批商品已不再符合條件，要重新查詢。
+   */
+  exportCsv(): void {
+    if (!this.canExport()) return;
+    this.isExporting.set(true);
+    this.resolveProductTypeId()
+      .pipe(
+        switchMap((productTypeId) => this.api.exportApproved(this.currentFilterQuery(productTypeId))),
+        finalize(() => this.isExporting.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: ({ blob, rowCount }) => {
+          if (rowCount === 0) {
+            this.statusMessageState.show('沒有符合目前篩選條件的審核通過商品，未產生檔案。');
+            return;
+          }
+          this.fileDownload.save(blob, exportFilename(new Date()));
+          this.statusMessageState.show(`已匯出 ${rowCount} 筆審核通過商品。`);
+          if (this.neverExportedFilter()) this.load();
+        },
+        error: (err) => this.statusMessageState.show(toApiError(err).message),
+      });
+  }
 
   updateUpdatedFrom(value: string): void {
     this.updatedFromDraft.set(value);
@@ -187,7 +322,7 @@ export class ProductManagement implements OnInit {
     // 使用者原地重新點擊「品項管理」連結時 ngOnInit() 不會再被觸發，
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
     // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
-    if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadProductTypes(); });
+    if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadProductTypes(); this.loadSubmissionBatches(); });
   }
 
   /** 分頁狀態。後端 @PageableDefault(size = 20)，前端沿用同一個預設值。 */
@@ -262,7 +397,11 @@ export class ProductManagement implements OnInit {
       // hasActiveFilters() 仍然回 false，「清除篩選」按鈕維持 disabled，
       // 使用者設完篩選卻按不到清除按鈕。
       !!this.updatedFromDraft() ||
-      !!this.updatedToDraft(),
+      !!this.updatedToDraft() ||
+      this.submissionBatchFilter() !== 'ALL' ||
+      !!this.reviewedFromDraft() ||
+      !!this.reviewedToDraft() ||
+      this.neverExportedFilter(),
   );
   readonly isLoading = computed(() => this.pageState() === 'loading');
   readonly hasLoadError = computed(() => this.pageState() === 'error');
@@ -293,6 +432,7 @@ export class ProductManagement implements OnInit {
   ngOnInit(): void {
     this.load();
     this.loadProductTypes();
+    this.loadSubmissionBatches();
   }
 
   // ----- 載入 -----
@@ -309,7 +449,6 @@ export class ProductManagement implements OnInit {
     // 'ALL' 是前端的「不篩選」哨兵值，不是後端的合法 enum。
     // 若原樣送出去，Spring 轉 enum 會失敗並回 400。
     const reviewStatus = this.reviewFilter();
-    const itemStatus = this.itemFilter();
     // finalScore 排序不是合法的後端 sort 欄位（見 sortOption 說明），
     // 這個選項一律退回後端預設的 updatedAt,desc，實際的分數排序
     // 交給 sortedProducts() 在前端對目前頁面做。
@@ -332,24 +471,14 @@ export class ProductManagement implements OnInit {
     // 導致這個篩選條件在真實模式下形同虛設。這裡的 select 選項存的是
     // 分類「名稱」（畫面顯示用），後端要的是「id」，用 ProductTypeLookupService
     // 的 id→name 對照表反查一次再送出。
-    const productTypeName = this.productTypeFilter();
-    this.productTypeLookup
-      .getNameMap()
+    this.resolveProductTypeId()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((nameById) => {
-        const productTypeId =
-          productTypeName === 'ALL'
-            ? undefined
-            : [...nameById.entries()].find(([, name]) => name === productTypeName)?.[0];
-
+      .subscribe((productTypeId) => {
         this.api
           .list({
-            keyword: this.searchTerm().trim() || undefined,
+            // 篩選條件與 CSV 匯出共用同一個組法（currentFilterQuery），兩邊不會對不上。
+            ...this.currentFilterQuery(productTypeId),
             reviewStatus: reviewStatus === 'ALL' ? undefined : reviewStatus,
-            itemStatus: itemStatus === 'ALL' ? undefined : itemStatus,
-            productTypeId,
-            updatedFrom: this.updatedFromDraft() ? `${this.updatedFromDraft()}T00:00:00` : undefined,
-            updatedTo: this.updatedToDraft() ? `${this.updatedToDraft()}T23:59:59` : undefined,
             page: this.pageNumber(),
             size: this.pageSize(),
             sort,
@@ -455,6 +584,10 @@ export class ProductManagement implements OnInit {
     this.productTypeFilter.set('ALL');
     this.updatedFromDraft.set('');
     this.updatedToDraft.set('');
+    this.submissionBatchFilter.set('ALL');
+    this.reviewedFromDraft.set('');
+    this.reviewedToDraft.set('');
+    this.neverExportedFilter.set(false);
     this.statusMessageState.show('已清除所有搜尋與篩選條件。');
     this.applyFilterChange();
   }
@@ -616,4 +749,11 @@ export class ProductManagement implements OnInit {
     this.totalPages.set(1);
   }
 
+}
+
+/** 下載檔名：審核通過商品_20260925-1530.csv（本地時間）。 */
+function exportFilename(now: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `審核通過商品_${stamp}.csv`;
 }

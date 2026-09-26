@@ -55,6 +55,9 @@ function makeAiSuggestedPayload(
     createdAt: null,
     updatedAt: null,
     updatedBy: null,
+    submittedAt: null,
+    submittedBy: null,
+    submittedByName: null,
     ...overrides,
   };
 }

@@ -55,6 +55,9 @@ function makeProduct(overrides: Partial<ProductResponsePayload> = {}): ProductRe
     createdAt: '2026-08-20T09:00:00',
     updatedAt: '2026-08-31T09:25:00',
     updatedBy: 1,
+    submittedAt: null,
+    submittedBy: null,
+    submittedByName: null,
     ...overrides,
   };
 }

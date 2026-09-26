@@ -10,6 +10,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
+import { toApiError } from '../../../core/api/api-error';
 
 import { ProductApiService } from './product-api.service';
 
@@ -254,6 +255,49 @@ describe('ProductApiService', () => {
 
       expect(result.hasAnalysis).toBe(true);
       expect(result.isMockData).toBe(true);
+    });
+  });
+
+  describe('exportApproved（2026-09 CSV 匯出）', () => {
+    it('以 POST 送出篩選條件，回傳檔案與 X-Export-Count 筆數', async () => {
+      const promise = firstValueFrom(service.exportApproved({ productTypeId: 5, neverExported: true }));
+
+      const req = httpMock.expectOne('/api/products/export');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ productTypeId: 5, neverExported: true });
+      expect(req.request.responseType).toBe('blob');
+      req.flush(new Blob(['\uFEFF商品編號'], { type: 'text/csv' }), { headers: { 'X-Export-Count': '12' } });
+
+      const result = await promise;
+      expect(result.rowCount).toBe(12);
+      expect(result.blob).toBeInstanceOf(Blob);
+    });
+
+    it('把 Blob 形式的錯誤 body 解回 JSON，讓 toApiError 讀得到後端訊息', async () => {
+      const promise = firstValueFrom(service.exportApproved({}));
+
+      httpMock.expectOne('/api/products/export').flush(
+        new Blob([JSON.stringify({ success: false, message: '超過單次匯出上限 5000 筆' })], {
+          type: 'application/json',
+        }),
+        { status: 409, statusText: 'Conflict' },
+      );
+
+      const error = await promise.catch((err: unknown) => err);
+      expect(toApiError(error)).toEqual(
+        expect.objectContaining({ status: 409, message: '超過單次匯出上限 5000 筆' }),
+      );
+    });
+  });
+
+  describe('listSubmissionBatches', () => {
+    it('拆掉 ApiResponse 殼', async () => {
+      const promise = firstValueFrom(service.listSubmissionBatches());
+      httpMock.expectOne('/api/products/submission-batches').flush(
+        envelope([{ batchId: 'NONE', submittedDate: null, submitterId: null, submitterName: null, productCount: 2 }]),
+      );
+      const result = await promise;
+      expect(result[0].batchId).toBe('NONE');
     });
   });
 });

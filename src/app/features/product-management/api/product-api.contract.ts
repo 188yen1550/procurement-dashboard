@@ -63,7 +63,21 @@ export const PRODUCT_API = {
   customFieldSchema: '/api/products/custom-field-schema',
   /** 2026-09-24：不限品類、只含生效中題目，批次匯入組「自訂屬性」聯集欄位用。 */
   customFieldSchemaAll: '/api/products/custom-field-schema/all',
+  /** GET（V25）：送審批次下拉選項（同一人、同一曆日送審＝一批）。 */
+  submissionBatches: '/api/products/submission-batches',
+  /**
+   * POST [僅操作]（V25）：匯出審核通過商品 CSV。body＝目前的篩選條件，後端固定只取
+   * APPROVED、不分頁；成功回 text/csv 檔案，筆數在 X-Export-Count header。
+   * 用 POST 是因為會寫入匯出紀錄（有副作用）。
+   */
+  exportApproved: '/api/products/export',
 } as const;
+
+/** 後端 ProductController.EXPORT_COUNT_HEADER，兩邊需同步。 */
+export const PRODUCT_EXPORT_COUNT_HEADER = 'X-Export-Count';
+
+/** 送審批次下拉的特殊值：沒有送審批次資料的商品（V25 上線前重新送審過、無法回填）。 */
+export const SUBMISSION_BATCH_NONE = 'NONE';
 
 // =========================================================================
 // Response Payload
@@ -171,6 +185,14 @@ export interface ProductResponsePayload {
   createdAt: IsoDateTime | null;
   updatedAt: IsoDateTime | null;
   updatedBy: number | null;
+  /**
+   * V25：最近一次送審的時間與送審人。建立＝第一次送審，重新送審時更新；一般編輯不會改變。
+   * 審核頁的「送審時間」改用它（原本拿 updatedAt 代替）。V25 前重送過的商品為 null。
+   */
+  submittedAt: IsoDateTime | null;
+  submittedBy: number | null;
+  /** 送審人姓名，後端批次查詢後填入（清單與待審清單端點才有值）。 */
+  submittedByName: string | null;
   /**
    * 「為什麼被 AI 推薦」的說明文字。只有 GET /api/products/ai-suggested
    * 這支端點會有值，其餘所有回傳這個型別的端點一律是 null——原本這個
@@ -458,6 +480,28 @@ export interface ProductListQuery extends PageQuery {
    */
   updatedFrom?: string;
   updatedTo?: string;
+  /** V25 送審批次：GET submission-batches 回傳的 batchId（原樣帶回，不要自行拼組），或 'NONE'。 */
+  submissionBatch?: string;
+  /** V25 審核日期（該商品最新一筆審核紀錄），'yyyy-MM-dd'，閉區間，皆選填。 */
+  reviewedFrom?: string;
+  reviewedTo?: string;
+  /** V25：true＝只要從未匯出過的商品；不帶＝不篩。 */
+  neverExported?: boolean;
+}
+
+/**
+ * POST /api/products/export 的 body（對應後端 ProductFilterRequest）。
+ * 與清單查詢同一組條件（不含分頁／排序）；reviewStatus 由後端固定為 APPROVED，前端不送。
+ */
+export type ProductExportRequestPayload = Omit<ProductListQuery, 'page' | 'size' | 'sort' | 'reviewStatus'>;
+
+/** 對應後端 SubmissionBatchResponse。batchId 為 'NONE' 時其餘欄位（筆數除外）皆為 null。 */
+export interface SubmissionBatchResponsePayload {
+  batchId: string;
+  submittedDate: string | null;
+  submitterId: number | null;
+  submitterName: string | null;
+  productCount: number;
 }
 
 /**

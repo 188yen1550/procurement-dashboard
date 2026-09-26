@@ -4,7 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ReviewApiService } from './api/review-api.service';
-import { Review } from './review';
+import { Review, toReviewItem } from './review';
+import { PendingReviewItem } from './api/review.mapper';
 describe('Review', () => {
   let fixture: ComponentFixture<Review>;
   let component: Review;
@@ -227,5 +228,32 @@ describe('Review（真實模式）決策紀錄查詢', () => {
     component.loadDecisionRecords();
     expect(component.records()).toEqual([]);
     expect(component.statusMessage()).toContain('決策紀錄載入失敗');
+  });
+});
+
+describe('toReviewItem（V25 送審時間／送審人）', () => {
+  const base = {
+    id: 1,
+    name: '中秋禮盒',
+    createdByName: '林小美',
+    reviewStatus: 'PENDING',
+    itemStatus: 'ACTIVE',
+    productTypeName: '食品',
+    finalScore: 80,
+    dataCompleteness: 90,
+    submissionCount: 2,
+    updatedAt: '2026-09-20T10:00:00',
+  } as unknown as PendingReviewItem;
+
+  it('uses the real submission time and submitter when available', () => {
+    const item = toReviewItem({ ...base, submittedAt: '2026-09-18T09:00:00', submittedByName: '陳小姐' });
+    expect(item.submittedAt).toBe('2026-09-18T09:00:00');
+    expect(item.submittedBy).toBe('陳小姐');
+  });
+
+  it('falls back to updatedAt and creator for products without submission data', () => {
+    const item = toReviewItem({ ...base, submittedAt: null, submittedByName: null });
+    expect(item.submittedAt).toBe('2026-09-20T10:00:00');
+    expect(item.submittedBy).toBe('林小美');
   });
 });

@@ -9,6 +9,12 @@
       <h1 id="page-title">品項管理</h1>
     </div>
     <div class="header-actions">
+      <!-- 2026-09：匯出「目前篩選條件＋審核通過」的全部商品（後端全量，不受分頁限制）。
+           審核狀態選「未審核／審核拒絕」時停用，避免誤以為會匯出那些商品。 -->
+      <button type="button" class="secondary-action" (click)="exportCsv()" [disabled]="!canExport()"
+        [attr.aria-busy]="isExporting()" [attr.title]="exportDisabledReason()">
+        <span aria-hidden="true">⇩</span> {{ isExporting() ? '匯出中…' : '匯出 CSV' }}
+      </button>
       <a class="secondary-action" routerLink="/products/batch-import"><span aria-hidden="true">⇪</span> 批次新增選品</a>
       <a class="primary-action" routerLink="/products/new"><span aria-hidden="true">＋</span> 新增品項</a>
     </div>
@@ -112,6 +118,39 @@
         清除篩選
       </button>
     </div>
+    <!-- 2026-09（V25）：送審批次／審核日期／未曾匯出。同時套用在清單與 CSV 匯出。 -->
+    <div class="filter-grid filter-grid--export" role="group" aria-label="送審與匯出條件">
+      <div class="field">
+        <label for="batch-filter">送審批次</label><select id="batch-filter" [ngModel]="submissionBatchFilter()"
+          (ngModelChange)="updateSubmissionBatchFilter($event)" [disabled]="isLoading()">
+          <option value="ALL">全部批次</option>
+          @for (batch of submissionBatches(); track batch.batchId) {
+          <option [value]="batch.batchId">{{ batchOptionLabel(batch) }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="reviewed-from">審核日期（起）</label><input id="reviewed-from" type="date"
+          [ngModel]="reviewedFromDraft()" (ngModelChange)="updateReviewedFrom($event)" [disabled]="isLoading()"
+          [max]="reviewedToDraft() || undefined" [attr.aria-invalid]="reviewedDateRangeInvalid()" />
+      </div>
+      <div class="field">
+        <label for="reviewed-to">審核日期（訖）</label><input id="reviewed-to" type="date" [ngModel]="reviewedToDraft()"
+          (ngModelChange)="updateReviewedTo($event)" [disabled]="isLoading()" [min]="reviewedFromDraft() || undefined"
+          [attr.aria-invalid]="reviewedDateRangeInvalid()" />
+      </div>
+      <label class="field-checkbox">
+        <input type="checkbox" [ngModel]="neverExportedFilter()" (ngModelChange)="updateNeverExported($event)"
+          [disabled]="isLoading()" />
+        只看未曾匯出
+      </label>
+    </div>
+    @if (reviewedDateRangeInvalid()) {
+    <p class="filter-hint" role="alert">審核日期起日晚於訖日，暫不套用審核日期條件。</p>
+    }
+    @if (exportBlockedByReviewFilter()) {
+    <p class="filter-hint">「匯出 CSV」只匯出審核通過的商品；目前的審核狀態篩選下無法匯出。</p>
+    }
   </section>
 
   <section class="list-panel" aria-labelledby="list-title" [attr.aria-busy]="isLoading()">

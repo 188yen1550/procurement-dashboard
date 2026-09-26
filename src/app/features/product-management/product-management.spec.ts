@@ -2,7 +2,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
+import { FileDownloadService } from '../../core/ui/file-download.service';
 import { ProductManagement } from './product-management';
 import { ProductApiService } from './api/product-api.service';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
@@ -174,7 +176,10 @@ describe('ProductManagement (formal API mode)', () => {
   let fixture: ComponentFixture<ProductManagement>;
   const api = {
     list: vi.fn(),
+    listSubmissionBatches: vi.fn(),
+    exportApproved: vi.fn(),
   };
+  const fileDownload = { save: vi.fn() };
   const productTypeLookup = {
     getNameMap: vi.fn(() =>
       of(
@@ -210,12 +215,20 @@ describe('ProductManagement (formal API mode)', () => {
     api.list.mockReturnValue(
       of({ items: [], totalElements: 0, totalPages: 0, pageNumber: 0, pageSize: 20 }),
     );
+    api.listSubmissionBatches.mockReturnValue(
+      of([
+        { batchId: '2026-09-25_3', submittedDate: '2026-09-25', submitterId: 3, submitterName: '陳小姐', productCount: 4 },
+        { batchId: 'NONE', submittedDate: null, submitterId: null, submitterName: null, productCount: 2 },
+      ]),
+    );
+    api.exportApproved.mockReturnValue(of({ blob: new Blob(['csv']), rowCount: 3 }));
     await TestBed.configureTestingModule({
       imports: [ProductManagement],
       providers: [
         provideRouter([]),
         { provide: ProductApiService, useValue: api },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
+        { provide: FileDownloadService, useValue: fileDownload },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(ProductManagement);
@@ -229,6 +242,101 @@ describe('ProductManagement (formal API mode)', () => {
     expect(api.list).toHaveBeenCalledWith(
       expect.objectContaining({ productTypeId: 5 }),
     );
+  });
+
+  it('loads submission batches and labels the no-batch option (2026-09)', () => {
+    expect(api.listSubmissionBatches).toHaveBeenCalled();
+    const [batch, none] = component.submissionBatches();
+    expect(component.batchOptionLabel(batch)).toBe('2026-09-25 陳小姐（4 筆）');
+    expect(component.batchOptionLabel(none)).toContain('無批次資料');
+  });
+
+  it('sends submission batch, reviewed date and never-exported filters to the list API (2026-09)', () => {
+    component.updateSubmissionBatchFilter('2026-09-25_3');
+    component.updateReviewedFrom('2026-09-01');
+    component.updateReviewedTo('2026-09-30');
+    component.updateNeverExported(true);
+    expect(api.list.mock.calls.at(-1)![0]).toEqual(
+      expect.objectContaining({
+        submissionBatch: '2026-09-25_3',
+        reviewedFrom: '2026-09-01',
+        reviewedTo: '2026-09-30',
+        neverExported: true,
+      }),
+    );
+    expect(component.hasActiveFilters()).toBe(true);
+
+    // 起日晚於訖日：不送日期條件（後端會回 400），畫面提示使用者。
+    component.updateReviewedFrom('2026-10-05');
+    expect(component.reviewedDateRangeInvalid()).toBe(true);
+    const lastCall = api.list.mock.calls.at(-1)![0];
+    expect(lastCall.reviewedFrom).toBeUndefined();
+    expect(lastCall.reviewedTo).toBeUndefined();
+
+    component.clearFilters();
+    const cleared = api.list.mock.calls.at(-1)![0];
+    expect(cleared.submissionBatch).toBeUndefined();
+    expect(cleared.neverExported).toBeUndefined();
+  });
+
+  it('blocks CSV export while the review filter is pending or rejected (2026-09)', () => {
+    // 頁面預設只看「未審核」。
+    expect(component.reviewFilter()).toBe('PENDING');
+    expect(component.canExport()).toBe(false);
+    component.exportCsv();
+    expect(api.exportApproved).not.toHaveBeenCalled();
+
+    component.updateReviewFilter('APPROVED');
+    expect(component.canExport()).toBe(true);
+  });
+
+  it('exports the current filters without paging and downloads the file (2026-09)', () => {
+    component.updateReviewFilter('ALL');
+    component.updateProductTypeFilter('美妝保養');
+    component.updateSubmissionBatchFilter('NONE');
+    component.exportCsv();
+
+    const body = api.exportApproved.mock.calls[0][0];
+    expect(body).toEqual(expect.objectContaining({ productTypeId: 5, submissionBatch: 'NONE' }));
+    // 審核狀態由後端固定為 APPROVED；分頁參數不送（後端全量匯出）。
+    expect(body).not.toHaveProperty('reviewStatus');
+    expect(body).not.toHaveProperty('page');
+    expect(fileDownload.save).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^審核通過商品_\d{8}-\d{4}\.csv$/));
+    expect(component.statusMessage()).toContain('已匯出 3 筆');
+    expect(component.isExporting()).toBe(false);
+  });
+
+  it('does not download anything when no approved product matches (2026-09)', () => {
+    api.exportApproved.mockReturnValue(of({ blob: new Blob(['']), rowCount: 0 }));
+    component.updateReviewFilter('APPROVED');
+    component.exportCsv();
+    expect(fileDownload.save).not.toHaveBeenCalled();
+    expect(component.statusMessage()).toContain('未產生檔案');
+  });
+
+  it('reloads the list after exporting while viewing never-exported products (2026-09)', () => {
+    component.updateReviewFilter('APPROVED');
+    component.updateNeverExported(true);
+    const callsBefore = api.list.mock.calls.length;
+    component.exportCsv();
+    expect(api.list.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  it('shows the backend message when the export fails (2026-09)', () => {
+    api.exportApproved.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { success: false, message: '超過單次匯出上限 5000 筆' },
+          }),
+      ),
+    );
+    component.updateReviewFilter('APPROVED');
+    component.exportCsv();
+    expect(fileDownload.save).not.toHaveBeenCalled();
+    expect(component.statusMessage()).toContain('超過單次匯出上限');
+    expect(component.isExporting()).toBe(false);
   });
 
   it('does not send productTypeId when the filter is ALL', () => {

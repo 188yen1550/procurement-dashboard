@@ -42,7 +42,10 @@ export interface ReviewItem {
   /** 尚無評估紀錄時為 null。 */
   completeness: number | null;
   submissionCount: number;
-  /** ⚠️ 實際是 updatedAt。ProductResponse 沒有「送審時間」這個欄位。 */
+  /**
+   * 送審時間。V25 起讀後端真正的 submittedAt（編輯不會改變它）；V25 前重新送審過、
+   * 無法回填的商品為 null，退回 updatedAt（舊行為）顯示，不讓欄位空白。
+   */
   submittedAt: string | null;
 }
 
@@ -123,19 +126,20 @@ function toDateKey(value: string | null): string {
   return (value ?? '').replaceAll('/', '-').slice(0, 10);
 }
 
-/** PendingReviewItem（後端）→ ReviewItem（畫面）。 */
-function toReviewItem(item: PendingReviewItem): ReviewItem {
+/** PendingReviewItem（後端）→ ReviewItem（畫面）。export 僅供單元測試。 */
+export function toReviewItem(item: PendingReviewItem): ReviewItem {
   return {
     id: item.id,
     name: item.name,
-    submittedBy: item.createdByName,
+    // V25：送審人以真正的送審人為準（重新送審時可能不是原建立者），缺值時退回建立者。
+    submittedBy: item.submittedByName ?? item.createdByName,
     status: item.reviewStatus,
     itemStatus: item.itemStatus,
     category: item.productTypeName,
     finalScore: item.finalScore,
     completeness: item.dataCompleteness,
     submissionCount: item.submissionCount,
-    submittedAt: item.updatedAt,
+    submittedAt: item.submittedAt ?? item.updatedAt,
   };
 }
 
@@ -377,7 +381,8 @@ export class ReviewComponent implements OnInit {
     this.pageState.set('loading');
 
     this.api
-      .listPending({ page: this.pageNumber(), size: 20, sort: 'updatedAt,desc' })
+      // V25：依真正的送審時間排序（原本 updatedAt，任何編輯都會把商品往前推）。
+      .listPending({ page: this.pageNumber(), size: 20, sort: 'submittedAt,desc' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {

@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, from, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
 import { buildParams } from '../../../core/api/http-params';
@@ -15,7 +15,9 @@ import {
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
   PRODUCT_API,
+  PRODUCT_EXPORT_COUNT_HEADER,
   ProductBatchCreateResponsePayload,
+  ProductExportRequestPayload,
   ProductBatchItemRequestPayload,
   ProductCreateRequestPayload,
   ProductListQuery,
@@ -25,8 +27,15 @@ import {
   ResaleReferenceProductQuery,
   SimilarCandidateQuery,
   SimilarProductCandidatePayload,
+  SubmissionBatchResponsePayload,
   TrendSnapshotPayload,
 } from './product-api.contract';
+
+/** CSV 匯出結果：檔案內容與後端回報的資料列數（不含表頭）。 */
+export interface ProductExportResult {
+  blob: Blob;
+  rowCount: number;
+}
 import {
   AiAnalysisModel,
   ProductDetailModel,
@@ -486,5 +495,60 @@ export class ProductApiService {
         ),
       })),
     );
+  }
+
+  // ----- 2026-09 CSV 匯出（V25） -----
+
+  /** GET /api/products/submission-batches：送審批次下拉選項（新到舊，最後可能有一筆 NONE）。 */
+  listSubmissionBatches(): Observable<SubmissionBatchResponsePayload[]> {
+    return this.http
+      .get<ApiEnvelope<SubmissionBatchResponsePayload[]>>(PRODUCT_API.submissionBatches)
+      .pipe(unwrapData());
+  }
+
+  /**
+   * POST /api/products/export [僅操作]：匯出審核通過商品 CSV。
+   *
+   * 成功時回應本體是檔案（blob），不是 ApiEnvelope；筆數讀 X-Export-Count header。
+   * ⚠️ responseType 為 blob 時，錯誤回應的 body 也會是 Blob（後端的 JSON 錯誤訊息被包在裡面），
+   * toApiError() 讀不到 message。這裡先把錯誤 body 解回 JSON 再往上拋，呼叫端維持
+   * 跟其他 API 一樣用 toApiError() 處理（例如超過匯出上限的 409 訊息）。
+   */
+  exportApproved(body: ProductExportRequestPayload): Observable<ProductExportResult> {
+    return this.http
+      .post(PRODUCT_API.exportApproved, body, { observe: 'response', responseType: 'blob' })
+      .pipe(
+        map((response) => ({
+          blob: response.body ?? new Blob([], { type: 'text/csv' }),
+          rowCount: Number(response.headers.get(PRODUCT_EXPORT_COUNT_HEADER) ?? 0),
+        })),
+        catchError((error: unknown) => {
+          if (!(error instanceof HttpErrorResponse) || !(error.error instanceof Blob)) {
+            return throwError(() => error);
+          }
+          return from(error.error.text()).pipe(
+            switchMap((text) =>
+              throwError(
+                () =>
+                  new HttpErrorResponse({
+                    error: parseJsonOrNull(text),
+                    headers: error.headers,
+                    status: error.status,
+                    statusText: error.statusText,
+                    url: error.url ?? undefined,
+                  }),
+              ),
+            ),
+          );
+        }),
+      );
+  }
+}
+
+function parseJsonOrNull(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }

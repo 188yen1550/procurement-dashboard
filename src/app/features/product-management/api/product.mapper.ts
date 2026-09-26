@@ -92,6 +92,10 @@ export interface ProductListItem {
   pricingStatus: PricingStatus;
   submissionCount: number;
   updatedAt: string | null;
+  /** V25：最近一次送審時間；V25 前重新送審過的商品為 null（畫面退回 updatedAt 顯示）。 */
+  submittedAt: string | null;
+  /** V25：送審人姓名；null 時畫面退回 createdByName。 */
+  submittedByName: string | null;
   /** 操作按鈕的啟用條件，集中在這裡算好，樣板不再重複判斷。 */
   actions: ProductActionAvailability;
   /**
@@ -191,6 +195,8 @@ export function toProductListItem(
     pricingStatus: payload.pricingStatus,
     submissionCount: payload.submissionCount,
     updatedAt: payload.updatedAt,
+    submittedAt: payload.submittedAt ?? null,
+    submittedByName: payload.submittedByName ?? null,
     actions: toProductActionAvailability(payload),
     suggestionReason: payload.suggestionReason,
   };
