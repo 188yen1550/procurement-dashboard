@@ -83,7 +83,17 @@ export interface GroupBuyRecordResponsePayload {
   campaignEndDate: IsoDate | null;
   moqAtTime: number | null;
   salePriceAtTime: Decimal | null;
+  /**
+   * ⚠️ 依角色揭露（2026-09 職責分層）：PURCHASER 固定收到 null，只有 MANAGER 有值。
+   * null 不代表「成本 0」，畫面不可顯示成 0 或拿去計算。
+   */
   costPriceAtTime: Decimal | null;
+  /**
+   * 毛利率（%，小數兩位），後端算好的比率：(售價 − 成本) ÷ 售價 × 100。
+   * 只有 MANAGER 有值；PURCHASER、或售價／成本缺漏時為 null。
+   * 刻意由後端計算：不讓前端同時拿到成本與售價兩個原始數字自行反推。
+   */
+  marginRate: Decimal | null;
   marketPriceAtTime: Decimal | null;
   targetQuantity: number | null;
   actualQuantity: number | null;

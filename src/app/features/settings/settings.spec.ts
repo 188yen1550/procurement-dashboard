@@ -11,6 +11,7 @@
  * 一律送出 DELETE 請求，由後端的 409 擋下——測試也跟著改成驗證這個流程，
  * 而不是驗證「前端本地判斷擋下」。
  */
+import { ChangeDetectorRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
@@ -91,9 +92,9 @@ const MOCK_CAMPAIGNS = [
 ];
 
 const MOCK_ACCOUNTS = [
-  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER' as const, enabled: true, createdAt: null },
-  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER' as const, enabled: true, createdAt: null },
-  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER' as const, enabled: false, createdAt: null },
+  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER' as const, enabled: true, mustChangePassword: false, createdAt: null },
+  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER' as const, enabled: true, mustChangePassword: false, createdAt: null },
+  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER' as const, enabled: false, mustChangePassword: false, createdAt: null },
 ];
 
 describe('Settings', () => {
@@ -187,13 +188,24 @@ describe('Settings', () => {
   const userApi = {
     list: vi.fn(() => of(MOCK_ACCOUNTS.map((a) => ({ ...a })))),
     create: vi.fn((body: { username: string; name: string; role: 'PURCHASER' | 'MANAGER' }) =>
-      of({ id: 4, username: body.username, name: body.name, role: body.role, enabled: true, createdAt: null }),
+      of({
+        id: 4,
+        username: body.username,
+        name: body.name,
+        role: body.role,
+        enabled: true,
+        mustChangePassword: true,
+        createdAt: null,
+      }),
     ),
     disable: vi.fn((id: number) =>
       of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: false }),
     ),
     restore: vi.fn((id: number) =>
       of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, enabled: true }),
+    ),
+    resetPassword: vi.fn((id: number, _body: { newPassword: string }) =>
+      of({ ...MOCK_ACCOUNTS.find((a) => a.id === id)!, mustChangePassword: true }),
     ),
   };
 
@@ -441,6 +453,7 @@ describe('Settings', () => {
       username: 'buyer01',
       name: '陳小姐',
       role: 'PURCHASER',
+      mustChangePassword: false,
     });
     const confirm = vi.spyOn(dialog, 'confirm');
     component.setTab('accounts');
@@ -455,6 +468,65 @@ describe('Settings', () => {
     component.toggleAccountActive('buyer01');
     expect(confirm).not.toHaveBeenCalled();
     expect(userApi.disable).not.toHaveBeenCalled();
+  });
+
+  it('resets another account password and marks it as pending change (V24)', () => {
+    component.setTab('accounts');
+    fixture.detectChanges();
+    const buyer = component.accounts().find((item) => item.username === 'buyer01')!;
+    component.openResetPasswordModal(buyer);
+    expect(component.modal()).toBe('resetPassword');
+
+    // 未滿 8 碼不送出。
+    component.draftPassword.set('short');
+    component.saveModal();
+    expect(userApi.resetPassword).not.toHaveBeenCalled();
+
+    component.draftPassword.set('Temp-1234');
+    component.saveModal();
+    expect(userApi.resetPassword).toHaveBeenCalledWith(2, { newPassword: 'Temp-1234' });
+    expect(component.accounts().find((item) => item.username === 'buyer01')?.mustChangePassword).toBe(true);
+    expect(component.modal()).toBeNull();
+    fixture.detectChanges();
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    ).find((el) => el.textContent?.includes('buyer01'))!;
+    expect(row.textContent).toContain('待使用者修改密碼');
+  });
+
+  it('does not open password reset for the signed-in account', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'currentUser').mockReturnValue({
+      id: 2,
+      username: 'buyer01',
+      name: '陳小姐',
+      role: 'PURCHASER',
+      mustChangePassword: false,
+    });
+    component.setTab('accounts');
+    fixture.detectChanges();
+    const buyer = component.accounts().find((item) => item.username === 'buyer01')!;
+    component.openResetPasswordModal(buyer);
+    expect(component.modal()).toBeNull();
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    ).find((el) => el.textContent?.includes('buyer01'))!;
+    const resetButton = Array.from(row.querySelectorAll('button')).find((b) => b.textContent?.includes('重設密碼'))!;
+    expect(resetButton.disabled).toBe(true);
+  });
+
+  it('shows only the tabs of its sidebar group (2026-09 split)', () => {
+    // 路由 data.settingsGroup 在建構時讀取；這裡直接指定欄位模擬 /settings/operations。
+    Object.assign(component, { settingsGroup: 'operations', pageTitle: '營運與帳號設定' });
+    // OnPush：欄位不是 signal，要手動標記元件自己的 view 需要重新檢查。
+    fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
+    fixture.detectChanges();
+    const tabs = Array.from(
+      fixture.nativeElement.querySelectorAll('nav.tabs button') as NodeListOf<HTMLButtonElement>,
+    ).map((b) => b.textContent?.trim());
+    expect(tabs).toEqual(['商品類型', '人工風險', '節慶檔期', '天氣連動', '帳號管理']);
+    expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('營運與帳號設定');
+    expect(component.isTabInGroup('modes')).toBe(false);
+    expect(component.isTabInGroup('accounts')).toBe(true);
   });
 
   it('keeps slider snapping but accepts precise manual input', () => {

@@ -41,6 +41,14 @@ import { WeightFactorPayload } from '../product-management/api/product-api.contr
 import { Icon } from '../../shared/components/icon/icon';
 import { InfoTip } from '../../shared/components/info-tip/info-tip';
 import { AuthService } from '../../core/auth/auth';
+import { PASSWORD_MIN_LENGTH } from '../../core/auth/auth.contract';
+import {
+  SETTINGS_GROUP_TITLE,
+  SETTINGS_TAB_GROUPS,
+  SETTINGS_TABS,
+  SettingsGroup,
+  SettingsTab,
+} from './settings-groups';
 import { CustomDefinitionsStore } from './state/custom-definitions.store';
 import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensions/custom-extensions';
 import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
@@ -48,31 +56,6 @@ import { FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
 import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
-type SettingsTab =
-  | 'modes'
-  | 'risks'
-  | 'audience'
-  | 'productTypes'
-  | 'campaigns'
-  | 'accounts'
-  | 'scoreBands'
-  | 'systemSettings'
-  | 'extensions'
-  | 'weather';
-
-/** 可以從網址 ?tab= 直接開啟的分頁（audience 另外受 audienceSettingsVisible 控制）。 */
-const SETTINGS_TABS: readonly SettingsTab[] = [
-  'modes',
-  'extensions',
-  'scoreBands',
-  'systemSettings',
-  'productTypes',
-  'risks',
-  'audience',
-  'campaigns',
-  'weather',
-  'accounts',
-];
 
 interface EvaluationModeVM {
   id: number | null;
@@ -205,6 +188,8 @@ interface AccountVM {
   name: string;
   role: UserRole;
   active: boolean;
+  /** V24：密碼仍是管理者設定的，使用者尚未自行修改。 */
+  mustChangePassword: boolean;
 }
 
 /** 固定三套模式的展示殼；真實模式的 weights 另外呼叫 factors 端點補上。 */
@@ -390,9 +375,9 @@ const MOCK_PRODUCT_TYPES: readonly ProductTypeVM[] = [
 ];
 
 const MOCK_ACCOUNTS: readonly AccountVM[] = [
-  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true },
-  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true },
-  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER', active: false },
+  { id: 1, username: 'manager01', name: '林經理', role: 'MANAGER', active: true, mustChangePassword: false },
+  { id: 2, username: 'buyer01', name: '陳小姐', role: 'PURCHASER', active: true, mustChangePassword: false },
+  { id: 3, username: 'buyer02', name: '王先生', role: 'PURCHASER', active: false, mustChangePassword: false },
 ];
 
 @Component({
@@ -443,6 +428,20 @@ export class Settings implements OnInit {
    * 按鈕不需要再動。
    */
   readonly audienceSettingsVisible = false;
+
+  /**
+   * 2026-09 側邊欄拆分：目前這個路由屬於哪一組（/settings/scoring 或 /settings/operations，
+   * 見 settings.routes.ts）。路由沒帶 data.settingsGroup 時（例如單元測試直接建立元件）為 null，
+   * 顯示全部分頁，維持拆分前的行為。
+   */
+  readonly settingsGroup: SettingsGroup | null =
+    (this.route.snapshot.data['settingsGroup'] as SettingsGroup | undefined) ?? null;
+  readonly pageTitle = this.settingsGroup ? SETTINGS_GROUP_TITLE[this.settingsGroup] : '設定';
+
+  /** 分頁按鈕是否出現在這一組（不在這一組的分頁由另一個側邊欄項目負責）。 */
+  isTabInGroup(tab: SettingsTab): boolean {
+    return this.settingsGroup === null || SETTINGS_TAB_GROUPS[this.settingsGroup].includes(tab);
+  }
   readonly stateOptions: readonly SettingsState[] = ['default', 'disabled', 'loading', 'error'];
   readonly activeTab = signal<SettingsTab>('modes');
   readonly pageState = signal<SettingsState>(this.useMockData ? 'default' : 'loading');
@@ -493,12 +492,18 @@ export class Settings implements OnInit {
     }
   }
 
-  /** 網址 ?tab= 的值，只接受已知且目前開放的分頁，其他值一律當作沒帶。 */
+  /** 網址 ?tab= 的值，只接受已知、目前開放、且屬於這一組的分頁，其他值一律當作沒帶。 */
   private tabFromUrl(): SettingsTab | null {
     const raw = this.route.snapshot.queryParamMap.get('tab');
     const tab = SETTINGS_TABS.find((candidate) => candidate === raw) ?? null;
     if (tab === 'audience' && !this.audienceSettingsVisible) return null;
+    if (tab && !this.isTabInGroup(tab)) return null;
     return tab;
+  }
+
+  /** 這一組的預設分頁（組內第一個）；沒有分組時沿用原本的「評估模式」。 */
+  private defaultTab(): SettingsTab {
+    return this.settingsGroup ? SETTINGS_TAB_GROUPS[this.settingsGroup][0] : 'modes';
   }
 
   /** 共用清單（見 CustomDefinitionsStore）：評估模式權重編輯器與目標區間要讀。 */
@@ -546,8 +551,10 @@ export class Settings implements OnInit {
   ) : []);
 
   readonly modal = signal<
-    null | 'risk' | 'productType' | 'account'
+    null | 'risk' | 'productType' | 'account' | 'resetPassword'
   >(null);
+  /** V24：「重設密碼」modal 正在處理的帳號；其餘 modal 為 null。 */
+  readonly resettingAccount = signal<AccountVM | null>(null);
   readonly draftName = signal('');
   readonly draftKeywords = signal('');
 
@@ -630,7 +637,7 @@ export class Settings implements OnInit {
   }
 
   ngOnInit(): void {
-    const initialTab = this.tabFromUrl() ?? 'modes';
+    const initialTab = this.tabFromUrl() ?? this.defaultTab();
     this.activeTab.set(initialTab);
     if (!this.useMockData) this.loadTab(initialTab);
   }
@@ -1993,8 +2000,20 @@ export class Settings implements OnInit {
     this.modal.set('productType');
   }
 
+  /**
+   * V24：開啟「重設密碼」modal。臨時密碼由管理者輸入（沿用新增帳號的密碼欄位），
+   * 對方下次登入時必須先改掉它，管理者不會長期知道對方正在使用的密碼。
+   */
+  openResetPasswordModal(item: AccountVM): void {
+    if (this.isSelfAccount(item)) return;
+    this.resettingAccount.set(item);
+    this.draftPassword.set('');
+    this.modal.set('resetPassword');
+  }
+
   closeModal(): void {
     this.modal.set(null);
+    this.resettingAccount.set(null);
     this.isSavingModal.set(false);
     this.draftName.set('');
     this.draftKeywords.set('');
@@ -2071,8 +2090,14 @@ export class Settings implements OnInit {
           name: this.draftName().trim(),
           role: this.draftRole(),
           active: true,
+          mustChangePassword: true,
         },
       ]);
+    } else if (type === 'resetPassword' && this.draftPassword().length >= PASSWORD_MIN_LENGTH) {
+      const target = this.resettingAccount()?.username;
+      this.accounts.update((items) =>
+        items.map((item) => (item.username === target ? { ...item, mustChangePassword: true } : item)),
+      );
     } else {
       this.showAlert('請完整填寫必填欄位。', '驗證失敗');
       return;
@@ -2190,6 +2215,36 @@ export class Settings implements OnInit {
       return;
     }
 
+    if (type === 'resetPassword') {
+      const target = this.resettingAccount();
+      if (!target?.id) return;
+      if (this.draftPassword().length < PASSWORD_MIN_LENGTH) {
+        this.showAlert(`臨時密碼至少 ${PASSWORD_MIN_LENGTH} 碼。`, '驗證失敗');
+        return;
+      }
+      this.isSavingModal.set(true);
+      this.userApi
+        .resetPassword(target.id, { newPassword: this.draftPassword() })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (updated) => {
+            this.accounts.update((items) =>
+              items.map((item) => (item.id === updated.id ? toAccountVM(updated) : item)),
+            );
+            this.statusMessageState.show(
+              `已重設「${target.name}」的密碼；對方目前的登入已失效，下次登入需先修改密碼。`,
+            );
+            this.closeModal();
+          },
+          error: (err) => {
+            this.isSavingModal.set(false);
+            // 不可重設自己（409）等業務錯誤直接顯示後端訊息。
+            this.showAlert(toApiError(err).message, '無法重設密碼');
+          },
+        });
+      return;
+    }
+
     if (type === 'account') {
       if (!this.draftUsername().trim() || !this.draftName().trim() || this.draftPassword().trim().length < 8) {
         this.showAlert('請完整填寫必填欄位，密碼至少 8 碼。', '驗證失敗');
@@ -2207,7 +2262,7 @@ export class Settings implements OnInit {
         .subscribe({
           next: (created) => {
             this.accounts.update((items) => [...items, toAccountVM(created)]);
-            this.statusMessageState.show('已新增帳號。');
+            this.statusMessageState.show('已新增帳號；對方第一次登入時需先修改密碼。');
             this.closeModal();
           },
           error: (err) => {
@@ -2317,6 +2372,7 @@ function toAccountVM(payload: UserAccountResponsePayload): AccountVM {
     name: payload.name,
     role: payload.role,
     active: payload.enabled ?? true,
+    mustChangePassword: payload.mustChangePassword === true,
   };
 }
 

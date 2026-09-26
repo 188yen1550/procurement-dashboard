@@ -185,6 +185,21 @@ export class GroupBuy implements OnInit, OnDestroy {
       .slice(0, 10);
   });
 
+  // ----- 毛利率彙總（僅管理層，2026-09 職責分層） -----
+  // 後端只對 MANAGER 回傳 marginRate，PURCHASER 拿到的都是 null，這裡再用 isManager()
+  // 擋一次只是避免畫面出現「全部都是 —」的空卡片，不是權限邊界。
+  // 先用前端手上資料計算、不新增後端聚合端點（list() 沒有分頁，回傳的就是完整篩選結果）。
+  // 模擬資料（isSimulated）不納入平均，另外列出筆數：管理層不該把模擬數字當真實績效判讀。
+  readonly marginSummary = computed(() => {
+    const real = this.filteredRecords().filter((r) => r.isSimulated !== true);
+    return {
+      overall: averageMarginRate(real),
+      fulfilled: averageMarginRate(real.filter((r) => r.result === 'FULFILLED')),
+      failed: averageMarginRate(real.filter((r) => r.result === 'FAILED')),
+      simulatedCount: this.filteredRecords().length - real.length,
+    };
+  });
+
   @ViewChild('resultChartCanvas') private readonly resultChartCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('typeRateChartCanvas') private readonly typeRateChartCanvas?: ElementRef<HTMLCanvasElement>;
   private resultChart: Chart | null = null;
@@ -420,4 +435,18 @@ export class GroupBuy implements OnInit, OnDestroy {
       });
   }
 
+}
+
+/** 毛利率彙總的單一口徑：只計入 marginRate 有值的紀錄，回傳每筆等權的平均與樣本數。 */
+interface MarginRateAverage {
+  /** 平均毛利率（%，小數一位）；沒有可計算的紀錄時為 null（顯示「—」，不是 0%）。 */
+  average: number | null;
+  sampleCount: number;
+}
+
+function averageMarginRate(records: readonly GroupBuyRecordVM[]): MarginRateAverage {
+  const rates = records.map((r) => r.marginRate).filter((rate): rate is number => rate !== null);
+  if (rates.length === 0) return { average: null, sampleCount: 0 };
+  const sum = rates.reduce((total, rate) => total + rate, 0);
+  return { average: Math.round((sum / rates.length) * 10) / 10, sampleCount: rates.length };
 }

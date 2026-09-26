@@ -41,6 +41,13 @@ export interface CurrentUserResponsePayload {
   username: string;
   name: string;
   role: UserRole;
+  /**
+   * V24：true＝管理者建立帳號或代重設密碼後，使用者尚未自行修改密碼。
+   * passwordChangeGuard 依此把使用者限制在 /profile；後端 JwtAuthenticationFilter
+   * 另外擋下 /api/auth/** 以外的 API（回 403），前端導頁只是使用體驗。
+   * 呼叫 changePassword 成功後，後端回應會變成 false。
+   */
+  mustChangePassword: boolean;
 }
 
 /** 前端使用的名稱，與後端 payload 形狀相同故直接沿用，不另做 mapper。 */
@@ -77,6 +84,12 @@ export interface ChangePasswordRequestPayload {
   currentPassword: string;
   newPassword: string;
 }
+
+/**
+ * 帳號必須先修改密碼時，後端對 /api/auth/** 以外的 API 回 403 的訊息
+ * （RestSecurityHandlers.PASSWORD_CHANGE_REQUIRED_MESSAGE），兩邊需同步。
+ */
+export const PASSWORD_CHANGE_REQUIRED_MESSAGE = '請先修改密碼後再使用系統功能';
 
 /** 後端 ChangePasswordRequest 的 @Size(min = 8)。前端驗證共用同一個常數。 */
 export const PASSWORD_MIN_LENGTH = 8;

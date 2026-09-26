@@ -10,10 +10,16 @@
  * 改名字與改密碼是兩支不同的端點、失敗原因也完全不同（名稱太長 vs
  * 目前密碼不對）。合併成一張表單的話，改名字失敗會連帶讓使用者以為
  * 密碼也沒改成功，反之亦然。分開送出，各自顯示各自的結果。
+ *
+ * ## 強制修改密碼（V24）
+ * 管理者建立帳號或代重設密碼後，使用者登入會被 passwordChangeGuard 限制在這一頁。
+ * 此時「目前密碼」就是管理者給的臨時密碼；修改成功後 currentUser 的
+ * mustChangePassword 變成 false，這裡再把使用者導去儀表板。
  */
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Auth } from '../../core/auth/auth';
 import { PASSWORD_MIN_LENGTH, USER_NAME_MAX_LENGTH } from '../../core/auth/auth.contract';
 import { USER_ROLE_LABEL } from '../../core/domain/labels';
@@ -29,11 +35,15 @@ import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 export class Profile {
   private readonly auth = inject(Auth);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
 
   readonly nameMaxLength = USER_NAME_MAX_LENGTH;
   readonly passwordMinLength = PASSWORD_MIN_LENGTH;
 
   readonly currentUser = this.auth.currentUser;
+
+  /** V24：管理者設定的密碼尚未被換掉；此時整個系統只剩這一頁可用。 */
+  readonly mustChangePassword = computed(() => this.currentUser()?.mustChangePassword === true);
 
   /** 角色顯示用中文。後端 UserResponse 只回英文代碼，是刻意設計。 */
   readonly roleLabel = computed(() => {
@@ -135,6 +145,8 @@ export class Profile {
     if (!this.canSubmitPassword()) return;
     this.passwordError.set('');
     this.isSavingPassword.set(true);
+    // 送出前先記下：成功後 currentUser 會被回應覆蓋成 false，事後就分辨不出是不是強制修改。
+    const wasForcedChange = this.mustChangePassword();
 
     this.auth
       .changePassword({
@@ -146,6 +158,11 @@ export class Profile {
         next: () => {
           this.isSavingPassword.set(false);
           this.clearPasswordFields();
+          if (wasForcedChange) {
+            // 強制修改完成：解除限制後直接進系統，不讓使用者停在這頁不知道下一步。
+            void this.router.navigate(['/dashboard']);
+            return;
+          }
           // 後端會重發 Cookie，這個瀏覽器的 session 不中斷，所以不需要導回
           // 登入頁——但密碼變更會讓其他裝置／瀏覽器上原本的登入狀態失效
           // （單一登入機制的必然結果），這裡明確告知，避免使用者之後在

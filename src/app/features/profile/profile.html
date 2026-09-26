@@ -15,6 +15,15 @@
   </header>
 
   @if (currentUser(); as user) {
+    @if (mustChangePassword()) {
+      <!-- V24：管理者建立帳號或代重設密碼後的第一次登入。其他頁面都會被導回這裡，
+           直到密碼修改完成（後端同樣只放行 /api/auth/**）。 -->
+      <p class="alert force-change-notice" role="alert">
+        你的密碼是由管理者設定的，請先修改成只有你知道的新密碼，才能使用系統其他功能。
+        「目前密碼」請填入管理者提供的密碼。
+      </p>
+    }
+
     <section class="panel identity-card" aria-label="帳號資訊">
       <div class="identity-grid">
         <div>
@@ -101,7 +110,7 @@
 
       <div class="form-grid">
         <label class="wide"
-          >目前密碼 <em aria-hidden="true">*</em>
+          >{{ mustChangePassword() ? '目前密碼（管理者提供）' : '目前密碼' }} <em aria-hidden="true">*</em>
           <input
             type="password"
             name="currentPassword"

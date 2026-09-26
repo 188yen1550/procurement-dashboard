@@ -14,6 +14,7 @@ import { Auth } from '../../../core/auth/auth';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import { ProductApiService } from '../api/product-api.service';
+import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { ProductDetail } from './product-detail';
 
 describe('ProductDetail', () => {
@@ -121,6 +122,31 @@ describe('ProductDetail', () => {
     dialog = TestBed.inject(DialogService);
     fixture.detectChanges();
   });
+  it('filters review history by result and reviewed date instead of sorting by them (2026-09)', () => {
+    const history = [
+      { id: 1, reviewStatus: 'REJECTED', reviewedAt: '2026-09-01T10:00:00', submissionCount: 1, reviewerName: '林經理' },
+      { id: 2, reviewStatus: 'REJECTED', reviewedAt: '2026-09-10T09:00:00', submissionCount: 2, reviewerName: '林經理' },
+      { id: 3, reviewStatus: 'APPROVED', reviewedAt: '2026-09-20T15:00:00', submissionCount: 3, reviewerName: '王經理' },
+    ] as unknown as ReviewRecordModel[];
+    component.reviewHistory.set(history);
+
+    expect(component.historySortChoices.map((c) => c.key)).toEqual(['submissionCount', 'reviewerName']);
+
+    component.historyResultFilter.set('REJECTED');
+    expect(component.filteredReviewHistory().map((r) => r.id)).toEqual([1, 2]);
+
+    component.historyReviewedFrom.set('2026-09-05');
+    expect(component.filteredReviewHistory().map((r) => r.id)).toEqual([2]);
+
+    // 起日晚於迄日：不套用日期篩選，只保留結果篩選。
+    component.historyReviewedTo.set('2026-09-02');
+    expect(component.historyDateRangeInvalid()).toBe(true);
+    expect(component.filteredReviewHistory().map((r) => r.id)).toEqual([1, 2]);
+
+    component.clearHistoryFilters();
+    expect(component.filteredReviewHistory()).toHaveLength(3);
+  });
+
   it('renders a complete product evaluation', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('總分');

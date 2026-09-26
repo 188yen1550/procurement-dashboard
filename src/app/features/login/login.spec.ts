@@ -11,7 +11,13 @@ describe('Login', () => {
   let fixture: ComponentFixture<Login>;
   let router: Router;
   let navigate: ReturnType<typeof vi.spyOn>;
-  const manager: CurrentUser = { id: 2, username: 'manager', name: '管理測試人員', role: 'MANAGER' };
+  const manager: CurrentUser = {
+    id: 2,
+    username: 'manager',
+    name: '管理測試人員',
+    role: 'MANAGER',
+    mustChangePassword: false,
+  };
   const auth = { login: vi.fn<(username: string, password: string) => Observable<CurrentUser>>() };
 
   beforeEach(async () => {

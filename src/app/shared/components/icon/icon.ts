@@ -54,6 +54,7 @@ export type IconName =
   | 'list'
   | 'clipboard-list'
   | 'check-circle'
+  | 'sliders-horizontal'
   | 'settings';
 
 @Component({
@@ -174,6 +175,10 @@ export type IconName =
         @case ('check-circle') {
           <circle cx="12" cy="12" r="10" />
           <path d="m9 12 2 2 4-4" />
+        }
+        @case ('sliders-horizontal') {
+          <path d="M21 4h-7" /><path d="M10 4H3" /><path d="M21 12h-9" /><path d="M8 12H3" />
+          <path d="M21 20h-5" /><path d="M12 20H3" /><path d="M14 2v4" /><path d="M8 10v4" /><path d="M16 18v4" />
         }
         @case ('settings') {
           <path

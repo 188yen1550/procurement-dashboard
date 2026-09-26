@@ -53,6 +53,8 @@ export class Auth {
         username: account.username,
         name: account.name,
         role: account.role,
+        // Mock 帳號是固定的示範帳號，沒有「管理者代設密碼」的情境。
+        mustChangePassword: false,
       };
       this.currentUserState.set(user);
       return of(user);
@@ -88,6 +90,11 @@ export class Auth {
     return this.currentUser()?.role === 'MANAGER';
   }
 
+  /** V24：管理者設定的密碼尚未被使用者換掉，只能停留在個人資料頁修改密碼。 */
+  mustChangePassword(): boolean {
+    return this.currentUser()?.mustChangePassword === true;
+  }
+
   /**
    * 修改自己的顯示名稱。成功後直接把回應寫回 currentUser signal，
    * header 與側欄的名字會立刻更新，不需要重新整理或再打一次 /api/auth/me。
@@ -116,6 +123,9 @@ export class Auth {
    *
    * 後端成功後會重發 Cookie，session 不中斷，所以這裡不做任何導向。
    * 錯誤（目前密碼不符）一律往上拋，讓表單自己顯示在對應欄位旁邊。
+   *
+   * 回應寫回 currentUser 之後 mustChangePassword 會變成 false，passwordChangeGuard
+   * 就不再限制導覽（「強制改密碼後導去哪裡」由呼叫端 Profile 決定）。
    *
    * Mock 模式比對 MOCK_ACCOUNTS 的固定密碼，但**不會真的改掉它**——
    * mock 帳號是常數，改了下次登入反而登不進去。這裡只驗證目前密碼正確，

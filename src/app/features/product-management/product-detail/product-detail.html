@@ -476,9 +476,40 @@
     <header>
       <h2>歷次審核紀錄</h2>
     </header>
+    <!-- 2026-09：審核結果、審核時間改為篩選（不做排序），審核留言不排序；
+         與選品審核頁「歷次決策紀錄」的規則一致。 -->
+    <div class="review-history-filters" role="group" aria-label="篩選歷次審核紀錄">
+      <label class="review-history-field">
+        <span>審核結果</span>
+        <select [value]="historyResultFilter()" (change)="updateHistoryResultFilter($event)">
+          <option value="ALL">全部</option>
+          <option value="APPROVED">審核通過</option>
+          <option value="REJECTED">審核拒絕</option>
+        </select>
+      </label>
+      <div class="review-history-field" role="group" aria-labelledby="history-date-label">
+        <span id="history-date-label">審核日期</span>
+        <span class="review-history-date-range">
+          <input type="date" aria-label="審核日期（起）" [value]="historyReviewedFrom()"
+            [attr.max]="historyReviewedTo() || null" [attr.aria-invalid]="historyDateRangeInvalid()"
+            (change)="updateHistoryReviewedFrom($event)" />
+          <span aria-hidden="true">～</span>
+          <input type="date" aria-label="審核日期（迄）" [value]="historyReviewedTo()"
+            [attr.min]="historyReviewedFrom() || null" [attr.aria-invalid]="historyDateRangeInvalid()"
+            (change)="updateHistoryReviewedTo($event)" />
+        </span>
+      </div>
+      <button type="button" class="btn" [disabled]="!hasHistoryFilters()" (click)="clearHistoryFilters()">清除篩選</button>
+    </div>
+    @if (historyDateRangeInvalid()) {
+    <p class="review-history-hint" role="alert">起日晚於迄日，暫不套用日期篩選。</p>
+    }
     <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
+    @if (filteredReviewHistory().length === 0) {
+    <p class="review-history-hint">沒有符合篩選條件的審核紀錄。</p>
+    }
     <ul class="review-history-list">
-      @for (record of reviewHistory() | sortRows: historySort.state(); track record.id) {
+      @for (record of filteredReviewHistory() | sortRows: historySort.state(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
         <div class="review-history-head">
           <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>

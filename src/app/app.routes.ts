@@ -5,6 +5,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth-guard';
 import { managerGuard } from './core/auth/manager-guard';
+import { passwordChangeGuard } from './core/auth/password-change-guard';
 
 /** 靜態登入路由先宣告、受保護殼層居中、wildcard 最後兜底，順序不可任意調換。 */
 export const routes: Routes = [
@@ -16,6 +17,8 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [authGuard],
+    // V24：管理者設定的密碼尚未被換掉時，只允許停留在 /profile（見 password-change-guard.ts）。
+    canActivateChild: [passwordChangeGuard],
     loadComponent: () =>
       import('./shared/components/layout/admin-layout/admin-layout').then((m) => m.AdminLayout),
     children: [

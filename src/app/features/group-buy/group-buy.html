@@ -1,4 +1,4 @@
-<!-- 檔案用途：歷史開團紀錄頁面樣板。唯讀查詢對操作＋管理層開放，匯入／整批回退僅管理層。 -->
+<!-- 檔案用途：歷史開團紀錄頁面樣板。唯讀查詢對操作＋管理層開放，匯入與毛利率彙總僅管理層。 -->
 <section class="page-header">
   <div>
     <h1>歷史銷售紀錄</h1>
@@ -66,6 +66,53 @@
     <p class="stat-hint">分母不含「取消開團」</p>
   </article>
 </section>
+
+<!-- ===== 毛利率彙總（僅管理層） =====
+     成本與毛利率只回傳給管理層（後端依角色揭露），操作層不顯示這一區。
+     跟上方統計卡一樣反映目前篩選範圍；模擬資料不納入平均，另外列出筆數。 -->
+@if (isManager()) {
+<section class="margin-summary" aria-labelledby="margin-summary-title">
+  <h2 id="margin-summary-title" class="margin-summary__title">毛利率彙總（僅管理層可見）</h2>
+  <div class="stat-card-grid">
+    <article class="stat-card">
+      <p class="stat-label">平均毛利率</p>
+      <p class="stat-value">
+        @if (marginSummary().overall.average !== null) {
+        {{ marginSummary().overall.average }}%
+        } @else {
+        —
+        }
+      </p>
+      <p class="stat-hint">{{ marginSummary().overall.sampleCount }} 筆可計算（每筆等權）</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">成團平均毛利率</p>
+      <p class="stat-value">
+        @if (marginSummary().fulfilled.average !== null) {
+        {{ marginSummary().fulfilled.average }}%
+        } @else {
+        —
+        }
+      </p>
+      <p class="stat-hint">{{ marginSummary().fulfilled.sampleCount }} 筆可計算</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">未成團平均毛利率</p>
+      <p class="stat-value">
+        @if (marginSummary().failed.average !== null) {
+        {{ marginSummary().failed.average }}%
+        } @else {
+        —
+        }
+      </p>
+      <p class="stat-hint">{{ marginSummary().failed.sampleCount }} 筆可計算</p>
+    </article>
+  </div>
+  @if (marginSummary().simulatedCount > 0) {
+  <p class="stat-hint margin-summary__note">另有 {{ marginSummary().simulatedCount }} 筆模擬資料未納入毛利率計算。</p>
+  }
+</section>
+}
 
 @if (pageState() === 'error') {
 <section class="empty error" role="alert">

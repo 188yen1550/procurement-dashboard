@@ -1,7 +1,7 @@
 /**
  * 檔案用途：驗證歷史開團紀錄頁（2026-09-23 分支整併後）的彙總圖表資料、
- * 已移除整批回退，以及匯入前的確認防呆。API 與品類對照全部以假服務取代，
- * 不發出真實 HTTP 請求。
+ * 已移除整批回退、匯入前的確認防呆，以及管理層毛利率彙總（2026-09 職責分層）。
+ * API 與品類對照全部以假服務取代，不發出真實 HTTP 請求。
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
@@ -11,7 +11,12 @@ import { GroupBuyApiService } from './api/group-buy-api.service';
 import { GroupBuyRecordResponsePayload, GroupBuyResultCode } from './api/group-buy-api.contract';
 import { GroupBuy } from './group-buy';
 
-function record(id: number, productTypeId: number, result: GroupBuyResultCode): GroupBuyRecordResponsePayload {
+function record(
+  id: number,
+  productTypeId: number,
+  result: GroupBuyResultCode,
+  extra: Partial<GroupBuyRecordResponsePayload> = {},
+): GroupBuyRecordResponsePayload {
   return {
     id,
     productId: null,
@@ -23,6 +28,7 @@ function record(id: number, productTypeId: number, result: GroupBuyResultCode): 
     moqAtTime: null,
     salePriceAtTime: null,
     costPriceAtTime: null,
+    marginRate: null,
     marketPriceAtTime: null,
     targetQuantity: null,
     actualQuantity: null,
@@ -33,6 +39,7 @@ function record(id: number, productTypeId: number, result: GroupBuyResultCode): 
     isSimulated: false,
     importBatchId: 'B1',
     importedAt: null,
+    ...extra,
   };
 }
 
@@ -86,6 +93,29 @@ describe('GroupBuy', () => {
     expect(root.querySelectorAll('.chart-panel')).toHaveLength(2);
     expect(root.textContent).not.toContain('整批退回');
     expect(root.textContent).not.toContain('回退此批次');
+  });
+
+  it('averages margin rate per result, excluding simulated records and null rates', () => {
+    component.records.set(
+      [
+        record(1, 10, 'FULFILLED', { marginRate: 30 }),
+        record(2, 10, 'FULFILLED', { marginRate: 20 }),
+        record(3, 10, 'FAILED', { marginRate: 10 }),
+        record(4, 10, 'FAILED', { marginRate: null }),
+        record(5, 10, 'FULFILLED', { marginRate: 90, isSimulated: true }),
+      ].map((r) => ({ ...r, productTypeName: '生鮮' })),
+    );
+    expect(component.marginSummary()).toEqual({
+      overall: { average: 20, sampleCount: 3 },
+      fulfilled: { average: 25, sampleCount: 2 },
+      failed: { average: 10, sampleCount: 1 },
+      simulatedCount: 1,
+    });
+  });
+
+  it('hides the margin summary from purchasers', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.margin-summary')).toBeNull();
   });
 
   it('asks for confirmation before importing and does nothing when cancelled', () => {

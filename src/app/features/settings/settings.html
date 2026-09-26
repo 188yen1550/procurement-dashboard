@@ -6,7 +6,7 @@
   <header class="page-header">
     <div>
 
-      <h1 id="settings-title">設定</h1>
+      <h1 id="settings-title">{{ pageTitle }}</h1>
     </div>
   </header>
   @if (useMockData) {
@@ -28,11 +28,13 @@
   <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
   }
   <!--
-    2026-09-24：分頁依關注點分成四組，組與組之間用細分隔線區隔（純視覺，
-    對輔助科技隱藏）：評分（模式／自訂擴充／目標區間／演算法參數）、
-    資料字典（商品類型／人工風險／核心客群）、檔期（節慶／天氣連動）、帳號。
+    2026-09-24：分頁依關注點分組，組與組之間用細分隔線區隔（純視覺，對輔助科技隱藏）。
+    2026-09 側邊欄拆分：「評分規則」只顯示評分組（模式／自訂擴充／目標區間／演算法參數），
+    「營運與帳號設定」顯示資料字典（商品類型／人工風險／核心客群）、檔期（節慶／天氣連動）、帳號。
+    分組定義在 settings-groups.ts；沒有分組（settingsGroup 為 null）時顯示全部。
   -->
   <nav class="tabs" aria-label="設定分類">
+    @if (isTabInGroup('modes')) {
     <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">評估模式</button>
     <button type="button" [class.active]="activeTab() === 'extensions'" (click)="setTab('extensions')">
       自訂屬性與因子
@@ -41,7 +43,11 @@
     <button type="button" [class.active]="activeTab() === 'systemSettings'" (click)="setTab('systemSettings')">
       演算法參數
     </button>
+    }
+    @if (settingsGroup === null) {
     <span class="tab-divider" aria-hidden="true"></span>
+    }
+    @if (isTabInGroup('productTypes')) {
     <button type="button" [class.active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">商品類型</button>
     <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">人工風險</button>
     @if (audienceSettingsVisible) {
@@ -52,6 +58,7 @@
     <button type="button" [class.active]="activeTab() === 'weather'" (click)="setTab('weather')">天氣連動</button>
     <span class="tab-divider" aria-hidden="true"></span>
     <button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">帳號管理</button>
+    }
   </nav>
   @if (pageState() === 'error') {
   <section class="empty error" role="alert">
@@ -620,7 +627,7 @@
           <th class="account-col-name" appSortHeader="name" [sort]="accountSort">姓名</th>
           <th class="account-col-role" appSortHeader="role" [sort]="accountSort">角色權限</th>
           <th class="account-col-status" appSortHeader="active" [sort]="accountSort">狀態</th>
-          <th class="account-col-actions">停用/復用帳號</th>
+          <th class="account-col-actions">帳號操作</th>
         </tr>
       </thead>
       <tbody>
@@ -631,7 +638,12 @@
           </td>
           <td>{{ item.name }}</td>
           <td>{{ item.role === 'MANAGER' ? '管理' : '操作' }}</td>
-          <td>{{ item.active ? '啟用' : '已停用' }}</td>
+          <td>
+            {{ item.active ? '啟用' : '已停用' }}
+            @if (item.mustChangePassword) {
+            <span class="helper">・待使用者修改密碼</span>
+            }
+          </td>
           <td class="row-actions">
             @if (item.active && isSelfAccount(item)) {
             <span class="helper">（本人）</span>
@@ -641,6 +653,11 @@
               [attr.title]="item.active && isSelfAccount(item) ? '不能停用自己的帳號' : null"
               (click)="toggleAccountActive(item.username)">
               {{ item.active ? '停用帳號' : '復用帳號' }}
+            </button>
+            <button type="button" class="btn" [disabled]="pageState() === 'disabled' || isSelfAccount(item)"
+              [attr.title]="isSelfAccount(item) ? '自己的密碼請到個人資料頁修改' : null"
+              (click)="openResetPasswordModal(item)">
+              重設密碼
             </button>
 
           </td>
@@ -766,6 +783,8 @@
           ? (editingRiskOptionId() !== null ? '編輯人工風險' : '新增人工風險')
           : modal() === 'productType'
           ? (editingProductTypeId() !== null ? '編輯商品類型' : '新增商品類型')
+          : modal() === 'resetPassword'
+          ? '重設密碼'
           : '新增帳號'
           }}
         </h2>
@@ -849,6 +868,16 @@
         </select></label><label>初始密碼
         <input type="password" required [ngModel]="draftPassword()" (ngModelChange)="draftPassword.set($event)"
           name="password" /></label>
+      <small class="helper">對方第一次登入時會被要求改掉這組密碼。</small>
+      }
+      @if (modal() === 'resetPassword' && resettingAccount(); as target) {
+      <!-- V24：沿用新增帳號的密碼欄位樣式。重設後對方現有登入立即失效，
+           下次以這組臨時密碼登入時必須先修改密碼。 -->
+      <p class="helper">帳號：<strong>{{ target.name }}（{{ target.username }}）</strong></p>
+      <label>臨時密碼
+        <input type="password" required autocomplete="new-password" [ngModel]="draftPassword()"
+          (ngModelChange)="draftPassword.set($event)" name="resetPassword" /></label>
+      <small class="helper">至少 8 碼。送出後對方目前的登入會立即失效，下次登入需先把這組密碼改掉。</small>
       }
       <footer>
         <button type="button" class="btn" (click)="closeModal()">取消</button><button type="submit" class="btn-primary"

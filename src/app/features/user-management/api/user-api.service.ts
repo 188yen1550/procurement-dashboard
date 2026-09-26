@@ -7,6 +7,7 @@ import {
   USER_API,
   UserAccountResponsePayload,
   UserCreateRequestPayload,
+  UserPasswordResetRequestPayload,
 } from './user-api.contract';
 
 /**
@@ -66,6 +67,18 @@ export class UserApiService {
   restore(id: number): Observable<UserAccountResponsePayload> {
     return this.http
       .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.enable(id), {})
+      .pipe(unwrapData());
+  }
+
+  /**
+   * 5. PUT /api/users/{id}/reset-password [僅管理]：代重設密碼（V24）。
+   *
+   * ⚠️ 不可重設自己：後端回 409。畫面上自己那一列的按鈕應直接 disable。
+   * ⚠️ 重設是即時生效的：對方目前的登入會被踢掉，下次以新密碼登入後必須先改密碼。
+   */
+  resetPassword(id: number, body: UserPasswordResetRequestPayload): Observable<UserAccountResponsePayload> {
+    return this.http
+      .put<ApiEnvelope<UserAccountResponsePayload>>(USER_API.resetPassword(id), body)
       .pipe(unwrapData());
   }
 }

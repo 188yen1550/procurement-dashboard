@@ -19,6 +19,8 @@ export const USER_API = {
   disable: (id: number | string) => `/api/users/${id}/disable`,
   /** 對應 UserController.enableUser()。畫面上稱「復用」，端點是 /enable。 */
   enable: (id: number | string) => `/api/users/${id}/enable`,
+  /** V24：對應 UserController.resetPassword()，管理者代重設密碼。 */
+  resetPassword: (id: number | string) => `/api/users/${id}/reset-password`,
 } as const;
 
 /**
@@ -32,6 +34,11 @@ export interface UserAccountResponsePayload {
   role: UserRole;
   /** false 的帳號要用灰階或「已停用」標籤區隔。 */
   enabled: boolean | null;
+  /**
+   * V24：true＝密碼仍是管理者設定的（新建帳號或代重設後），使用者尚未自行修改。
+   * 帳號管理表格以「待修改密碼」標示。
+   */
+  mustChangePassword: boolean;
   createdAt: IsoDateTime | null;
 }
 
@@ -44,6 +51,17 @@ export interface UserAccountResponsePayload {
  * - role：@NotNull
  * - password：@NotBlank + @Size(min = 8)
  */
+/**
+ * 對應後端 UserPasswordResetRequest.java（PUT /api/users/{id}/reset-password）。
+ * newPassword：@NotBlank + @Size(min = 8)，與建立帳號／自行修改密碼同一套規則。
+ *
+ * ⚠️ 後端規則：不可重設自己（409，請改用個人資料頁）；重設後對方現有登入立即失效，
+ * 且對方下次登入必須先修改密碼。
+ */
+export interface UserPasswordResetRequestPayload {
+  newPassword: string;
+}
+
 export interface UserCreateRequestPayload {
   username: string;
   name: string;

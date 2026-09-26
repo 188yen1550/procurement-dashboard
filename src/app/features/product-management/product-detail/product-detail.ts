@@ -235,15 +235,66 @@ export class ProductDetail implements OnInit {
   /**
    * 歷次審核紀錄的排序（2026-09-23 由 procurement-dashboard-updated 分支整併）。
    * 未選擇排序時維持後端的「新→舊」順序。
+   *
+   * 2026-09 調整（對齊選品審核頁決策紀錄的做法）：「審核結果」「審核時間」改為下方的
+   * 篩選條件（結果下拉＋日期起訖），不再提供排序；「審核留言」是自由文字，排序沒有意義，
+   * 直接移除。排序只保留送審次數與審核人。
    */
   readonly historySort = new ListSort();
   readonly historySortChoices = [
     { key: 'submissionCount', label: '送審次數' },
-    { key: 'reviewStatus', label: '審核結果' },
-    { key: 'reviewedAt:date', label: '審核時間' },
     { key: 'reviewerName', label: '審核人' },
-    { key: 'reviewComment', label: '審核留言' },
   ];
+  /** 歷次審核紀錄篩選：審核結果（ALL＝不篩）。 */
+  readonly historyResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>('ALL');
+  /** 歷次審核紀錄篩選：審核日期起訖（yyyy-MM-dd，空字串＝不限），閉區間。 */
+  readonly historyReviewedFrom = signal('');
+  readonly historyReviewedTo = signal('');
+  /** 起日晚於迄日：不套用日期篩選並標示欄位錯誤，避免清單莫名其妙變成空的。 */
+  readonly historyDateRangeInvalid = computed(
+    () => !!this.historyReviewedFrom() && !!this.historyReviewedTo() && this.historyReviewedFrom() > this.historyReviewedTo(),
+  );
+  readonly hasHistoryFilters = computed(
+    () => this.historyResultFilter() !== 'ALL' || !!this.historyReviewedFrom() || !!this.historyReviewedTo(),
+  );
+  /**
+   * 前端篩選即可：這裡是單一商品自己的審核紀錄（筆數＝送審次數，量很小），
+   * 跟審核頁全站決策紀錄改由後端分頁篩選的情境不同。
+   * reviewedAt 是 ISO 日期時間字串，取前 10 碼（yyyy-MM-dd）跟日期欄位比較；
+   * 沒有審核時間的紀錄在設了日期條件時不列入。
+   */
+  readonly filteredReviewHistory = computed(() => {
+    const result = this.historyResultFilter();
+    const invalidRange = this.historyDateRangeInvalid();
+    const from = invalidRange ? '' : this.historyReviewedFrom();
+    const to = invalidRange ? '' : this.historyReviewedTo();
+    return this.reviewHistory().filter((record) => {
+      if (result !== 'ALL' && record.reviewStatus !== result) return false;
+      if (!from && !to) return true;
+      const day = (record.reviewedAt ?? '').slice(0, 10);
+      if (!day) return false;
+      return (!from || day >= from) && (!to || day <= to);
+    });
+  });
+
+  updateHistoryResultFilter(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.historyResultFilter.set(value === 'APPROVED' || value === 'REJECTED' ? value : 'ALL');
+  }
+
+  updateHistoryReviewedFrom(event: Event): void {
+    this.historyReviewedFrom.set((event.target as HTMLInputElement).value);
+  }
+
+  updateHistoryReviewedTo(event: Event): void {
+    this.historyReviewedTo.set((event.target as HTMLInputElement).value);
+  }
+
+  clearHistoryFilters(): void {
+    this.historyResultFilter.set('ALL');
+    this.historyReviewedFrom.set('');
+    this.historyReviewedTo.set('');
+  }
   readonly gateStatusLabel = GATE_STATUS_LABEL;
   readonly temperatureZoneLabel = TEMPERATURE_ZONE_LABEL;
   readonly shelfLifeTierLabel = SHELF_LIFE_TIER_LABEL;
