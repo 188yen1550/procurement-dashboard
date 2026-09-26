@@ -1,0 +1,131 @@
+/*
+ * 檔案用途：商品詳情頁「歷次審核紀錄」區塊樣式（2026-09-26 由 product-detail.scss 拆出）。
+ * 拆檔理由：product-detail.scss 已超過單一元件樣式 12 kB 的警告門檻，這一區自成一組、
+ * 與其他區塊沒有共用規則，獨立一檔最好維護。
+ */
+
+/*
+ * 篩選列（2026-09-26 改為單行）：審核結果、審核日期起訖、排序、清除篩選排成一行，
+ * 標籤放在欄位左側而不是上方；空間不足（平板以下）才換行。
+ */
+.review-history-filters {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  font-size: var(--t-sm);
+}
+
+.review-history-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.review-history-field select,
+.review-history-field input[type='date'] {
+  height: 2.1rem;
+}
+
+.review-history-date-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* 排序控制併入同一行：去掉元件預設的上下外距。 */
+.review-history-filters app-list-sort {
+  margin: 0;
+}
+
+.review-history-clear {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .review-history-filters {
+    flex-wrap: wrap;
+  }
+}
+
+.review-history-hint {
+  margin: 0 0 0.5rem;
+  font-size: var(--t-sm);
+  color: #6b7280;
+}
+
+.review-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-history-list li {
+  padding: 0.7rem 0.85rem;
+  background: #f8fafc;
+  border-left: 4px solid #cbd9e3;
+  border-radius: 0.4rem;
+}
+
+.review-history-list li[data-result='APPROVED'] {
+  border-left-color: #2f8f66;
+}
+
+.review-history-list li[data-result='REJECTED'] {
+  border-left-color: #b94d47;
+}
+
+.review-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.review-history-round {
+  font-size: var(--t-xs);
+  font-weight: 800;
+  color: var(--c-ink, #243447);
+}
+
+.review-history-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 800;
+}
+
+.review-history-badge[data-result='APPROVED'] {
+  color: #21694f;
+  background: #e5f5ee;
+}
+
+.review-history-badge[data-result='REJECTED'] {
+  color: #8d3733;
+  background: #fce8e6;
+}
+
+.review-history-reviewer {
+  color: #6c7a89;
+  font-size: var(--t-xs);
+}
+
+.review-history-date {
+  margin-left: auto;
+  color: #6c7a89;
+  font-size: var(--t-xs);
+}
+
+.review-history-comment {
+  margin: 0.4rem 0 0;
+  color: #526677;
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+

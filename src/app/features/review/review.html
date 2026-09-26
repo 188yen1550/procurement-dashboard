@@ -49,22 +49,19 @@
        第 2 行：送審日期區間＋恢復預設），標籤不換行、縮短字數；窄版依容器寬度
        改兩欄／單欄，見 review.scss 的 .filter-toolbar。 -->
   <section class="toolbar filter-toolbar pending-filters" aria-label="待審清單篩選">
+    <!-- 2026-09-26：真實模式的搜尋／分類／送審日期改由後端篩選（分頁資訊才會正確）。 -->
     <label class="field field-search"><span class="field-label">搜尋</span><input type="search"
-        placeholder="品項名稱或送審人" [ngModel]="query()" (ngModelChange)="query.set($event)" /></label>
+        placeholder="品項名稱或送審人" [ngModel]="query()" (ngModelChange)="updatePendingQuery($event)" /></label>
+    <!-- 審核狀態／品項狀態只在 Mock 模式顯示：真實模式下 GET /api/reviews/pending 固定只回
+         「未審核＋使用中」，這兩個下拉選其他值只會把當頁濾空、分頁卻不變（2026-09-26 分頁錯亂的
+         成因之一）。要查審核通過／拒絕的商品請到「歷次決策紀錄」頁籤。 -->
+    @if (useMockData) {
     <label class="field field-review"><span class="field-label">審核狀態</span><select [ngModel]="reviewFilter()"
         (ngModelChange)="reviewFilter.set($event)">
         <option value="ALL">全部</option>
         <option value="PENDING">未審核</option>
-        <!-- ⚠️ 「審核通過」／「審核拒絕」在真實模式下是死選項：GET /api/reviews/pending
-             後端寫死只回 PENDING+ACTIVE，不吃篩選參數（見 review.ts 的
-             loadPendingItems() 說明），選了也絕對查不到東西。只在 Mock
-             模式顯示，避免使用者在真實環境誤以為這裡能查到已審核商品。
-             真的要查審核通過／審核拒絕的商品，請到「決策紀錄」頁籤
-             （2026-09-24 職責分離後管理層已不進入品項管理頁）。 -->
-        @if (useMockData) {
         <option value="APPROVED">審核通過</option>
         <option value="REJECTED">審核拒絕</option>
-        }
       </select></label>
     <label class="field field-item"><span class="field-label">品項狀態</span><select [ngModel]="itemFilter()"
         (ngModelChange)="itemFilter.set($event)">
@@ -72,19 +69,28 @@
         <option value="ACTIVE">使用中</option>
         <option value="ARCHIVED">已封存</option>
       </select></label>
+    }
     <label class="field field-category"><span class="field-label">分類</span><select [ngModel]="categoryFilter()"
-        (ngModelChange)="categoryFilter.set($event)">
+        (ngModelChange)="updateCategoryFilter($event)">
         <option value="ALL">全部</option>
+        @if (useMockData) {
         @for (c of categoryOptions(); track c) { <option [value]="c">{{ c }}</option> }
+        } @else {
+        @for (group of groupedCategoryOptions(); track group.major.id) {
+        <optgroup [label]="group.major.name">
+          @for (minor of group.minors; track minor.id) { <option [value]="'' + minor.id">{{ minor.name }}</option> }
+        </optgroup>
+        }
+        }
       </select></label>
     <div class="field field-date" role="group" aria-labelledby="pending-date-label">
       <span class="field-label" id="pending-date-label">送審日期</span>
       <span class="date-range">
         <input type="date" aria-label="送審日期（起）" [attr.max]="submittedTo() || null" [ngModel]="submittedFrom()"
-          (ngModelChange)="submittedFrom.set($event ?? '')" />
+          [attr.aria-invalid]="pendingDateRangeInvalid()" (ngModelChange)="updateSubmittedFrom($event)" />
         <span aria-hidden="true">～</span>
         <input type="date" aria-label="送審日期（迄）" [attr.min]="submittedFrom() || null" [ngModel]="submittedTo()"
-          (ngModelChange)="submittedTo.set($event ?? '')" />
+          [attr.aria-invalid]="pendingDateRangeInvalid()" (ngModelChange)="updateSubmittedTo($event)" />
       </span>
     </div>
     <div class="toolbar-actions">
@@ -97,7 +103,10 @@
     <button type="button" class="text-action" (click)="view.set('records')">決策紀錄</button>。
   </p>
   }
-  @if (items().length === 0) {
+  @if (pendingDateRangeInvalid()) {
+  <p class="helper" role="alert">送審日期起日晚於迄日，請修正後再查詢。</p>
+  }
+  @if (items().length === 0 && !hasPendingFilters()) {
   <section class="empty">
     <h2>目前沒有審核品項</h2>
     <p>{{ useMockData ? '待新品項送審後將顯示於此。' : '目前沒有待審核的品項。' }}</p>

@@ -31,8 +31,20 @@ export const REVIEW_API = {
   decisionRecords: '/api/reviews/decision-records',
 } as const;
 
-/** GET /api/reviews/pending 的查詢參數。後端只吃 Pageable，沒有其他篩選。 */
-export type PendingReviewQuery = PageQuery;
+/**
+ * GET /api/reviews/pending 的查詢參數（2026-09-26 起後端篩選）。
+ * 狀態條件由後端固定為「未審核＋使用中＋正式候選」，不開放前端指定。
+ * 其餘皆選填、不帶＝不篩選。
+ */
+export interface PendingReviewQuery extends PageQuery {
+  /** 比對商品名稱或送審人姓名（部分比對）。 */
+  keyword?: string;
+  /** 商品分類（子類 id）。 */
+  productTypeId?: number;
+  /** 送審日期 'yyyy-MM-dd'，兩端皆含當天；起日晚於迄日後端回 400。 */
+  submittedFrom?: string;
+  submittedTo?: string;
+}
 
 /**
  * 對應後端 ReviewDetailResponse.java。

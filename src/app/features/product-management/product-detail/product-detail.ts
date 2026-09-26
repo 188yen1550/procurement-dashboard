@@ -203,7 +203,7 @@ const INCOMPLETE: DetailProduct = {
   selector: 'app-product-detail',
   imports: [CommonModule, RouterLink, Icon, ListSortControls, SortRowsPipe, InfoTip],
   templateUrl: './product-detail.html',
-  styleUrls: ['./product-detail.scss', './product-detail-image.scss'],
+  styleUrls: ['./product-detail.scss', './product-detail-image.scss', './product-detail-history.scss'],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
 export class ProductDetail implements OnInit {

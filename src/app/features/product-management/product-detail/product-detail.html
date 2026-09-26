@@ -518,7 +518,8 @@
       <h2>歷次審核紀錄</h2>
     </header>
     <!-- 2026-09：審核結果、審核時間改為篩選（不做排序），審核留言不排序；
-         與選品審核頁「歷次決策紀錄」的規則一致。 -->
+         與選品審核頁「歷次決策紀錄」的規則一致。
+         2026-09-26：篩選、排序、清除篩選合併為單行工具列（樣式見 product-detail-history.scss）。 -->
     <div class="review-history-filters" role="group" aria-label="篩選歷次審核紀錄">
       <label class="review-history-field">
         <span>審核結果</span>
@@ -540,12 +541,13 @@
             (change)="updateHistoryReviewedTo($event)" />
         </span>
       </div>
-      <button type="button" class="btn" [disabled]="!hasHistoryFilters()" (click)="clearHistoryFilters()">清除篩選</button>
+      <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
+      <button type="button" class="btn review-history-clear" [disabled]="!hasHistoryFilters()"
+        (click)="clearHistoryFilters()">清除篩選</button>
     </div>
     @if (historyDateRangeInvalid()) {
     <p class="review-history-hint" role="alert">起日晚於迄日，暫不套用日期篩選。</p>
     }
-    <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
     @if (filteredReviewHistory().length === 0) {
     <p class="review-history-hint">沒有符合篩選條件的審核紀錄。</p>
     }

@@ -25,6 +25,7 @@ import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { PendingReviewItem } from './api/review.mapper';
 import { ReviewApiService } from './api/review-api.service';
+import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { DecisionRecordSortKey } from './api/review-api.contract';
 
 /** 待審清單的顯示模型；尚無評估紀錄時，分數與完整度為 null。 */
@@ -171,6 +172,7 @@ export class ReviewComponent implements OnInit {
     this.onRecordQueryChange(),
   );
   private readonly api = inject(ReviewApiService);
+  private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   readonly useMockData = APP_CONFIG.useMockData;
@@ -230,6 +232,8 @@ export class ReviewComponent implements OnInit {
   private readonly recordSearchInput$ = new Subject<string>();
   /** 進行中的決策紀錄查詢；新查詢送出前先取消，避免較慢的舊回應覆蓋新結果。 */
   private recordRequest?: Subscription;
+  /** 待審清單查詢：新條件送出時取消上一個尚未回來的請求，避免舊結果晚到覆蓋新結果。 */
+  private pendingRequest?: Subscription;
 
   updateRecordSearch(value: string): void {
     this.recordSearch.set(value);
@@ -261,20 +265,37 @@ export class ReviewComponent implements OnInit {
     this.onRecordQueryChange();
   }
   readonly query = signal('');
+  /**
+   * 審核狀態／品項狀態：真實模式下後端固定只回「未審核＋使用中」，這兩個下拉只在 Mock 模式
+   * 顯示（2026-09-26，見 review.html）。選了其他值只會把當頁濾空、分頁卻還顯示有下一頁。
+   */
   readonly reviewFilter = signal<'ALL' | ReviewStatus>('PENDING');
   readonly itemFilter = signal<'ALL' | ItemStatus>('ACTIVE');
   /**
-   * 分類設定／送審時間範圍——這三個訊號原本只有 review.html 的篩選列在用，
-   * review.ts 從來沒有宣告過，屬於畫面寫好、元件邏輯沒跟上的既有缺口
-   * （build 時才會被 Angular 的 strict template 檢查抓出來，不是這次改動
-   * 造成的）。做法比照 itemFilter：純前端篩選，因為 GET /api/reviews/pending
-   * 後端本來就寫死只回 PENDING+ACTIVE、不吃篩選參數，這幾個篩選條件在
-   * 真實模式下本來就只能對「已經抓回來的這一頁」生效，跟 itemFilter 的
-   * 既有限制一致，不是這次才出現的新限制。
+   * 分類／送審日期區間。
+   *
+   * 2026-09-26 修正（待審清單分頁錯亂）：搜尋、分類、送審日期原本只在前端篩「當頁 20 筆」，
+   * 分頁資訊卻是未篩選的全量，造成「第 1 頁不足 20 筆，第 2 頁仍有資料」。真實模式改由後端
+   * 篩選（loadPendingItems() 帶入條件），條件變更時回到第 1 頁重新查詢；Mock 模式沒有後端，
+   * 維持本地篩選（見 filtered）。
+   *
+   * categoryFilter：真實模式存子類 id（字串，'ALL'＝全部），選項來自完整品類清單；
+   * Mock 模式存分類名稱，選項來自 Mock 資料。
    */
   readonly categoryFilter = signal('ALL');
   readonly submittedFrom = signal('');
   readonly submittedTo = signal('');
+  /** 真實模式的分類選項：完整的大類／子類清單（跟目前頁面有哪些商品無關）。 */
+  readonly groupedCategoryOptions = signal<{ major: { id: number; name: string }; minors: { id: number; name: string }[] }[]>([]);
+  /** 送審日期起日晚於迄日：不送查詢（後端同樣回 400），在篩選列提示。 */
+  readonly pendingDateRangeInvalid = computed(
+    () => !!this.submittedFrom() && !!this.submittedTo() && this.submittedFrom() > this.submittedTo(),
+  );
+  /** 是否有任何會縮小結果的條件（空結果時決定顯示「找不到符合」或「目前沒有」）。 */
+  readonly hasPendingFilters = computed(
+    () => !!this.query().trim() || this.categoryFilter() !== 'ALL' || !!this.submittedFrom() || !!this.submittedTo(),
+  );
+  private readonly pendingSearchInput$ = new Subject<string>();
   /**
    * 預設待審清單；但從 product-detail 的「返回歷次決策紀錄」連結回來時
    * （見 product-detail.html／product-detail.ts 的 returnTo），會帶
@@ -312,6 +333,10 @@ export class ReviewComponent implements OnInit {
     this.recordSearchInput$
       .pipe(debounceTime(300), takeUntilDestroyed())
       .subscribe(() => this.onRecordQueryChange());
+    // 待審清單關鍵字：同決策紀錄，停手 300ms 才查詢。
+    this.pendingSearchInput$
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe(() => this.onPendingQueryChange());
 
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
     // 原地重新點擊「選品審核」連結時 ngOnInit() 不會再被觸發，要靠這裡
@@ -328,6 +353,9 @@ export class ReviewComponent implements OnInit {
    * 篩選器在真實模式下只對關鍵字有實際作用。
    */
   readonly filtered = computed(() => {
+    // 2026-09-26：真實模式的條件已在後端套用，這裡不再二次篩選（否則又會回到「當頁被濾掉、
+    // 分頁卻不變」的問題）。以下本地篩選只服務 Mock 模式。
+    if (!this.useMockData) return this.items();
     const keyword = this.query().trim().toLocaleLowerCase('zh-Hant');
     const category = this.categoryFilter();
     const from = this.submittedFrom();
@@ -356,6 +384,42 @@ export class ReviewComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    if (!this.useMockData) {
+      this.productTypeLookup
+        .getGroupedOptions()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((groups) => this.groupedCategoryOptions.set(groups));
+    }
+  }
+
+  // ----- 待審清單篩選（2026-09-26 改後端篩選）-----
+
+  updatePendingQuery(value: string): void {
+    this.query.set(value ?? '');
+    if (this.useMockData) return;
+    this.pendingSearchInput$.next(this.query());
+  }
+
+  updateCategoryFilter(value: string): void {
+    this.categoryFilter.set(value ?? 'ALL');
+    this.onPendingQueryChange();
+  }
+
+  updateSubmittedFrom(value: string): void {
+    this.submittedFrom.set(value ?? '');
+    this.onPendingQueryChange();
+  }
+
+  updateSubmittedTo(value: string): void {
+    this.submittedTo.set(value ?? '');
+    this.onPendingQueryChange();
+  }
+
+  /** 篩選條件變更：回到第 1 頁重新查詢（沿用舊頁碼可能超出新條件下的總頁數）。 */
+  private onPendingQueryChange(): void {
+    if (this.useMockData) return;
+    this.pageNumber.set(0);
+    this.loadPendingItems(false);
   }
 
   // ----- 載入 -----
@@ -376,13 +440,31 @@ export class ReviewComponent implements OnInit {
    * 導回登入頁沒有意義（重登也不會變成 MANAGER）。Route Guard 應該先擋掉，
    * 但後端這道才是真正有效的防線，所以這裡仍要正確顯示。
    */
-  loadPendingItems(): void {
+  /**
+   * @param showSkeleton 初次載入／重新整理顯示整頁骨架；篩選或換頁時為 false，保留篩選列
+   *                     （骨架會把篩選列整個換掉，打字到一半輸入框會消失、失去焦點）。
+   */
+  loadPendingItems(showSkeleton = true): void {
+    if (this.pendingDateRangeInvalid()) {
+      // 篩選列已顯示提示；維持上次結果，不送出必定 400 的查詢。
+      return;
+    }
+    this.pendingRequest?.unsubscribe();
     this.isLoading = true;
-    this.pageState.set('loading');
+    if (showSkeleton) this.pageState.set('loading');
+    const category = this.categoryFilter();
 
-    this.api
+    this.pendingRequest = this.api
       // V25：依真正的送審時間排序（原本 updatedAt，任何編輯都會把商品往前推）。
-      .listPending({ page: this.pageNumber(), size: 20, sort: 'submittedAt,desc' })
+      .listPending({
+        page: this.pageNumber(),
+        size: 20,
+        sort: 'submittedAt,desc',
+        keyword: this.query().trim() || undefined,
+        productTypeId: category === 'ALL' ? undefined : Number(category),
+        submittedFrom: this.submittedFrom() || undefined,
+        submittedTo: this.submittedTo() || undefined,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -390,7 +472,9 @@ export class ReviewComponent implements OnInit {
           this.totalElements.set(result.totalElements);
           this.totalPages.set(result.totalPages);
           this.isLoading = false;
-          this.pageState.set(result.items.length === 0 ? 'empty' : 'default');
+          // 有篩選條件時 0 筆是「找不到符合」，不是「沒有待審品項」：維持 default，
+          // 讓篩選列留在畫面上，由樣板顯示「找不到符合」。
+          this.pageState.set(result.items.length === 0 && !this.hasPendingFilters() ? 'empty' : 'default');
         },
         error: (err) => {
           this.isLoading = false;
@@ -407,7 +491,7 @@ export class ReviewComponent implements OnInit {
   goToPage(page: number): void {
     if (page < 0 || page >= this.totalPages() || this.isLoading) return;
     this.pageNumber.set(page);
-    this.loadPendingItems();
+    this.loadPendingItems(false);
   }
 
   /** GET /api/reviews/decision-records [僅管理]。失敗只讓紀錄分頁降級，不影響待審清單。 */
@@ -495,6 +579,7 @@ export class ReviewComponent implements OnInit {
     this.categoryFilter.set('ALL');
     this.submittedFrom.set('');
     this.submittedTo.set('');
+    this.onPendingQueryChange();
     this.statusMessageState.show('已恢復預設篩選：未審核＋使用中。');
   }
 

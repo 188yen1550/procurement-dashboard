@@ -9,7 +9,7 @@
       <h3 id="weather-data-title">天氣資料</h3>
       <p>
         系統每天 05:00 從 Open-Meteo 取得四區過去與未來的每日天氣，作為天氣加成的計算依據；
-        完成後會自動重算尚未核准商品的加成。資料不足 {{ weatherStatus()?.coldStartThresholdDays ?? 27 }} 天的區域，
+        完成後會自動重算尚未核准商品的加成。資料不足 {{ weatherStatus()?.coldStartThresholdDays ?? 30 }} 天的區域，
         下次同步會自動補齊過去 30 天。
       </p>
     </div>

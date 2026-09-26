@@ -19,7 +19,7 @@ describe('WeatherLinkage', () => {
       of({
         historyDays: 30,
         forecastDays: 14,
-        coldStartThresholdDays: 27,
+        coldStartThresholdDays: 30,
         lastFetchedAt: '2026-09-25T05:00:12',
         regions: [
           { region: 'NORTH', regionLabel: '北部', historyDayCount: 30, forecastDayCount: 14, lastFetchedAt: '2026-09-25T05:00:12' },

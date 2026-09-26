@@ -6,6 +6,7 @@ import { of, throwError } from 'rxjs';
 import { ReviewApiService } from './api/review-api.service';
 import { Review, toReviewItem } from './review';
 import { PendingReviewItem } from './api/review.mapper';
+import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 describe('Review', () => {
   let fixture: ComponentFixture<Review>;
   let component: Review;
@@ -167,7 +168,18 @@ describe('Review（真實模式）決策紀錄查詢', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [Review],
-      providers: [provideRouter([]), { provide: ReviewApiService, useValue: api }],
+      providers: [
+        provideRouter([]),
+        { provide: ReviewApiService, useValue: api },
+        {
+          provide: ProductTypeLookupService,
+          useValue: {
+            getGroupedOptions: vi.fn(() =>
+              of([{ major: { id: 1, name: '食品' }, minors: [{ id: 5, name: '生鮮' }] }]),
+            ),
+          },
+        },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(Review);
     component = fixture.componentInstance;
@@ -228,6 +240,96 @@ describe('Review（真實模式）決策紀錄查詢', () => {
     component.loadDecisionRecords();
     expect(component.records()).toEqual([]);
     expect(component.statusMessage()).toContain('決策紀錄載入失敗');
+  });
+});
+
+/**
+ * 2026-09-26 修正：待審清單的搜尋／分類／送審日期原本只在前端篩當頁 20 筆，
+ * 分頁資訊卻是全量，造成「第 1 頁不足 20 筆仍有第 2 頁」。改為後端篩選並回到第 1 頁。
+ */
+describe('Review（真實模式）待審清單後端篩選', () => {
+  const emptyPage = { items: [], totalElements: 0, totalPages: 0, pageNumber: 0, pageSize: 20 };
+  const api = {
+    listPending: vi.fn(() => of({ ...emptyPage, totalElements: 45, totalPages: 3 })),
+    listDecisionRecords: vi.fn(() => of(emptyPage)),
+  };
+  let fixture: ComponentFixture<Review>;
+  let component: Review;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await TestBed.configureTestingModule({
+      imports: [Review],
+      providers: [
+        provideRouter([]),
+        { provide: ReviewApiService, useValue: api },
+        {
+          provide: ProductTypeLookupService,
+          useValue: {
+            getGroupedOptions: vi.fn(() =>
+              of([{ major: { id: 1, name: '食品' }, minors: [{ id: 5, name: '生鮮' }] }]),
+            ),
+          },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Review);
+    component = fixture.componentInstance;
+    Object.defineProperty(component, 'useMockData', { value: false });
+    fixture.detectChanges();
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  const lastPendingQuery = () => api.listPending.mock.calls.at(-1)?.at(0) as unknown as Record<string, unknown>;
+
+  it('sends category and submitted date to the backend and resets to the first page', () => {
+    component.pageNumber.set(2);
+    component.updateCategoryFilter('5');
+    expect(lastPendingQuery()).toEqual(expect.objectContaining({ page: 0, productTypeId: 5 }));
+    component.updateSubmittedFrom('2026-09-01');
+    component.updateSubmittedTo('2026-09-20');
+    expect(lastPendingQuery()).toEqual(
+      expect.objectContaining({ page: 0, submittedFrom: '2026-09-01', submittedTo: '2026-09-20' }),
+    );
+  });
+
+  it('debounces the keyword before querying the backend', () => {
+    vi.useFakeTimers();
+    const before = api.listPending.mock.calls.length;
+    component.updatePendingQuery('禮盒');
+    expect(api.listPending.mock.calls.length).toBe(before);
+    vi.advanceTimersByTime(300);
+    expect(lastPendingQuery()).toEqual(expect.objectContaining({ page: 0, keyword: '禮盒' }));
+  });
+
+  it('does not filter the returned page again on the client', () => {
+    const items = [
+      { id: 1, name: '禮盒', status: 'PENDING', itemStatus: 'ACTIVE', category: '生鮮' },
+      { id: 2, name: '水果', status: 'PENDING', itemStatus: 'ACTIVE', category: '其他' },
+    ];
+    component.items.set(items as never);
+    component.query.set('禮盒');
+    component.categoryFilter.set('5');
+    expect(component.filtered()).toHaveLength(2);
+  });
+
+  it('does not query with an inverted date range', () => {
+    component.updateSubmittedFrom('2026-09-20');
+    const before = api.listPending.mock.calls.length;
+    component.updateSubmittedTo('2026-09-01');
+    expect(component.pendingDateRangeInvalid()).toBe(true);
+    expect(api.listPending.mock.calls.length).toBe(before);
+  });
+
+  it('shows category options from the full product type list', () => {
+    const options = Array.from(
+      fixture.nativeElement.querySelectorAll('.field-category option') as NodeListOf<HTMLOptionElement>,
+    ).map((o) => o.textContent?.trim());
+    expect(options).toEqual(['全部', '生鮮']);
+    // 真實模式不顯示審核狀態／品項狀態下拉（後端固定未審核＋使用中）。
+    expect(fixture.nativeElement.querySelector('.field-review')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.field-item')).toBeNull();
   });
 });
 
