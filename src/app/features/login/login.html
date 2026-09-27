@@ -98,7 +98,7 @@
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
               <app-icon name="lock" size="sm" class="input-icon" />
 
-              <input id="password" type="password" formControlName="password" placeholder="請輸入密碼"
+              <input id="password" class="has-toggle" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="請輸入密碼"
                 autocomplete="current-password" [readOnly]="isLoading()" [attr.aria-invalid]="
                   loginForm.controls.password.invalid && loginForm.controls.password.touched
                 " [attr.aria-describedby]="
@@ -106,6 +106,12 @@
                     ? 'password-error'
                     : null
                 " />
+              <!-- 顯示／隱藏密碼：type="button" 避免觸發表單送出；狀態用 aria-pressed 告知輔助科技 -->
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()"
+                [attr.aria-pressed]="showPassword()" [attr.aria-label]="showPassword() ? '隱藏密碼' : '顯示密碼'"
+                [attr.title]="showPassword() ? '隱藏密碼' : '顯示密碼'" [disabled]="isLoading()">
+                <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" size="sm" />
+              </button>
             </div>
 
             <!--

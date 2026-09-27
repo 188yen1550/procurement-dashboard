@@ -1,0 +1,91 @@
+<!-- 檔案用途：排程作業面板——PTT 熱度同步的來源開關、立即同步全部商品、最近執行紀錄。 -->
+<section class="config-panel" aria-labelledby="trend-crawler-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="trend-crawler-title">
+        排程作業：PTT 熱度同步
+        @if (status(); as s) {
+          <span class="badge" [class.badge-success]="s.enabled" [class.badge-muted]="!s.enabled">
+            {{ s.enabled ? '來源啟用中' : '來源已停用' }}
+          </span>
+        }
+      </h3>
+      <p>
+        {{ status()?.schedule ?? '每天 02:00（早於 03:00 AI 主動選品批次）' }}自動搜尋 PTT
+        公開看板，更新所有未封存商品的熱度分數；排在 AI 主動選品批次之前，批次才會讀到當天的熱度。
+        PTT 暫時抓不到時，該商品會改用模擬資料並在紀錄中標示。
+      </p>
+    </div>
+    <div class="config-panel-actions">
+      <button type="button" class="btn" [disabled]="!status() || isSubmitting() || running()" (click)="toggleEnabled()">
+        {{ enabled() ? '停用 PTT 來源' : '啟用 PTT 來源' }}
+      </button>
+      <button type="button" class="btn-primary" [disabled]="!canSyncAll()" (click)="syncAll()">
+        {{ running() ? '同步中…' : '立即同步全部商品' }}
+      </button>
+    </div>
+  </div>
+
+  <p class="sr-only" aria-live="polite">
+    @if (running()) {
+      PTT 熱度同步執行中，{{ progressText() }}。
+    }
+  </p>
+
+  @if (useMockData) {
+    <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示執行紀錄。</p>
+  } @else if (loadError()) {
+    <p class="alert" role="alert">
+      無法載入同步狀態：{{ loadError() }}
+      <button type="button" class="text-action" (click)="load()">重新載入</button>
+    </p>
+  } @else if (status(); as s) {
+    @if (s.running) {
+      <p class="notice" role="status">同步執行中：{{ progressText() }}。離開這個頁面不會中斷同步。</p>
+    } @else if (!s.enabled) {
+      <p class="notice">
+        PTT 熱度來源已停用：每日排程會略過不執行，品項詳情頁的「立即更新」也暫停使用。
+      </p>
+    }
+
+    @if (s.recentRuns.length === 0) {
+      <p class="helper">尚無執行紀錄。每日 02:00 排程或手動同步後會出現在這裡。</p>
+    } @else {
+      <div class="config-table-wrap">
+        <table class="config-table">
+          <caption class="sr-only">最近 10 次 PTT 熱度同步紀錄</caption>
+          <thead>
+            <tr>
+              <th scope="col">開始時間</th>
+              <th scope="col">觸發方式</th>
+              <th scope="col">狀態</th>
+              <th scope="col" class="num">商品數</th>
+              <th scope="col" class="num">PTT 資料</th>
+              <th scope="col" class="num">模擬資料</th>
+              <th scope="col" class="num">失敗</th>
+              <th scope="col">耗時</th>
+              <th scope="col">說明</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of s.recentRuns; track run.id) {
+              <tr>
+                <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+                <td>{{ triggerLabel(run) }}</td>
+                <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.realCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.fallbackCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
+                <td>{{ duration(run) }}</td>
+                <td>{{ run.message ?? '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    <p class="helper" role="status">正在載入同步狀態…</p>
+  }
+</section>

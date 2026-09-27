@@ -6,6 +6,11 @@ import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
 import { buildParams } from '../../../core/api/http-params';
 import { CsvExportResult, postForCsv } from '../../../core/api/csv-export';
 import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
+import {
+  AI_ANALYSIS_TIMEOUT_MS,
+  TREND_SYNC_TIMEOUT_MS,
+  withRequestTimeout,
+} from '../../../core/api/request-timeout';
 import { ReviewRecordResponsePayload } from '../../review/api/review-api.contract';
 import { ReviewRecordModel, toReviewRecordModel } from '../../review/api/review.mapper';
 import { CustomFieldDefinitionResponsePayload } from '../../settings/api/settings-api.contract';
@@ -28,6 +33,7 @@ import {
   SimilarCandidateQuery,
   SimilarProductCandidatePayload,
   SubmissionBatchResponsePayload,
+  TrendHistoryPointPayload,
   TrendSnapshotPayload,
 } from './product-api.contract';
 
@@ -38,11 +44,13 @@ import {
   ProductDetailModel,
   ProductFormModel,
   ProductListItem,
+  TrendHistoryPoint,
   TrendModel,
   toAiAnalysisModel,
   toProductDetailModel,
   toProductFormModel,
   toProductListItem,
+  toTrendHistoryPoint,
   toTrendModel,
 } from './product.mapper';
 
@@ -361,10 +369,27 @@ export class ProductApiService {
   }
 
   /**
+   * GET /api/products/{id}/trend/history：最近 30 天的趨勢歷史序列，
+   * 依時間正序回傳，供品項詳情頁畫趨勢圖用。
+   *
+   * ⚠️ 2026-09-25 新增：純讀取、不觸發爬蟲，可以在頁面載入時呼叫，
+   * 跟 getLatestTrend() 一樣安全（不像 syncTrend() 那樣會打外部 PTT）。
+   */
+  getTrendHistory(id: number | string): Observable<TrendHistoryPoint[]> {
+    return this.http
+      .get<ApiEnvelope<TrendHistoryPointPayload[]>>(PRODUCT_API.trendHistory(id))
+      .pipe(
+        unwrapData(),
+        map((items) => items.map(toTrendHistoryPoint)),
+      );
+  }
+
+  /**
    * 15. POST /api/products/{id}/trend/sync：手動同步趨勢資料。
    *
    * ⚠️ 後端會即時搜尋 PTT 多個看板（每次請求間隔 1 秒），每個商品約需 8–10 秒才回應，
    * 畫面必須顯示讀取中狀態並停用按鈕，避免使用者重複點擊。
+   * 超過 TREND_SYNC_TIMEOUT_MS 以 TimeoutError 結束，toApiError() 會標記 isTimeout。
    *
    * ⚠️ 這支會呼叫外部資料源，**絕對不要在頁面載入時自動觸發**
    * （企劃書第八節：不要在一般頁面載入時無條件觸發大量 crawler request）。
@@ -373,7 +398,7 @@ export class ProductApiService {
   syncTrend(id: number | string): Observable<TrendModel> {
     return this.http
       .post<ApiEnvelope<TrendSnapshotPayload>>(PRODUCT_API.trendSync(id), {})
-      .pipe(unwrapData(), map(toTrendModel));
+      .pipe(withRequestTimeout(TREND_SYNC_TIMEOUT_MS), unwrapData(), map(toTrendModel));
   }
 
   // ----- AiSelectionController -----
@@ -399,11 +424,12 @@ export class ProductApiService {
    * 前端必須：二次確認對話框 + 送出後 disable 按鈕直到回應，
    * 不要讓使用者連點。失敗時後端回 502（LlmAnalysisException），
    * 用 isLlmFailure() 判斷後讓 AI 區塊單獨降級，不要讓整頁變 error。
+   * 超過 AI_ANALYSIS_TIMEOUT_MS 以 TimeoutError 結束，toApiError() 會標記 isTimeout。
    */
   generateAiAnalysis(id: number | string): Observable<AiAnalysisModel> {
     return this.http
       .post<ApiEnvelope<AiAnalysisResponsePayload>>(PRODUCT_API.aiAnalysisGenerate(id), {})
-      .pipe(unwrapData(), map(toAiAnalysisModel));
+      .pipe(withRequestTimeout(AI_ANALYSIS_TIMEOUT_MS), unwrapData(), map(toAiAnalysisModel));
   }
 
   // ----- ReviewController（審核歷史，操作層也可看）-----

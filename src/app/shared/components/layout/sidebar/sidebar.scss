@@ -99,7 +99,7 @@
 
     &.active {
       color: #fff;
-      background: #1c5286;
+      background: var(--c-brand);
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
     }
 

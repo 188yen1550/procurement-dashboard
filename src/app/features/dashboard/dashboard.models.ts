@@ -69,9 +69,26 @@ export interface DashboardRiskAlert {
   detectedKeyword: string;
 }
 
+/**
+ * ⚠️ 2026-09-25 新增：跟 DashboardRecommendation（依綜合總分排序）刻意
+ * 區隔，這是「只看趨勢單一因子」的排行榜，見 dashboard.mapper.ts 的
+ * TrendLeaderboardItem 類別註解。
+ */
+export interface DashboardTrendLeaderboardEntry {
+  id: number;
+  rank: number;
+  name: string;
+  popularityScore: number | null;
+  trendDirection: 'UP' | 'DOWN' | 'STABLE' | null;
+  /** false 代表這筆是當次抓不到、退回的模擬資料，樣板用橘色字標示。 */
+  isRealSource: boolean;
+  keyword: string;
+}
+
 export interface DashboardMockData {
   generatedAt: string;
   statistics: DashboardStatistics;
   recommendations: readonly DashboardRecommendation[];
   riskAlerts: readonly DashboardRiskAlert[];
+  trendLeaderboard: readonly DashboardTrendLeaderboardEntry[];
 }

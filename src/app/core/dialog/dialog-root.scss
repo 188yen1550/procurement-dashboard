@@ -42,7 +42,7 @@
   margin: 0 auto;
   place-items: center;
   color: #fff;
-  background: #1c5286;
+  background: var(--c-brand);
   border-radius: 50%;
   font-size: var(--t-xl);
   font-weight: 900;
@@ -100,8 +100,8 @@
 }
 .app-dialog-confirm {
   color: #fff;
-  background: #1c5286;
-  border: 1px solid #1c5286;
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
 }
 .app-dialog.variant-success .app-dialog-confirm {
   background: #21694f;

@@ -684,6 +684,18 @@ export class ProductForm implements OnInit {
       patch['supplierMaxCapacity'] = product.supplierMaxCapacity;
     }
     this.form.patchValue(patch);
+
+    // 2026-09-27：圖片跟名稱同理——再販售賣的是同一件實體商品，屬於固有屬性。
+    // 使用者自己選過圖或移除過圖（imageDirty）就不覆蓋，跟其他欄位的 dirty 判斷同一套精神。
+    // 新商品會沿用參考商品的同一個圖片路徑；後端換圖時會確認沒有其他商品還在用，
+    // 才刪除舊檔（ProductService.deleteOldImageBestEffort()），不會把對方的圖刪掉。
+    if (!this.imageDirty() && product.imageUrl) {
+      this.currentImageUrl.set(product.imageUrl);
+      this.imagePreviewUrl.set(product.imageUrl);
+      this.imageInfo.set(null);
+      this.imageError.set('');
+      this.imageState.set('ready');
+    }
   }
 
   /**

@@ -8,7 +8,7 @@
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { of, Subject, throwError, TimeoutError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Auth } from '../../../core/auth/auth';
 import { DialogService } from '../../../core/dialog/dialog.service';
@@ -16,6 +16,24 @@ import { ProductTypeLookupService } from '../../settings/api/product-type-lookup
 import { ProductApiService } from '../api/product-api.service';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { ProductDetail } from './product-detail';
+
+/** 預設的評估回應（APPROVED 商品的 SNAPSHOT）；個別測試可展開後覆寫欄位。 */
+function evaluationPayload() {
+  return {
+    dataSource: 'SNAPSHOT' as const,
+    evaluationModeName: '均衡模式 · Version 1',
+    businessScore: 88,
+    audienceScore: 91,
+    historicalScore: 84,
+    purchaseScore: 86,
+    trendScore: 90,
+    forecastScore: 88,
+    totalScore: 88.2,
+    dataCompleteness: 96,
+    festivalBoost: 4.2,
+    finalScore: 92.4,
+  };
+}
 
 describe('ProductDetail', () => {
   let fixture: ComponentFixture<ProductDetail>;
@@ -37,20 +55,7 @@ describe('ProductDetail', () => {
       candidateStatus: 'CANDIDATE',
       submissionCount: 1,
     })),
-    getEvaluation: vi.fn(() => of({
-      dataSource: 'SNAPSHOT' as const,
-      evaluationModeName: '均衡模式 · Version 1',
-      businessScore: 88,
-      audienceScore: 91,
-      historicalScore: 84,
-      purchaseScore: 86,
-      trendScore: 90,
-      forecastScore: 88,
-      totalScore: 88.2,
-      dataCompleteness: 96,
-      festivalBoost: 4.2,
-      finalScore: 92.4,
-    })),
+    getEvaluation: vi.fn(() => of(evaluationPayload())),
     getFestivalBoost: vi.fn(() => of({
       dataSource: 'SNAPSHOT' as const,
       matchedCampaign: { campaignId: 1, campaignName: '中秋節', matchedTags: ['bbq', 'gift'] },
@@ -87,6 +92,25 @@ describe('ProductDetail', () => {
         trendDirection: 'UP' as const,
         collectedAt: '2026-09-25T02:00:00',
       }),
+    ),
+    // ⚠️ 2026-09-25 新增：熱度趨勢圖用，跟 getLatestTrend 是各自獨立的
+    // 查詢。回傳 2 筆，讓測試涵蓋「有足夠資料畫圖」這個分支——沒有這支
+    // mock 的話，元件呼叫這個不存在的方法會直接同步拋出 TypeError，
+    // 連 catchError 都攔不到（不是 Observable 錯誤，是呼叫本身就失敗），
+    // 導致整個 forkJoin 出錯、頁面顯示「載入失敗」。
+    getTrendHistory: vi.fn(() =>
+      of([
+        {
+          collectedAt: '2026-09-23T02:00:00',
+          popularityScore: 58.2,
+          trendDirection: 'UP' as const,
+        },
+        {
+          collectedAt: '2026-09-24T02:00:00',
+          popularityScore: 63.37,
+          trendDirection: 'UP' as const,
+        },
+      ]),
     ),
     syncTrend: vi.fn(() =>
       of({
@@ -197,6 +221,45 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('92.4');
     expect(fixture.nativeElement.textContent).toContain('節慶加成明細');
   });
+  // 2026-09-27：「急迫係數 100%、命中核心標籤，加成卻是 +4.9」——加成原本讀 evaluation 存檔，
+  // 急迫係數讀 festival-boost 即時計算，兩者不同步時明細算不回總數。改以 festival-boost 為準。
+  it('uses the festival-boost response for boosts and final score so the breakdown adds up', () => {
+    api.getEvaluation.mockReturnValueOnce(
+      of({ ...evaluationPayload(), totalScore: 80, festivalBoost: 4.9, weatherBoost: 0, finalScore: 84.9 }) as ReturnType<
+        typeof api.getEvaluation
+      >,
+    );
+    api.getFestivalBoost.mockReturnValueOnce(
+      of({
+        dataSource: 'LIVE' as const,
+        matchedCampaign: { campaignId: 1, campaignName: '中秋節', matchedTags: ['bbq'], matchWeight: 1, urgencyFactor: 1 },
+        festivalBoost: 5,
+        weatherBoost: 0,
+        finalScore: 85,
+      }) as unknown as ReturnType<typeof api.getFestivalBoost>,
+    );
+    component.reload();
+    fixture.detectChanges();
+    const p = component.product()!;
+    expect(component.urgencyPercent(p.urgencyFactor)).toBe(100);
+    expect(p.festivalBoost).toBe(5);
+    expect(p.finalScore).toBe(85);
+    expect(p.baseScore).toBe(80);
+  });
+
+  it('falls back to the stored evaluation when the festival-boost API fails', () => {
+    api.getEvaluation.mockReturnValueOnce(
+      of({ ...evaluationPayload(), totalScore: 80, festivalBoost: 4.9, weatherBoost: 0, finalScore: 84.9 }) as ReturnType<
+        typeof api.getEvaluation
+      >,
+    );
+    api.getFestivalBoost.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    component.reload();
+    fixture.detectChanges();
+    expect(component.product()!.festivalBoost).toBe(4.9);
+    expect(component.product()!.finalScore).toBe(84.9);
+  });
+
   it('shows margin, evaluation references and snapshot source', () => {
     expect(fixture.nativeElement.textContent).toContain('毛利率');
     expect(fixture.nativeElement.textContent).toContain('31.1%');
@@ -228,6 +291,24 @@ describe('ProductDetail', () => {
     expect(text).toContain('資料來源：PTT 討論量');
     expect(text).toContain('熱度 63.37 分');
     expect(text).not.toContain('尚無趨勢資料');
+  });
+  // ⚠️ 2026-09-25 新增：熱度趨勢圖，跟上面「最新一筆」是各自獨立的查詢。
+  it('loads trend history on page load without triggering a crawl, and renders the chart canvas', () => {
+    expect(api.getTrendHistory).toHaveBeenCalled();
+    expect(api.syncTrend).not.toHaveBeenCalled();
+    expect(component.trendHistory().length).toBe(2);
+    const canvas = fixture.nativeElement.querySelector('.trend-chart-wrap canvas');
+    expect(canvas).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('歷史資料筆數還不夠');
+  });
+  it('shows a hint instead of a chart when trend history has fewer than 2 points', () => {
+    api.getTrendHistory.mockReturnValueOnce(
+      of([{ collectedAt: '2026-09-24T02:00:00', popularityScore: 63.37, trendDirection: 'UP' as const }]),
+    );
+    component.reload();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.trend-chart-wrap')).toBeFalsy();
+    expect(fixture.nativeElement.textContent).toContain('歷史資料筆數還不夠');
   });
 
   it('syncs trend data via the real API in formal mode', () => {
@@ -261,6 +342,42 @@ describe('ProductDetail', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('模擬資料');
     expect(text).toContain('PTT 暫時無法取得');
+  });
+
+  it('shows a readable timeout message for trend sync and lets the user retry', () => {
+    api.syncTrend.mockReturnValueOnce(throwError(() => new TimeoutError()));
+    component.syncTrend();
+    fixture.detectChanges();
+    expect(component.syncState()).toBe('error');
+    const section = fixture.nativeElement.querySelector('.evaluation-item.trend') as HTMLElement;
+    expect(section.textContent).toContain('PTT 搜尋超過 60 秒仍未完成');
+    expect(section.textContent).not.toContain('TimeoutError');
+    // 按鈕沒有被鎖住，文字改成「重試」
+    const button = section.querySelector(':scope > button') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toContain('重試');
+
+    // 重試：再按一次會重新呼叫 API，成功後錯誤訊息消失
+    button.click();
+    fixture.detectChanges();
+    expect(api.syncTrend).toHaveBeenCalledTimes(2);
+    expect(component.syncState()).toBe('success');
+    expect(component.syncError()).toBe('');
+    expect(section.textContent).not.toContain('PTT 搜尋超過');
+  });
+
+  it('shows a readable timeout message for AI analysis and keeps the button usable', () => {
+    api.generateAiAnalysis.mockReturnValueOnce(throwError(() => new TimeoutError()));
+    component.generateAiAnalysis();
+    dialog.handleConfirm();
+    fixture.detectChanges();
+    expect(component.isGeneratingAi()).toBe(false);
+    expect(component.aiError()).toContain('AI 分析超過 100 秒仍未回應');
+    expect(component.aiError()).toContain('人工審核不受影響');
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('.panel.ai button'),
+    ) as HTMLButtonElement[];
+    expect(buttons.some((b) => !b.disabled)).toBe(true);
   });
 
   it('shows the real error message when trend sync fails', () => {

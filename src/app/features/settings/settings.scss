@@ -693,8 +693,8 @@ tr.is-editing select {
   align-items: center;
   gap: 0.3rem;
   padding: 0.2rem 0.5rem;
-  color: #1c5286;
-  background: #eaf3fb;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
   border: 1px solid #b7d3ea;
   border-radius: 999px;
   font-size: var(--t-xs);
@@ -741,7 +741,7 @@ tr.is-editing select {
 .system-setting-value {
   font-size: var(--t-lg);
   font-weight: 650;
-  color: var(--c-brand, #1c5286);
+  color: var(--c-brand, var(--c-brand));
 }
 
 .system-setting-value.is-text-value {
@@ -776,7 +776,7 @@ tr.is-editing select {
 
   input[type='range'] {
     flex: 1;
-    accent-color: #1c5286;
+    accent-color: var(--c-brand);
   }
 }
 
@@ -785,7 +785,7 @@ tr.is-editing select {
   padding: 0.4rem 0.5rem;
   border: 1px solid #d4dee6;
   border-radius: 0.4rem;
-  color: #1c5286;
+  color: var(--c-brand);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
@@ -812,12 +812,12 @@ tr.is-editing select {
   cursor: pointer;
 
   input[type='checkbox'] {
-    accent-color: #1c5286;
+    accent-color: var(--c-brand);
   }
 
   &:has(input:checked) {
-    color: #1c5286;
-    background: #eaf3fb;
+    color: var(--c-brand);
+    background: var(--c-brand-tint);
     border-color: #b7d3ea;
     font-weight: 700;
   }

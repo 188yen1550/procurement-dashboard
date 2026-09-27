@@ -43,6 +43,7 @@ export const PRODUCT_API = {
   aiAnalysis: (id: number | string) => `/api/products/${id}/ai-analysis`,
   aiAnalysisGenerate: (id: number | string) => `/api/products/${id}/ai-analysis/generate`,
   trend: (id: number | string) => `/api/products/${id}/trend`,
+  trendHistory: (id: number | string) => `/api/products/${id}/trend/history`,
   trendSync: (id: number | string) => `/api/products/${id}/trend/sync`,
   reviewHistory: (id: number | string) => `/api/products/${id}/reviews`,
   resubmit: (id: number | string) => `/api/products/${id}/resubmit`,
@@ -356,6 +357,18 @@ export interface TrendSnapshotPayload {
   popularityScore: Decimal;
   trendDirection: TrendDirection | null;
   collectedAt: string | null;
+}
+
+/**
+ * 對應後端 json/TrendHistoryPoint.java，GET /api/products/{id}/trend/history
+ * 的清單裡的單一項目。⚠️ 2026-09-25 新增。跟 TrendSnapshotPayload（單筆最新
+ * 資料）不同型別——這支故意只帶畫圖需要的三個欄位，不重複帶 source／keyword。
+ * 依時間正序（由舊到新）回傳，符合折線圖橫軸方向。
+ */
+export interface TrendHistoryPointPayload {
+  collectedAt: string | null;
+  popularityScore: Decimal;
+  trendDirection: TrendDirection | null;
 }
 
 // =========================================================================

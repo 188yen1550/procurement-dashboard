@@ -1,0 +1,194 @@
+/**
+ * 檔案用途：驗證「PTT 熱度同步」控制面板：狀態與執行紀錄顯示、按鈕防呆、
+ * 立即同步後輪詢進度直到結束、開關切換前二次確認、409 時顯示後端訊息。
+ */
+import { HttpErrorResponse } from '@angular/common/http';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+import { DialogService } from '../../../../core/dialog/dialog.service';
+import { TrendCrawlerApiService, TrendCrawlerStatus, TrendSyncRun } from '../../api/trend-crawler-api.service';
+import { TREND_CRAWLER_POLL_MS, TrendCrawlerPanel } from './trend-crawler-panel';
+
+const COMPLETED_RUN: TrendSyncRun = {
+  id: 2,
+  triggerType: 'MANUAL',
+  status: 'COMPLETED',
+  startedAt: '2026-09-25T10:00:00',
+  finishedAt: '2026-09-25T10:01:05',
+  totalCount: 8,
+  realCount: 7,
+  fallbackCount: 1,
+  failedCount: 0,
+  message: null,
+  triggeredByName: '管理測試人員',
+};
+
+const SKIPPED_RUN: TrendSyncRun = {
+  id: 1,
+  triggerType: 'SCHEDULED',
+  status: 'SKIPPED',
+  startedAt: '2026-09-25T02:00:00',
+  finishedAt: '2026-09-25T02:00:00',
+  totalCount: 0,
+  realCount: 0,
+  fallbackCount: 0,
+  failedCount: 0,
+  message: 'PTT 來源已停用，本次排程未執行',
+  triggeredByName: null,
+};
+
+function status(overrides: Partial<TrendCrawlerStatus> = {}): TrendCrawlerStatus {
+  return {
+    enabled: true,
+    running: false,
+    processedCount: null,
+    totalCount: null,
+    schedule: '每天 02:00（早於 03:00 AI 主動選品批次）',
+    recentRuns: [COMPLETED_RUN, SKIPPED_RUN],
+    ...overrides,
+  };
+}
+
+describe('TrendCrawlerPanel', () => {
+  let fixture: ComponentFixture<TrendCrawlerPanel>;
+  let component: TrendCrawlerPanel;
+  let dialog: DialogService;
+  const api = {
+    getStatus: vi.fn(() => of(status())),
+    setEnabled: vi.fn((enabled: boolean) => of(status({ enabled }))),
+    // 後端剛開始時進度是 null（背景執行緒還沒讀完商品清單），照真實回應寫
+    syncAll: vi.fn(() => of(status({ running: true, processedCount: null, totalCount: null }))),
+  };
+
+  async function create(): Promise<void> {
+    await TestBed.configureTestingModule({
+      imports: [TrendCrawlerPanel],
+      providers: [{ provide: TrendCrawlerApiService, useValue: api }],
+    }).compileComponents();
+    fixture = TestBed.createComponent(TrendCrawlerPanel);
+    component = fixture.componentInstance;
+    dialog = TestBed.inject(DialogService);
+    fixture.detectChanges();
+  }
+
+  function text(): string {
+    return (fixture.nativeElement as HTMLElement).textContent ?? '';
+  }
+
+  function button(label: string): HTMLButtonElement {
+    const found = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) =>
+      b.textContent?.includes(label),
+    );
+    if (!found) throw new Error(`找不到按鈕：${label}`);
+    return found;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.getStatus.mockImplementation(() => of(status()));
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('shows the source switch state and recent runs', async () => {
+    await create();
+    expect(api.getStatus).toHaveBeenCalledTimes(1);
+    expect(text()).toContain('來源啟用中');
+    expect(text()).toContain('手動觸發（管理測試人員）');
+    expect(text()).toContain('已完成');
+    expect(text()).toContain('1 分 5 秒');
+    // 已略過的紀錄不顯示筆數，但要看得到原因
+    expect(text()).toContain('已略過');
+    expect(text()).toContain('PTT 來源已停用，本次排程未執行');
+    expect(button('立即同步全部商品').disabled).toBe(false);
+  });
+
+  it('disables sync-all while the PTT source is disabled and explains why', async () => {
+    api.getStatus.mockImplementation(() => of(status({ enabled: false })));
+    await create();
+    expect(text()).toContain('來源已停用');
+    expect(text()).toContain('每日排程會略過不執行');
+    expect(button('立即同步全部商品').disabled).toBe(true);
+    expect(button('啟用 PTT 來源').disabled).toBe(false);
+  });
+
+  it('asks for confirmation, starts the sync, polls progress and stops polling when finished', async () => {
+    vi.useFakeTimers();
+    await create();
+
+    button('立即同步全部商品').click();
+    expect(dialog.state()?.variant).toBe('confirm');
+    expect(api.syncAll).not.toHaveBeenCalled();
+    dialog.handleConfirm();
+    fixture.detectChanges();
+
+    expect(api.syncAll).toHaveBeenCalledTimes(1);
+    expect(component.running()).toBe(true);
+    expect(text()).toContain('同步執行中：正在準備商品清單');
+    expect(button('同步中').disabled).toBe(true);
+    // 執行中不能切換開關
+    expect(button('停用 PTT 來源').disabled).toBe(true);
+
+    // 第一次輪詢：仍在執行，顯示進度
+    api.getStatus.mockImplementation(() => of(status({ running: true, processedCount: 3, totalCount: 8 })));
+    vi.advanceTimersByTime(TREND_CRAWLER_POLL_MS);
+    fixture.detectChanges();
+    expect(text()).toContain('已處理 3 / 8 個商品');
+    expect(text()).toContain('離開這個頁面不會中斷同步');
+
+    // 第二次輪詢：已完成，停止輪詢
+    api.getStatus.mockImplementation(() => of(status()));
+    vi.advanceTimersByTime(TREND_CRAWLER_POLL_MS);
+    fixture.detectChanges();
+    expect(component.running()).toBe(false);
+    const callsAfterFinish = api.getStatus.mock.calls.length;
+    vi.advanceTimersByTime(TREND_CRAWLER_POLL_MS * 3);
+    expect(api.getStatus.mock.calls.length).toBe(callsAfterFinish);
+    expect(button('立即同步全部商品').disabled).toBe(false);
+  });
+
+  it('does nothing when the user cancels the sync confirmation', async () => {
+    await create();
+    button('立即同步全部商品').click();
+    dialog.handleCancel();
+    expect(api.syncAll).not.toHaveBeenCalled();
+  });
+
+  it('shows the backend message when sync-all is rejected with 409, then reloads the status', async () => {
+    await create();
+    api.syncAll.mockReturnValueOnce(
+      throwError(
+        () => new HttpErrorResponse({ status: 409, error: { message: '已有全商品同步正在執行中，請等目前這次完成後再試' } }),
+      ),
+    );
+    button('立即同步全部商品').click();
+    dialog.handleConfirm();
+    fixture.detectChanges();
+    expect(dialog.state()?.variant).toBe('error');
+    expect(dialog.state()?.messages).toContain('已有全商品同步正在執行中，請等目前這次完成後再試');
+    expect(api.getStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirms before disabling the PTT source and explains the consequences', async () => {
+    await create();
+    button('停用 PTT 來源').click();
+    expect(dialog.state()?.variant).toBe('confirm');
+    expect(dialog.state()?.messages.join('')).toContain('不會改用模擬資料');
+    dialog.handleConfirm();
+    fixture.detectChanges();
+    expect(api.setEnabled).toHaveBeenCalledWith(false);
+    expect(text()).toContain('來源已停用');
+  });
+
+  it('shows a retryable error when the status cannot be loaded', async () => {
+    api.getStatus.mockImplementation(() =>
+      throwError(() => new HttpErrorResponse({ status: 403, error: { message: '權限不足' } })),
+    );
+    await create();
+    expect(text()).toContain('無法載入同步狀態：權限不足');
+    api.getStatus.mockImplementation(() => of(status()));
+    button('重新載入').click();
+    fixture.detectChanges();
+    expect(text()).toContain('來源啟用中');
+  });
+});

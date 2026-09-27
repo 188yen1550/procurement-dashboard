@@ -166,12 +166,20 @@ export function toDetailProduct(
     //（舊 contract 誤以為有），evaluation 載入失敗時只能顯示 0。
     completeness: evaluation?.dataCompleteness ?? 0,
     baseScore: evaluation?.totalScore ?? null,
-    // 分數一律以 evaluation 為單一真實來源；festival-boost 只取檔期明細，
-    // 避免兩支 API 不同步時畫面出現互相矛盾的數字。
-    festivalBoost: evaluation?.festivalBoost ?? 0,
-    weatherBoost: evaluation ? (evaluation.weatherBoost ?? null) : 0,
+    // ⚠️ 2026-09-27 修正：節慶加成、天氣加成、最終分數改以 festival-boost 的回應為準。
+    // 原本這三項讀 evaluation（上次重算時存下的值），急迫係數／命中度／天氣明細卻讀
+    // festival-boost（LIVE 是即時計算），兩者不同步時會出現「急迫係數 100%、命中核心
+    // 標籤，加成卻是 +4.9」這種明細算不回總數的畫面。festival-boost 的加成與急迫係數
+    // 出自同一次計算（SNAPSHOT 則同一筆審核紀錄），最終分數也由後端用同一組加成組成。
+    // festival-boost 載入失敗時才退回 evaluation 的存檔值。
+    festivalBoost: festival ? (festival.festivalBoost ?? 0) : (evaluation?.festivalBoost ?? 0),
+    weatherBoost: festival
+      ? (festival.weatherBoost ?? null)
+      : evaluation
+        ? (evaluation.weatherBoost ?? null)
+        : 0,
     weatherDetail: festival?.weatherBoostDetail ?? null,
-    finalScore: evaluation?.finalScore ?? null,
+    finalScore: festival ? (festival.finalScore ?? null) : (evaluation?.finalScore ?? null),
     campaign: festival?.matchedCampaign?.campaignName ?? null,
     campaignScope: describeMatchedCampaignScope(festival?.matchedCampaign ?? null),
     matchedTags: festival?.matchedCampaign?.matchedTags ?? [],

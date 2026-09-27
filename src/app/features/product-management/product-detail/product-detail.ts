@@ -3,12 +3,14 @@
  * Final Score = Base Score + Festival Boost；APPROVED 顯示 SNAPSHOT，其餘狀態顯示 LIVE。
  */
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, afterRenderEffect, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import Chart from 'chart.js/auto';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { APP_CONFIG } from '../../../core/config/app-config';
 import { toApiError } from '../../../core/api/api-error';
+import { AI_ANALYSIS_TIMEOUT_MS, TREND_SYNC_TIMEOUT_MS } from '../../../core/api/request-timeout';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { Auth } from '../../../core/auth/auth';
@@ -29,8 +31,9 @@ import { ProductApiService } from '../api/product-api.service';
 import { WeatherBoostDetailPayload } from '../api/product-api.contract';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
-import { AiAnalysisModel, TrendModel, toProductActionAvailability } from '../api/product.mapper';
+import { AiAnalysisModel, TrendHistoryPoint, TrendModel, toProductActionAvailability } from '../api/product.mapper';
 import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
+import { brandColor } from '../../../core/ui/brand-color';
 import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/list-sort';
 import { InfoTip } from '../../../shared/components/info-tip/info-tip';
 import {
@@ -83,6 +86,21 @@ function toTrendExtras(trend: TrendModel | null): Partial<DetailExtras> {
     popularityScore: trend.popularityScore,
   };
 }
+
+/**
+ * ⚠️ 2026-09-25 新增：展示模式的熱度趨勢圖示範資料，7 個點模擬「先漲後跌」
+ * 的走勢。collectedAt 故意寫死日期字串（不用 new Date() 算相對日期），
+ * 保持展示模式輸出穩定、可預期，跟專案裡其他 Mock 常數的一貫做法一致。
+ */
+const MOCK_TREND_HISTORY: TrendHistoryPoint[] = [
+  { collectedAt: '2026-08-26T02:00:00', popularityScore: 52.3, trendDirection: 'STABLE' },
+  { collectedAt: '2026-08-27T02:00:00', popularityScore: 58.1, trendDirection: 'UP' },
+  { collectedAt: '2026-08-28T02:00:00', popularityScore: 64.7, trendDirection: 'UP' },
+  { collectedAt: '2026-08-29T02:00:00', popularityScore: 73.5, trendDirection: 'UP' },
+  { collectedAt: '2026-08-30T02:00:00', popularityScore: 84.37, trendDirection: 'UP' },
+  { collectedAt: '2026-08-31T02:00:00', popularityScore: 79.2, trendDirection: 'DOWN' },
+  { collectedAt: '2026-09-01T02:00:00', popularityScore: 71.0, trendDirection: 'DOWN' },
+];
 
 const APPROVED: DetailProduct = {
   id: 101,
@@ -206,7 +224,7 @@ const INCOMPLETE: DetailProduct = {
   styleUrls: ['./product-detail.scss', './product-detail-image.scss', './product-detail-history.scss'],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
-export class ProductDetail implements OnInit {
+export class ProductDetail implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProductApiService);
   private readonly productTypes = inject(ProductTypeLookupService);
@@ -237,6 +255,66 @@ export class ProductDetail implements OnInit {
   readonly gateCodeLabel = GATE_CODE_LABEL;
   /** 這件商品自己的歷次審核紀錄，時間新→舊排序，供頁面下方新增的區塊顯示。 */
   readonly reviewHistory = signal<ReviewRecordModel[]>([]);
+  readonly trendHistory = signal<TrendHistoryPoint[]>([]);
+
+  // ----- 熱度趨勢圖（chart.js）-----
+  // ⚠️ 2026-09-25 新增：跟 dashboard.ts 的狀態分布圖用同一套模式，理由
+  // 見該檔案 renderStatusChartEffect 的完整註解——用 afterRenderEffect()
+  // 而不是一般 effect() 或在 subscribe 回呼裡手動畫圖，避免「canvas 還
+  // 沒掛上 DOM 就先畫、之後沒有其他事件觸發重繪」的競態問題。
+  @ViewChild('trendChartCanvas') private readonly trendChartCanvas?: ElementRef<HTMLCanvasElement>;
+  private trendChart: Chart | null = null;
+
+  private readonly renderTrendChartEffect = afterRenderEffect(() => {
+    const history = this.trendHistory();
+    const canvas = this.trendChartCanvas?.nativeElement;
+    if (!canvas) return;
+
+    // 少於 2 個點畫不出有意義的折線（1 個點只是一個孤立的圓），
+    // 樣板改顯示文字提示，這裡直接不畫、也把舊圖表清掉。
+    if (history.length < 2) {
+      this.trendChart?.destroy();
+      this.trendChart = null;
+      return;
+    }
+
+    const chartData = {
+      // collectedAt 只取到分鐘，避免同一天多次同步時橫軸標籤過長擠在一起。
+      labels: history.map((point) => (point.collectedAt ? point.collectedAt.slice(5, 16) : '')),
+      datasets: [
+        {
+          data: history.map((point) => point.popularityScore),
+          borderColor: brandColor('--c-brand'),
+          backgroundColor: brandColor('--c-brand-tint'),
+          fill: true,
+          tension: 0.25,
+          pointRadius: 3,
+        },
+      ],
+    };
+
+    if (this.trendChart && this.trendChart.canvas !== canvas) {
+      this.trendChart.destroy();
+      this.trendChart = null;
+    }
+    if (this.trendChart) {
+      this.trendChart.data = chartData;
+      this.trendChart.update();
+      return;
+    }
+
+    this.trendChart = new Chart(canvas, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, max: 100 } },
+      },
+    });
+  });
+
   /**
    * 歷次審核紀錄的排序（2026-09-23 由 procurement-dashboard-updated 分支整併）。
    * 未選擇排序時維持後端的「新→舊」順序。
@@ -318,6 +396,11 @@ export class ProductDetail implements OnInit {
   readonly pageState = signal<DetailState>('default');
   readonly product = signal<DetailProduct | null>(null);
   readonly syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  /**
+   * 趨勢同步失敗的訊息，留在趨勢區塊直到下次同步。不用 statusMessage：那個會自動消失，
+   * 使用者回頭看趨勢區塊時只剩空白的錯誤框，不知道發生什麼事。
+   */
+  readonly syncError = signal('');
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
   readonly imageLoadFailed = signal(false);
@@ -359,6 +442,10 @@ export class ProductDetail implements OnInit {
   reload(): void {
     if (this.useMockData) {
       this.product.set(this.productId === '104' ? INCOMPLETE : APPROVED);
+      // ⚠️ 2026-09-25 新增：展示模式示範用，數字純粹示意，呈現「逐漸
+      // 上升後回落」的走勢，讓展示時看得出圖表真的有畫出波動，不是
+      // 一條平線。
+      this.trendHistory.set(MOCK_TREND_HISTORY);
       this.pageState.set('default');
       return;
     }
@@ -384,6 +471,10 @@ export class ProductDetail implements OnInit {
             // 最新一筆趨勢資料（每天 02:00 排程自動抓 PTT）。唯讀，不觸發爬蟲；
             // 以前只能靠「立即更新」拿到趨勢，重新進入頁面就顯示「尚無趨勢資料」。
             trend: this.api.getLatestTrend(this.productId).pipe(catchError(() => of(null))),
+            // ⚠️ 2026-09-25 新增：熱度趨勢圖用，跟上面的 trend（只拿最新一筆）
+            // 是不同的獨立查詢，各自失敗互不影響——趨勢圖失敗只是圖表區塊
+            // 顯示空狀態，不影響上面「最新一筆」的顯示。
+            trendHistory: this.api.getTrendHistory(this.productId).pipe(catchError(() => of([]))),
             // 商品類型名稱：ProductResponse 只有 productTypeId，
             // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
             typeName: this.productTypes.getName(product.productTypeId),
@@ -392,7 +483,7 @@ export class ProductDetail implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend }) => {
+        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend, trendHistory }) => {
           this.product.set(
             toDetailProduct(product, evaluation, festival, typeName, {
               ...toAiExtras(aiAnalysis),
@@ -400,6 +491,7 @@ export class ProductDetail implements OnInit {
             }),
           );
           this.reviewHistory.set(reviewHistory);
+          this.trendHistory.set(trendHistory);
           this.pageState.set('default');
           if (!evaluation) this.statusMessageState.show('評估分數載入失敗，其餘資料仍可檢視。');
         },
@@ -454,7 +546,11 @@ export class ProductDetail implements OnInit {
           this.isGeneratingAi.set(false);
           const error = toApiError(err);
           this.aiError.set(
-            error.status === 502 ? 'AI 分析服務暫時無法使用，請稍後再試。' : error.message,
+            error.isTimeout
+              ? `AI 分析超過 ${AI_ANALYSIS_TIMEOUT_MS / 1000} 秒仍未回應，已停止等待。請稍後再按一次重試；規則評分與人工審核不受影響。`
+              : error.status === 502
+                ? 'AI 分析服務暫時無法使用，請稍後再試。'
+                : error.message,
           );
         },
       });
@@ -499,6 +595,7 @@ export class ProductDetail implements OnInit {
       return;
     }
     this.syncState.set('syncing');
+    this.syncError.set('');
     this.statusMessageState.show('正在搜尋 PTT 討論，約需 10 秒，請稍候。');
     this.api
       .syncTrend(this.productId)
@@ -511,13 +608,20 @@ export class ProductDetail implements OnInit {
           forkJoin({
             trend: of(trend),
             evaluation: this.api.getEvaluation(this.productId).pipe(catchError(() => of(null))),
+            // ⚠️ 2026-09-25 新增：同步成功後圖表也要跟著多一個新的點，
+            // 不然畫面上分數已經更新、圖表卻還停在上一次的狀態，兩者
+            // 看起來不同步。失敗時保留舊的歷史資料，不清空圖表。
+            trendHistory: this.api
+              .getTrendHistory(this.productId)
+              .pipe(catchError(() => of(this.trendHistory()))),
           }),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ trend, evaluation }) => {
+        next: ({ trend, evaluation, trendHistory }) => {
           this.syncState.set('success');
+          this.trendHistory.set(trendHistory);
           this.statusMessageState.show(
             trend.source === 'PTT'
               ? '趨勢資料已依 PTT 討論量更新。'
@@ -538,8 +642,14 @@ export class ProductDetail implements OnInit {
           );
         },
         error: (err) => {
+          const error = toApiError(err);
           this.syncState.set('error');
-          this.statusMessageState.show(toApiError(err).message);
+          this.syncError.set(
+            error.isTimeout
+              ? `PTT 搜尋超過 ${TREND_SYNC_TIMEOUT_MS / 1000} 秒仍未完成，已停止等待。後端可能仍在處理，稍後重新整理頁面即可看到結果，或按「重試」再同步一次。`
+              : error.message,
+          );
+          this.statusMessageState.show(this.syncError());
         },
       });
   }
@@ -628,5 +738,9 @@ export class ProductDetail implements OnInit {
   /** urgencyFactor 是連續值（越接近檔期越高），用百分比呈現比原始小數直覺。 */
   urgencyPercent(urgencyFactor: number | null): number | null {
     return urgencyFactor === null ? null : Math.round(urgencyFactor * 100);
+  }
+
+  ngOnDestroy(): void {
+    this.trendChart?.destroy();
   }
 }

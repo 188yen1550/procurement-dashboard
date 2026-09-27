@@ -38,6 +38,22 @@ describe('Dashboard', () => {
     expect(component.recommendations()).toHaveLength(10);
   });
 
+  // ⚠️ 2026-09-25 新增：跟推薦 Top 10 刻意區隔的熱度排行榜，見
+  // dashboard.mapper.ts 的 TrendLeaderboardItem 類別註解。
+  it('exposes five trend leaderboard entries from mock data', () => {
+    expect(component.data().trendLeaderboard).toHaveLength(5);
+  });
+
+  it('marks simulated trend data with the is-simulated class, not real PTT data', () => {
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('.trend-leaderboard-panel .score');
+    // Mock 資料第 4 筆（機能防曬外套）isRealSource 為 false，其餘為 true。
+    const simulatedRows = Array.from(rows).filter((el) =>
+      (el as HTMLElement).classList.contains('is-simulated'),
+    );
+    expect(simulatedRows).toHaveLength(1);
+  });
+
   it('includes AI suggestions in the chart breakdown and exposes inconsistent totals', () => {
     expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14, 5]);
     expect(component.statusTotal()).toBe(109);
@@ -47,10 +63,16 @@ describe('Dashboard', () => {
     expect(fixture.nativeElement.querySelector('.status-note').textContent).toContain('128');
   });
 
-  it('links all four product cards to management and keeps the AI suggestion destination', () => {
+  // 2026-09-27：統計卡帶上審核狀態，品項管理依卡片語意預先篩選（候選商品總數＝全部）。
+  it('links the four product cards to management with the matching review filter and keeps the AI suggestion destination', () => {
     const links = fixture.nativeElement.querySelectorAll('.stat-card-link');
-    expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href')))
-      .toEqual(['/products', '/products', '/products', '/products', '/products/ai-suggestions']);
+    expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href'))).toEqual([
+      '/products?reviewStatus=ALL',
+      '/products?reviewStatus=PENDING',
+      '/products?reviewStatus=APPROVED',
+      '/products?reviewStatus=REJECTED',
+      '/products/ai-suggestions',
+    ]);
   });
 
   // 2026-09-23 分支整併：轉換率依後端 scope 切換文案，並顯示分子／分母原始筆數。
@@ -159,6 +181,17 @@ describe('Dashboard (manager view)', () => {
     await fixture.whenStable();
   });
 
+
+  // 2026-09-27：高風險提示的商品名稱可點擊，前往品項詳情（管理層進入為唯讀模式）。
+  it('links each risk alert to the product detail page', () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('.risk-item strong a'),
+      (link) => (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(links.length).toBeGreaterThan(0);
+    expect(links).toContain('/products/1');
+    expect(links).toContain('/products/2');
+  });
   it('hides the AI suggestion card and chart slice, and adjusts the total accordingly', () => {
     expect(fixture.nativeElement.textContent).not.toContain('AI 建議待確認');
     expect(component.statusBreakdown().map((item) => item.label)).toEqual(['待人工審核', '審核通過', '審核拒絕']);

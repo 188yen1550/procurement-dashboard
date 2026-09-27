@@ -225,3 +225,23 @@
 .boost-settings-footer {
   flex-basis: 100%;
 }
+
+/* 地域占比設定面板右側沒有 .config-panel-actions 按鈕，說明文字不需要共用樣式的 62ch 限寬。*/
+.config-panel-head p.full-width {
+  max-width: none;
+}
+
+/* 各區天氣資料明細：預設摺疊，展開後才顯示表格。 */
+.weather-status-details {
+  margin-top: var(--s-2);
+
+  > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--c-ink-muted);
+  }
+
+  > .config-table-wrap {
+    margin-top: var(--s-3);
+  }
+}

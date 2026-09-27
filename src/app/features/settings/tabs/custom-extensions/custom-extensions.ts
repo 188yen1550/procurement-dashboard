@@ -118,6 +118,12 @@ export class CustomExtensions {
   readonly newFactorCustomFieldId = signal<number | null>(null);
   /** 空字串代表沿用該策略的預設倍率（MANUAL_SCALE=20／MANUAL_PERCENT=100），不送 strategyParams。 */
   readonly newFactorScale = signal('');
+  /**
+   * 2026-09-27：TARGET_BAND_NORMALIZE 專用，勾選時送 strategyParams = { logCurve: 1 }，
+   * 後端改用對數曲線正規化（ScoringAlgorithms.normalizeByBandLog），給社群提及次數這類
+   * 長尾分布的次數型資料使用。編輯時一定要回填，否則儲存會把既有的 logCurve 清掉。
+   */
+  readonly newFactorLogCurve = signal(false);
 
   /** 中文顯示名稱，對應後端 FactorStrategyCode 的三個已實作值，純顯示用（見 newFactorStrategy()）。 */
   readonly factorStrategyLabel: Record<string, string> = {
@@ -183,6 +189,11 @@ export class CustomExtensions {
     return field ? (this.customFieldTypeStrategy[field.fieldType] ?? null) : null;
   });
 
+  /** strategyParams 帶 logCurve > 0 代表該因子使用對數曲線（見 newFactorLogCurve）。 */
+  usesLogCurve(params: Record<string, number> | null | undefined): boolean {
+    return (params?.['logCurve'] ?? 0) > 0;
+  }
+
   openCreateFactorDefinition(): void {
     this.editingFactorDefinitionId.set(null);
     this.newFactorCode.set('');
@@ -191,6 +202,7 @@ export class CustomExtensions {
     this.newFactorDataSource.set('PRICE_COMPETITIVENESS');
     this.newFactorCustomFieldId.set(null);
     this.newFactorScale.set('');
+    this.newFactorLogCurve.set(false);
     this.isCreatingFactorDefinition.set(true);
   }
 
@@ -213,6 +225,7 @@ export class CustomExtensions {
     }
     const scale = item.strategyParams?.['scale'];
     this.newFactorScale.set(scale != null ? String(scale) : '');
+    this.newFactorLogCurve.set(this.usesLogCurve(item.strategyParams));
     this.isCreatingFactorDefinition.set(true);
   }
 
@@ -265,10 +278,15 @@ export class CustomExtensions {
       return;
     }
 
-    const scaleInput = this.newFactorScale().trim();
-    const strategyParams: Record<string, number> | undefined = scaleInput
-      ? { scale: Number(scaleInput) }
-      : undefined;
+    const scaleInput = strategyCode === 'TARGET_BAND_NORMALIZE' ? '' : this.newFactorScale().trim();
+    const strategyParams: Record<string, number> | undefined =
+      strategyCode === 'TARGET_BAND_NORMALIZE'
+        ? this.newFactorLogCurve()
+          ? { logCurve: 1 }
+          : undefined
+        : scaleInput
+          ? { scale: Number(scaleInput) }
+          : undefined;
     if (scaleInput && Number.isNaN(strategyParams?.['scale'])) {
       this.showAlert('倍率必須是數字。', '自訂因子');
       return;

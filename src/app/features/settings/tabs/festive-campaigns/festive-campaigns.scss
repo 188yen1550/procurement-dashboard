@@ -152,10 +152,18 @@
 .radio-option,
 .check-option {
   display: flex;
-  align-items: center;
+  /* 2026-09-27：文案偏長會換行，center 會讓 radio／checkbox 浮在兩行文字中間；
+     改成貼齊第一行，再用 margin-top 把 input 對到第一行文字的中線。 */
+  align-items: flex-start;
   gap: var(--s-2);
   font-weight: 400;
   cursor: pointer;
+}
+
+.radio-option input,
+.check-option input {
+  flex-shrink: 0;
+  margin: 0.2em 0 0;
 }
 
 .check-option.is-disabled {
@@ -169,6 +177,12 @@
   flex-wrap: wrap;
   gap: var(--s-2) var(--s-4);
   margin-top: var(--s-3);
+}
+
+/* 補假／連假展開兩個選項文案都偏長，改成上下排列，不靠 flex-wrap 賭會不會擠在同一行。
+   地域（北中南東）很短，維持橫排。 */
+.holiday-options {
+  flex-direction: column;
 }
 
 .helper.is-invalid {

@@ -112,3 +112,18 @@
   --layout-max: 1100px;
   --motion-fast: 0.15s ease;
 }
+
+/*
+ * --- 角色配色（2026-09-27，UI 規格第 6 點，範圍已確認為「操作層 vs 管理層」）---
+ * 登入後由 App 根元件在 <html> 設定 data-role（見 app.ts），一眼看出目前是哪個身分在操作。
+ * 操作層（purchaser）與未登入沿用 :root 的藍色；管理層改為深紫色。
+ * 只覆蓋品牌色三個 token：全站元件樣式都引用 var(--c-brand*)（原本硬編碼的 #1c5286
+ * 已一併改成引用 token），語意色（成功／警告／危險）維持不變，不讓狀態顏色跟著角色變。
+ * 紫色對白字對比約 8.6:1，淡底上的紫字同樣符合 WCAG AA。
+ */
+:root[data-role='manager'] {
+  --c-brand: #5b3f8c;
+  --c-brand-hover: #4a3274;
+  --c-brand-tint: #f1ecf8;
+  --focus-ring: 3px solid rgba(91, 63, 140, 0.24);
+}

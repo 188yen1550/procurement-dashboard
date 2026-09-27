@@ -19,7 +19,7 @@
   display: inline-flex;
   align-items: center;
   gap: .3rem;
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: var(--t-xs);
   font-weight: 700;
   text-decoration: none;
@@ -92,8 +92,8 @@ a:focus-visible {
 
 .primary-action {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286;
+  background: var(--c-brand);
+  border-color: var(--c-brand);
 }
 
 .primary-action:hover:not(:disabled) {
@@ -101,7 +101,7 @@ a:focus-visible {
 }
 
 .secondary-action {
-  color: #1c5286;
+  color: var(--c-brand);
   background: #fff;
   border-color: #cbd9e3;
 }
@@ -115,7 +115,7 @@ a:focus-visible {
   align-items: center;
   gap: .4rem;
   padding: .68rem 1rem;
-  color: #1c5286;
+  color: var(--c-brand);
   background: #eef4f8;
   border: 1px dashed #9fbcd2;
   border-radius: .55rem;

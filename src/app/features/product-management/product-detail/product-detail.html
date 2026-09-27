@@ -81,7 +81,7 @@
   <section class="empty">
     <h2>找不到品項資料</h2>
     <p>此品項可能已移除，或目前 Demo 資料為空。</p>
-    <button type="button" (click)="restoreDemo()">恢復 Demo 資料</button>
+    <button type="button" (click)="restoreDemo()">{{ useMockData ? '恢復 Demo 資料' : '重新整理' }}</button>
   </section>
   } @else {
   @let p = product()!;
@@ -457,9 +457,20 @@
             @if (p.trendKeyword) {・搜尋關鍵字「{{ p.trendKeyword }}」}
           </p>
           }
+          <!-- ⚠️ 2026-09-25 新增：過去 30 天的熱度走勢圖，資料來自
+               GET /trend/history，跟上面「最新一筆」是各自獨立的查詢。
+               少於 2 個點時折線圖畫不出有意義的走勢（見 product-detail.ts
+               renderTrendChartEffect 判斷），改顯示文字提示。 -->
+          @if (trendHistory().length >= 2) {
+          <div class="trend-chart-wrap">
+            <canvas #trendChartCanvas></canvas>
+          </div>
+          } @else if (p.lastSyncedAt) {
+          <p class="hint">歷史資料筆數還不夠（少於 2 筆），累積更多次同步後才能畫出走勢圖。</p>
+          }
           @if (!readOnly) {
           <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
-            {{ syncState() === 'syncing' ? '同步中…' : '立即更新' }}
+            {{ syncState() === 'syncing' ? '同步中…' : syncState() === 'error' ? '重試' : '立即更新' }}
           </button>
           }
           @if (syncState() === 'syncing') {
@@ -476,7 +487,7 @@
           }
           @if (syncState() === 'error') {
           <p class="inline-error" role="alert">
-            {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : statusMessage() }}
+            {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : syncError() }}
           </p>
           }
         </section>

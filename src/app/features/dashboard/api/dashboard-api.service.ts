@@ -10,14 +10,17 @@ import {
   DashboardRecommendationResponsePayload,
   DashboardRiskAlertResponsePayload,
   DashboardStatisticsResponsePayload,
+  DashboardTrendLeaderboardResponsePayload,
 } from './dashboard-api.contract';
 import {
   ConversionRateModel,
   RecommendationItem,
   RiskAlertItem,
+  TrendLeaderboardItem,
   toConversionRateModel,
   toRecommendationItem,
   toRiskAlertItem,
+  toTrendLeaderboardItem,
 } from './dashboard.mapper';
 
 /** loadAll() 的結果。任一區塊失敗時該欄位為 null，其餘照常顯示。 */
@@ -26,6 +29,7 @@ export interface DashboardData {
   recommendations: RecommendationItem[] | null;
   riskAlerts: RiskAlertItem[] | null;
   conversionRate: ConversionRateModel | null;
+  trendLeaderboard: TrendLeaderboardItem[] | null;
 }
 
 /** 儀表板 API 的唯一呼叫入口。 */
@@ -70,6 +74,22 @@ export class DashboardApiService {
   }
 
   /**
+   * 5. GET /api/dashboard/trend-leaderboard：熱度排行榜，依趨勢單一因子
+   * 排序，跟 getRecommendations()（綜合總分）刻意區隔，見
+   * dashboard.mapper.ts 的 TrendLeaderboardItem 類別註解。
+   */
+  getTrendLeaderboard(): Observable<TrendLeaderboardItem[]> {
+    return this.http
+      .get<ApiEnvelope<DashboardTrendLeaderboardResponsePayload[]>>(
+        DASHBOARD_API.trendLeaderboard,
+      )
+      .pipe(
+        unwrapData(),
+        map((items) => items.map(toTrendLeaderboardItem)),
+      );
+  }
+
+  /**
    * 一次載入四個區塊。
    *
    * ## 為什麼每一支都要 catchError
@@ -91,6 +111,7 @@ export class DashboardApiService {
       recommendations: this.getRecommendations().pipe(catchError(() => of(null))),
       riskAlerts: this.getRiskAlerts().pipe(catchError(() => of(null))),
       conversionRate: this.getConversionRate().pipe(catchError(() => of(null))),
+      trendLeaderboard: this.getTrendLeaderboard().pipe(catchError(() => of(null))),
     });
   }
 }

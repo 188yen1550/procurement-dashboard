@@ -9,8 +9,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { toApiError } from '../../../core/api/api-error';
+import { AI_ANALYSIS_TIMEOUT_MS, TREND_SYNC_TIMEOUT_MS } from '../../../core/api/request-timeout';
 
 import { ProductApiService } from './product-api.service';
 
@@ -298,6 +299,58 @@ describe('ProductApiService', () => {
       );
       const result = await promise;
       expect(result[0].batchId).toBe('NONE');
+    });
+  });
+
+  describe('getLatestTrend', () => {
+    it('尚無趨勢資料時回傳 null，不當成錯誤', async () => {
+      const promise = firstValueFrom(service.getLatestTrend(6));
+      httpMock.expectOne('/api/products/6/trend').flush(envelope(null));
+      expect(await promise).toBeNull();
+    });
+
+    it('有資料時轉成 TrendModel', async () => {
+      const promise = firstValueFrom(service.getLatestTrend(4));
+      httpMock.expectOne('/api/products/4/trend').flush(
+        envelope({ source: 'PTT', keyword: '行動電源', trendScore: 12.58, popularityScore: 84.37, trendDirection: 'DOWN', collectedAt: '2026-09-25T02:00:00' }),
+      );
+      const trend = await promise;
+      expect(trend?.source).toBe('PTT');
+      expect(trend?.popularityScore).toBe(84.37);
+    });
+  });
+
+  // AC-05：外部服務類的 API 不能讓畫面無限等待。
+  describe('request timeouts', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    function subscribeAndCollectError(source: Observable<unknown>) {
+      const result: { error: unknown; done: boolean } = { error: undefined, done: false };
+      source.subscribe({ error: (e: unknown) => (result.error = e), complete: () => (result.done = true) });
+      return result;
+    }
+
+    it('趨勢同步超過時限就結束並標記為逾時，時限內不會提早中斷', () => {
+      const result = subscribeAndCollectError(service.syncTrend(4));
+      const req = httpMock.expectOne('/api/products/4/trend/sync');
+
+      vi.advanceTimersByTime(TREND_SYNC_TIMEOUT_MS - 1);
+      expect(result.error).toBeUndefined();
+
+      vi.advanceTimersByTime(1);
+      expect(toApiError(result.error).isTimeout).toBe(true);
+      // 逾時後前端取消請求，不會留下懸空的訂閱。
+      expect(req.cancelled).toBe(true);
+    });
+
+    it('AI 分析的前端時限比後端 90 秒長，讓後端的逾時訊息先回來', () => {
+      expect(AI_ANALYSIS_TIMEOUT_MS).toBeGreaterThan(90_000);
+      const result = subscribeAndCollectError(service.generateAiAnalysis(4));
+      httpMock.expectOne('/api/products/4/ai-analysis/generate');
+
+      vi.advanceTimersByTime(AI_ANALYSIS_TIMEOUT_MS);
+      expect(toApiError(result.error).isTimeout).toBe(true);
     });
   });
 });

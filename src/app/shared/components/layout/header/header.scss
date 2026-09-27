@@ -50,8 +50,8 @@
 
 .role-badge {
   padding: 0.35rem 0.7rem;
-  color: #1c5286;
-  background: #eaf3fb;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
   border-radius: 999px;
   font-size: var(--t-xs);
   font-weight: 700;
@@ -71,8 +71,8 @@
 
   &:hover {
     color: #fff;
-    background: #1c5286;
-    border-color: #1c5286;
+    background: var(--c-brand);
+    border-color: var(--c-brand);
   }
 }
 

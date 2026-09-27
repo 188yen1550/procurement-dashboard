@@ -3,6 +3,7 @@ import {
   DashboardConversionRateResponsePayload,
   DashboardRecommendationResponsePayload,
   DashboardRiskAlertResponsePayload,
+  DashboardTrendLeaderboardResponsePayload,
 } from './dashboard-api.contract';
 
 /**
@@ -109,5 +110,34 @@ export function toConversionRateModel(
     ratePercentage: payload.ratePercentage,
     approvedCount: payload.approvedCount,
     submittedCount: payload.submittedCount,
+  };
+}
+
+// =========================================================================
+// 熱度排行榜
+// =========================================================================
+
+export interface TrendLeaderboardItem {
+  productId: number;
+  productName: string;
+  popularityScore: number | null;
+  trendDirection: 'UP' | 'DOWN' | 'STABLE' | null;
+  /** true 代表這筆是真實 PTT 資料；false 代表當次抓不到、退回模擬資料。 */
+  isRealSource: boolean;
+  keyword: string;
+}
+
+export function toTrendLeaderboardItem(
+  payload: DashboardTrendLeaderboardResponsePayload,
+): TrendLeaderboardItem {
+  return {
+    productId: payload.productId,
+    productName: payload.productName,
+    popularityScore: payload.popularityScore,
+    trendDirection: payload.trendDirection,
+    // 只有明確等於 'PTT' 才算真實來源，其餘（'SIMULATED' 或未來新來源）
+    // 一律當作非真實處理，樣板用橘色字標示，跟品項詳情頁既有做法一致。
+    isRealSource: payload.source === 'PTT',
+    keyword: payload.keyword ?? '',
   };
 }

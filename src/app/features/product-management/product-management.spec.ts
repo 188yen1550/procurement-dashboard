@@ -1,7 +1,7 @@
 /** 檔案用途：驗證品項篩選、60% 門檻、核准編輯邊界與條件式刪除等本地 Mock 規則。 */
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { FileDownloadService } from '../../core/ui/file-download.service';
@@ -379,5 +379,59 @@ describe('ProductManagement (formal API mode)', () => {
     fixture.detectChanges();
     expect(component.pageState()).toBe('empty');
     expect(component.products().length).toBe(0);
+  });
+});
+
+/**
+ * 2026-09-27：從儀表板統計卡點進來時帶 ?reviewStatus=，品項管理依卡片語意預先篩選。
+ */
+describe('ProductManagement (review filter from dashboard query param)', () => {
+  const api = {
+    list: vi.fn(() => of({ items: [], totalElements: 0, totalPages: 0, pageNumber: 0, pageSize: 20 })),
+    listSubmissionBatches: vi.fn(() => of([])),
+    exportApproved: vi.fn(),
+  };
+  const productTypeLookup = {
+    getNameMap: vi.fn(() => of(new Map<number, string>())),
+    getGroupedOptions: vi.fn(() => of([])),
+    getDescriptionMap: vi.fn(() => of(new Map<number, string>())),
+  };
+
+  async function createWith(reviewStatus: string | null): Promise<ProductManagement> {
+    vi.clearAllMocks();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [ProductManagement],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(reviewStatus ? { reviewStatus } : {}) } },
+        },
+        { provide: ProductApiService, useValue: api },
+        { provide: ProductTypeLookupService, useValue: productTypeLookup },
+        { provide: FileDownloadService, useValue: { save: vi.fn() } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ProductManagement);
+    fixture.detectChanges();
+    return fixture.componentInstance;
+  }
+
+  it.each(['PENDING', 'APPROVED', 'REJECTED'] as const)('pre-filters by %s from the URL', async (status) => {
+    const component = await createWith(status);
+    expect(component.reviewFilter()).toBe(status);
+    expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ reviewStatus: status }));
+  });
+
+  it('shows every review status for the total-products card (ALL)', async () => {
+    const component = await createWith('ALL');
+    expect(component.reviewFilter()).toBe('ALL');
+    expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ reviewStatus: undefined }));
+  });
+
+  it.each([null, 'SOMETHING_ELSE'])('keeps the default PENDING filter when the parameter is %s', async (raw) => {
+    const component = await createWith(raw);
+    expect(component.reviewFilter()).toBe('PENDING');
   });
 });

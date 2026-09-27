@@ -16,6 +16,7 @@ export const DASHBOARD_API = {
   recommendations: '/api/dashboard/recommendations',
   riskAlerts: '/api/dashboard/risk-alerts',
   conversionRate: '/api/dashboard/conversion-rate',
+  trendLeaderboard: '/api/dashboard/trend-leaderboard',
 } as const;
 
 /**
@@ -116,3 +117,26 @@ export interface DashboardConversionRateResponsePayload {
 
 /** 對應後端 DashboardConversionRateResponse.SCOPE_PERSONAL／SCOPE_COMPANY。 */
 export type ConversionRateScope = 'PERSONAL' | 'COMPANY';
+
+/**
+ * 對應後端 DashboardTrendLeaderboardItem.java（熱度排行榜）。
+ *
+ * ⚠️ 2026-09-25 新增：跟 recommendations（依「綜合加權總分」排序，七大
+ * 因子混在一起）刻意區隔——這支只看趨勢單一因子最新一筆的分數排序，
+ * 讓「總分被其他因子拉低、但熱度其實在飆升」的商品也能被看見，不是
+ * 重複做一次 Top 10。不限定審核狀態以外的篩選，只排除已封存商品
+ * （後端 item_status='ACTIVE'）。
+ *
+ * source 直接透傳 trend_signals.source（'PTT' 或 'SIMULATED'），前端
+ * 沿用品項詳情頁既有的做法：模擬資料用橘色字明確標示，不要讓使用者
+ * 誤以為是真實資料。
+ */
+export interface DashboardTrendLeaderboardResponsePayload {
+  productId: number;
+  productName: string;
+  popularityScore: Decimal;
+  trendDirection: 'UP' | 'DOWN' | 'STABLE' | null;
+  /** 後端 source 是純字串（不是 enum），目前實際值是 'PTT' 或 'SIMULATED'。 */
+  source: string;
+  keyword: string | null;
+}

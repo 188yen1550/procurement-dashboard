@@ -600,7 +600,7 @@
  *
  * 修正前：product-form.scss 裡同時存在兩份互相衝突的 .back-link 定義
  * （一份綠色配 !important、一份藍色），綠色那份因為 !important 蓋過另一份，
- * 導致「返回品項管理」按鈕變成跟全站主色（藍色 #1c5286）不一致的綠色——
+ * 導致「返回品項管理」按鈕變成跟全站主色（藍色 var(--c-brand)）不一致的綠色——
  * 這是遺留的樣式衝突，不是刻意設計。另外 product-detail.html／
  * review-detail.html 的返回連結完全沒有套用 .back-link class，只是
  * 沒有樣式的裸連結，導致同一種功能在不同頁面大小、樣式都不一致。
@@ -615,8 +615,8 @@
   min-height: 44px;
   margin-bottom: 0.8rem;
   padding: 0.55rem 0.9rem;
-  color: #1c5286;
-  background: #eaf3fb;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
   border: 1px solid #b7d3ea;
   border-radius: 0.5rem;
   font-size: var(--t-sm);

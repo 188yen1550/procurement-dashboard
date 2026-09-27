@@ -182,12 +182,12 @@
       </article>
       } @else {
       <article class="stat-card total">
-        <a class="stat-card-link" routerLink="/products" aria-label="候選商品總數：前往品項管理">
+        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'ALL' }" aria-label="候選商品總數：前往品項管理">
         <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong>
         </a>
       </article>
       <article class="stat-card pending">
-        <a class="stat-card-link" routerLink="/products" aria-label="待人工審核：前往品項管理">
+        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'PENDING' }" aria-label="待人工審核：前往品項管理">
         <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
         </a>
         <!-- 2026-09-16修正：後端 pendingReviews 已改為只算已轉正候選（CANDIDATE）
@@ -195,12 +195,12 @@
              這裡不用再額外說明子集關係。 -->
       </article>
       <article class="stat-card approved">
-        <a class="stat-card-link" routerLink="/products" aria-label="通過審核：前往品項管理">
+        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'APPROVED' }" aria-label="通過審核：前往品項管理">
         <span>通過審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card rejected">
-        <a class="stat-card-link" routerLink="/products" aria-label="審核拒絕：前往品項管理">
+        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'REJECTED' }" aria-label="審核拒絕：前往品項管理">
         <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
         </a>
       </article>
@@ -355,6 +355,69 @@
         </div>
       </section>
 
+      <!-- ⚠️ 2026-09-25 新增：跟上面「推薦 Top 10」刻意區隔——那張表依綜合
+           加權總分排序，七大因子混在一起；這張只看趨勢單一因子的最新分數，
+           讓「總分被其他因子拉低、但熱度其實在飆升」的商品也能被看見。
+           兩張表故意排在一起，方便對照。 -->
+      <section class="panel trend-leaderboard-panel" aria-labelledby="trend-leaderboard-title">
+        <header class="panel-header">
+          <div>
+            <h2 id="trend-leaderboard-title">熱度排行榜</h2>
+            <p class="panel-subtitle">
+              依 PTT 討論量換算的熱度分數即時排序前 5 名，只看趨勢單一因子，不是綜合分數。橘色字代表當次
+              PTT 抓不到、退回的模擬資料。
+            </p>
+          </div>
+        </header>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-rank">排名</th>
+                <th>商品／搜尋關鍵字</th>
+                <th class="col-score">熱度分數</th>
+                <th>趨勢方向</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of data().trendLeaderboard; track item.id) {
+                <tr>
+                  <td>
+                    <span class="rank">{{ item.rank }}</span>
+                  </td>
+                  <td class="product-cell">
+                    <strong>{{ item.name }}</strong
+                    ><span>「{{ item.keyword }}」</span>
+                  </td>
+                  <td>
+                    @if (item.popularityScore === null) {
+                      <span class="unavailable">—</span>
+                    } @else {
+                      <strong class="score" [class.is-simulated]="!item.isRealSource">
+                        {{ item.popularityScore }}@if (!item.isRealSource) {（模擬）}
+                      </strong>
+                    }
+                  </td>
+                  <td>
+                    @if (item.trendDirection === 'UP') {
+                      <app-icon name="trending-up" size="sm" /> 上升
+                    } @else if (item.trendDirection === 'DOWN') {
+                      <app-icon name="trending-down" size="sm" /> 下降
+                    } @else {
+                      <app-icon name="trending-flat" size="sm" /> 持平
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="unavailable">目前沒有任何商品的趨勢資料。</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- 高風險提示：管理層的治理責任，操作層畫面不顯示這個面板
            （後端 API 權限上兩者都能呼叫，這裡純粹是畫面呈現決定）。
            2026-09-24：整個側欄（不只面板）改成只在管理層渲染——原本 <aside>
@@ -374,7 +437,8 @@
   <div class="risk-list">
               @for (risk of data().riskAlerts | sortRows: riskListSort.state(); track risk.id) {
                 <article class="risk-item">
-                  <strong>{{ risk.productName }}</strong>
+                  <!-- 2026-09-27：商品名稱可點擊，直接前往品項詳情（管理層進入為唯讀模式）。risk.id 就是商品 id，見 dashboard.ts 的 toDashboardData()。 -->
+                  <strong><a [routerLink]="['/products', risk.id]">{{ risk.productName }}</a></strong>
                   <ul class="risk-message-list">
                     @for (point of riskMessagePoints(risk.message); track $index) {
                       <li>{{ point }}</li>

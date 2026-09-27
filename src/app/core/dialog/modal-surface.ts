@@ -64,8 +64,13 @@ export class ModalSurface implements OnDestroy {
     if (!this.modalBusy()) this.dismissed.emit();
   }
 
-  backdrop(event: MouseEvent): void {
-    if (event.target === this.element.nativeElement) this.cancel(event);
+  /**
+   * 2026-09-27：點擊背景空白處不再視同取消，一律要按視窗內的取消／確定／關閉
+   * （或 Escape）才會關閉，避免誤觸空白處把編輯中的內容取消掉。
+   * 保留方法本身是為了維持 host binding 的結構。
+   */
+  backdrop(_event: MouseEvent): void {
+    // 刻意不做任何事
   }
 
   keydown(event: KeyboardEvent): void {

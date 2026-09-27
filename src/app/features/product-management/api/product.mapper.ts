@@ -21,6 +21,7 @@ import {
   MatchedCampaignPayload,
   ProductCreateRequestPayload,
   ProductResponsePayload,
+  TrendHistoryPointPayload,
   TrendSnapshotPayload,
   WeightSnapshotPayload,
 } from './product-api.contract';
@@ -584,6 +585,26 @@ export function toTrendModel(payload: TrendSnapshotPayload): TrendModel {
     source: payload.source,
     keyword: payload.keyword,
     trendScore: payload.trendScore,
+    popularityScore: payload.popularityScore,
+    trendDirection: payload.trendDirection ?? 'STABLE',
+    collectedAt: payload.collectedAt,
+  };
+}
+
+/**
+ * ⚠️ 2026-09-25 新增：品項詳情頁「熱度趨勢圖」用，見
+ * TrendHistoryPointPayload 型別註解——跟 TrendModel（單筆最新資料）
+ * 不是同一個東西，這是陣列裡的一個點。
+ */
+export interface TrendHistoryPoint {
+  popularityScore: number | null;
+  trendDirection: TrendDirection;
+  /** ⚠️ 後端型別是 String，格式類似 "2026-08-22T14:30:00"，畫圖前要自己 parse。 */
+  collectedAt: string | null;
+}
+
+export function toTrendHistoryPoint(payload: TrendHistoryPointPayload): TrendHistoryPoint {
+  return {
     popularityScore: payload.popularityScore,
     trendDirection: payload.trendDirection ?? 'STABLE',
     collectedAt: payload.collectedAt,

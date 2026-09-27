@@ -102,8 +102,8 @@
 
 .state-bar button.active {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .tabs {
@@ -114,8 +114,8 @@
 
 .tabs button.active {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .tabs span {
@@ -124,7 +124,7 @@
   height: 1.2rem;
   margin-left: .25rem;
   place-items: center;
-  color: #1c5286;
+  color: var(--c-brand);
   background: #fff;
   border-radius: 50%;
   font-size: var(--t-xs);
@@ -190,12 +190,12 @@
   height: 68px;
   place-content: center;
   text-align: center;
-  background: #eaf3fb;
+  background: var(--c-brand-tint);
   border-radius: 50%
 }
 
 .score strong {
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: var(--t-lg);
 }
 
@@ -265,8 +265,8 @@
 .review-list button {
   padding: .5rem .7rem;
   color: #fff;
-  background: #1c5286;
-  border: 1px solid #1c5286;
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
   border-radius: .45rem;
   font: inherit;
   font-size: var(--t-xs);

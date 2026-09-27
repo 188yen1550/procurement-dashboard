@@ -41,6 +41,10 @@ describe('ProductForm', () => {
     // 2026-09-25 補上：選品類後 loadCustomFieldSchema() 會呼叫這支，缺少時每個測試都會丟
     // 「getCustomFieldSchema is not a function」的未處理錯誤（不影響斷言但會污染測試輸出）。
     getCustomFieldSchema: vi.fn((_productTypeId: unknown) => of([])),
+    // 再販售選定參考商品後讀取完整資料做預填（onResaleCandidateSelected）。
+    getProduct: vi.fn((_id: unknown) =>
+      of({ id: 55, name: '參考商品', description: '同一件實體商品', imageUrl: '/images/products/ref.png' }),
+    ),
   };
   const settingsApi = {
     getProductTypes: vi.fn(() => of(productTypes)),
@@ -112,6 +116,22 @@ describe('ProductForm', () => {
     // 不能兩層同時存在、也不能哪一層永遠不消失。
     expect(component.statusMessage()).toBe('');
     expect(state?.title).toContain('表單有');
+  });
+
+  // 2026-09-27：再販售賣的是同一件實體商品，圖片跟名稱一樣屬於固有屬性，選定參考商品時預填。
+  it('prefills the reference product image when a resale reference is selected', () => {
+    component.onResaleCandidateSelected(55);
+    expect(api.getProduct).toHaveBeenCalledWith(55);
+    expect(component.currentImageUrl()).toBe('/images/products/ref.png');
+    expect(component.imagePreviewUrl()).toBe('/images/products/ref.png');
+    expect(component.imageState()).toBe('ready');
+  });
+
+  it('does not overwrite an image the user already changed or removed', () => {
+    component.imageDirty.set(true);
+    component.onResaleCandidateSelected(55);
+    expect(component.currentImageUrl()).toBeNull();
+    expect(component.imagePreviewUrl()).toBeNull();
   });
 
   it('requires prices for RESALE products', () => {

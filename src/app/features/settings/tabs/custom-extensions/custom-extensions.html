@@ -241,6 +241,15 @@
       </label>
       }
       @if (newFactorStrategy() === 'TARGET_BAND_NORMALIZE') {
+      <label class="weight-editor-row-label form-span-all">
+        <input type="checkbox" [checked]="newFactorLogCurve()"
+          (click)="$event.preventDefault(); newFactorLogCurve.set(!newFactorLogCurve())" />
+        <span>對數換算（適合次數型、長尾分布的資料，例如社群提及次數）</span>
+      </label>
+      <p class="helper form-span-all">
+        線性換算時，上界以下依比例給分；次數型資料多數商品偏少、少數爆量，線性會讓一般商品全擠在 0 分附近。
+        勾選對數換算後，端點不變（下界 0 分、上界 100 分、高於上界滿分），中段以對數拉開差距。
+      </p>
       <p class="helper form-span-all">
         這類因子要先在「目標區間」分頁替各品類（或全域）設定合理的上下限才會計分；沒有設定區間的品類，
         這個因子維持空值、不計入分母，不是計算錯誤。
@@ -280,7 +289,7 @@
         <tr>
           <td>{{ definition.factorCode }}</td>
           <td>{{ definition.factorName }}</td>
-          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}</td>
+          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}{{ usesLogCurve(definition.strategyParams) ? '（對數）' : '' }}</td>
           <td>{{ describeFactorDataSource(definition) }}</td>
           <td>
             {{ definition.isActive ? '啟用中' : '已停用' }}

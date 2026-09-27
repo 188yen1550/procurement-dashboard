@@ -15,6 +15,7 @@ import { toApiError } from '../../core/api/api-error';
 import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { splitAiReasonLines } from '../../core/ui/ai-reason-lines';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
+import { Icon } from '../../shared/components/icon/icon';
 import { DashboardApiService, DashboardData } from './api/dashboard-api.service';
 import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
 import {
@@ -43,13 +44,14 @@ const EMPTY_DASHBOARD: DashboardMockData = {
   },
   recommendations: [],
   riskAlerts: [],
+  trendLeaderboard: [],
 };
 
 type RealLoadState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
@@ -252,6 +254,7 @@ export class Dashboard implements OnInit, OnDestroy {
             result.recommendations === null && 'AI 推薦',
             result.riskAlerts === null && '風險提示',
             result.conversionRate === null && '轉換率',
+            result.trendLeaderboard === null && '熱度排行榜',
           ].filter((label): label is string => Boolean(label));
 
           this.errorMessage.set(
@@ -385,6 +388,17 @@ function toDashboardPageData(
       message: item.aiReasons,
       // 可能同時命中多個關鍵字，用頓號合併方便單行顯示。
       detectedKeyword: item.matchedKeywords.join('、') || NOT_PROVIDED,
+    })),
+    // ⚠️ 2026-09-25 新增：跟 recommendations 刻意區隔，只看趨勢單一因子，
+    // 見 DashboardTrendLeaderboardEntry 型別註解。
+    trendLeaderboard: (result.trendLeaderboard ?? []).map((item, index) => ({
+      id: item.productId,
+      rank: index + 1,
+      name: item.productName,
+      popularityScore: item.popularityScore,
+      trendDirection: item.trendDirection,
+      isRealSource: item.isRealSource,
+      keyword: item.keyword || NOT_PROVIDED,
     })),
   };
 }

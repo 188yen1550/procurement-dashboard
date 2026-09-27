@@ -49,6 +49,7 @@ import {
   GroupBuyRecordResponsePayload,
   GroupBuyResultCode,
 } from './api/group-buy-api.contract';
+import { brandColor } from '../../core/ui/brand-color';
 
 type PageState = 'default' | 'loading' | 'error';
 
@@ -260,7 +261,7 @@ export class GroupBuy implements OnInit, OnDestroy {
           {
             label: '成團率 (%)',
             data: byType.map((t) => t.rate),
-            backgroundColor: '#1c5286',
+            backgroundColor: brandColor('--c-brand'),
             borderRadius: 4,
           },
         ],

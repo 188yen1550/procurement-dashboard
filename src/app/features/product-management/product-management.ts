@@ -10,7 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject } from 'rxjs';
 import { debounceTime, finalize, map, switchMap } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { createDismissibleMessage } from '../../core/ui/auto-dismiss';
@@ -127,6 +127,7 @@ export class ProductManagement implements OnInit {
   private readonly productTypeLookup = inject(ProductTypeLookupService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fileDownload = inject(FileDownloadService);
+  private readonly route = inject(ActivatedRoute);
   readonly useMockData = APP_CONFIG.useMockData;
 
 
@@ -137,6 +138,10 @@ export class ProductManagement implements OnInit {
    * 預設只看待審核：操作層的日常工作是盯著自己送出去的東西有沒有結果。
    * 2026-09-24 職責分離後管理層不再進入這頁（purchaserGuard），原本「管理層
    * 預設看全部」的角色分支已無作用，一併移除。使用者仍可自行切換篩選條件。
+   *
+   * 2026-09-27：從儀表板統計卡點進來時帶有 ?reviewStatus=，constructor 依卡片語意
+   * 覆蓋預設值（候選商品總數 → ALL；待審／通過／拒絕 → 對應狀態）。參數不存在或
+   * 不是合法值時維持「預設看待審核」。
    */
   readonly reviewFilter = signal<ReviewStatus | 'ALL'>('PENDING');
   readonly itemFilter = signal<ItemStatus | 'ALL'>('ALL');
@@ -317,6 +322,10 @@ export class ProductManagement implements OnInit {
   private readonly searchInput$ = new Subject<string>();
 
   constructor() {
+    this.reviewFilter.set(
+      ProductManagement.resolveInitialReviewFilter(this.route.snapshot.queryParamMap.get('reviewStatus')),
+    );
+
     this.searchInput$
       .pipe(debounceTime(300), takeUntilDestroyed())
       .subscribe(() => this.applyFilterChange());
@@ -326,6 +335,11 @@ export class ProductManagement implements OnInit {
     // 要靠這裡才能重新抓最新清單。Mock 模式不套用，避免每次點擊都把
     // 使用者正在操作的展示狀態（篩選、Demo 狀態切換）重置掉。
     if (!this.useMockData) reloadOnRevisit(() => { this.load(); this.loadProductTypes(); this.loadSubmissionBatches(); });
+  }
+
+  /** 網址 ?reviewStatus= 的值，只接受 ALL 與三種審核狀態，其他值一律回到預設「待審核」。 */
+  private static resolveInitialReviewFilter(raw: string | null): ReviewStatus | 'ALL' {
+    return raw === 'ALL' || raw === 'PENDING' || raw === 'APPROVED' || raw === 'REJECTED' ? raw : 'PENDING';
   }
 
   /** 分頁狀態。後端 @PageableDefault(size = 20)，前端沿用同一個預設值。 */

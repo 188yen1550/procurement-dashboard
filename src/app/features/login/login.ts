@@ -35,6 +35,8 @@ export class Login implements AfterViewInit {
   }
 
   readonly isLoading = signal(false);
+  /** 密碼欄位目前是否以明文顯示（2026-09-27 新增顯示／隱藏切換）。 */
+  readonly showPassword = signal(false);
   readonly errorMessage = signal('');
 
   // ----- 忘記密碼：申請重設（V27）-----
@@ -87,6 +89,10 @@ export class Login implements AfterViewInit {
   useMockAccount(username: MockUsername): void {
     this.loginForm.setValue({ username, password: 'demo123' });
     this.errorMessage.set('');
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update((visible) => !visible);
   }
 
   onSubmit(): void {

@@ -4,7 +4,7 @@
 // ========================================
 
 // 主要品牌色
-$primary-blue: #1c5286;
+$primary-blue: var(--c-brand);
 
 // 按鈕滑鼠移入時的顏色
 $primary-hover: #153e66;
@@ -275,6 +275,44 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
         // 避免圖示擋住輸入框點擊
         pointer-events: none;
+      }
+
+      // 顯示／隱藏密碼按鈕：疊在輸入框右側
+      .password-toggle {
+        position: absolute;
+        right: 6px;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        color: inherit;
+        background: transparent;
+        border: 0;
+        border-radius: 4px;
+        opacity: 0.6;
+        cursor: pointer;
+
+        &:hover:not(:disabled),
+        &:focus-visible {
+          opacity: 1;
+        }
+
+        &:focus-visible {
+          outline: 2px solid currentColor;
+          outline-offset: 1px;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+        }
+      }
+
+      // 密碼欄右側保留顯示／隱藏按鈕的空間（class 權重高於下方 input，不受順序影響）
+      input.has-toggle {
+        padding-right: 2.75rem;
       }
 
       // 帳號與密碼輸入框

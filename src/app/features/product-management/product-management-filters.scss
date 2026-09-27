@@ -35,14 +35,14 @@
 
 .advanced-toggle[aria-expanded='true'] {
   background: #eef4f9;
-  border-color: #1c5286;
+  border-color: var(--c-brand);
 }
 
 .advanced-count {
   min-width: 1.25rem;
   padding: 0 .35rem;
   color: #fff;
-  background: #1c5286;
+  background: var(--c-brand);
   border-radius: 999px;
   font-size: var(--t-xs);
   line-height: 1.25rem;

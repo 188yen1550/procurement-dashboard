@@ -88,7 +88,7 @@
 }
 
 .tag-help summary {
-  color: #1c5286;
+  color: var(--c-brand);
   font-weight: 700;
   cursor: pointer
 }
@@ -162,8 +162,8 @@
 
 .mode-badge {
   padding: .4rem .65rem;
-  color: #1c5286;
-  background: #eaf3fb;
+  color: var(--c-brand);
+  background: var(--c-brand-tint);
   border-radius: 999px;
   font-size: var(--t-xs);
   font-weight: 800
@@ -209,8 +209,8 @@
 .state-bar button.active,
 .primary {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .notice {
@@ -421,7 +421,7 @@ a:focus-visible {
   align-content: center;
   padding: .6rem;
   text-align: center;
-  background: #eaf3fb;
+  background: var(--c-brand-tint);
   border-radius: .45rem
 }
 
@@ -430,7 +430,7 @@ a:focus-visible {
 }
 
 .margin-card strong {
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: var(--t-lg);
 }
 
@@ -485,7 +485,7 @@ a:focus-visible {
   height: 1rem;
   margin-right: .4rem;
   border: 2px solid #ccd8e1;
-  border-top-color: #1c5286;
+  border-top-color: var(--c-brand);
   border-radius: 50%
 }
 
@@ -636,7 +636,7 @@ a:focus-visible {
 }
 
 .claim-target-name {
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: var(--t-base);
   font-weight: 800;
 }

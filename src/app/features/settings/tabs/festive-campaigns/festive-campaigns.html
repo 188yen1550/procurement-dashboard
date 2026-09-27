@@ -79,7 +79,7 @@
 
 <!-- ===================== 新增／編輯檔期 ===================== -->
 @if (modal() === 'campaign') {
-<div class="modal-backdrop" (click)="closeModal()">
+<div class="modal-backdrop">
   <form class="modal-card campaign-modal" (click)="$event.stopPropagation()" (ngSubmit)="save()">
     <header>
       <h2>{{ editingId() === null ? '新增檔期' : '編輯檔期' }}</h2>
@@ -355,7 +355,7 @@
 
 <!-- ===================== 切換狀態 ===================== -->
 @if (modal() === 'status' && statusTarget(); as target) {
-<div class="modal-backdrop" (click)="closeStatus()">
+<div class="modal-backdrop">
   <form class="modal-card campaign-modal is-narrow" (click)="$event.stopPropagation()" (ngSubmit)="applyStatus()">
     <header>
       <h2>手動切換檔期狀態</h2>
@@ -392,7 +392,7 @@
 
 <!-- ===================== 標籤選擇 ===================== -->
 @if (tagPickerOpen()) {
-<div class="modal-backdrop tag-picker-backdrop" (click)="closeTagPicker()">
+<div class="modal-backdrop tag-picker-backdrop">
   <div class="modal-card tag-picker-modal" (click)="$event.stopPropagation()">
     <header>
       <h2>節慶標籤（選填）</h2>

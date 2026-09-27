@@ -68,8 +68,8 @@ select:focus-visible {
   flex: 0 0 auto;
   padding: .72rem 1rem;
   color: #fff;
-  background: #1c5286;
-  border: 1px solid #1c5286;
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
   border-radius: .55rem;
   font-size: var(--t-sm);
   font-weight: 800;
@@ -93,7 +93,7 @@ select:focus-visible {
 .secondary-action {
   flex: 0 0 auto;
   padding: .72rem 1rem;
-  color: #1c5286;
+  color: var(--c-brand);
   background: #fff;
   border: 1px solid #cbd9e3;
   border-radius: .55rem;
@@ -158,8 +158,8 @@ select:focus-visible {
 
 .state-actions button.active {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286;
+  background: var(--c-brand);
+  border-color: var(--c-brand);
 }
 
 .pagination {
@@ -278,7 +278,7 @@ button:disabled {
 .field input:focus,
 .field select:focus {
   background: #fff;
-  border-color: #1c5286;
+  border-color: var(--c-brand);
 }
 
 .clear-button {
@@ -455,7 +455,7 @@ td {
   max-width: 100%;
   padding: .2rem .42rem;
   color: #375c78;
-  background: #eaf3fb;
+  background: var(--c-brand-tint);
   border-radius: .35rem;
   font-size: var(--t-xs);
   font-weight: 800;
@@ -468,7 +468,7 @@ td {
 
 .score {
   display: block;
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: 1.55rem;
   font-weight: 800;
   text-align: center;
@@ -593,7 +593,7 @@ td {
 
 .text-action {
   padding: .32rem .46rem;
-  color: #1c5286;
+  color: var(--c-brand);
   text-decoration: none;
   background: #fff;
   border: 1px solid #cbd9e3;
@@ -631,7 +631,7 @@ td {
   width: 1rem;
   height: 1rem;
   border: 2px solid #cbd9e3;
-  border-top-color: #1c5286;
+  border-top-color: var(--c-brand);
   border-radius: 50%;
   animation: spin .8s linear infinite;
 }
@@ -727,7 +727,7 @@ td {
   margin: 0 auto;
   place-items: center;
   color: #fff;
-  background: #1c5286;
+  background: var(--c-brand);
   border-radius: 50%;
   font-size: var(--t-xl);
   font-weight: 900;
@@ -752,8 +752,8 @@ td {
 
 .confirm-action {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286;
+  background: var(--c-brand);
+  border-color: var(--c-brand);
 }
 
 @keyframes spin {
@@ -808,7 +808,7 @@ td {
 }
 
 .sort-header-btn:focus-visible {
-  outline: 2px solid #1c5286;
+  outline: 2px solid var(--c-brand);
   outline-offset: 1px;
 }
 

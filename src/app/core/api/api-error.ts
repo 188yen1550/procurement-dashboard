@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { isRequestTimeout } from './request-timeout';
 
 /**
  * 後端錯誤回應的語意對照（實際取自 GlobalExceptionHandler.java）：
@@ -26,10 +27,13 @@ export interface ApiError {
   message: string;
   /** 網路斷線／CORS 等連 HTTP 回應都沒拿到的情況。 */
   isNetworkError: boolean;
+  /** 前端逾時（見 request-timeout.ts）：請求可能仍在後端處理中，只是前端不再等待。 */
+  isTimeout?: boolean;
 }
 
 const FALLBACK_MESSAGE = '系統發生錯誤，請稍後再試';
 const NETWORK_MESSAGE = '無法連線到伺服器，請確認網路狀態';
+const TIMEOUT_MESSAGE = '等候回應逾時，請稍後再試';
 
 /**
  * 把 HttpErrorResponse 轉成統一的 ApiError。
@@ -40,6 +44,9 @@ const NETWORK_MESSAGE = '無法連線到伺服器，請確認網路狀態';
  * 各元件各自寫 `err?.error?.message ?? '失敗'` 會漏掉這個差異。
  */
 export function toApiError(error: unknown): ApiError {
+  if (isRequestTimeout(error)) {
+    return { status: 0, message: TIMEOUT_MESSAGE, isNetworkError: false, isTimeout: true };
+  }
   if (!(error instanceof HttpErrorResponse)) {
     return { status: 0, message: FALLBACK_MESSAGE, isNetworkError: false };
   }

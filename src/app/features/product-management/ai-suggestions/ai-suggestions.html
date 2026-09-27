@@ -70,7 +70,7 @@
       <section class="empty">
         <h2>目前沒有 AI 建議品項</h2>
         <p>建議可能已全數加入候選，或 Demo 資料為空。</p>
-        <button type="button" (click)="reset()">恢復 Demo 資料</button>
+        <button type="button" (click)="reset()">{{ useMockData ? '恢復 Demo 資料' : '重新整理' }}</button>
       </section>
     } @else if (filtered().length === 0) {
       <section class="empty">

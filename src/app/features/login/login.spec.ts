@@ -39,6 +39,27 @@ describe('Login', () => {
     fixture.detectChanges();
   });
 
+  // 2026-09-27：密碼顯示／隱藏切換。
+  it('toggles password visibility without submitting the form', () => {
+    const input = fixture.nativeElement.querySelector('#password') as HTMLInputElement;
+    const toggle = fixture.nativeElement.querySelector('.password-toggle') as HTMLButtonElement;
+    expect(input.type).toBe('password');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('顯示密碼');
+    expect(toggle.type).toBe('button');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('text');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toBe('隱藏密碼');
+    expect(auth.login).not.toHaveBeenCalled();
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('password');
+  });
+
   it('closes loading and navigates only after login succeeds', () => {
     const response = new Subject<CurrentUser>();
     auth.login.mockReturnValue(response);

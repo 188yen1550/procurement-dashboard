@@ -225,7 +225,7 @@
       <app-icon name="inbox" />
       <h3>目前沒有正式候選品項</h3>
       <p>可新增品項，或從獨立 AI 建議清單加入候選。</p>
-      <button type="button" (click)="retryLoad()">恢復 Demo 資料</button>
+      <button type="button" (click)="retryLoad()">{{ useMockData ? '恢復 Demo 資料' : '重新整理' }}</button>
     </div>
     } @else if (filteredProducts().length === 0) {
     <div class="empty-state no-results">
@@ -388,7 +388,7 @@
   }
 
   @if (dialogMode()) {
-  <div class="dialog-backdrop" (click)="closeDialog()" role="presentation">
+  <div class="dialog-backdrop" role="presentation">
     <section class="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"
       (click)="$event.stopPropagation()">
       <span class="dialog-icon" aria-hidden="true">

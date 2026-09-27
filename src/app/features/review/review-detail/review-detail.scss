@@ -27,7 +27,7 @@
 }
 
 .page-header a {
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: var(--t-xs);
   font-weight: 700;
   text-decoration: none
@@ -105,8 +105,8 @@
 
 .state-bar button.active {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .resubmit {
@@ -169,7 +169,7 @@
 .scores strong {
   display: block;
   margin-top: .3rem;
-  color: #1c5286;
+  color: var(--c-brand);
   font-size: 1.6rem;
   font-weight: 800
 }
@@ -297,8 +297,8 @@
 
 .form footer button {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .form footer button:disabled {
@@ -399,8 +399,8 @@
 
 .dialog button {
   color: #fff;
-  background: #1c5286;
-  border-color: #1c5286
+  background: var(--c-brand);
+  border-color: var(--c-brand)
 }
 
 .sr-only {

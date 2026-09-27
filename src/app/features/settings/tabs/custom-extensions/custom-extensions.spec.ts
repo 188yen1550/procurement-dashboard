@@ -33,6 +33,7 @@ describe('CustomExtensions', () => {
         isSuperseded: false,
       }),
     ),
+    updateFactorDefinition: vi.fn(() => of({})),
     createCustomFieldDefinition: vi.fn((body: { fieldCode: string; fieldName: string }) =>
       of({
         id: 3,
@@ -112,6 +113,43 @@ describe('CustomExtensions', () => {
     expect(nextStep.textContent).toContain('訂購量適配');
     nextStep.querySelector('button').click();
     expect(navigate).toHaveBeenCalledWith('scoreBands');
+  });
+
+  // 2026-09-27：社群聲量熱度這類次數型因子改用對數換算（strategyParams.logCurve）。
+  it('sends logCurve for a target-band factor when the log option is checked', () => {
+    component.openCreateFactorDefinition();
+    component.newFactorCode.set('MOQ_FIT');
+    component.newFactorName.set('訂購量適配');
+    component.newFactorDataSource.set('MOQ');
+    fixture.detectChanges();
+    expect(component.newFactorStrategy()).toBe('TARGET_BAND_NORMALIZE');
+    expect(fixture.nativeElement.textContent).toContain('對數換算');
+    component.newFactorLogCurve.set(true);
+    component.submitFactorDefinition();
+    expect(settingsApi.createFactorDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({ strategyCode: 'TARGET_BAND_NORMALIZE', strategyParams: { logCurve: 1 } }),
+    );
+  });
+
+  it('keeps logCurve when editing an existing log-curve factor, so saving does not silently drop it', () => {
+    component.openEditFactorDefinition({
+      id: 2,
+      factorCode: 'SOCIAL_BUZZ',
+      factorName: '社群聲量熱度',
+      category: 'FORECAST',
+      strategyCode: 'TARGET_BAND_NORMALIZE',
+      dataSourceCode: 'MOQ',
+      customFieldDefinitionId: null,
+      strategyParams: { logCurve: 1 },
+      isActive: true,
+      isSuperseded: false,
+    });
+    expect(component.newFactorLogCurve()).toBe(true);
+    component.submitFactorDefinition();
+    expect(settingsApi.updateFactorDefinition).toHaveBeenCalledWith(
+      2,
+      expect.objectContaining({ strategyParams: { logCurve: 1 } }),
+    );
   });
 
   it('lets the flow bar jump to the evaluation modes tab', () => {

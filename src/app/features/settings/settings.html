@@ -294,7 +294,7 @@
           <tr>
             <th class="band-global-col-factor">因子</th>
             <th class="num band-global-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
-            <th class="num band-global-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。" /></th>
+            <th class="num band-global-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
             <th class="band-global-col-actions"></th>
           </tr>
         </thead>
@@ -421,7 +421,7 @@
             <th class="band-override-col-type">商品類型</th>
             <th class="band-override-col-factor">因子</th>
             <th class="num band-override-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
-            <th class="num band-override-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。" /></th>
+            <th class="num band-override-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
             <th class="band-override-col-actions"></th>
           </tr>
         </thead>
@@ -607,6 +607,8 @@
   </section>
   }
 
+  <!-- 排程作業：PTT 熱度同步（02:00）排在 AI 主動選品批次（03:00）之前，依執行順序排列。 -->
+  <app-trend-crawler-panel />
   <!-- 排程作業（2026-09-24 決策 D2）：原本在 AI 建議清單頁、只給管理層的批次觸發按鈕。 -->
   <app-ai-suggestion-batch-panel />
   } @else if (activeTab() === 'accounts') {
@@ -781,7 +783,7 @@
 
   }
   @if (modal()) {
-  <div class="modal-backdrop" (click)="closeModal()">
+  <div class="modal-backdrop">
     <form class="modal-card settings-modal" (click)="$event.stopPropagation()"
       (ngSubmit)="saveModal()">
       <header>
