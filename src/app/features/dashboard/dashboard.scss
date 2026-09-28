@@ -813,3 +813,22 @@ td {
   background-size: 400% 100%;
   animation: shimmer 1.4s infinite;
 }
+
+/* 熱度排行榜（2026-09-27）：原本借用 Top 10 的 .col-rank／.col-score，只有兩欄有寬度，
+   其餘兩欄平分剩下的 79%，趨勢方向欄右側空出一大塊。改用自己的欄寬，
+   並把最小寬度從 Top 10 的 850px 降到 560px——只有四欄，不需要那麼寬才開始水平捲動。 */
+.trend-leaderboard-panel table {
+  min-width: 560px;
+}
+.col-lb-rank {
+  width: 10%;
+}
+.col-lb-product {
+  width: 48%;
+}
+.col-lb-score {
+  width: 20%;
+}
+.col-lb-trend {
+  width: 22%;
+}

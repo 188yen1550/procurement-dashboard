@@ -649,27 +649,28 @@
             <span class="helper reset-requested">・申請重設密碼（{{ item.passwordResetRequestedAt | date: 'MM-dd HH:mm' }}）</span>
             }
           </td>
-          <td class="row-actions">
-            @if (item.active && isSelfAccount(item)) {
-            <span class="helper">（本人）</span>
-            }
-            <button type="button" class="btn" [class.is-restore]="!item.active"
-              [disabled]="pageState() === 'disabled' || (item.active && isSelfAccount(item))"
-              [attr.title]="item.active && isSelfAccount(item) ? '不能停用自己的帳號' : null"
-              (click)="toggleAccountActive(item.username)">
-              {{ item.active ? '停用帳號' : '復用帳號' }}
-            </button>
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled' || !canResetPassword(item)"
-              [attr.title]="resetPasswordDisabledReason(item)" (click)="openResetPasswordModal(item)">
-              重設密碼
-            </button>
-            @if (item.passwordResetRequestedAt && !isSelfAccount(item)) {
-            <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
-              (click)="rejectPasswordResetRequest(item)">
-              駁回申請
-            </button>
-            }
-
+          <td class="account-col-actions">
+            <div class="row-actions account-actions">
+              @if (item.active && isSelfAccount(item)) {
+              <span class="helper">（本人）</span>
+              }
+              <button type="button" class="btn" [class.is-restore]="!item.active"
+                [disabled]="pageState() === 'disabled' || (item.active && isSelfAccount(item))"
+                [attr.title]="item.active && isSelfAccount(item) ? '不能停用自己的帳號' : null"
+                (click)="toggleAccountActive(item.username)">
+                {{ item.active ? '停用帳號' : '復用帳號' }}
+              </button>
+              <button type="button" class="btn" [disabled]="pageState() === 'disabled' || !canResetPassword(item)"
+                [attr.title]="resetPasswordDisabledReason(item)" (click)="openResetPasswordModal(item)">
+                重設密碼
+              </button>
+              @if (item.passwordResetRequestedAt && !isSelfAccount(item)) {
+              <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
+                (click)="rejectPasswordResetRequest(item)">
+                駁回申請
+              </button>
+              }
+            </div>
           </td>
         </tr>
         }

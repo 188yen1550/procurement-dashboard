@@ -284,6 +284,25 @@
   font-weight: 400;
 }
 
+/*
+ * 2026-09-27：上面那組是給文字輸入框用的（整行寬、內距、底色、框線），但選擇器
+ * 寫的是 input，會連 checkbox／radio 一起套到——勾選框被撐成 100% 寬的區塊，
+ * 旁邊的文字只剩一個字寬，變成一個字一行（例如節慶檔期編輯視窗的「分類」與
+ * 「補假／連假展開」選項）。這裡把 checkbox／radio 還原成原生大小。
+ * 權重（0,2,1）高於上面的規則；元件自己的 checkbox 樣式載入順序在後，仍可覆寫。
+ */
+.field input:is([type='checkbox'], [type='radio']),
+.form-grid input:is([type='checkbox'], [type='radio']),
+.modal-card input:is([type='checkbox'], [type='radio']) {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  margin-top: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
 .field textarea,
 .form-grid textarea,
 .modal-card textarea {

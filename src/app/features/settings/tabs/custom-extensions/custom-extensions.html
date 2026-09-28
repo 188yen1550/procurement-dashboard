@@ -120,16 +120,16 @@
         <tr>
           <td>{{ field.fieldCode }}</td>
           <td>{{ field.fieldName }}</td>
-          <td>{{ customFieldTypeLabel[field.fieldType] ?? field.fieldType }}</td>
+          <td class="nowrap-cell">{{ customFieldTypeLabel[field.fieldType] ?? field.fieldType }}</td>
           <td>{{ describeApplicableTypes(field.applicableRootProductTypeIds) }}</td>
-          <td>{{ field.isRequired ? '必填' : '選填' }}</td>
-          <td>
+          <td class="nowrap-cell">{{ field.isRequired ? '必填' : '選填' }}</td>
+          <td class="nowrap-cell">
             {{ field.isActive ? '啟用中' : '已停用' }}
             @if (field.isSuperseded) {
             <br /><small class="helper">已被新版本取代</small>
             }
           </td>
-          <td>
+          <td class="nowrap-cell">
             @if (!field.isSuperseded) {
             <button type="button" class="btn" [disabled]="disabled()"
               (click)="openEditCustomField(field)">
@@ -289,15 +289,15 @@
         <tr>
           <td>{{ definition.factorCode }}</td>
           <td>{{ definition.factorName }}</td>
-          <td>{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}{{ usesLogCurve(definition.strategyParams) ? '（對數）' : '' }}</td>
+          <td class="nowrap-cell">{{ factorStrategyLabel[definition.strategyCode] ?? definition.strategyCode }}{{ usesLogCurve(definition.strategyParams) ? '（對數）' : '' }}</td>
           <td>{{ describeFactorDataSource(definition) }}</td>
-          <td>
+          <td class="nowrap-cell">
             {{ definition.isActive ? '啟用中' : '已停用' }}
             @if (definition.isSuperseded) {
             <br /><small class="helper">已被新版本取代</small>
             }
           </td>
-          <td>
+          <td class="nowrap-cell">
             @if (!definition.isSuperseded) {
             <button type="button" class="btn" [disabled]="disabled()"
               (click)="openEditFactorDefinition(definition)">

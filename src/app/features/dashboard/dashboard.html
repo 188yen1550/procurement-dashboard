@@ -373,10 +373,10 @@
           <table>
             <thead>
               <tr>
-                <th class="col-rank">排名</th>
-                <th>商品／搜尋關鍵字</th>
-                <th class="col-score">熱度分數</th>
-                <th>趨勢方向</th>
+                <th class="col-lb-rank">排名</th>
+                <th class="col-lb-product">商品／搜尋關鍵字</th>
+                <th class="col-lb-score">熱度分數</th>
+                <th class="col-lb-trend">趨勢方向</th>
               </tr>
             </thead>
             <tbody>
@@ -386,8 +386,12 @@
                     <span class="rank">{{ item.rank }}</span>
                   </td>
                   <td class="product-cell">
-                    <strong>{{ item.name }}</strong
-                    ><span>「{{ item.keyword }}」</span>
+                    <strong>{{ item.name }}</strong>
+                    <!-- 真實 PTT 同步用商品名稱當關鍵字，兩者相同時不重複顯示；
+                         只有關鍵字跟名稱不同（去掉規格字樣、或舊資料）才另外列出。 -->
+                    @if (item.keyword && item.keyword !== item.name) {
+                    <span>搜尋「{{ item.keyword }}」</span>
+                    }
                   </td>
                   <td>
                     @if (item.popularityScore === null) {

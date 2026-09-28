@@ -554,9 +554,12 @@ tr.is-editing select {
   width: 14%;
 }
 
-/* 帳號管理 */
+/* 帳號管理
+   2026-09-27：原本五欄加總 110%（32+18+16+14+30），瀏覽器會等比例縮小每一欄，
+   操作欄實際只剩約 196px，放「（本人）」加兩顆按鈕就被擠到換行。改成加總 100%，
+   操作欄放大到 40%，並在下面的 .account-actions 禁止換行。 */
 .account-col-username {
-  width: 32%;
+  width: 18%;
 }
 
 .account-col-name {
@@ -564,7 +567,7 @@ tr.is-editing select {
 }
 
 .account-col-role {
-  width: 16%;
+  width: 10%;
 }
 
 .account-col-status {
@@ -572,7 +575,14 @@ tr.is-editing select {
 }
 
 .account-col-actions {
-  width: 30%;
+  width: 40%;
+}
+
+/* 按鈕排在儲存格內層的容器，不把 <td> 本身設成 flex——<td> 變成 flex 後不再是
+   表格儲存格，高度不會跟整列一起撐開，底線會跟同一列其他欄位錯開。 */
+.account-actions {
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 /* ===================== 響應式 ===================== */
