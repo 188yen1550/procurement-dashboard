@@ -86,6 +86,11 @@
   gap: var(--s-1);
 }
 
+/* 2026-09-29：「計分與判定參數」前往天氣連動（另一組側邊欄）的提示連結。 */
+.settings-cross-link {
+  margin: 0 0 var(--s-4);
+}
+
 /* 操作回饋 toast：沿用 .notice 外觀，只調整為不佔滿寬度的行內區塊。 */
 .status-toast {
   justify-content: flex-start;
@@ -194,6 +199,21 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
+}
+
+/* 已停用的自訂因子：保留在權重表但不參與計分，淡化並加註。 */
+.mode-grid dl div.is-inactive {
+  color: var(--c-ink-muted);
+}
+
+.mode-grid dl div.is-inactive dd {
+  font-weight: 400;
+  text-decoration: line-through;
+}
+
+.mode-grid dl div.is-inactive small {
+  margin-left: var(--s-1);
+  font-size: var(--t-xs);
 }
 
 .current {

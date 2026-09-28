@@ -85,17 +85,22 @@
 
       <p class="nav-label nav-label-spaced">管理</p>
 
-      <!-- 2026-09 側邊欄拆分：原本單一「設定」拆成兩項。調演算法（評分規則）與
-           維護基礎資料／人員權限（營運與帳號設定）是不同的心智模型，分組定義見
-           features/settings/settings-groups.ts。舊的 /settings?tab= 連結會自動轉址。 -->
+      <!-- 2026-09-29 依用途分三組（原本依異動頻率分兩組）：規則、資料、系統各回答一個問題，
+           分組定義見 features/settings/settings-groups.ts。舊的 /settings?tab= 與
+           /settings/operations 連結會依分頁自動轉到所屬的組。 -->
       <a routerLink="/settings/scoring" routerLinkActive="active" (click)="closeRequested.emit()">
         <span class="nav-icon"><app-icon name="sliders-horizontal" size="md" /></span>
-        評分規則
+        評分與審核規則
       </a>
 
-      <a routerLink="/settings/operations" routerLinkActive="active" (click)="closeRequested.emit()">
+      <a routerLink="/settings/data" routerLinkActive="active" (click)="closeRequested.emit()">
+        <span class="nav-icon"><app-icon name="database" size="md" /></span>
+        選品基礎資料
+      </a>
+
+      <a routerLink="/settings/system" routerLinkActive="active" (click)="closeRequested.emit()">
         <span class="nav-icon"><app-icon name="settings" size="md" /></span>
-        營運與帳號設定
+        系統管理
       </a>
     }
   </nav>

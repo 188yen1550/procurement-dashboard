@@ -1,5 +1,5 @@
 /**
- * 檔案用途：管理評估模式、人工風險、核心客群、商品類型、檔期與帳號。
+ * 檔案用途：管理評估模式、審核風險選項、核心客群、商品類型、檔期、帳號與排程作業。
  * 真實模式按分頁延遲載入資料。帳號可停用或復用；商品類型能否刪除由後端
  * 驗證引用關係；檔期內容編輯與狀態切換使用不同操作。
  *
@@ -7,12 +7,13 @@
  *   - 「自訂屬性與因子」分頁 → tabs/custom-extensions（清單狀態在 state/custom-definitions.store）
  *   - 「天氣連動」分頁 → tabs/weather-linkage
  *   - 演算法參數分頁下方的「排程作業」面板 → tabs/ai-suggestion-batch-panel
+ *     （2026-09-29 排程面板改放「系統管理 › 排程與同步」分頁，分頁代碼 jobs）
  * 只抽出這三塊，其餘分頁維持原狀（最小修改）。分頁狀態同步到網址 ?tab=，
  * 可從其他頁面或書籤直接開到指定分頁。
  */
 import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
 import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -116,6 +117,9 @@ const FACTOR_HELP: Record<string, string> = {
 };
 
 /** 後端 FactorCode.ALL 的順序，畫面上的權重編輯器沿用同一順序，避免每次渲染順序跳動。 */
+/** 後端 applyHistoricalBand() 有歷史資料計算邏輯的因子。 */
+const HISTORICAL_BAND_FACTORS: readonly string[] = ['MARGIN_RATE', 'DISCOUNT_DEPTH'];
+
 const FACTOR_ORDER: readonly string[] = [
   'MARGIN_RATE',
   'DISCOUNT_DEPTH',
@@ -401,6 +405,8 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
     AiSuggestionBatchPanel,
     TrendCrawlerPanel,
     GoogleTrendsPanel,
+    // 「計分與判定參數」前往另一組（選品基礎資料 › 天氣連動）的提示連結。
+    RouterLink,
   ],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
@@ -436,8 +442,8 @@ export class Settings implements OnInit {
   readonly audienceSettingsVisible = false;
 
   /**
-   * 2026-09 側邊欄拆分：目前這個路由屬於哪一組（/settings/scoring 或 /settings/operations，
-   * 見 settings.routes.ts）。路由沒帶 data.settingsGroup 時（例如單元測試直接建立元件）為 null，
+   * 目前這個路由屬於哪一組（/settings/scoring、/settings/data 或 /settings/system，
+   * 見 settings.routes.ts；2026-09-29 由兩組改為依用途分三組）。路由沒帶 data.settingsGroup 時（例如單元測試直接建立元件）為 null，
    * 顯示全部分頁，維持拆分前的行為。
    */
   readonly settingsGroup: SettingsGroup | null =
@@ -553,6 +559,7 @@ export class Settings implements OnInit {
       'systemSettings',
       'extensions',
       'weather',
+      'jobs',
     ] as const
   ) : []);
 
@@ -708,6 +715,10 @@ export class Settings implements OnInit {
         this.loadAccounts();
         return;
       case 'scoreBands':
+        // 2026-09-29：新增品類覆寫要選商品類型、自訂因子要顯示名稱。設定頁分組後，
+        // 商品類型分頁在另一個路由，這裡不自己載入的話下拉選單永遠是空的。
+        this.definitions.loadFactorDefinitions();
+        this.loadProductTypeOptions();
         this.loadScoreBands();
         return;
       case 'systemSettings':
@@ -718,6 +729,11 @@ export class Settings implements OnInit {
         this.definitions.loadFactorDefinitions();
         this.definitions.loadCustomFieldDefinitions();
         this.loadProductTypes('extensions');
+        return;
+      case 'jobs':
+        // 三個排程面板（PTT 熱度同步、Google 趨勢、AI 主動選品批次）各自在首次渲染時載入狀態；
+        // 這個分頁本身沒有要抓的資料。
+        this.markLoaded('jobs');
         return;
       case 'weather':
         // 天氣連動子元件自己管理三個面板的載入狀態（ngOnInit 首次載入）；
@@ -824,7 +840,13 @@ export class Settings implements OnInit {
   readonly weightEditorRows = computed<{ factorCode: string; factorName: string }[]>(() => {
     const mode = this.modes().find((m) => m.id === this.editingWeightsModeId());
     if (!mode?.rawFactors) return [];
-    const rows = mode.rawFactors.map((f) => ({ factorCode: f.factorCode, factorName: f.factorName }));
+    // 2026-09-29 修正：已停用的自訂因子不列入編輯器。後端要求送出的清單「恰好」是
+    // 目前生效中的因子，停用因子的代碼一送出就被當成未知代碼拒絕——原本自訂模式
+    // 只要有任何一個停用的自訂因子，儲存權重就一定失敗。
+    const inactiveCodes = this.inactiveCustomFactorCodes();
+    const rows = mode.rawFactors
+      .filter((f) => !inactiveCodes.has(f.factorCode))
+      .map((f) => ({ factorCode: f.factorCode, factorName: f.factorName }));
     const existingCodes = new Set(rows.map((r) => r.factorCode));
     this.factorDefinitions().forEach((definition) => {
       if (definition.isActive && !existingCodes.has(definition.factorCode)) {
@@ -832,6 +854,19 @@ export class Settings implements OnInit {
       }
     });
     return rows;
+  });
+
+  /**
+   * 已停用、且沒有生效中新版本的自訂因子代碼。評估模式的權重明細（rawFactors）
+   * 仍會列出它們在 evaluation_factors 的舊列，但計分只讀生效中的因子。
+   *
+   * 只排除「清單裡明確是停用」的代碼：自訂因子清單還沒載入時什麼都不排除，
+   * 維持後端回傳的原樣，避免把生效中的自訂因子誤當停用而漏送。
+   */
+  readonly inactiveCustomFactorCodes = computed<Set<string>>(() => {
+    const definitions = this.factorDefinitions();
+    const activeCodes = new Set(definitions.filter((d) => d.isActive).map((d) => d.factorCode));
+    return new Set(definitions.filter((d) => !d.isActive && !activeCodes.has(d.factorCode)).map((d) => d.factorCode));
   });
 
   /**
@@ -870,7 +905,11 @@ export class Settings implements OnInit {
 
     const drafts: Record<string, number> = {};
     const enabled = new Set<string>();
+    // 2026-09-29：只為編輯器列出的因子建草稿。停用因子的舊權重若留在草稿裡，
+    // 畫面上的「目前加總」會把它算進去，跟實際送出的清單對不上。
+    const inactiveCodes = this.inactiveCustomFactorCodes();
     mode.rawFactors.forEach((f) => {
+      if (inactiveCodes.has(f.factorCode)) return;
       drafts[f.factorCode] = f.weight ?? 0;
       // 用「權重是否大於0」判斷勾選狀態，不是用「是否存在於 rawFactors」——
       // 後端沒有獨立的啟用/停用欄位，權重0本身就是唯一的「已停用」訊號
@@ -1141,6 +1180,31 @@ export class Settings implements OnInit {
           if (alsoMarkLoaded) this.markLoaded(alsoMarkLoaded);
         },
         error: (err) => this.handleLoadError(err),
+      });
+  }
+
+  /**
+   * 只載入商品類型清單供其他分頁的下拉選單使用（例如目標區間的新增品類覆寫），
+   * 不改變頁面載入狀態；失敗時維持空清單，由使用者重新整理。
+   */
+  private loadProductTypeOptions(): void {
+    this.api
+      .getProductTypes()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) =>
+          this.productTypes.set(
+            list.map((item) => ({
+              id: item.id,
+              name: item.name,
+              system: item.isSystemDefault ?? false,
+              used: item.usedCount,
+              active: item.isActive ?? true,
+              parentId: item.parentId,
+              level: item.level,
+            })),
+          ),
+        error: () => undefined,
       });
   }
 
@@ -1509,7 +1573,7 @@ export class Settings implements OnInit {
       });
   }
 
-  // ----- 8. 設定（演算法參數）-----
+  // ----- 8. 設定（計分與判定參數，原「演算法參數」）-----
 
   private loadSystemSettings(): void {
     this.api
@@ -1786,11 +1850,40 @@ export class Settings implements OnInit {
       });
   }
 
+  /**
+   * 目標區間清單的顯示用版本：因子名稱隨自訂因子清單即時更新。
+   * 2026-09-29：自訂因子清單與目標區間是兩支 API，清單晚到時，原本在 toScoreBandVM()
+   * 算好的名稱會停在代碼（例如顯示 SOCIAL_BUZZ 而不是「社群聲量熱度」）。
+   */
+  private readonly labeledScoreBands = computed(() => {
+    const names = this.customFactorNameByCode();
+    return this.scoreBands().map((b) => ({
+      ...b,
+      factorLabel: FACTOR_LABEL[b.factorCode] ?? names.get(b.factorCode) ?? b.factorLabel,
+    }));
+  });
+
   /** 全域預設（productTypeId 為 null）的列。 */
-  readonly globalScoreBands = computed(() => this.scoreBands().filter((b) => b.productTypeId === null));
+  readonly globalScoreBands = computed(() => this.labeledScoreBands().filter((b) => b.productTypeId === null));
 
   /** 各商品類型覆寫的列。 */
-  readonly overrideScoreBands = computed(() => this.scoreBands().filter((b) => b.productTypeId !== null));
+  readonly overrideScoreBands = computed(() => this.labeledScoreBands().filter((b) => b.productTypeId !== null));
+
+  /**
+   * 「依歷史紀錄計算」只支援品類覆寫的毛利率／折扣深度（見後端 applyHistoricalBand()）。
+   * 其他列不顯示這個選項，免得選了才被後端拒絕。
+   */
+  supportsHistoricalBand(band: ScoreBandVM): boolean {
+    return band.productTypeId !== null && HISTORICAL_BAND_FACTORS.includes(band.factorCode);
+  }
+
+  /**
+   * 新增品類覆寫可選的商品類型：只列生效中的大類。
+   * 計分時一律用商品所屬的大類查區間（ScoreBandResolver），掛在小類上的區間永遠不會被讀到。
+   */
+  readonly scoreBandProductTypeOptions = computed(() =>
+    this.productTypes().filter((t) => t.level === 1 && t.active),
+  );
 
   readonly editingScoreBandId = signal<number | null>(null);
   readonly scoreBandDraftMode = signal<ScoreBandSourceMode>('MANUAL');
@@ -1824,10 +1917,15 @@ export class Settings implements OnInit {
    * 的計分路徑（normalizeByBand）會查目標區間表，其餘五個因子用別的
    * 方式計分，不會讀這張表。
    */
-  readonly scoreBandFactorOptions: readonly { code: string; label: string }[] = [
+  readonly scoreBandFactorOptions = computed<readonly { code: string; label: string }[]>(() => [
     { code: 'MARGIN_RATE', label: FACTOR_LABEL['MARGIN_RATE'] },
     { code: 'DISCOUNT_DEPTH', label: FACTOR_LABEL['DISCOUNT_DEPTH'] },
-  ];
+    // 2026-09-29：策略為「目標區間正規化」的生效中自訂因子（例如社群聲量熱度）
+    // 計分時同樣依品類查目標區間，也要能設定品類覆寫。
+    ...this.factorDefinitions()
+      .filter((d) => d.isActive && d.strategyCode === 'TARGET_BAND_NORMALIZE')
+      .map((d) => ({ code: d.factorCode, label: d.factorName })),
+  ]);
 
   openCreateScoreBand(): void {
     this.newScoreBandProductTypeId.set(null);

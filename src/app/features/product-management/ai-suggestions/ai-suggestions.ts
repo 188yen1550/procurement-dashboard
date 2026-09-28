@@ -201,7 +201,7 @@ export class AiSuggestions implements OnInit {
 
   /*
    * 2026-09-24 職責分離（決策 D2）：「批次篩選熱門候選」手動觸發按鈕移到
-   * 設定 › 演算法參數 › 排程作業（見 settings/tabs/ai-suggestion-batch-panel）。
+   * 設定 › 系統管理 › 排程與同步（見 settings/tabs/ai-suggestion-batch-panel）。
    * 後端端點本來就只給 MANAGER，管理層不再進入這頁後，這顆按鈕留在這裡
    * 就沒有任何人按得到。這頁回歸純操作層畫面：檢視並轉正 AI 建議。
    */

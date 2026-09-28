@@ -28,10 +28,12 @@
   <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
   }
   <!--
-    2026-09-24：分頁依關注點分組，組與組之間用細分隔線區隔（純視覺，對輔助科技隱藏）。
-    2026-09 側邊欄拆分：「評分規則」只顯示評分組（模式／自訂擴充／目標區間／演算法參數），
-    「營運與帳號設定」顯示資料字典（商品類型／人工風險／核心客群）、檔期（節慶／天氣連動）、帳號。
-    分組定義在 settings-groups.ts；沒有分組（settingsGroup 為 null）時顯示全部。
+    2026-09-29 依用途分三組（分組定義在 settings-groups.ts）：
+      評分與審核規則：評估模式／自訂屬性與因子／目標區間／計分與判定參數／審核風險選項
+      選品基礎資料：商品類型／核心客群／節慶檔期／天氣連動
+      系統管理：帳號管理／排程與同步
+    每個側邊欄項目只顯示自己那一組；沒有分組（settingsGroup 為 null，例如單元測試直接建立元件）
+    時顯示全部，組與組之間用細分隔線區隔（純視覺，對輔助科技隱藏）。
   -->
   <nav class="tabs" aria-label="設定分類">
     @if (isTabInGroup('modes')) {
@@ -41,23 +43,27 @@
     </button>
     <button type="button" [class.active]="activeTab() === 'scoreBands'" (click)="setTab('scoreBands')">目標區間</button>
     <button type="button" [class.active]="activeTab() === 'systemSettings'" (click)="setTab('systemSettings')">
-      演算法參數
+      計分與判定參數
     </button>
+    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">審核風險選項</button>
     }
     @if (settingsGroup === null) {
     <span class="tab-divider" aria-hidden="true"></span>
     }
     @if (isTabInGroup('productTypes')) {
     <button type="button" [class.active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">商品類型</button>
-    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">人工風險</button>
     @if (audienceSettingsVisible) {
     <button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
     }
-    <span class="tab-divider" aria-hidden="true"></span>
     <button type="button" [class.active]="activeTab() === 'campaigns'" (click)="setTab('campaigns')">節慶檔期</button>
     <button type="button" [class.active]="activeTab() === 'weather'" (click)="setTab('weather')">天氣連動</button>
+    }
+    @if (settingsGroup === null) {
     <span class="tab-divider" aria-hidden="true"></span>
+    }
+    @if (isTabInGroup('accounts')) {
     <button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">帳號管理</button>
+    <button type="button" [class.active]="activeTab() === 'jobs'" (click)="setTab('jobs')">排程與同步</button>
     }
   </nav>
   @if (pageState() === 'error') {
@@ -129,7 +135,7 @@
   } @else if (activeTab() === 'risks') {
   <section class="management-head">
     <div>
-      <h2>人工風險選項</h2>
+      <h2>審核風險選項</h2>
     </div>
     <button type="button" class="btn-primary" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
       ＋ 新增風險選項
@@ -317,7 +323,9 @@
                 <label>來源模式
                   <select [ngModel]="scoreBandDraftMode()" (ngModelChange)="scoreBandDraftMode.set($event)">
                     <option value="MANUAL">手動填入</option>
+                    @if (supportsHistoricalBand(band)) {
                     <option value="HISTORICAL">依歷史紀錄計算</option>
+                    }
                   </select>
                 </label>
               </div>
@@ -371,14 +379,14 @@
         <label>商品類型 <em>*</em>
           <select [ngModel]="newScoreBandProductTypeId()" (ngModelChange)="newScoreBandProductTypeId.set($event)">
             <option [ngValue]="null">請選擇</option>
-            @for (type of productTypes(); track type.id) {
+            @for (type of scoreBandProductTypeOptions(); track type.id) {
             <option [ngValue]="type.id">{{ type.name }}</option>
             }
           </select>
         </label>
         <label>因子 <em>*</em>
           <select [ngModel]="newScoreBandFactorCode()" (ngModelChange)="newScoreBandFactorCode.set($event)">
-            @for (factor of scoreBandFactorOptions; track factor.code) {
+            @for (factor of scoreBandFactorOptions(); track factor.code) {
             <option [value]="factor.code">{{ factor.label }}</option>
             }
           </select>
@@ -445,7 +453,9 @@
                 <label>來源模式
                   <select [ngModel]="scoreBandDraftMode()" (ngModelChange)="scoreBandDraftMode.set($event)">
                     <option value="MANUAL">手動填入</option>
+                    @if (supportsHistoricalBand(band)) {
                     <option value="HISTORICAL">依歷史紀錄計算</option>
+                    }
                   </select>
                 </label>
               </div>
@@ -483,9 +493,15 @@
   } @else if (activeTab() === 'systemSettings') {
   <section class="management-head">
     <div>
-      <h2>演算法參數</h2>
+      <h2>計分與判定參數</h2>
     </div>
   </section>
+  <!-- 天氣加成上限與歷史／預報比重是評分規則，但和天氣資料共用天氣連動元件，不拆過來（見 settings-groups.ts）。 -->
+  <p class="helper settings-cross-link">
+    天氣加成上限與歷史／預報比重，請到
+    <a routerLink="/settings/data" [queryParams]="{ tab: 'weather' }">選品基礎資料 › 天氣連動</a>
+    調整。
+  </p>
 
   @for (group of systemSettingsByCategory(); track group.category) {
   <section class="score-band-group">
@@ -607,11 +623,19 @@
   </section>
   }
 
-  <!-- 排程作業：PTT 熱度同步（02:00）排在 AI 主動選品批次（03:00）之前，依執行順序排列。 -->
+  } @else if (activeTab() === 'jobs') {
+  <!-- 2026-09-29：排程作業從「演算法參數」搬出，獨立成「系統管理 › 排程與同步」——
+       它們是背景作業的控制與執行紀錄，不是評分規則。三個面板依每日執行順序排列。 -->
+  <section class="management-head">
+    <div>
+      <h2>排程與同步</h2>
+    </div>
+  </section>
+  <!-- PTT 熱度同步（02:00）排在 AI 主動選品批次（03:00）之前。 -->
   <app-trend-crawler-panel />
   <!-- 2026-09-28：Google 趨勢參考（SerpApi，每週一 04:00），緊接在 PTT 熱度同步之後——它挑選要查詢的商品時依據的是 PTT 熱度。 -->
   <app-google-trends-panel />
-  <!-- 排程作業（2026-09-24 決策 D2）：原本在 AI 建議清單頁、只給管理層的批次觸發按鈕。 -->
+  <!-- 2026-09-24 決策 D2：原本在 AI 建議清單頁、只給管理層的批次觸發按鈕。 -->
   <app-ai-suggestion-batch-panel />
   } @else if (activeTab() === 'accounts') {
   <section class="management-head">
@@ -764,15 +788,18 @@
            呈現方式，畫面邏輯也比較一致。唯讀展示，樣式沿用既有 dt/dd 排版。 -->
       <dl class="factor-breakdown">
         @for (factor of mode.rawFactors; track factor.factorCode) {
-        <div>
-          <dt>{{ factor.factorName }}</dt>
+        <!-- 已停用的自訂因子仍留在模式的權重表，但不參與計分，標示出來避免誤會。 -->
+        <div [class.is-inactive]="inactiveCustomFactorCodes().has(factor.factorCode)">
+          <dt>{{ factor.factorName }}@if (inactiveCustomFactorCodes().has(factor.factorCode)) {<small>（已停用，不計分）</small>}</dt>
           <dd>{{ factor.weight ?? 0 }}%</dd>
         </div>
         }
       </dl>
       @if (mode.isEditable) {
+      <!-- 2026-09-29：按鈕在可點選切換模式的 <article> 裡，要擋掉冒泡——否則自訂模式
+           不是目前生效模式時，按「編輯權重」會連帶把系統生效模式切到自訂模式。 -->
       <button type="button" class="btn edit-weights-button" [disabled]="pageState() === 'disabled'"
-        (click)="startEditWeights(mode)">
+        (click)="$event.stopPropagation(); startEditWeights(mode)">
         編輯權重
       </button>
       }
@@ -793,7 +820,7 @@
         <h2>
           {{
           modal() === 'risk'
-          ? (editingRiskOptionId() !== null ? '編輯人工風險' : '新增人工風險')
+          ? (editingRiskOptionId() !== null ? '編輯審核風險選項' : '新增審核風險選項')
           : modal() === 'productType'
           ? (editingProductTypeId() !== null ? '編輯商品類型' : '新增商品類型')
           : modal() === 'resetPassword'

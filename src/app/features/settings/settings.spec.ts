@@ -24,6 +24,7 @@ import { UserApiService } from '../user-management/api/user-api.service';
 import { Router, provideRouter } from '@angular/router';
 import { ProductApiService } from '../product-management/api/product-api.service';
 import { Settings } from './settings';
+import { SETTINGS_GROUP_TITLE, SettingsGroup } from './settings-groups';
 
 const MOCK_MODES = [
   { id: 1, modeCode: 'BALANCED', modeName: '均衡模式', version: 1, description: '商業條件、客群、歷史與預測各佔四分之一。', isActive: true },
@@ -103,8 +104,8 @@ describe('Settings', () => {
   let dialog: DialogService;
 
   const settingsApi = {
-    getEvaluationModes: vi.fn(() => of(MOCK_MODES.map((m) => ({ ...m })))),
-    getEvaluationModeFactors: vi.fn((id: number) =>
+    getEvaluationModes: vi.fn((): unknown => of(MOCK_MODES.map((m) => ({ ...m })))),
+    getEvaluationModeFactors: vi.fn((id: number): unknown =>
       of(makeWeights(MOCK_MODES.find((m) => m.id === id)?.modeCode ?? 'BALANCED')),
     ),
     getCurrentEvaluationMode: vi.fn(() => of({ ...MOCK_MODES[0] })),
@@ -122,7 +123,7 @@ describe('Settings', () => {
     ),
     getAudienceProfile: vi.fn(() => of({ ...MOCK_AUDIENCE_PROFILE })),
     updateAudienceProfile: vi.fn((body: unknown) => of({ ...MOCK_AUDIENCE_PROFILE, ...(body as object) })),
-    getProductTypes: vi.fn(() => of(MOCK_PRODUCT_TYPES.map((p) => ({ ...p })))),
+    getProductTypes: vi.fn((): unknown => of(MOCK_PRODUCT_TYPES.map((p) => ({ ...p })))),
     createProductType: vi.fn((body: { name: string }) =>
       of({ id: 100, name: body.name, description: null, isSystemDefault: false, isActive: true }),
     ),
@@ -154,9 +155,10 @@ describe('Settings', () => {
     getWeatherBoostSettings: vi.fn(() =>
       of({ historyWeightPercentage: 60, forecastWeightPercentage: 40, boostCap: 5, historyDays: 30, forecastDays: 14, updatedAt: null }),
     ),
-    getFactorDefinitions: vi.fn(() => of([])),
+    getFactorDefinitions: vi.fn((): unknown => of([])),
+    updateEvaluationModeFactors: vi.fn((_id: number, _body: unknown): unknown => of(null)),
     getCustomFieldDefinitions: vi.fn(() => of([])),
-    getProductTypeScoreBands: vi.fn(() => of([])),
+    getProductTypeScoreBands: vi.fn((): unknown => of([])),
     getSystemSettings: vi.fn(() =>
       of([
         {
@@ -240,6 +242,8 @@ describe('Settings', () => {
     settingsApi.getProductTypes.mockReturnValue(of(MOCK_PRODUCT_TYPES.map((p) => ({ ...p }))));
     settingsApi.deleteProductType.mockReturnValue(of(undefined));
     settingsApi.getFestiveCampaigns.mockReturnValue(of(MOCK_CAMPAIGNS.map((c) => ({ ...c }))));
+    settingsApi.getFactorDefinitions.mockReturnValue(of([]));
+    settingsApi.getProductTypeScoreBands.mockReturnValue(of([]));
     userApi.list.mockReturnValue(of(MOCK_ACCOUNTS.map((a) => ({ ...a }))));
     // 目標區間分頁載入時會查品類名稱對照（?tab= 同步測試會切到這個分頁）。
     productTypeLookup.getNameMap.mockReturnValue(of(new Map()));
@@ -251,7 +255,7 @@ describe('Settings', () => {
         { provide: UserApiService, useValue: userApi },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
         { provide: RiskOptionLookupService, useValue: riskOptionLookup },
-        // 分頁同步到網址 ?tab= 需要路由；排程作業面板（演算法參數分頁）會注入 ProductApiService。
+        // 分頁同步到網址 ?tab= 需要路由；排程作業面板（排程與同步分頁）會注入 ProductApiService。
         provideRouter([]),
         { provide: ProductApiService, useValue: productApi },
       ],
@@ -566,19 +570,42 @@ describe('Settings', () => {
     expect(resetButton.disabled).toBe(true);
   });
 
-  it('shows only the tabs of its sidebar group (2026-09 split)', () => {
-    // 路由 data.settingsGroup 在建構時讀取；這裡直接指定欄位模擬 /settings/operations。
-    Object.assign(component, { settingsGroup: 'operations', pageTitle: '營運與帳號設定' });
+  // 2026-09-29 依用途分三組（方案 B）：每個側邊欄項目只顯示自己那一組的分頁。
+  const tabLabelsOfGroup = (group: SettingsGroup): (string | undefined)[] => {
+    // 路由 data.settingsGroup 在建構時讀取；這裡直接指定欄位模擬 /settings/{group}。
+    Object.assign(component, { settingsGroup: group, pageTitle: SETTINGS_GROUP_TITLE[group] });
     // OnPush：欄位不是 signal，要手動標記元件自己的 view 需要重新檢查。
     fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
     fixture.detectChanges();
-    const tabs = Array.from(
+    return Array.from(
       fixture.nativeElement.querySelectorAll('nav.tabs button') as NodeListOf<HTMLButtonElement>,
     ).map((b) => b.textContent?.trim());
-    expect(tabs).toEqual(['商品類型', '人工風險', '節慶檔期', '天氣連動', '帳號管理']);
-    expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('營運與帳號設定');
-    expect(component.isTabInGroup('modes')).toBe(false);
+  };
+
+  it('shows only the scoring & review rule tabs under 評分與審核規則', () => {
+    expect(tabLabelsOfGroup('scoring')).toEqual([
+      '評估模式',
+      '自訂屬性與因子',
+      '目標區間',
+      '計分與判定參數',
+      '審核風險選項',
+    ]);
+    expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('評分與審核規則');
+    expect(fixture.nativeElement.querySelector('.tab-divider')).toBeNull();
+  });
+
+  it('shows only the data tabs under 選品基礎資料 (核心客群 stays hidden while locked)', () => {
+    expect(tabLabelsOfGroup('data')).toEqual(['商品類型', '節慶檔期', '天氣連動']);
+    expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('選品基礎資料');
+    expect(component.isTabInGroup('audience')).toBe(true);
+    expect(component.isTabInGroup('risks')).toBe(false);
+  });
+
+  it('shows only the system tabs under 系統管理', () => {
+    expect(tabLabelsOfGroup('system')).toEqual(['帳號管理', '排程與同步']);
+    expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('系統管理');
     expect(component.isTabInGroup('accounts')).toBe(true);
+    expect(component.isTabInGroup('modes')).toBe(false);
   });
 
   it('keeps slider snapping but accepts precise manual input', () => {
@@ -659,6 +686,165 @@ describe('Settings', () => {
     const tips = fixture.nativeElement.querySelectorAll('app-info-tip');
     expect(tips).toHaveLength(1);
     expect(tips[0].querySelector('button').getAttribute('aria-label')).toContain('收斂到全體平均');
-    expect(fixture.nativeElement.querySelector('app-ai-suggestion-batch-panel')).toBeTruthy();
+  });
+
+  // 2026-09-29：排程作業不是評分規則，從「計分與判定參數」搬到「系統管理 › 排程與同步」。
+  it('moves the scheduled-job panels out of 計分與判定參數 into 排程與同步', () => {
+    component.setTab('systemSettings');
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('h2')?.textContent).toContain('計分與判定參數');
+    expect(host.querySelector('app-trend-crawler-panel')).toBeNull();
+    expect(host.querySelector('app-google-trends-panel')).toBeNull();
+    expect(host.querySelector('app-ai-suggestion-batch-panel')).toBeNull();
+    // 天氣加成上限與比重留在天氣連動元件，這裡只放前往連結
+    const link = host.querySelector('.settings-cross-link a') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/settings/data?tab=weather');
+
+    component.setTab('jobs');
+    fixture.detectChanges();
+    expect(host.querySelector('h2')?.textContent).toContain('排程與同步');
+    expect(host.querySelector('app-trend-crawler-panel')).toBeTruthy();
+    expect(host.querySelector('app-google-trends-panel')).toBeTruthy();
+    expect(host.querySelector('app-ai-suggestion-batch-panel')).toBeTruthy();
+    expect(component.pageState()).toBe('default');
+  });
+
+  // ===== 2026-09-29：評分與審核規則功能檢查（自訂模式儲存權重無效等） =====
+
+  describe('自訂模式權重與目標區間（2026-09-29 修正）', () => {
+    const CUSTOM_MODE = {
+      id: 4, modeCode: 'CUSTOM', modeName: '自訂模式', version: 1, description: '', isActive: false, isEditable: true,
+    };
+    const fixedFactor = (factorCode: string, weight: number) => ({
+      factorCode, factorName: factorCode, category: 'BUSINESS', weight,
+    });
+    // 自訂模式目前的權重表：七個固定因子＋一個已停用的自訂因子（ECO_PACKAGING 仍有舊列）
+    const CUSTOM_WEIGHTS = {
+      modeCode: 'CUSTOM', modeName: '自訂模式', version: 1,
+      factors: [
+        fixedFactor('MARGIN_RATE', 30), fixedFactor('DISCOUNT_DEPTH', 10), fixedFactor('SUPPLY_STABILITY', 10),
+        fixedFactor('AUDIENCE_MATCH', 10), fixedFactor('HISTORY_FULFILLMENT', 10), fixedFactor('PURCHASE_RATE', 10),
+        fixedFactor('TREND_HEAT', 10),
+        { factorCode: 'ECO_PACKAGING', factorName: '環保包裝評級', category: 'SUSTAINABILITY', weight: 10 },
+      ],
+    };
+    const definition = (id: number, factorCode: string, isActive: boolean, strategyCode = 'MANUAL_SCALE') => ({
+      id, factorCode, factorName: `${factorCode} 名稱`, category: null, strategyCode, dataSourceCode: null,
+      customFieldDefinitionId: null, strategyParams: null, isActive, isSuperseded: false,
+    });
+    const DEFINITIONS = [
+      definition(1, 'ECO_PACKAGING', false),
+      // 新建立、還沒有自訂模式權重列的因子
+      definition(2, 'NEW_FACTOR', true),
+      definition(3, 'SOCIAL_BUZZ', true, 'TARGET_BAND_NORMALIZE'),
+    ];
+
+    function recreateWithCustomMode(): void {
+      settingsApi.getEvaluationModes.mockReturnValue(of([...MOCK_MODES, CUSTOM_MODE].map((m) => ({ ...m }))));
+      settingsApi.getEvaluationModeFactors.mockImplementation((id: number) =>
+        of(id === 4 ? structuredClone(CUSTOM_WEIGHTS) : makeWeights(MOCK_MODES.find((m) => m.id === id)?.modeCode ?? 'BALANCED')),
+      );
+      settingsApi.getFactorDefinitions.mockReturnValue(of(DEFINITIONS.map((d) => ({ ...d }))));
+      fixture = TestBed.createComponent(Settings);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+    }
+
+    it('權重編輯器排除已停用的自訂因子、列出新因子，送出的清單恰好是生效中的因子', () => {
+      recreateWithCustomMode();
+      const custom = component.modes().find((m) => m.code === 'CUSTOM')!;
+      component.startEditWeights(custom);
+
+      expect(component.factorOrder()).not.toContain('ECO_PACKAGING');
+      expect(component.factorOrder()).toContain('NEW_FACTOR');
+      // 停用因子的舊權重 10 不能算進加總
+      expect(component.weightDraftTotal()).toBe(90);
+
+      component.toggleFactorEnabled('NEW_FACTOR');
+      component.updateWeightDraft('NEW_FACTOR', 10);
+      settingsApi.updateEvaluationModeFactors.mockReturnValue(of(structuredClone(CUSTOM_WEIGHTS)));
+      component.saveWeights();
+
+      expect(settingsApi.updateEvaluationModeFactors).toHaveBeenCalledTimes(1);
+      const [modeId, body] = settingsApi.updateEvaluationModeFactors.mock.calls[0] as unknown as [
+        number,
+        { factors: { factorCode: string; weight: number }[] },
+      ];
+      expect(modeId).toBe(4);
+      const codes = body.factors.map((f) => f.factorCode);
+      expect(codes).not.toContain('ECO_PACKAGING');
+      expect(codes).toEqual(expect.arrayContaining(['MARGIN_RATE', 'NEW_FACTOR', 'SOCIAL_BUZZ']));
+      expect(body.factors.find((f) => f.factorCode === 'NEW_FACTOR')?.weight).toBe(10);
+      expect(body.factors.reduce((sum, f) => sum + f.weight, 0)).toBe(100);
+    });
+
+    it('唯讀權重明細把已停用的自訂因子標示為不計分', () => {
+      recreateWithCustomMode();
+      fixture.detectChanges();
+      const inactiveRows = fixture.nativeElement.querySelectorAll('.factor-breakdown .is-inactive');
+      expect(inactiveRows.length).toBe(1);
+      expect(inactiveRows[0].textContent).toContain('環保包裝評級');
+      expect(inactiveRows[0].textContent).toContain('已停用，不計分');
+    });
+
+    it('按「編輯權重」不會連帶把系統生效模式切到自訂模式', () => {
+      recreateWithCustomMode();
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('.edit-weights-button') as HTMLButtonElement;
+      button.click();
+      fixture.detectChanges();
+
+      expect(settingsApi.switchEvaluationMode).not.toHaveBeenCalled();
+      expect(component.activeMode()).toBe('BALANCED');
+      expect(component.editingWeightsModeId()).toBe(4);
+    });
+
+    it('目標區間分頁自行載入商品類型與自訂因子：只能選生效中的大類、可選目標區間正規化的自訂因子', () => {
+      settingsApi.getFactorDefinitions.mockReturnValue(of(DEFINITIONS.map((d) => ({ ...d }))));
+      settingsApi.getProductTypes.mockReturnValue(
+        of([
+          { id: 1, name: '生鮮食品', level: 1, parentId: null, isActive: true, isSystemDefault: true },
+          { id: 2, name: '蔬菜', level: 2, parentId: 1, isActive: true, isSystemDefault: false },
+          { id: 3, name: '停用大類', level: 1, parentId: null, isActive: false, isSystemDefault: false },
+        ]),
+      );
+      settingsApi.getProductTypeScoreBands.mockReturnValue(
+        of([
+          { id: 1, productTypeId: null, factorCode: 'MARGIN_RATE', lowerBound: 0, upperBound: 0.4, version: 1,
+            sourceMode: 'MANUAL', sampleSize: null, includesSimulated: null, computedAt: null },
+          { id: 2, productTypeId: 1, factorCode: 'MARGIN_RATE', lowerBound: 0.1, upperBound: 0.5, version: 1,
+            sourceMode: 'MANUAL', sampleSize: null, includesSimulated: null, computedAt: null },
+          { id: 3, productTypeId: null, factorCode: 'SOCIAL_BUZZ', lowerBound: 0, upperBound: 500, version: 1,
+            sourceMode: 'MANUAL', sampleSize: null, includesSimulated: null, computedAt: null },
+        ]),
+      );
+
+      component.setTab('scoreBands');
+      fixture.detectChanges();
+
+      expect(settingsApi.getProductTypes).toHaveBeenCalled();
+      expect(component.scoreBandProductTypeOptions().map((t) => t.id)).toEqual([1]);
+      expect(component.scoreBandFactorOptions().map((f) => f.code)).toEqual([
+        'MARGIN_RATE', 'DISCOUNT_DEPTH', 'SOCIAL_BUZZ',
+      ]);
+      // 自訂因子名稱隨清單即時帶入，不停在代碼
+      expect(component.globalScoreBands().find((b) => b.factorCode === 'SOCIAL_BUZZ')?.factorLabel).toBe('SOCIAL_BUZZ 名稱');
+
+      // 「依歷史紀錄計算」只出現在品類覆寫的毛利率／折扣深度
+      const [globalMargin, typeMargin, globalBuzz] = [1, 2, 3].map(
+        (id) => component.globalScoreBands().concat(component.overrideScoreBands()).find((b) => b.id === id)!,
+      );
+      expect(component.supportsHistoricalBand(globalMargin)).toBe(false);
+      expect(component.supportsHistoricalBand(typeMargin)).toBe(true);
+      expect(component.supportsHistoricalBand(globalBuzz)).toBe(false);
+
+      component.openScoreBandEditor(globalMargin);
+      fixture.detectChanges();
+      const options = Array.from(
+        fixture.nativeElement.querySelectorAll('tr.is-editing select option') as NodeListOf<HTMLOptionElement>,
+      ).map((o) => o.value);
+      expect(options).toEqual(['MANUAL']);
+    });
   });
 });
