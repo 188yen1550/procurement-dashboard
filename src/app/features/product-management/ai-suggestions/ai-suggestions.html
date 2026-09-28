@@ -8,6 +8,25 @@
       <a class="btn" routerLink="/products">回到正式候選清單</a>
     </div>
   </header>
+  <!-- 2026-09-28：使用說明——這份清單怎麼來的、怎麼用。預設收合，不佔版面。 -->
+  <details class="ai-guide">
+    <summary>這份清單怎麼來的？怎麼使用？</summary>
+    <ol>
+      <li>
+        <strong>怎麼產生：</strong>每天 02:00 系統搜尋 PTT 公開看板更新每個商品的熱度，03:00 挑出
+        「最新熱度超過 70 分」或「連續 3 次同步都上升」的商品，放進這份清單。
+      </li>
+      <li>
+        <strong>推薦依據：</strong>每張卡片列出熱度分數、最近 3 次同步的方向，以及 Google 搜尋趨勢（台灣近 3 個月，
+        每週一更新）。Google 趨勢只作參考，不影響是否被推薦。
+      </li>
+      <li>
+        <strong>怎麼使用：</strong>AI 只負責挑出值得看的商品，不會自己加入候選。覺得值得評估的，勾選後按
+        「加入已選候選」（或單張卡片的「加入 CANDIDATE 候選」），商品才會進入正式候選清單、開始計分與送審。
+      </li>
+      <li><strong>想看完整走勢：</strong>點「查看趨勢走勢」進入品項詳情，有近 30 天的熱度折線圖。</li>
+    </ol>
+  </details>
   @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態</strong><span>AI_SUGGESTED 與 CANDIDATE 單獨呈現</span></div>
@@ -98,18 +117,70 @@
             <!-- 推薦理由由 API 提供；其餘輔助資訊只在資料存在時顯示。 -->
             @if (item.trend !== null) {
               <div class="trend">
-                <strong>{{ item.trend }}</strong
-                ><span>
+                <strong [class.is-simulated]="!item.isRealSource">{{ item.trend }}</strong
+                ><span [attr.data-direction]="item.direction">
                   @if (item.direction === 'UP') {
-                    <app-icon name="trending-up" size="sm" /> 連續上升
+                    <app-icon name="trending-up" size="sm" /> {{ isConsecutiveUp(item) ? '連續上升' : '上升' }}
+                  } @else if (item.direction === 'DOWN') {
+                    <app-icon name="trending-down" size="sm" /> 下降
                   } @else {
-                    <app-icon name="trending-flat" size="sm" /> 穩定
+                    <app-icon name="trending-flat" size="sm" /> 持平
                   }
                 </span>
               </div>
             }
             @if (item.reason) {
               <p class="reason">{{ item.reason }}</p>
+            }
+            <!-- 2026-09-28：推薦依據（趨勢說明）——讓使用者看得出「為什麼推薦」，不是只有一個分數。 -->
+            <dl class="trend-basis" aria-label="推薦依據">
+              <div>
+                <dt>熱度分數</dt>
+                <dd>
+                  @if (item.trend === null) {
+                    尚無趨勢資料
+                  } @else {
+                    {{ item.trend }} 分（{{ item.isRealSource ? 'PTT 討論量' : '模擬資料，PTT 當次抓不到' }}）
+                    @if (item.trend > 70) {<span class="basis-hit">超過 70 分門檻</span>}
+                  }
+                </dd>
+              </div>
+              @if (item.recentDirections.length > 0) {
+                <div>
+                  <dt>近 {{ item.recentDirections.length }} 次同步（舊 → 新）</dt>
+                  <dd>
+                    <span class="direction-steps" role="img"
+                      [attr.aria-label]="'由舊到新：' + item.recentDirections.map(directionLabel).join('、')">
+                      @for (d of item.recentDirections; track $index) {
+                        <span [attr.data-direction]="d">{{ directionSymbol(d) }}</span>
+                      }
+                    </span>
+                    @if (isConsecutiveUp(item)) {<span class="basis-hit">連續 3 次上升</span>}
+                  </dd>
+                </div>
+              }
+              <div>
+                <dt>Google 趨勢（參考）</dt>
+                <dd>
+                  @if (googleSummary(item.google); as g) {
+                    @if (g.direction) {
+                      <span [attr.data-direction]="g.direction">{{ directionSymbol(g.direction) }} {{ directionLabel(g.direction) }}</span>
+                      {{ g.text }}<small>・近 7 天比前 4 週</small>
+                    } @else {
+                      {{ g.text }}
+                    }
+                  }
+                </dd>
+              </div>
+              @if (item.finalScore !== null) {
+                <div>
+                  <dt>綜合分數</dt>
+                  <dd>{{ item.finalScore }}</dd>
+                </div>
+              }
+            </dl>
+            @if (!useMockData) {
+              <a class="trend-link" [routerLink]="['/products', item.id]">查看趨勢走勢</a>
             }
             @if (item.audienceMatch !== null || item.risk) {
               <dl>

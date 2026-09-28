@@ -13,6 +13,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Auth } from '../../../core/auth/auth';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import { GoogleTrendSignal, GoogleTrendsApiService } from '../../settings/api/google-trends-api.service';
 import { ProductApiService } from '../api/product-api.service';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { ProductDetail } from './product-detail';
@@ -123,6 +124,23 @@ describe('ProductDetail', () => {
       }),
     ),
   };
+  // 2026-09-28：Google 趨勢參考（獨立服務）。預設回「尚未查詢」，個別測試再覆寫。
+  const googleTrendsApi = {
+    getLatest: vi.fn(() => of<GoogleTrendSignal | null>(null)),
+    sync: vi.fn(() =>
+      of<GoogleTrendSignal>({
+        productId: 101,
+        keyword: '中秋炭烤海陸組合禮盒',
+        status: 'OK',
+        direction: 'UP',
+        growthRate: 23.5,
+        recentAvg: 52,
+        baselineAvg: 42.1,
+        pointCount: 92,
+        collectedAt: '2026-09-28T15:40:00',
+      }),
+    ),
+  };
   const auth = { isManager: vi.fn(() => false) };
   const productTypeLookup = {
     getName: vi.fn(() => of('食品／生鮮')),
@@ -137,6 +155,7 @@ describe('ProductDetail', () => {
         provideRouter([]),
         { provide: ProductApiService, useValue: api },
         { provide: ProductTypeLookupService, useValue: productTypeLookup },
+        { provide: GoogleTrendsApiService, useValue: googleTrendsApi },
         // 2026-09-24：品項詳情依角色決定是否唯讀，預設以操作層身分測既有行為。
         { provide: Auth, useValue: auth },
       ],
@@ -480,5 +499,81 @@ describe('ProductDetail', () => {
     const buttons = Array.from(root.querySelectorAll('button'), (b) => b.textContent ?? '');
     expect(buttons.some((text) => text.includes('AI 分析') || text.includes('立即更新'))).toBe(false);
     auth.isManager.mockReturnValue(false);
+  });
+
+  describe('Google 趨勢參考（2026-09-28）', () => {
+    async function render(isManager: boolean): Promise<{ root: HTMLElement; instance: ProductDetail; fixture: ComponentFixture<ProductDetail> }> {
+      auth.isManager.mockReturnValue(isManager);
+      const f = TestBed.createComponent(ProductDetail);
+      f.detectChanges();
+      await f.whenStable();
+      f.detectChanges();
+      auth.isManager.mockReturnValue(false);
+      return { root: f.nativeElement as HTMLElement, instance: f.componentInstance, fixture: f };
+    }
+
+    it('操作層看得到結果（方向與成長率），但沒有查詢按鈕', async () => {
+      googleTrendsApi.getLatest.mockReturnValueOnce(
+        of<GoogleTrendSignal | null>({
+          productId: 101, keyword: '中秋烤肉', status: 'OK', direction: 'DOWN', growthRate: -18.24,
+          recentAvg: 30, baselineAvg: 36.7, pointCount: 92, collectedAt: '2026-09-28T04:00:00',
+        }),
+      );
+      const { root } = await render(false);
+      const block = root.querySelector('.google-trend')!;
+      expect(block.textContent).toContain('下降');
+      expect(block.textContent).toContain('近 7 天比前 4 週 -18.2%');
+      expect(block.textContent).toContain('搜尋關鍵字「中秋烤肉」');
+      // 區塊內只剩說明提示（info-tip）的按鈕，沒有會花額度的查詢按鈕
+      const buttons = Array.from(block.querySelectorAll('button'), (b) => b.textContent ?? '');
+      expect(buttons.some((text) => text.includes('查詢 Google 趨勢'))).toBe(false);
+    });
+
+    it('查無資料時說明搜尋量不足，而不是顯示 0 或下降', async () => {
+      googleTrendsApi.getLatest.mockReturnValueOnce(
+        of<GoogleTrendSignal | null>({
+          productId: 101, keyword: '中秋炭烤海陸組合禮盒', status: 'NO_DATA', direction: null, growthRate: null,
+          recentAvg: null, baselineAvg: null, pointCount: 0, collectedAt: '2026-09-28T04:00:00',
+        }),
+      );
+      const { root } = await render(false);
+      expect(root.querySelector('.google-trend')!.textContent).toContain('Google 搜尋量不足，無法判斷趨勢');
+    });
+
+    it('讀取失敗只讓這一區顯示尚未查詢，不影響整頁', async () => {
+      googleTrendsApi.getLatest.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const { root } = await render(false);
+      expect(root.textContent).toContain('總分');
+      expect(root.querySelector('.google-trend')!.textContent).toContain('尚未查詢');
+    });
+
+    it('管理層按「查詢 Google 趨勢」會先確認會用掉額度，確認後顯示新結果', async () => {
+      const { root, instance, fixture: f } = await render(true);
+      const confirm = vi.spyOn(TestBed.inject(DialogService), 'confirm').mockReturnValue(of(true));
+      const button = Array.from(root.querySelectorAll('.google-trend button')).find((b) =>
+        b.textContent?.includes('查詢 Google 趨勢'),
+      ) as HTMLButtonElement;
+
+      button.click();
+      f.detectChanges();
+
+      expect(confirm.mock.calls[0][1].join('')).toContain('SerpApi 額度');
+      expect(googleTrendsApi.sync).toHaveBeenCalledOnce();
+      expect(instance.googleTrend()?.direction).toBe('UP');
+      expect(root.querySelector('.google-trend')!.textContent).toContain('近 7 天比前 4 週 +23.5%');
+    });
+
+    it('查詢失敗（例如額度用完）只在這一區顯示後端訊息', async () => {
+      googleTrendsApi.sync.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 409, error: { message: '本月 Google 趨勢查詢次數已達上限（200 次）' } })),
+      );
+      const { root, instance, fixture: f } = await render(true);
+      vi.spyOn(TestBed.inject(DialogService), 'confirm').mockReturnValue(of(true));
+
+      instance.syncGoogleTrend();
+      f.detectChanges();
+
+      expect(root.querySelector('.google-trend [role="alert"]')?.textContent).toContain('已達上限');
+    });
   });
 });

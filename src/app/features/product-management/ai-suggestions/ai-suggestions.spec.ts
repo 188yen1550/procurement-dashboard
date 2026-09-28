@@ -146,6 +146,87 @@ describe('AiSuggestions', () => {
     expect(fixture.nativeElement.textContent).toContain('加入 CANDIDATE 候選');
   });
 
+  describe('推薦依據（趨勢說明，2026-09-28）', () => {
+    function render(payload: Partial<ProductResponsePayload>): HTMLElement {
+      api.listAiSuggested.mockReturnValue(
+        of({
+          items: [toProductListItem(makeAiSuggestedPayload({ id: 3, name: '蛋捲', ...payload }), '常溫食品')],
+          totalElements: 1,
+          totalPages: 1,
+          pageNumber: 0,
+          pageSize: 50,
+        }),
+      );
+      component.load();
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('.suggestion-grid article') as HTMLElement;
+    }
+
+    it('顯示熱度分數、近 3 次方向（舊到新）、Google 趨勢與綜合分數', () => {
+      const card = render({
+        trendScore: 79.54,
+        trendDirection: 'UP',
+        trendSource: 'PTT',
+        // 後端是新到舊
+        recentTrendDirections: ['UP', 'UP', 'STABLE'],
+        finalScore: 54.2,
+        googleTrend: {
+          productId: 3, keyword: '蛋捲', status: 'OK', direction: 'UP', growthRate: 25.71,
+          recentAvg: 42.29, baselineAvg: 33.64, pointCount: 92, collectedAt: '2026-09-28T15:24:46',
+        },
+      });
+      const basis = card.querySelector('.trend-basis')!.textContent!;
+      expect(basis).toContain('79.54 分（PTT 討論量）');
+      expect(basis).toContain('超過 70 分門檻');
+      expect(Array.from(card.querySelectorAll('.direction-steps span'), (s) => s.textContent)).toEqual(['→', '↗', '↗']);
+      expect(basis).not.toContain('連續 3 次上升');
+      expect(basis).toContain('↗ 上升');
+      expect(basis).toContain('+25.7%');
+      expect(basis).toContain('54.2');
+      expect(card.querySelector('a.trend-link')?.getAttribute('href')).toBe('/products/3');
+    });
+
+    it('連續 3 次上升時標出符合條件；模擬資料要講明', () => {
+      const card = render({
+        trendScore: 62,
+        trendDirection: 'UP',
+        trendSource: 'SIMULATED',
+        recentTrendDirections: ['UP', 'UP', 'UP'],
+        googleTrend: null,
+      });
+      const basis = card.querySelector('.trend-basis')!.textContent!;
+      expect(basis).toContain('連續 3 次上升');
+      expect(basis).toContain('模擬資料');
+      expect(basis).not.toContain('超過 70 分門檻');
+      expect(basis).toContain('尚未查詢');
+      expect(card.querySelector('.trend')!.textContent).toContain('連續上升');
+    });
+
+    it('Google 查無資料時說搜尋量不足，而不是持平', () => {
+      const card = render({
+        trendScore: 75,
+        trendDirection: 'STABLE',
+        trendSource: 'PTT',
+        recentTrendDirections: ['STABLE'],
+        googleTrend: {
+          productId: 3, keyword: '蛋捲', status: 'NO_DATA', direction: null, growthRate: null,
+          recentAvg: null, baselineAvg: null, pointCount: 0, collectedAt: '2026-09-28T15:24:46',
+        },
+      });
+      const googleRow = Array.from(card.querySelectorAll('.trend-basis div')).find((d) =>
+        d.textContent?.includes('Google 趨勢'),
+      )!;
+      expect(googleRow.textContent).toContain('搜尋量不足');
+      expect(googleRow.textContent).not.toContain('持平');
+    });
+
+    it('頁首有使用說明（怎麼產生、怎麼使用）', () => {
+      const guide = fixture.nativeElement.querySelector('details.ai-guide') as HTMLElement;
+      expect(guide.textContent).toContain('最新熱度超過 70 分');
+      expect(guide.textContent).toContain('加入已選候選');
+    });
+  });
+
   it('renders disabled loading empty and error states', () => {
     component.setState('disabled');
     fixture.detectChanges();

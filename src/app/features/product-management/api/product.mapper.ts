@@ -14,6 +14,7 @@ import {
   TrendDirection,
 } from '../../../core/domain/enums';
 import { joinCampaignTags, splitCampaignTags, WEATHER_REGION_LABEL } from '../../../core/domain/labels';
+import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 import {
   AiAnalysisResponsePayload,
   EvaluationResponsePayload,
@@ -105,6 +106,20 @@ export interface ProductListItem {
    * 回傳過，AI 建議清單一直顯示不出「為什麼」。
    */
   suggestionReason?: string | null;
+  /** 2026-09-28：AI 建議清單的趨勢說明（只有 ai-suggested 端點有值），見 ProductResponsePayload。 */
+  suggestionTrend?: SuggestionTrend;
+}
+
+/** AI 建議清單每張卡片的「推薦依據」資料。 */
+export interface SuggestionTrend {
+  /** 最新一筆熱度分數；尚無趨勢資料為 null。 */
+  popularityScore: number | null;
+  direction: 'UP' | 'DOWN' | 'STABLE' | null;
+  /** false＝最新一筆是 PTT 抓不到時的模擬資料。 */
+  isRealSource: boolean;
+  /** 最近最多 3 筆方向，舊到新（畫面由左到右閱讀）。 */
+  recentDirections: ('UP' | 'DOWN' | 'STABLE')[];
+  googleTrend: GoogleTrendSignal | null;
 }
 
 /**
@@ -200,6 +215,17 @@ export function toProductListItem(
     submittedByName: payload.submittedByName ?? null,
     actions: toProductActionAvailability(payload),
     suggestionReason: payload.suggestionReason,
+    // 只有 ai-suggested 端點會帶這組欄位；其他端點維持 undefined，不要造出一個全空的物件
+    suggestionTrend:
+      payload.trendScore === undefined && payload.googleTrend === undefined
+        ? undefined
+        : {
+            popularityScore: payload.trendScore ?? null,
+            direction: payload.trendDirection ?? null,
+            isRealSource: payload.trendSource === 'PTT',
+            recentDirections: [...(payload.recentTrendDirections ?? [])].reverse(),
+            googleTrend: payload.googleTrend ?? null,
+          },
   };
 }
 

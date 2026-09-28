@@ -17,6 +17,7 @@ import { reloadOnRevisit } from '../../../core/router/reload-on-revisit';
 import { ProductApiService } from '../api/product-api.service';
 import { ProductListItem } from '../api/product.mapper';
 import { Icon } from '../../../shared/components/icon/icon';
+import { GoogleTrendSignal, summarizeGoogleTrend } from '../../settings/api/google-trends-api.service';
 
 type AiState = 'default' | 'disabled' | 'loading' | 'empty' | 'error';
 
@@ -25,9 +26,20 @@ interface Suggestion {
   name: string;
   category: string;
   supplier: string;
-  /** 展示資料可提供；真實清單 API 目前沒有趨勢資料。 */
+  /**
+   * 最新一筆熱度分數（PTT 討論量換算）。2026-09-28 起真實模式也有值：
+   * 後端 ai-suggested 端點早就回傳 trendScore／trendDirection，只是這頁原本沒接。
+   */
   trend: number | null;
-  direction: 'UP' | 'STABLE' | null;
+  direction: 'UP' | 'DOWN' | 'STABLE' | null;
+  /** false＝最新一筆是 PTT 抓不到時的模擬資料，畫面要標出來。 */
+  isRealSource: boolean;
+  /** 最近最多 3 次同步的方向，舊到新；對應「連續 3 天上升」這個建議條件。 */
+  recentDirections: ('UP' | 'DOWN' | 'STABLE')[];
+  /** Google 趨勢參考（沒查過為 null），只作參考、不參與建議判定。 */
+  google: GoogleTrendSignal | null;
+  /** 綜合分數（最終分數）；尚無評估紀錄為 null。 */
+  finalScore: number | null;
   /** 真實模式讀取 AI 建議端點的 suggestionReason。 */
   reason: string | null;
   audienceMatch: number | null;
@@ -35,6 +47,18 @@ interface Suggestion {
   candidateStatus: 'AI_SUGGESTED';
   selected: boolean;
 }
+
+const MOCK_GOOGLE: GoogleTrendSignal = {
+  productId: 201,
+  keyword: '轉接充電器',
+  status: 'OK',
+  direction: 'UP',
+  growthRate: 21.4,
+  recentAvg: 58,
+  baselineAvg: 47.8,
+  pointCount: 92,
+  collectedAt: '2026-09-28T04:00:00',
+};
 
 const SUGGESTIONS: readonly Suggestion[] = [
   {
@@ -44,6 +68,10 @@ const SUGGESTIONS: readonly Suggestion[] = [
     supplier: '沐光科技',
     trend: 88,
     direction: 'UP',
+    isRealSource: true,
+    recentDirections: ['UP', 'UP', 'UP'],
+    google: MOCK_GOOGLE,
+    finalScore: 81.2,
     reason: '近 3 日搜尋熱度持續上升，且符合旅遊旺季需求。',
     audienceMatch: 84,
     risk: '需確認安規認證與插座規格。',
@@ -57,6 +85,10 @@ const SUGGESTIONS: readonly Suggestion[] = [
     supplier: '晴日生活',
     trend: 82,
     direction: 'UP',
+    isRealSource: true,
+    recentDirections: ['STABLE', 'UP', 'UP'],
+    google: { ...MOCK_GOOGLE, productId: 202, keyword: '防曬折疊傘', status: 'NO_DATA', direction: null, growthRate: null, recentAvg: null, baselineAvg: null, pointCount: 0 },
+    finalScore: 76.5,
     reason: '熱度分數超過 70，進入夏季防曬高峰。',
     audienceMatch: 78,
     risk: '同類商品競爭者多，需確認差異化。',
@@ -70,6 +102,10 @@ const SUGGESTIONS: readonly Suggestion[] = [
     supplier: '戶外樂園',
     trend: 76,
     direction: 'STABLE',
+    isRealSource: false,
+    recentDirections: ['UP', 'STABLE', 'STABLE'],
+    google: null,
+    finalScore: null,
     reason: '核心客群關鍵字與親子、家庭情境高度吻合。',
     audienceMatch: 92,
     risk: '大型包裝可能提高物流成本。',
@@ -85,8 +121,12 @@ function toSuggestion(item: ProductListItem): Suggestion {
     name: item.name,
     category: item.productTypeName,
     supplier: item.supplierName,
-    trend: null,
-    direction: null,
+    trend: item.suggestionTrend?.popularityScore ?? null,
+    direction: item.suggestionTrend?.direction ?? null,
+    isRealSource: item.suggestionTrend?.isRealSource ?? true,
+    recentDirections: item.suggestionTrend?.recentDirections ?? [],
+    google: item.suggestionTrend?.googleTrend ?? null,
+    finalScore: item.finalScore,
     // suggestionReason 為 GET /api/products/ai-suggested 專屬欄位。
     reason: item.suggestionReason ?? null,
     audienceMatch: null,
@@ -141,6 +181,22 @@ export class AiSuggestions implements OnInit {
 
   ngOnInit(): void {
     if (!this.useMockData) this.load();
+  }
+
+  readonly googleSummary = summarizeGoogleTrend;
+
+  /** 方向符號：近 3 次同步用，一眼看出是否連續上升。 */
+  directionSymbol(direction: 'UP' | 'DOWN' | 'STABLE' | null): string {
+    return direction === 'UP' ? '↗' : direction === 'DOWN' ? '↘' : '→';
+  }
+
+  directionLabel(direction: 'UP' | 'DOWN' | 'STABLE' | null): string {
+    return direction === 'UP' ? '上升' : direction === 'DOWN' ? '下降' : '持平';
+  }
+
+  /** 最近 3 次都上升＝符合「連續 3 天上升」建議條件。 */
+  isConsecutiveUp(item: Suggestion): boolean {
+    return item.recentDirections.length >= 3 && item.recentDirections.every((d) => d === 'UP');
   }
 
   /*

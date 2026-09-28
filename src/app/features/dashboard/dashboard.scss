@@ -818,17 +818,36 @@ td {
    其餘兩欄平分剩下的 79%，趨勢方向欄右側空出一大塊。改用自己的欄寬，
    並把最小寬度從 Top 10 的 850px 降到 560px——只有四欄，不需要那麼寬才開始水平捲動。 */
 .trend-leaderboard-panel table {
-  min-width: 560px;
+  min-width: 640px;
 }
+/* 2026-09-28：熱度排行榜改成 .content-grid 下方的獨立一列（見 dashboard.html 註解），
+   不再是 flex 並排列的成員，才不會把 Top 10 與高風險提示擠成 0 寬。 */
+.trend-leaderboard-panel {
+  margin-top: 1.25rem;
+  overflow: hidden;
+}
+/* 2026-09-28：多一欄 Google 趨勢（五欄合計 100%），最小寬度 560 → 640px。 */
 .col-lb-rank {
-  width: 10%;
+  width: 8%;
 }
 .col-lb-product {
-  width: 48%;
+  width: 38%;
 }
 .col-lb-score {
-  width: 20%;
+  width: 16%;
 }
 .col-lb-trend {
+  width: 16%;
+}
+.col-lb-google {
   width: 22%;
+}
+.lb-google {
+  white-space: nowrap;
+}
+.lb-google .google-up {
+  color: var(--c-ok);
+}
+.lb-google .google-down {
+  color: var(--c-danger);
 }

@@ -3,6 +3,22 @@
  * 內容包含低完整度、重審、高風險與 Top 10 範例，不呼叫 API 且不得視為即時營運數據。
  */
 import { DashboardMockData, DashboardRecommendation } from './dashboard.models';
+import { GoogleTrendDirection, GoogleTrendSignal } from '../settings/api/google-trends-api.service';
+
+/** 熱度排行榜的 Google 趨勢示範值；direction 為 null 代表查無資料。 */
+function mockGoogle(productId: number, direction: GoogleTrendDirection | null, growthRate: number | null): GoogleTrendSignal {
+  return {
+    productId,
+    keyword: '',
+    status: direction ? 'OK' : 'NO_DATA',
+    direction,
+    growthRate,
+    recentAvg: null,
+    baselineAvg: null,
+    pointCount: direction ? 92 : 0,
+    collectedAt: '2026-09-28T04:00:00',
+  };
+}
 
 export const DASHBOARD_MOCK_DATA: DashboardMockData = {
   generatedAt: '2026-08-27 14:30',
@@ -138,11 +154,11 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
   // ⚠️ 2026-09-25 新增：展示模式的示範資料，數字純粹示意，跟 recommendations
   // 沒有對應關係——這張表刻意只看趨勢單一因子，商品組合本來就可能不同。
   trendLeaderboard: [
-    { id: 1, rank: 1, name: '磁吸快充行動電源', popularityScore: 84.37, trendDirection: 'UP', isRealSource: true, keyword: '行動電源' },
-    { id: 2, rank: 2, name: '手工蛋捲禮盒家庭號', popularityScore: 75.0, trendDirection: 'UP', isRealSource: true, keyword: '蛋捲' },
-    { id: 3, rank: 3, name: '沐浴乳補充包', popularityScore: 63.0, trendDirection: 'DOWN', isRealSource: true, keyword: '沐浴乳' },
-    { id: 4, rank: 4, name: '機能防曬外套', popularityScore: 55.2, trendDirection: 'STABLE', isRealSource: false, keyword: '防曬外套' },
-    { id: 5, rank: 5, name: '低糖精品月餅禮盒', popularityScore: 48.1, trendDirection: 'DOWN', isRealSource: true, keyword: '月餅' },
+    { id: 1, rank: 1, name: '磁吸快充行動電源', popularityScore: 84.37, trendDirection: 'UP', isRealSource: true, keyword: '行動電源', googleTrend: mockGoogle(1, 'STABLE', -8.6) },
+    { id: 2, rank: 2, name: '手工蛋捲禮盒家庭號', popularityScore: 75.0, trendDirection: 'UP', isRealSource: true, keyword: '蛋捲', googleTrend: mockGoogle(2, 'UP', 25.7) },
+    { id: 3, rank: 3, name: '沐浴乳補充包', popularityScore: 63.0, trendDirection: 'DOWN', isRealSource: true, keyword: '沐浴乳', googleTrend: mockGoogle(3, 'DOWN', -18.2) },
+    { id: 4, rank: 4, name: '機能防曬外套', popularityScore: 55.2, trendDirection: 'STABLE', isRealSource: false, keyword: '防曬外套', googleTrend: null },
+    { id: 5, rank: 5, name: '低糖精品月餅禮盒', popularityScore: 48.1, trendDirection: 'DOWN', isRealSource: true, keyword: '月餅', googleTrend: mockGoogle(5, null, null) },
   ],
 };
 

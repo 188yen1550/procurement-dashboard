@@ -490,6 +490,44 @@
             {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : syncError() }}
           </p>
           }
+
+          <!-- 2026-09-28：Google 趨勢參考（SerpApi）。獨立參考資訊，只有方向與成長率，
+               不併入上面的熱度分數（Google 的 0～100 是相對值，不同商品之間不可比）。 -->
+          <div class="google-trend" aria-labelledby="google-trend-title">
+            <h3 id="google-trend-title">
+              Google 趨勢參考<app-info-tip text="台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的平均搜尋量。Google 的數字是相對於自己高峰的比例，只能看同一個商品的升降，不能跟其他商品比，所以只當參考、不併入熱度分數。每週一 04:00 自動查詢 PTT 熱度前 40 名。" />
+            </h3>
+            @if (googleTrend(); as g) {
+            @if (g.status === 'NO_DATA') {
+            <p>Google 搜尋量不足，無法判斷趨勢・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+            } @else {
+            <p class="google-trend-result" [attr.data-direction]="g.direction">
+              @if (g.direction === 'UP') {
+              <app-icon name="trending-up" size="sm" /> <strong>上升</strong>
+              } @else if (g.direction === 'DOWN') {
+              <app-icon name="trending-down" size="sm" /> <strong>下降</strong>
+              } @else {
+              <app-icon name="trending-flat" size="sm" /> <strong>持平</strong>
+              }
+              ・{{ googleGrowthText(g) }}
+            </p>
+            <p class="trend-source">搜尋關鍵字「{{ g.keyword }}」・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+            }
+            } @else {
+            <p class="hint">尚未查詢。每週一會自動查詢 PTT 熱度前 40 名的商品{{ isManager ? '，也可以按下方按鈕立即查詢' : '' }}。</p>
+            }
+            @if (isManager) {
+            <button type="button" (click)="syncGoogleTrend()" [disabled]="googleTrendState() === 'syncing'">
+              {{ googleTrendState() === 'syncing' ? '查詢中…' : '查詢 Google 趨勢' }}
+            </button>
+            @if (googleTrendState() === 'syncing') {
+            <p class="sync-loading" role="status"><span class="spinner" aria-hidden="true"></span>正在查詢 Google 趨勢，約需 10 秒…</p>
+            }
+            @if (googleTrendState() === 'error') {
+            <p class="inline-error" role="alert">{{ googleTrendError() }}</p>
+            }
+            }
+          </div>
         </section>
       </div>
     </section>

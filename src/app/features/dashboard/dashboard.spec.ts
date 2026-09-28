@@ -54,6 +54,26 @@ describe('Dashboard', () => {
     expect(simulatedRows).toHaveLength(1);
   });
 
+  // 2026-09-28 回歸測試：熱度排行榜放進 .content-grid（Top 10＋高風險提示的 flex 並排列）時，
+  // 會依內容寬度吃掉整排，把 Top 10 與高風險提示擠成 0px。jsdom 量不到寬度，改驗結構。
+  it('keeps the trend leaderboard outside the Top 10 / risk flex row', () => {
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.content-grid .recommendations-panel')).not.toBeNull();
+    expect(root.querySelector('.trend-leaderboard-panel')).not.toBeNull();
+    expect(root.querySelector('.content-grid .trend-leaderboard-panel')).toBeNull();
+  });
+
+  it('shows a Google trend column in the leaderboard, with explicit text for missing data', () => {
+    fixture.detectChanges();
+    const cells = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard-panel td.lb-google'),
+      (td) => td.textContent?.trim().replace(/\s+/g, ' '),
+    );
+    // Mock：持平 -8.6%、上升 +25.7%、下降 -18.2%、尚未查詢、查無資料
+    expect(cells).toEqual(['持平 -8.6%', '上升 +25.7%', '下降 -18.2%', '尚未查詢', '搜尋量不足']);
+  });
+
   it('includes AI suggestions in the chart breakdown and exposes inconsistent totals', () => {
     expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14, 5]);
     expect(component.statusTotal()).toBe(109);

@@ -4,6 +4,7 @@
  */
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DialogService } from '../../../../core/dialog/dialog.service';
 import { TrendCrawlerApiService, TrendCrawlerStatus, TrendSyncRun } from '../../api/trend-crawler-api.service';
@@ -63,7 +64,7 @@ describe('TrendCrawlerPanel', () => {
   async function create(): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [TrendCrawlerPanel],
-      providers: [{ provide: TrendCrawlerApiService, useValue: api }],
+      providers: [provideRouter([]), { provide: TrendCrawlerApiService, useValue: api }],
     }).compileComponents();
     fixture = TestBed.createComponent(TrendCrawlerPanel);
     component = fixture.componentInstance;

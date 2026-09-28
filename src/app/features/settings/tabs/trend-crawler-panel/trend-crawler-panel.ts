@@ -12,8 +12,9 @@
  * 03:00 AI 建議批次），管理者要一起看才看得出順序。
  */
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
@@ -60,6 +61,12 @@ export class TrendCrawlerPanel implements OnInit {
   private readonly api = inject(TrendCrawlerApiService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /** 儀表板「前往管理」帶 #trend-crawler 過來時，第一次載入完捲到這個面板。 */
+  private pendingScroll = this.route.snapshot.fragment === 'trend-crawler';
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly status = signal<TrendCrawlerStatus | null>(null);
@@ -193,6 +200,7 @@ export class TrendCrawlerPanel implements OnInit {
         next: (status) => {
           this.loadError.set('');
           this.applyStatus(status);
+          this.scrollIntoViewOnce();
         },
         error: (err: unknown) => {
           this.loadError.set(toApiError(err).message);
@@ -209,6 +217,19 @@ export class TrendCrawlerPanel implements OnInit {
     } else {
       this.stopPolling();
     }
+  }
+
+  /**
+   * 路由沒開 anchorScrolling，而且面板內容要等 API 回來才撐開高度，
+   * 所以在第一次載入完、畫面渲染之後自己捲過去。
+   */
+  private scrollIntoViewOnce(): void {
+    if (!this.pendingScroll) return;
+    this.pendingScroll = false;
+    afterNextRender(
+      () => this.host.nativeElement.querySelector('#trend-crawler')?.scrollIntoView({ block: 'start' }),
+      { injector: this.injector },
+    );
   }
 
   private schedulePoll(): void {

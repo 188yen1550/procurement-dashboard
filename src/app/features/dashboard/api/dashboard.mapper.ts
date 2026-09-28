@@ -5,6 +5,7 @@ import {
   DashboardRiskAlertResponsePayload,
   DashboardTrendLeaderboardResponsePayload,
 } from './dashboard-api.contract';
+import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 
 /**
  * 儀表板的 payload → View Model 轉換。
@@ -125,6 +126,8 @@ export interface TrendLeaderboardItem {
   /** true 代表這筆是真實 PTT 資料；false 代表當次抓不到、退回模擬資料。 */
   isRealSource: boolean;
   keyword: string;
+  /** Google 趨勢參考最新一筆；沒查過為 null。 */
+  googleTrend: GoogleTrendSignal | null;
 }
 
 export function toTrendLeaderboardItem(
@@ -139,5 +142,6 @@ export function toTrendLeaderboardItem(
     // 一律當作非真實處理，樣板用橘色字標示，跟品項詳情頁既有做法一致。
     isRealSource: payload.source === 'PTT',
     keyword: payload.keyword ?? '',
+    googleTrend: payload.googleTrend ?? null,
   };
 }

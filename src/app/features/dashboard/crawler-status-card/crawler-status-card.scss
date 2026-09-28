@@ -1,0 +1,88 @@
+/* 檔案用途：儀表板「PTT 熱度同步」狀態卡。左側色條表示狀態：綠＝正常、黃＝有模擬資料、紅＝失敗或中斷、灰＝停用。 */
+:host {
+  display: block;
+}
+.crawler-card {
+  --tone: var(--c-ok);
+  --tone-tint: var(--c-ok-tint);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: 1.25rem;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--c-border);
+  border-left: 5px solid var(--tone);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: var(--sh-card);
+}
+.crawler-card[data-tone='warn'] {
+  --tone: #b45309;
+  --tone-tint: var(--c-warn-tint);
+}
+.crawler-card[data-tone='error'] {
+  --tone: var(--c-danger);
+  --tone-tint: var(--c-danger-tint);
+}
+.crawler-card[data-tone='muted'] {
+  --tone: var(--c-ink-faint);
+  --tone-tint: var(--c-surface-alt);
+}
+.crawler-card-main {
+  min-width: 0;
+}
+h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--t-lg);
+}
+.crawler-badge {
+  padding: 0.1rem var(--s-2-5);
+  border-radius: var(--r-pill);
+  background: var(--tone-tint);
+  color: var(--tone);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+.crawler-line {
+  margin: var(--s-1) 0 0;
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+}
+.crawler-warnings {
+  margin: var(--s-1) 0 0;
+  padding-left: 1.2rem;
+  color: var(--tone);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+.crawler-manage {
+  flex: 0 0 auto;
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-md);
+  color: var(--c-brand);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.crawler-manage:hover {
+  background: var(--c-brand-tint);
+}
+.crawler-manage:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .crawler-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .crawler-manage {
+    text-align: center;
+  }
+}

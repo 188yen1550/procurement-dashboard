@@ -55,6 +55,7 @@ import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
 import { FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
 import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 import { TrendCrawlerPanel } from './tabs/trend-crawler-panel/trend-crawler-panel';
+import { GoogleTrendsPanel } from './tabs/google-trends-panel/google-trends-panel';
 
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
 
@@ -399,6 +400,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
     FestiveCampaigns,
     AiSuggestionBatchPanel,
     TrendCrawlerPanel,
+    GoogleTrendsPanel,
   ],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',

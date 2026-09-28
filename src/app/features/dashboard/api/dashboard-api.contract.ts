@@ -1,4 +1,5 @@
 import { Decimal } from '../../../core/api/api-envelope';
+import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 
 /**
  * 儀表板模組的 API contract，對應後端 DashboardController
@@ -139,4 +140,6 @@ export interface DashboardTrendLeaderboardResponsePayload {
   /** 後端 source 是純字串（不是 enum），目前實際值是 'PTT' 或 'SIMULATED'。 */
   source: string;
   keyword: string | null;
+  /** 2026-09-28：Google 趨勢參考最新一筆，沒查過為 null；不參與排序（相對值，不同商品不可比）。 */
+  googleTrend?: GoogleTrendSignal | null;
 }

@@ -1,0 +1,27 @@
+/*
+ * 檔案用途：品項詳情頁「Google 趨勢參考」區塊（2026-09-28）。
+ * 獨立成第二個樣式檔：product-detail.scss 已接近元件樣式 12 kB 預算上限（比照 dashboard-actions.scss 的做法）。
+ * 跟上面的 PTT 熱度用虛線隔開，表明是另一個來源、不併入分數。
+ */
+.evaluation-item.trend .google-trend {
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px dashed var(--c-border-strong);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin: 0 0 .25rem;
+    font-size: var(--t-sm);
+  }
+
+  p { margin: .25rem 0 0; }
+
+  > button { margin-top: .5rem; }
+
+  .trend-source strong { color: inherit; }
+}
+
+.google-trend-result[data-direction='UP'] strong { color: var(--c-ok); }
+.google-trend-result[data-direction='DOWN'] strong { color: var(--c-danger); }

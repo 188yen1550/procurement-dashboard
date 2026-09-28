@@ -1,0 +1,97 @@
+<!-- 檔案用途：排程作業面板——Google 趨勢參考（SerpApi）的來源開關、本月用量、立即查詢、最近執行紀錄。 -->
+<section id="google-trends" class="config-panel" aria-labelledby="google-trends-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="google-trends-title">
+        排程作業：Google 趨勢參考
+        @if (status(); as s) {
+          <span class="badge" [class.badge-success]="s.enabled" [class.badge-muted]="!s.enabled">
+            {{ s.enabled ? '來源啟用中' : '來源已停用' }}
+          </span>
+        }
+      </h3>
+      <p>
+        {{ status()?.schedule ?? '每週一 04:00' }}查詢 PTT 熱度前 {{ status()?.batchSize ?? 40 }} 名商品在台灣近 3 個月的
+        Google 搜尋趨勢，比較近 7 天與前 4 週的搜尋量，算出方向與成長率。只作為品項詳情頁的參考資訊，
+        <strong>不併入熱度分數</strong>、不影響 AI 主動選品。資料來源為 SerpApi（非官方代抓服務）。
+      </p>
+    </div>
+    <div class="config-panel-actions">
+      <button type="button" class="btn" [disabled]="!status() || isSubmitting() || running()" (click)="toggleEnabled()">
+        {{ enabled() ? '停用 Google 來源' : '啟用 Google 來源' }}
+      </button>
+      <button type="button" class="btn-primary" [disabled]="!canSyncTop()" (click)="syncTop()">
+        {{ running() ? '查詢中…' : '立即查詢熱度前 ' + (status()?.batchSize ?? 40) + ' 名' }}
+      </button>
+    </div>
+  </div>
+
+  <p class="sr-only" aria-live="polite">
+    @if (running()) {
+      Google 趨勢查詢執行中，{{ progressText() }}。
+    }
+  </p>
+
+  @if (useMockData) {
+    <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示用量與執行紀錄。</p>
+  } @else if (loadError()) {
+    <p class="alert" role="alert">
+      無法載入 Google 趨勢狀態：{{ loadError() }}
+      <button type="button" class="text-action" (click)="load()">重新載入</button>
+    </p>
+  } @else if (status(); as s) {
+    <p class="helper">
+      本月 SerpApi 用量：<strong>{{ s.usedThisMonth }} / {{ s.monthlyLimit }}</strong> 次（剩餘 {{ remaining() }} 次，「查無資料」也計入）
+      <progress [value]="usagePercent()" max="100" [attr.aria-label]="'本月用量 ' + usagePercent() + '%'"></progress>
+    </p>
+    @if (!s.keyConfigured) {
+      <p class="notice">
+        後端尚未設定 SerpApi 金鑰（環境變數 <code>SERPAPI_API_KEY</code>），設定後重新啟動後端才能查詢。
+      </p>
+    } @else if (s.running) {
+      <p class="notice" role="status">查詢執行中：{{ progressText() }}。離開這個頁面不會中斷。</p>
+    } @else if (!s.enabled) {
+      <p class="notice">Google 趨勢來源已停用：每週排程會略過不執行，品項詳情頁也不能手動查詢。</p>
+    } @else if (remaining() === 0) {
+      <p class="notice">本月額度已用完，下個月自動重置。</p>
+    }
+
+    @if (s.recentRuns.length === 0) {
+      <p class="helper">尚無執行紀錄。每週一 04:00 排程或手動查詢後會出現在這裡。</p>
+    } @else {
+      <div class="config-table-wrap">
+        <table class="config-table">
+          <caption class="sr-only">最近 10 次 Google 趨勢查詢紀錄</caption>
+          <thead>
+            <tr>
+              <th scope="col">開始時間</th>
+              <th scope="col">觸發方式</th>
+              <th scope="col">狀態</th>
+              <th scope="col" class="num">商品數</th>
+              <th scope="col" class="num">取得趨勢</th>
+              <th scope="col" class="num">查無資料</th>
+              <th scope="col" class="num">失敗</th>
+              <th scope="col">說明</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of s.recentRuns; track run.id) {
+              <tr>
+                <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+                <td>{{ triggerLabel(run) }}</td>
+                <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.okCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.noDataCount }}</td>
+                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
+                <td>{{ run.message ?? '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    <p class="helper" role="status">正在載入 Google 趨勢狀態…</p>
+  }
+</section>

@@ -3,6 +3,8 @@
  * 分類名稱由 productTypeId 對照取得；尚無評估紀錄時完整度可為 null。
  * 推薦清單只包含待審商品。
  */
+import { GoogleTrendSignal } from '../settings/api/google-trends-api.service';
+
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type DashboardUiState = 'default' | 'locked' | 'loading' | 'edge';
 
@@ -83,6 +85,8 @@ export interface DashboardTrendLeaderboardEntry {
   /** false 代表這筆是當次抓不到、退回的模擬資料，樣板用橘色字標示。 */
   isRealSource: boolean;
   keyword: string;
+  /** 2026-09-28：Google 趨勢參考（方向＋成長率）；沒查過為 null。 */
+  googleTrend: GoogleTrendSignal | null;
 }
 
 export interface DashboardMockData {

@@ -16,6 +16,8 @@ import { reloadOnRevisit } from '../../core/router/reload-on-revisit';
 import { splitAiReasonLines } from '../../core/ui/ai-reason-lines';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { Icon } from '../../shared/components/icon/icon';
+import { CrawlerStatusCard } from './crawler-status-card/crawler-status-card';
+import { summarizeGoogleTrend } from '../settings/api/google-trends-api.service';
 import { DashboardApiService, DashboardData } from './api/dashboard-api.service';
 import { DASHBOARD_MOCK_DATA, INCOMPLETE_RECOMMENDATION } from './dashboard.mock-data';
 import {
@@ -51,7 +53,7 @@ type RealLoadState = 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon, CrawlerStatusCard],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
@@ -317,6 +319,9 @@ export class Dashboard implements OnInit, OnDestroy {
     return splitAiReasonLines(message);
   }
 
+  /** 熱度排行榜的 Google 趨勢欄（方向＋成長率；沒查過、查無資料都明講）。 */
+  readonly googleSummary = summarizeGoogleTrend;
+
   ngOnDestroy(): void {
     this.chart?.destroy();
   }
@@ -399,6 +404,7 @@ function toDashboardPageData(
       trendDirection: item.trendDirection,
       isRealSource: item.isRealSource,
       keyword: item.keyword || NOT_PROVIDED,
+      googleTrend: item.googleTrend,
     })),
   };
 }

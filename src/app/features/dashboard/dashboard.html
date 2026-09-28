@@ -212,6 +212,12 @@
       }
     </section>
 
+    <!-- 2026-09-28：PTT 熱度同步狀態摘要，只給管理層；配置留在設定頁，這裡只看狀態。
+         Mock 模式沒有後端可讀，不顯示。 -->
+    @if (isManager() && !useMockData) {
+      <app-crawler-status-card />
+    }
+
     <!-- 審核狀態與核准率共同呈現整體選品概況。 -->
     <section class="chart-row">
       <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
@@ -355,73 +361,6 @@
         </div>
       </section>
 
-      <!-- ⚠️ 2026-09-25 新增：跟上面「推薦 Top 10」刻意區隔——那張表依綜合
-           加權總分排序，七大因子混在一起；這張只看趨勢單一因子的最新分數，
-           讓「總分被其他因子拉低、但熱度其實在飆升」的商品也能被看見。
-           兩張表故意排在一起，方便對照。 -->
-      <section class="panel trend-leaderboard-panel" aria-labelledby="trend-leaderboard-title">
-        <header class="panel-header">
-          <div>
-            <h2 id="trend-leaderboard-title">熱度排行榜</h2>
-            <p class="panel-subtitle">
-              依 PTT 討論量換算的熱度分數即時排序前 5 名，只看趨勢單一因子，不是綜合分數。橘色字代表當次
-              PTT 抓不到、退回的模擬資料。
-            </p>
-          </div>
-        </header>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="col-lb-rank">排名</th>
-                <th class="col-lb-product">商品／搜尋關鍵字</th>
-                <th class="col-lb-score">熱度分數</th>
-                <th class="col-lb-trend">趨勢方向</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of data().trendLeaderboard; track item.id) {
-                <tr>
-                  <td>
-                    <span class="rank">{{ item.rank }}</span>
-                  </td>
-                  <td class="product-cell">
-                    <strong>{{ item.name }}</strong>
-                    <!-- 真實 PTT 同步用商品名稱當關鍵字，兩者相同時不重複顯示；
-                         只有關鍵字跟名稱不同（去掉規格字樣、或舊資料）才另外列出。 -->
-                    @if (item.keyword && item.keyword !== item.name) {
-                    <span>搜尋「{{ item.keyword }}」</span>
-                    }
-                  </td>
-                  <td>
-                    @if (item.popularityScore === null) {
-                      <span class="unavailable">—</span>
-                    } @else {
-                      <strong class="score" [class.is-simulated]="!item.isRealSource">
-                        {{ item.popularityScore }}@if (!item.isRealSource) {（模擬）}
-                      </strong>
-                    }
-                  </td>
-                  <td>
-                    @if (item.trendDirection === 'UP') {
-                      <app-icon name="trending-up" size="sm" /> 上升
-                    } @else if (item.trendDirection === 'DOWN') {
-                      <app-icon name="trending-down" size="sm" /> 下降
-                    } @else {
-                      <app-icon name="trending-flat" size="sm" /> 持平
-                    }
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="4" class="unavailable">目前沒有任何商品的趨勢資料。</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <!-- 高風險提示：管理層的治理責任，操作層畫面不顯示這個面板
            （後端 API 權限上兩者都能呼叫，這裡純粹是畫面呈現決定）。
            2026-09-24：整個側欄（不只面板）改成只在管理層渲染——原本 <aside>
@@ -460,6 +399,91 @@
       </aside>
       }
     </div>
+
+    <!-- ⚠️ 2026-09-25 新增：跟上面「推薦 Top 10」刻意區隔——那張表依綜合
+         加權總分排序，七大因子混在一起；這張只看趨勢單一因子的最新分數，
+         讓「總分被其他因子拉低、但熱度其實在飆升」的商品也能被看見。
+         2026-09-28 修正：原本放在 .content-grid（Top 10＋高風險提示的 flex 並排列）裡，
+         又沒有 flex 設定，會依內容寬度吃掉整排，把 Top 10 與高風險提示擠到 0px
+         （畫面上看起來像被拿掉）。改成獨立一整列，放在並排列下方。 -->
+    <section class="panel trend-leaderboard-panel" aria-labelledby="trend-leaderboard-title">
+      <header class="panel-header">
+        <div>
+          <h2 id="trend-leaderboard-title">熱度排行榜</h2>
+          <p class="panel-subtitle">
+            依 PTT 討論量換算的熱度分數即時排序前 5 名，只看趨勢單一因子，不是綜合分數。橘色字代表當次
+            PTT 抓不到、退回的模擬資料。「Google 趨勢」是同一商品在台灣近 7 天比前 4 週的搜尋量變化，
+            只作對照參考、不參與排序。
+          </p>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-lb-rank">排名</th>
+              <th class="col-lb-product">商品／搜尋關鍵字</th>
+              <th class="col-lb-score">熱度分數</th>
+              <th class="col-lb-trend">PTT 趨勢</th>
+              <th class="col-lb-google">Google 趨勢</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of data().trendLeaderboard; track item.id) {
+              <tr>
+                <td>
+                  <span class="rank">{{ item.rank }}</span>
+                </td>
+                <td class="product-cell">
+                  <strong>{{ item.name }}</strong>
+                  <!-- 真實 PTT 同步用商品名稱當關鍵字，兩者相同時不重複顯示；
+                       只有關鍵字跟名稱不同（去掉規格字樣、或舊資料）才另外列出。 -->
+                  @if (item.keyword && item.keyword !== item.name) {
+                  <span>搜尋「{{ item.keyword }}」</span>
+                  }
+                </td>
+                <td>
+                  @if (item.popularityScore === null) {
+                    <span class="unavailable">—</span>
+                  } @else {
+                    <strong class="score" [class.is-simulated]="!item.isRealSource">
+                      {{ item.popularityScore }}@if (!item.isRealSource) {（模擬）}
+                    </strong>
+                  }
+                </td>
+                <td>
+                  @if (item.trendDirection === 'UP') {
+                    <app-icon name="trending-up" size="sm" /> 上升
+                  } @else if (item.trendDirection === 'DOWN') {
+                    <app-icon name="trending-down" size="sm" /> 下降
+                  } @else {
+                    <app-icon name="trending-flat" size="sm" /> 持平
+                  }
+                </td>
+                <!-- 2026-09-28：Google 趨勢參考。沒查過、查無資料都明講，不顯示成「持平」。 -->
+                <td class="lb-google">
+                  @if (googleSummary(item.googleTrend); as g) {
+                    @if (g.direction === 'UP') {
+                      <span class="google-up"><app-icon name="trending-up" size="sm" /> 上升 {{ g.text }}</span>
+                    } @else if (g.direction === 'DOWN') {
+                      <span class="google-down"><app-icon name="trending-down" size="sm" /> 下降 {{ g.text }}</span>
+                    } @else if (g.direction === 'STABLE') {
+                      <span><app-icon name="trending-flat" size="sm" /> 持平 {{ g.text }}</span>
+                    } @else {
+                      <span class="unavailable">{{ g.text }}</span>
+                    }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="unavailable">目前沒有任何商品的趨勢資料。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
   }
 
   @if (conflictDialogOpen()) {

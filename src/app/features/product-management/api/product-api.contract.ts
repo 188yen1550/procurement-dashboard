@@ -1,5 +1,6 @@
 import { Decimal, IsoDateTime } from '../../../core/api/api-envelope';
 import { PageQuery } from '../../../core/api/unwrap';
+import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 import {
   CandidateStatus,
   DataSource,
@@ -200,6 +201,15 @@ export interface ProductResponsePayload {
    * 概念完全沒有被計算或回傳過，AI 建議清單想知道「為什麼」只能自己猜。
    */
   suggestionReason?: string | null;
+  /**
+   * 2026-09-28：AI 建議清單的趨勢說明，語意同 suggestionReason（只有 ai-suggested 端點有值）。
+   * trendScore 是最新一筆的熱度分數（popularity_score）；recentTrendDirections 為最近最多 3 筆方向，新到舊。
+   */
+  trendScore?: Decimal;
+  trendDirection?: 'UP' | 'DOWN' | 'STABLE' | null;
+  trendSource?: string | null;
+  recentTrendDirections?: ('UP' | 'DOWN' | 'STABLE')[] | null;
+  googleTrend?: GoogleTrendSignal | null;
 }
 
 /** 對應後端 json/WeightFactorSnapshot.java。 */

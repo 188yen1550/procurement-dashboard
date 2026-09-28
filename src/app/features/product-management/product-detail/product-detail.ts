@@ -27,6 +27,7 @@ import {
   TEMPERATURE_ZONE_LABEL,
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
+import { GoogleTrendSignal, GoogleTrendsApiService, roundGrowthRate } from '../../settings/api/google-trends-api.service';
 import { ProductApiService } from '../api/product-api.service';
 import { WeatherBoostDetailPayload } from '../api/product-api.contract';
 import { Icon } from '../../../shared/components/icon/icon';
@@ -221,7 +222,12 @@ const INCOMPLETE: DetailProduct = {
   selector: 'app-product-detail',
   imports: [CommonModule, RouterLink, Icon, ListSortControls, SortRowsPipe, InfoTip],
   templateUrl: './product-detail.html',
-  styleUrls: ['./product-detail.scss', './product-detail-image.scss', './product-detail-history.scss'],
+  styleUrls: [
+    './product-detail.scss',
+    './product-detail-image.scss',
+    './product-detail-history.scss',
+    './product-detail-google-trend.scss',
+  ],
 })
 /** 品項詳情頁元件；Mock 模式使用本地資料，正式模式保留 master 的商品 API 整合。 */
 export class ProductDetail implements OnInit, OnDestroy {
@@ -256,6 +262,15 @@ export class ProductDetail implements OnInit, OnDestroy {
   /** 這件商品自己的歷次審核紀錄，時間新→舊排序，供頁面下方新增的區塊顯示。 */
   readonly reviewHistory = signal<ReviewRecordModel[]>([]);
   readonly trendHistory = signal<TrendHistoryPoint[]>([]);
+
+  // ----- Google 趨勢參考（2026-09-28，SerpApi）-----
+  // 獨立參考資訊：只有方向與成長率，不併入上面的熱度分數。讀取兩個角色都可以；
+  // 「查詢」會花 SerpApi 額度，限管理層（後端同樣限定 MANAGER）。
+  private readonly googleTrendsApi = inject(GoogleTrendsApiService);
+  readonly isManager = this.readOnly;
+  readonly googleTrend = signal<GoogleTrendSignal | null>(null);
+  readonly googleTrendState = signal<'idle' | 'syncing' | 'error'>('idle');
+  readonly googleTrendError = signal('');
 
   // ----- 熱度趨勢圖（chart.js）-----
   // ⚠️ 2026-09-25 新增：跟 dashboard.ts 的狀態分布圖用同一套模式，理由
@@ -475,6 +490,8 @@ export class ProductDetail implements OnInit, OnDestroy {
             // 是不同的獨立查詢，各自失敗互不影響——趨勢圖失敗只是圖表區塊
             // 顯示空狀態，不影響上面「最新一筆」的顯示。
             trendHistory: this.api.getTrendHistory(this.productId).pipe(catchError(() => of([]))),
+            // 2026-09-28：Google 趨勢參考（最新一筆，唯讀、不花額度）；失敗只讓這一行不顯示。
+            googleTrend: this.googleTrendsApi.getLatest(this.productId).pipe(catchError(() => of(null))),
             // 商品類型名稱：ProductResponse 只有 productTypeId，
             // 對照表由 ProductTypeLookupService 以 shareReplay 快取，不會每次重打。
             typeName: this.productTypes.getName(product.productTypeId),
@@ -483,7 +500,8 @@ export class ProductDetail implements OnInit, OnDestroy {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend, trendHistory }) => {
+        next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend, trendHistory, googleTrend }) => {
+          this.googleTrend.set(googleTrend);
           this.product.set(
             toDetailProduct(product, evaluation, festival, typeName, {
               ...toAiExtras(aiAnalysis),
@@ -501,6 +519,52 @@ export class ProductDetail implements OnInit, OnDestroy {
           this.statusMessageState.show('品項詳情載入失敗，請稍後重試。');
         },
       });
+  }
+
+  /**
+   * 管理層「查詢 Google 趨勢」：POST /api/products/{id}/google-trend/sync，花 1 次 SerpApi 額度，
+   * 所以先二次確認。停用／無金鑰／額度用完（409）與 SerpApi 失敗（502）都只顯示在這一區。
+   */
+  syncGoogleTrend(): void {
+    if (!this.isManager || this.googleTrendState() === 'syncing') return;
+    if (this.useMockData) {
+      this.dialog.notify('info', '功能限制', ['Mock 模式不會呼叫後端，也不會實際查詢 Google 趨勢。']).subscribe();
+      return;
+    }
+    this.dialog
+      .confirm(
+        '要查詢這個商品的 Google 趨勢嗎？',
+        [
+          '會用掉 1 次 SerpApi 額度（查無資料也計入），約需 10 秒。',
+          '結果只作為參考資訊，不會改變熱度分數與評估結果。',
+        ],
+        '查詢',
+      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.googleTrendState.set('syncing');
+        this.googleTrendsApi
+          .sync(this.productId)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (signal) => {
+              this.googleTrend.set(signal);
+              this.googleTrendState.set('idle');
+            },
+            error: (err: unknown) => {
+              this.googleTrendError.set(toApiError(err).message);
+              this.googleTrendState.set('error');
+            },
+          });
+      });
+  }
+
+  /** 成長率文字：+23.5%／-8%；基準期為 0 時沒有成長率。 */
+  googleGrowthText(signal: GoogleTrendSignal): string {
+    if (signal.growthRate === null) return '前 4 週幾乎沒有搜尋，近期開始出現';
+    const rounded = roundGrowthRate(signal.growthRate);
+    return `近 7 天比前 4 週 ${rounded > 0 ? '+' : ''}${rounded}%`;
   }
 
   /**
