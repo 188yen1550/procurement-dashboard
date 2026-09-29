@@ -39,6 +39,11 @@ export interface DashboardStatistics {
    */
   conversionApprovedCount: number;
   conversionSubmittedCount: number;
+  /**
+   * 統計卡（總數／待審／通過／拒絕／AI 建議）的計算口徑（2026-09-29）：PERSONAL＝只算目前登入者
+   * 建立的商品（操作人員），COMPANY＝全公司（管理人員）。null 代表統計 API 載入失敗。
+   */
+  statisticsScope: 'PERSONAL' | 'COMPANY' | null;
 }
 
 export interface DashboardRecommendation {

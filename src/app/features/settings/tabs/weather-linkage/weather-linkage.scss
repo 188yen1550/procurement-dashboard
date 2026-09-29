@@ -245,3 +245,10 @@
     margin-top: var(--s-3);
   }
 }
+
+/* 2026-09-29：區域名稱後面的實際取樣縣市提醒，次要資訊用淡色小字。 */
+.region-cities {
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+  font-weight: 400;
+}

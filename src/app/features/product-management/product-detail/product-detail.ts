@@ -126,6 +126,7 @@ const APPROVED: DetailProduct = {
   matchedTags: ['bbq', 'gift'],
   matchWeight: 1.0,
   urgencyFactor: 0.84,
+  festivalBoostCap: 5,
   costPrice: 820,
   salePrice: 1190,
   marketPrice: 1490,
@@ -772,13 +773,6 @@ export class ProductDetail implements OnInit, OnDestroy {
     // 集中管理也讓全站文案一致——先前三個頁面各寫一份，文案已經對不上。
     return REVIEW_STATUS_LABEL[s];
   }
-
-  /**
-   * 節慶加成上限（分）。對照後端 ScoringService 的節慶加成公式：
-   * matchWeight × urgencyFactor × 5，「5」是固定的系統上限，
-   * 不是每個商品各自不同的數字，所以放常數不放進 DetailProduct。
-   */
-  readonly festivalBoostCap = 5;
 
   /** V26：天氣分數卡片的小字——命中哪些標籤，或說明為何沒有加成。 */
   weatherBoostCaption(detail: WeatherBoostDetailPayload | null): string {

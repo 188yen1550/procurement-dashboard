@@ -54,7 +54,7 @@
         } @else {
         @for (region of weatherStatus()?.regions ?? []; track region.region) {
         <tr>
-          <td>{{ region.regionLabel }}</td>
+          <td>{{ region.regionLabel }} <small class="region-cities">（{{ regionCities(region.region) }}）</small></td>
           <td class="num" [class.is-incomplete]="isHistoryIncomplete(region.historyDayCount)">
             {{ region.historyDayCount }}
             @if (isHistoryIncomplete(region.historyDayCount)) {
@@ -234,6 +234,7 @@
         同一種天氣訊號命中的區域（北／中／南／東）占比加總，就是這次加成的地域覆蓋率。
         只有單一區域命中、且該區占比低時，加成會依比例打折。四區加總須為 100。
       </p>
+      <p class="full-width helper">{{ regionCoverageNote }}</p>
     </div>
   </div>
 
@@ -269,6 +270,7 @@
         <tr>
           <td>
             <label [for]="'region-weight-' + item.region">{{ weatherRegionLabel[item.region] ?? item.region }}</label>
+            <small class="region-cities">（{{ regionCities(item.region) }}）</small>
           </td>
           <td class="num">
             <!-- 單位「%」放在欄位內右側，不再寫在表頭括號裡：數字與單位一起讀，

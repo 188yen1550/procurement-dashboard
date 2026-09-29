@@ -77,6 +77,49 @@
   命中標籤以「標籤＋命中等級（核心／一般／弱）」管理；節慶一律全國，季節可指定地域（未選＝全國），只影響部分區域時加成會依「天氣連動 › 地域占比」打折。
 </p>
 
+<!-- 2026-09-29：節慶加成上限改為可調（system_settings.festival_boost_cap），比照「天氣連動 › 天氣加成設定」。 -->
+<section class="config-panel boost-cap-panel" aria-labelledby="festival-boost-cap-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="festival-boost-cap-title">節慶加成上限</h3>
+      <p>
+        節慶加成＝標籤命中權重（核心 1.0／一般 0.6／弱 0.3）× 檔期急迫係數 × 加成上限，直接加在最終分數上。
+        調整後會重算所有尚未核准的商品；已核准商品維持審核當時的加成。設為 0 等於停用節慶加成。
+      </p>
+    </div>
+  </div>
+  @if (!useMockData && !boostCapLoading() && boostCap() === null) {
+  <p class="load-error" role="alert">無法載入節慶加成上限。
+    <button type="button" class="btn" (click)="loadBoostCap()">重新載入</button>
+  </p>
+  } @else {
+  <form class="boost-cap-form" (ngSubmit)="saveBoostCap()">
+    <label class="boost-cap-field">
+      <span>加成上限</span>
+      <span class="unit-field">
+        <input type="number" min="0" [max]="boostCapMax" step="0.5" inputmode="decimal" name="festivalBoostCap"
+          [ngModel]="draftBoostCap()" (ngModelChange)="draftBoostCap.set(($event ?? '') + '')"
+          [disabled]="disabled() || boostCapLoading()" [attr.aria-invalid]="!!boostCapError()"
+          aria-describedby="festival-boost-cap-hint" />
+        <span class="unit-suffix">分</span>
+      </span>
+    </label>
+    <span id="festival-boost-cap-hint" class="config-sum" [attr.data-state]="boostCapError() ? 'error' : 'ok'"
+      role="status" aria-live="polite">
+      @if (boostCapError()) {
+      {{ boostCapError() }}
+      } @else {
+      核心標籤命中、檔期進行中時加 {{ draftBoostCap() }} 分；範圍 0～{{ boostCapMax }} 分。
+      }
+    </span>
+    <button type="submit" class="btn-primary"
+      [disabled]="disabled() || boostCapLoading() || boostCapSaving() || !!boostCapError() || boostCapUnchanged()">
+      {{ boostCapSaving() ? '儲存中…' : '儲存加成上限' }}
+    </button>
+  </form>
+  }
+</section>
+
 <!-- ===================== 新增／編輯檔期 ===================== -->
 @if (modal() === 'campaign') {
 <div class="modal-backdrop">
@@ -253,9 +296,11 @@
       <div class="region-options">
         @for (code of regionCodes; track code) {
         <label class="check-option"><input type="checkbox" [checked]="draftRegions().has(code)"
-            (change)="toggleRegion(code)" [name]="'region-' + code" />{{ regionLabel[code] }}</label>
+            (change)="toggleRegion(code)" [name]="'region-' + code" />{{ regionLabel[code] }}<small
+            class="region-cities">（{{ regionCities(code) }}）</small></label>
         }
       </div>
+      <small class="helper">{{ regionCoverageNote }}</small>
       <small class="helper">{{ draftRegions().size === 0 ? '未選＝全國性，加成不打折。' : '只影響所選區域，加成依地域占比打折。' }}</small>
     </fieldset>
     } @else {

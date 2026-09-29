@@ -260,6 +260,11 @@ export interface MatchedCampaignPayload {
   regionCoverageRatio?: Decimal;
   timeFactor?: Decimal;
   weatherConfidenceFactor?: Decimal;
+  /**
+   * 2026-09-29：計算當下的節慶加成上限（分）。上限改為可在「節慶檔期」分頁調整，
+   * 快照記下當時的值；舊快照沒有這個 key，代表當時是固定的 5 分。
+   */
+  boostCap?: Decimal;
 }
 
 /**
@@ -543,6 +548,11 @@ export interface ProductListQuery extends PageQuery {
   reviewedTo?: string;
   /** V25：true＝只要從未匯出過的商品；不帶＝不篩。 */
   neverExported?: boolean;
+  /**
+   * 2026-09-29：true＝只要目前登入者建立的商品（後端以登入身分換算，前端無法指定別人）；
+   * 不帶＝不篩。儀表板操作層統計卡連過來時帶 true，讓清單筆數與卡片數字一致。
+   */
+  createdByMe?: boolean;
 }
 
 /**

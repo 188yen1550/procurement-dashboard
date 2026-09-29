@@ -156,7 +156,10 @@
       （AI 建議清單是操作層頁面）。總數卡沒有單一對應頁面，管理層畫面不做連結。
       操作層：維持原本連到品項管理／AI 建議清單。
     -->
-    <section class="stats-grid" aria-label="選品統計">
+    @if (data().statistics.statisticsScope === 'PERSONAL') {
+    <p class="stats-scope-note">以下統計只計算你建立的商品。</p>
+    }
+    <section class="stats-grid" [attr.aria-label]="data().statistics.statisticsScope === 'PERSONAL' ? '我的選品統計' : '選品統計'">
       @if (isManager()) {
       <article class="stat-card total">
         <div class="stat-card-link">
@@ -181,13 +184,17 @@
         </a>
       </article>
       } @else {
+      <!-- 2026-09-29：操作層統計卡改為個人口徑（後端 scope=PERSONAL，只算自己建立的商品），
+           連結帶 createdByMe=true，點進去的清單筆數才會與卡片一致。 -->
       <article class="stat-card total">
-        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'ALL' }" aria-label="候選商品總數：前往品項管理">
+        <a class="stat-card-link" routerLink="/products"
+          [queryParams]="{ reviewStatus: 'ALL', createdByMe: createdByMeParam() }" aria-label="候選商品總數：前往品項管理">
         <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong>
         </a>
       </article>
       <article class="stat-card pending">
-        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'PENDING' }" aria-label="待人工審核：前往品項管理">
+        <a class="stat-card-link" routerLink="/products"
+          [queryParams]="{ reviewStatus: 'PENDING', createdByMe: createdByMeParam() }" aria-label="待人工審核：前往品項管理">
         <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
         </a>
         <!-- 2026-09-16修正：後端 pendingReviews 已改為只算已轉正候選（CANDIDATE）
@@ -195,17 +202,20 @@
              這裡不用再額外說明子集關係。 -->
       </article>
       <article class="stat-card approved">
-        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'APPROVED' }" aria-label="通過審核：前往品項管理">
+        <a class="stat-card-link" routerLink="/products"
+          [queryParams]="{ reviewStatus: 'APPROVED', createdByMe: createdByMeParam() }" aria-label="通過審核：前往品項管理">
         <span>通過審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card rejected">
-        <a class="stat-card-link" routerLink="/products" [queryParams]="{ reviewStatus: 'REJECTED' }" aria-label="審核拒絕：前往品項管理">
+        <a class="stat-card-link" routerLink="/products"
+          [queryParams]="{ reviewStatus: 'REJECTED', createdByMe: createdByMeParam() }" aria-label="審核拒絕：前往品項管理">
         <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card ai-suggested">
-        <a class="stat-card-link" routerLink="/products/ai-suggestions" aria-label="AI 建議待確認：前往確認清單">
+        <a class="stat-card-link" routerLink="/products/ai-suggestions"
+          [queryParams]="{ createdByMe: createdByMeParam() }" aria-label="AI 建議待確認：前往確認清單">
           <span>AI 建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
         </a>
       </article>
@@ -223,7 +233,7 @@
       <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
         <header class="panel-header">
           <div>
-            <h2 id="status-chart-title">商品狀態分布</h2>
+            <h2 id="status-chart-title">{{ data().statistics.statisticsScope === 'PERSONAL' ? '我的商品狀態分布' : '商品狀態分布' }}</h2>
           </div>
         </header>
         <div class="status-overview">

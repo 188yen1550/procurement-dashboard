@@ -126,6 +126,38 @@ describe('Dashboard', () => {
     expect(text).toContain('你建立的選品目前尚未送審過');
   });
 
+  // 2026-09-29：操作層統計卡是個人口徑，連結帶 createdByMe=true，清單筆數才會與卡片一致。
+  it('adds createdByMe to operator stat card links when statistics scope is PERSONAL', () => {
+    const mock = component.data();
+    fixture = TestBed.createComponent(Dashboard);
+    component = fixture.componentInstance;
+    (component as unknown as { useMockData: boolean }).useMockData = false;
+    fixture.detectChanges();
+    component.realData.set({ ...mock, statistics: { ...mock.statistics, statisticsScope: 'PERSONAL' } });
+    component.realLoadState.set('loaded');
+    fixture.detectChanges();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      (link) => (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(links).toEqual([
+      '/products?reviewStatus=ALL&createdByMe=true',
+      '/products?reviewStatus=PENDING&createdByMe=true',
+      '/products?reviewStatus=APPROVED&createdByMe=true',
+      '/products?reviewStatus=REJECTED&createdByMe=true',
+      '/products/ai-suggestions?createdByMe=true',
+    ]);
+    expect(fixture.nativeElement.textContent).toContain('以下統計只計算你建立的商品');
+  });
+
+  it('keeps operator stat card links unfiltered when scope is COMPANY (mock)', () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      (link) => (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(links[0]).toBe('/products?reviewStatus=ALL');
+  });
+
   it('splits risk messages into points', () => {
     expect(component.riskMessagePoints('1. 認證未確認 2. 電池安全資訊不足')).toEqual([
       '1. 認證未確認',

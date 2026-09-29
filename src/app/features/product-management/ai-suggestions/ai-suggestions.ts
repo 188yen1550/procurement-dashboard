@@ -7,7 +7,7 @@ import { ListSort, ListSortControls, SortRowsPipe } from '../../../shared/ui/lis
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
@@ -156,11 +156,17 @@ export class AiSuggestions implements OnInit {
   ];
   private readonly api = inject(ProductApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly stateOptions: readonly AiState[] = ['default', 'disabled', 'loading', 'empty', 'error'];
   readonly pageState = signal<AiState>('default');
   readonly query = signal('');
+  /**
+   * 2026-09-29：只看我建立的（後端篩選）。儀表板「AI 建議待確認」卡片是個人口徑，
+   * 連過來時帶 ?createdByMe=true，清單才會與卡片數字一致；使用者可自行取消勾選看全部。
+   */
+  readonly createdByMe = signal(this.route.snapshot.queryParamMap.get('createdByMe') === 'true');
   readonly items = signal<Suggestion[]>(this.useMockData ? SUGGESTIONS.map((i) => ({ ...i })) : []);
   private readonly statusMessageState = createDismissibleMessage();
   readonly statusMessage = this.statusMessageState.signal;
@@ -209,7 +215,7 @@ export class AiSuggestions implements OnInit {
   load(): void {
     this.pageState.set('loading');
     this.api
-      .listAiSuggested({ page: 0, size: 50 })
+      .listAiSuggested({ page: 0, size: 50, createdByMe: this.createdByMe() || undefined })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -221,6 +227,12 @@ export class AiSuggestions implements OnInit {
           this.statusMessageState.show(toApiError(err).message);
         },
       });
+  }
+
+  updateCreatedByMe(value: boolean): void {
+    this.createdByMe.set(value);
+    // Mock 模式沒有建立者資料可篩，只記住勾選狀態。
+    if (!this.useMockData) this.load();
   }
 
   // ----- UI 狀態切換器（Mock 模式展示用）-----

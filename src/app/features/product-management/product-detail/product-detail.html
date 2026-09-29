@@ -205,14 +205,14 @@
       </div>
     </dl>
     <p class="boost-hint">
-      加成已計入最終分數，此項目每次最高加 {{ festivalBoostCap }} 分。標籤命中度越高、
+      加成已計入最終分數，此項目每次最高加 {{ p.festivalBoostCap }} 分。標籤命中度越高、
       離檔期開始越近，加成分數越高。
     </p>
     <details class="formula-detail">
       <summary>查看詳細計算方式</summary>
       <div class="formula">
         標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
-        加成上限 {{ festivalBoostCap }} 分 =
+        加成上限 {{ p.festivalBoostCap }} 分 =
         <strong>{{ p.festivalBoost }} 分</strong>
       </div>
     </details>

@@ -77,7 +77,15 @@
         placeholder="商品或供應商"
         [ngModel]="query()"
         (ngModelChange)="query.set($event)"
-      /><button
+      /><label class="created-by-me"
+        ><input
+          type="checkbox"
+          name="createdByMe"
+          [ngModel]="createdByMe()"
+          (ngModelChange)="updateCreatedByMe($event)"
+          [disabled]="pageState() === 'loading'"
+        />只看我建立的</label
+      ><button
         type="button"
         (click)="promoteSelected()"
         [disabled]="pageState() === 'disabled' || !items().some((item) => item.selected)"

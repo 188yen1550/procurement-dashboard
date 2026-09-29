@@ -36,6 +36,10 @@ import {
   TemperatureZone,
 } from '../../../core/domain/enums';
 
+
+/** 節慶加成上限改為可調（2026-09-29）之前寫死的值；舊快照沒有 boostCap 時沿用。 */
+export const LEGACY_FESTIVAL_BOOST_CAP = 5;
+
 export type DetailState = 'default' | 'locked' | 'loading' | 'empty' | 'error';
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type ItemStatus = 'ACTIVE' | 'ARCHIVED';
@@ -67,6 +71,11 @@ export interface DetailProduct {
    */
   matchWeight: number | null;
   urgencyFactor: number | null;
+  /**
+   * 2026-09-29：節慶加成上限（分），讀命中檔期快照記錄的值；舊快照或未命中時為 5
+   * （上限改為可調之前寫死的值）。
+   */
+  festivalBoostCap: number;
   finalScore: number | null;
   campaign: string | null;
   /** 2026-09-24（V21）：命中期間與地域，例「2026-06-19 – 2026-06-21 · 南部」；舊快照為 null。 */
@@ -185,6 +194,7 @@ export function toDetailProduct(
     matchedTags: festival?.matchedCampaign?.matchedTags ?? [],
     matchWeight: festival?.matchedCampaign?.matchWeight ?? null,
     urgencyFactor: festival?.matchedCampaign?.urgencyFactor ?? null,
+    festivalBoostCap: festival?.matchedCampaign?.boostCap ?? LEGACY_FESTIVAL_BOOST_CAP,
     costPrice: product.costPrice,
     salePrice: product.salePrice,
     // ⚠️ 僅 RESALE 有值；NEW 商品後端會拒絕寫入市價。

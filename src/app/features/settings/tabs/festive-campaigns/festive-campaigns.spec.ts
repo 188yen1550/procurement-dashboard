@@ -128,6 +128,14 @@ describe('FestiveCampaigns', () => {
     getFestiveCampaignOccurrenceOverrides: vi.fn(() => of([])),
     upsertFestiveCampaignOccurrenceOverride: vi.fn(),
     deleteFestiveCampaignOccurrenceOverride: vi.fn(),
+    // 2026-09-29：節慶加成上限走 system_settings 通用端點。
+    getSystemSettings: vi.fn(() =>
+      of([
+        { key: 'shrinkage_k_category', value: '10' },
+        { key: 'festival_boost_cap', value: '5' },
+      ]),
+    ),
+    updateSystemSetting: vi.fn((key: string, body: { value: string }) => of({ key, value: body.value })),
   };
 
   beforeEach(async () => {
@@ -140,6 +148,35 @@ describe('FestiveCampaigns', () => {
     component = fixture.componentInstance;
     vi.spyOn(TestBed.inject(DialogService), 'notify').mockReturnValue(of(undefined));
     fixture.detectChanges();
+  });
+
+  it('loads the festival boost cap and saves a new value via system settings (2026-09-29)', () => {
+    expect(component.boostCap()).toBe('5');
+    expect(component.draftBoostCap()).toBe('5');
+    // 未變更時不送出，避免無意義地觸發全量重算
+    component.saveBoostCap();
+    expect(api.updateSystemSetting).not.toHaveBeenCalled();
+
+    component.draftBoostCap.set('8');
+    component.saveBoostCap();
+    expect(api.updateSystemSetting).toHaveBeenCalledWith('festival_boost_cap', { value: '8' });
+    expect(component.boostCap()).toBe('8');
+  });
+
+  it('rejects festival boost caps outside 0–10', () => {
+    component.draftBoostCap.set('11');
+    expect(component.boostCapError()).toContain('0～10');
+    component.saveBoostCap();
+    expect(api.updateSystemSetting).not.toHaveBeenCalled();
+  });
+
+  it('shows the counties each region actually samples next to the region checkboxes', () => {
+    component.openCreate();
+    component.draftCategory.set('SEASON');
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('台北、桃園、新竹');
+    expect(text).toContain('花蓮、台東');
   });
 
   it('lists rule description, current occurrence and regions', () => {

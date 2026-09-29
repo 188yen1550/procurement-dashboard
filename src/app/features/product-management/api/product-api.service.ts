@@ -94,7 +94,8 @@ export class ProductApiService {
    * 所以參數型別刻意收窄成只有分頁，避免呼叫端誤以為可以篩選。
    */
   listAiSuggested(
-    query: { page?: number; size?: number; sort?: string } = {},
+    // 2026-09-29：後端新增唯一一個篩選參數 createdByMe（只看我建立的），其餘仍只吃分頁。
+    query: { page?: number; size?: number; sort?: string; createdByMe?: boolean } = {},
   ): Observable<PagedResult<ProductListItem>> {
     return this.listWithTypeNames(PRODUCT_API.aiSuggested, query);
   }

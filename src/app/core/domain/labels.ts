@@ -303,3 +303,24 @@ export const WEATHER_REGION_LABEL: Record<string, string> = {
   SOUTH: '南部',
   EAST: '東部',
 };
+
+/**
+ * 各區實際取樣的縣市（2026-09-29 新增），鏡射後端 WeatherRegionConfig.REGION_CITIES 的城市名稱
+ * ——後端改代表城市時要同步這裡。各區天氣＝這些縣市觀測值的平均；未列出的縣市（如基隆、
+ * 苗栗、嘉義、宜蘭）沒有另外取樣。地域占比與季節檔期的「影響地域」也用同一套四區。
+ */
+export const WEATHER_REGION_CITIES: Record<string, readonly string[]> = {
+  NORTH: ['台北', '桃園', '新竹'],
+  CENTRAL: ['台中', '彰化', '南投'],
+  SOUTH: ['台南', '高雄', '屏東'],
+  EAST: ['花蓮', '台東'],
+};
+
+/** 「台北、桃園、新竹」這種顯示字串；未知區域回空字串。 */
+export function weatherRegionCitiesText(region: string): string {
+  return (WEATHER_REGION_CITIES[region] ?? []).join('、');
+}
+
+/** 區域縣市提醒的共用說明文字（兩個設定分頁共用，避免文案分歧）。 */
+export const WEATHER_REGION_COVERAGE_NOTE =
+  '各區以括號內的縣市取樣天氣並平均；未列出的縣市（如基隆、苗栗、嘉義、宜蘭）沒有另外觀測。';

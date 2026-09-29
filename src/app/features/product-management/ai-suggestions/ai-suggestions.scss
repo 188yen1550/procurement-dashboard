@@ -21,3 +21,6 @@
 .header-actions{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
 .header-actions a.btn{text-decoration:none}
 @media (max-width:760px){.header-actions{width:100%}.header-actions>*{flex:1;text-align:center}}
+// 2026-09-29：「只看我建立的」勾選框（儀表板個人口徑卡片連過來時預設勾選）。
+.toolbar .created-by-me{display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;font-weight:700}
+.toolbar .created-by-me input{flex:none;width:auto;padding:0}

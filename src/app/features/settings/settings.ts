@@ -53,7 +53,7 @@ import {
 import { CustomDefinitionsStore } from './state/custom-definitions.store';
 import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensions/custom-extensions';
 import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
-import { FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
+import { FESTIVAL_BOOST_CAP_KEY, FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
 import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 import { TrendCrawlerPanel } from './tabs/trend-crawler-panel/trend-crawler-panel';
 import { GoogleTrendsPanel } from './tabs/google-trends-panel/google-trends-panel';
@@ -1611,6 +1611,8 @@ export class Settings implements OnInit {
   readonly systemSettingsByCategory = computed(() => {
     const groups = new Map<string, SystemSettingVM[]>();
     for (const s of this.systemSettings()) {
+      // 2026-09-29：節慶加成上限在「節慶檔期」分頁編輯，這裡不重複列出，避免兩個入口。
+      if (s.key === FESTIVAL_BOOST_CAP_KEY) continue;
       const arr = groups.get(s.category) ?? [];
       arr.push(s);
       groups.set(s.category, arr);

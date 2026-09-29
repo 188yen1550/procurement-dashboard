@@ -377,3 +377,45 @@
     flex-direction: column;
   }
 }
+
+/* 2026-09-29：區域名稱後面的實際取樣縣市提醒，次要資訊用淡色小字。 */
+.region-cities {
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+  font-weight: 400;
+}
+
+/* ----- 節慶加成上限（2026-09-29）：外框走全域 .config-panel，這裡只排版輸入列。 ----- */
+.boost-cap-panel {
+  margin-top: var(--s-5);
+}
+
+.boost-cap-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-3) var(--s-4);
+  margin-top: var(--s-4);
+}
+
+.boost-cap-field {
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.unit-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.unit-field input {
+  width: 7rem;
+}
+
+.unit-suffix {
+  color: var(--c-ink-muted);
+  font-weight: 400;
+}

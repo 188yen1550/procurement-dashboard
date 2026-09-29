@@ -34,6 +34,7 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     conversionScope: 'COMPANY',
     conversionApprovedCount: 78,
     conversionSubmittedCount: 122,
+    statisticsScope: 'COMPANY',
   },
   recommendations: [
     recommendation(

@@ -26,8 +26,14 @@ export const DASHBOARD_API = {
  * ⚠️ 四個數字**不會相加等於總數**：totalProducts 含所有狀態，
  * 三個狀態數字不含已封存等情況。畫面上不要做「總數 = 待審+通過+拒絕」的驗算，
  * 也不要用 totalProducts - pending - approved 去推算任何東西。
+ *
+ * ⚠️ 2026-09-29 起依登入者角色切換口徑，由 scope 告訴前端（語意同轉換率的 scope）：
+ * PERSONAL（操作人員）＝五個數字都只算 createdBy＝目前登入者的商品；COMPANY（管理人員）＝全公司。
+ * 文案與統計卡連結要不要帶 createdByMe，一律依 scope 決定。
  */
 export interface DashboardStatisticsResponsePayload {
+  /** 計算口徑（2026-09-29 新增），見上方說明。 */
+  scope: ConversionRateScope;
   totalProducts: number;
   pendingCount: number;
   approvedCount: number;

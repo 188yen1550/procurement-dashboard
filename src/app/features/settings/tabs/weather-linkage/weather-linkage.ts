@@ -22,7 +22,12 @@ import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
 import { TagMatchTier, WeatherSignalType } from '../../../../core/domain/enums';
-import { WEATHER_REGION_LABEL, WEATHER_SIGNAL_TYPE_LABEL } from '../../../../core/domain/labels';
+import {
+  WEATHER_REGION_COVERAGE_NOTE,
+  WEATHER_REGION_LABEL,
+  WEATHER_SIGNAL_TYPE_LABEL,
+  weatherRegionCitiesText,
+} from '../../../../core/domain/labels';
 import {
   RegionWeightPayload,
   WeatherBoostSettingsPayload,
@@ -109,6 +114,9 @@ export class WeatherLinkage implements OnInit {
   readonly useMockData = APP_CONFIG.useMockData;
   readonly weatherSignalTypeLabel = WEATHER_SIGNAL_TYPE_LABEL;
   readonly weatherRegionLabel = WEATHER_REGION_LABEL;
+  /** 2026-09-29：每區實際涵蓋（取樣）的縣市提醒。 */
+  readonly regionCities = weatherRegionCitiesText;
+  readonly regionCoverageNote = WEATHER_REGION_COVERAGE_NOTE;
   readonly matchTierOptions = MATCH_TIER_OPTIONS;
 
   /** 父元件的「停用」示範狀態（pageState === 'disabled'）。 */

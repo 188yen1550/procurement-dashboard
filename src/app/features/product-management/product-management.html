@@ -168,6 +168,11 @@
             [disabled]="isLoading()" />
           只看未曾匯出
         </label>
+        <label class="field-checkbox">
+          <input type="checkbox" [ngModel]="createdByMeFilter()" (ngModelChange)="updateCreatedByMe($event)"
+            [disabled]="isLoading()" />
+          只看我建立的
+        </label>
       </fieldset>
     </div>
     } @else if (advancedFilterChips().length > 0) {

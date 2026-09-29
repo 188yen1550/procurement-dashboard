@@ -80,10 +80,11 @@ describe('ReviewDetail', () => {
     fixture.detectChanges();
   });
 
-  it('creates with product snapshot and AI disclaimer', () => {
+  it('creates with product snapshot', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('商品與評估快照');
-    expect(fixture.nativeElement.textContent).toContain('AI 不會自動核准');
+    // 2026-09-29：AI 推薦摘要標題旁的「AI 不會自動核准」標籤已移除。
+    expect(fixture.nativeElement.textContent).not.toContain('AI 不會自動核准');
   });
 
   it('requires a decision', () => {

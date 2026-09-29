@@ -37,7 +37,9 @@ import {
   FESTIVE_CATEGORY_LABEL,
   joinCampaignTags,
   SOLAR_TERM_LABEL,
+  WEATHER_REGION_COVERAGE_NOTE,
   WEATHER_REGION_LABEL,
+  weatherRegionCitiesText,
 } from '../../../../core/domain/labels';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { InfoTip } from '../../../../shared/components/info-tip/info-tip';
@@ -50,6 +52,16 @@ import {
   FestiveCampaignTagPayload,
 } from '../../api/settings-api.contract';
 import { SettingsApiService } from '../../api/settings-api.service';
+
+/**
+ * 節慶加成上限的 system_settings key（2026-09-29）。後端 SystemSettingRegistry 登記、範圍 0～10，
+ * 在這個分頁編輯；「計分與判定參數」清單用同一個常數把它排除，避免兩個地方都能改。
+ */
+export const FESTIVAL_BOOST_CAP_KEY = 'festival_boost_cap';
+/** 與後端 SystemSettingRegistry 的 maxValue、天氣加成上限一致。 */
+export const FESTIVAL_BOOST_CAP_MAX = 10;
+/** 資料庫還沒有這筆設定時的生效值（與修改前寫死的值相同），僅 Mock 模式使用。 */
+const DEFAULT_FESTIVAL_BOOST_CAP = 5;
 
 /** V26：檔期只有節慶與季節（天氣改為獨立的天氣加成，設定在「天氣連動」分頁）。 */
 type EditableCategory = FestiveCategory;
@@ -214,6 +226,9 @@ export class FestiveCampaigns implements OnInit {
   readonly solarTermLabel = SOLAR_TERM_LABEL;
   readonly regionLabel = WEATHER_REGION_LABEL;
   readonly regionCodes = Object.keys(WEATHER_REGION_LABEL);
+  /** 2026-09-29：每區實際涵蓋（取樣）的縣市提醒。 */
+  readonly regionCities = weatherRegionCitiesText;
+  readonly regionCoverageNote = WEATHER_REGION_COVERAGE_NOTE;
   readonly offsetDaysTip = OFFSET_DAYS_TIP;
   readonly ruleTypes: CampaignDateRuleType[] = ['FIXED_DATE', 'NTH_WEEKDAY', 'LUNAR_DATE', 'SOLAR_TERM'];
   readonly solarTerms: SolarTerm[] = ['QINGMING', 'DONGZHI'];
@@ -244,9 +259,81 @@ export class FestiveCampaigns implements OnInit {
     this.reload();
   }
 
+  // ==================================================================
+  // 節慶加成上限（2026-09-29，存在 system_settings.festival_boost_cap）
+  // ==================================================================
+
+  /** 目前生效值（字串，同 system_settings 的格式）；null＝尚未載入。 */
+  readonly boostCap = signal<string | null>(this.useMockData ? String(DEFAULT_FESTIVAL_BOOST_CAP) : null);
+  readonly draftBoostCap = signal(this.useMockData ? String(DEFAULT_FESTIVAL_BOOST_CAP) : '');
+  readonly boostCapLoading = signal(false);
+  readonly boostCapSaving = signal(false);
+  readonly boostCapMax = FESTIVAL_BOOST_CAP_MAX;
+
+  readonly boostCapError = computed(() => {
+    const raw = this.draftBoostCap().trim();
+    if (raw === '') return '請輸入加成上限。';
+    const cap = Number(raw);
+    if (Number.isNaN(cap)) return '請輸入數字。';
+    if (cap < 0 || cap > FESTIVAL_BOOST_CAP_MAX) return `加成上限須介於 0～${FESTIVAL_BOOST_CAP_MAX} 分。`;
+    return '';
+  });
+  /** 草稿與目前生效值相同時不需要儲存（避免無意義地觸發全量重算）。 */
+  readonly boostCapUnchanged = computed(
+    () => this.boostCap() !== null && Number(this.draftBoostCap()) === Number(this.boostCap()),
+  );
+
+  loadBoostCap(): void {
+    if (this.useMockData) return;
+    this.boostCapLoading.set(true);
+    this.api
+      .getSystemSettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.boostCapLoading.set(false);
+          const setting = list.find((item) => item.key === FESTIVAL_BOOST_CAP_KEY);
+          // 後端尚未部署這個 key 時不顯示假數字，維持 null（面板顯示「無法載入」）。
+          this.boostCap.set(setting ? setting.value : null);
+          this.draftBoostCap.set(setting ? String(Number(setting.value)) : '');
+        },
+        error: (err) => {
+          this.boostCapLoading.set(false);
+          this.showAlert(toApiError(err).message, '節慶加成上限載入失敗');
+        },
+      });
+  }
+
+  saveBoostCap(): void {
+    if (this.boostCapError() || this.boostCapSaving() || this.boostCapUnchanged()) return;
+    const value = String(Number(this.draftBoostCap()));
+    if (this.useMockData) {
+      this.boostCap.set(value);
+      this.status.emit(`節慶加成上限已更新為 ${value} 分。`);
+      return;
+    }
+    this.boostCapSaving.set(true);
+    this.api
+      .updateSystemSetting(FESTIVAL_BOOST_CAP_KEY, { value })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (saved) => {
+          this.boostCapSaving.set(false);
+          this.boostCap.set(saved.value);
+          this.draftBoostCap.set(String(Number(saved.value)));
+          this.status.emit(`節慶加成上限已更新為 ${Number(saved.value)} 分，尚未核准商品的加成將重新計算。`);
+        },
+        error: (err) => {
+          this.boostCapSaving.set(false);
+          this.showAlert(toApiError(err).message);
+        },
+      });
+  }
+
   /** 父元件切到這個分頁或原地重點「系統設定」時呼叫。 */
   reload(): void {
     if (this.useMockData) return;
+    this.loadBoostCap();
     this.loading.set(true);
     this.loadError.set('');
     this.api

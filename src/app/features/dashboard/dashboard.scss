@@ -123,6 +123,13 @@ button:focus-visible {
   border-color: #dcaaa6;
 }
 
+/* 2026-09-29：操作層統計卡個人口徑的說明文字。 */
+.stats-scope-note {
+  margin: 0 0 0.5rem;
+  color: #526677;
+  font-size: var(--t-xs);
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

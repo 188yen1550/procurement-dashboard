@@ -43,6 +43,7 @@ const EMPTY_DASHBOARD: DashboardMockData = {
     conversionScope: null,
     conversionApprovedCount: 0,
     conversionSubmittedCount: 0,
+    statisticsScope: null,
   },
   recommendations: [],
   riskAlerts: [],
@@ -106,6 +107,14 @@ export class Dashboard implements OnInit, OnDestroy {
    * 狀態分布裡出現。拿掉這一塊之後分母要跟著扣掉，否則「狀態合計 ≠ 總數」的
    * 不一致警示會在管理層畫面常駐誤報。
    */
+  /**
+   * 2026-09-29：操作層統計卡是個人口徑（後端 scope=PERSONAL），點進清單時要帶 createdByMe=true，
+   * 清單筆數才會跟卡片數字一致。非個人口徑回 null（Router 會略過 null 的 query 參數）。
+   */
+  readonly createdByMeParam = computed(() =>
+    this.data().statistics.statisticsScope === 'PERSONAL' ? 'true' : null,
+  );
+
   readonly scopeTotal = computed(() => {
     const stats = this.data().statistics;
     return this.isManager() ? stats.totalProducts - stats.aiSuggestedPending : stats.totalProducts;
@@ -351,6 +360,7 @@ function toDashboardPageData(
       conversionScope: result.conversionRate?.scope ?? null,
       conversionApprovedCount: result.conversionRate?.approvedCount ?? 0,
       conversionSubmittedCount: result.conversionRate?.submittedCount ?? 0,
+      statisticsScope: result.statistics?.scope ?? null,
     },
     recommendations: (result.recommendations ?? []).map((item, index) => ({
       id: item.productId,

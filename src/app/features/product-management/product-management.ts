@@ -102,7 +102,7 @@ const MOCK_PRODUCTS: readonly ProductListItem[] = [
 ];
 
 /** 進階篩選的條件群組（清除單一條件時使用；日期區間起訖一起清除）。 */
-type AdvancedFilterKey = 'updated' | 'reviewed' | 'batch' | 'neverExported';
+type AdvancedFilterKey = 'updated' | 'reviewed' | 'batch' | 'neverExported' | 'createdByMe';
 
 @Component({
   selector: 'app-product-management',
@@ -162,6 +162,11 @@ export class ProductManagement implements OnInit {
   readonly reviewedFromDraft = signal('');
   readonly reviewedToDraft = signal('');
   readonly neverExportedFilter = signal(false);
+  /**
+   * 2026-09-29：只看我建立的。儀表板操作層統計卡（個人口徑）連過來時帶 ?createdByMe=true，
+   * 清單筆數才會與卡片數字一致；同時套用在匯出（currentFilterQuery 共用）。
+   */
+  readonly createdByMeFilter = signal(false);
   readonly isExporting = signal(false);
 
   /** 審核狀態選了「未審核／審核拒絕」時，匯出按鈕停用——這顆按鈕只匯出審核通過的商品。 */
@@ -198,6 +203,10 @@ export class ProductManagement implements OnInit {
     this.neverExportedFilter.set(value);
     this.applyFilterChange();
   }
+  updateCreatedByMe(value: boolean): void {
+    this.createdByMeFilter.set(value);
+    this.applyFilterChange();
+  }
 
   private loadSubmissionBatches(): void {
     if (this.useMockData) return;
@@ -230,6 +239,7 @@ export class ProductManagement implements OnInit {
       reviewedFrom: reviewedRangeValid ? this.reviewedFromDraft() || undefined : undefined,
       reviewedTo: reviewedRangeValid ? this.reviewedToDraft() || undefined : undefined,
       neverExported: this.neverExportedFilter() || undefined,
+      createdByMe: this.createdByMeFilter() || undefined,
     };
   }
 
@@ -325,6 +335,7 @@ export class ProductManagement implements OnInit {
     this.reviewFilter.set(
       ProductManagement.resolveInitialReviewFilter(this.route.snapshot.queryParamMap.get('reviewStatus')),
     );
+    this.createdByMeFilter.set(this.route.snapshot.queryParamMap.get('createdByMe') === 'true');
 
     this.searchInput$
       .pipe(debounceTime(300), takeUntilDestroyed())
@@ -418,7 +429,8 @@ export class ProductManagement implements OnInit {
       this.submissionBatchFilter() !== 'ALL' ||
       !!this.reviewedFromDraft() ||
       !!this.reviewedToDraft() ||
-      this.neverExportedFilter(),
+      this.neverExportedFilter() ||
+      this.createdByMeFilter(),
   );
   readonly isLoading = computed(() => this.pageState() === 'loading');
 
@@ -446,6 +458,9 @@ export class ProductManagement implements OnInit {
     if (this.neverExportedFilter()) {
       chips.push({ key: 'neverExported', label: '只看未曾匯出' });
     }
+    if (this.createdByMeFilter()) {
+      chips.push({ key: 'createdByMe', label: '只看我建立的' });
+    }
     return chips;
   });
 
@@ -469,6 +484,9 @@ export class ProductManagement implements OnInit {
         break;
       case 'neverExported':
         this.neverExportedFilter.set(false);
+        break;
+      case 'createdByMe':
+        this.createdByMeFilter.set(false);
         break;
     }
     this.applyFilterChange();
@@ -657,6 +675,7 @@ export class ProductManagement implements OnInit {
     this.reviewedFromDraft.set('');
     this.reviewedToDraft.set('');
     this.neverExportedFilter.set(false);
+    this.createdByMeFilter.set(false);
     this.statusMessageState.show('已清除所有搜尋與篩選條件。');
     this.applyFilterChange();
   }
