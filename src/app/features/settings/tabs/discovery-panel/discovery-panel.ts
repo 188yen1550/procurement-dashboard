@@ -3,7 +3,7 @@
  *
  * - 立即執行一次：後端背景執行、立即回 202，這裡每 5 秒輪詢狀態直到結束（整體需要數分鐘）。
  * - 顯示本月 AI 呼叫次數／上限（探索專用額度，不佔單一商品 AI 分析的額度）。
- * - 最近 10 次執行紀錄：每一步的數量都列出來（掃到幾篇、送幾則給 AI、驗證丟棄幾筆、
+ * - 執行紀錄（2026-09-29 起每頁 10 筆可翻頁，見 shared/ui/run-history）：每一步的數量都列出來（掃到幾篇、送幾則給 AI、驗證丟棄幾筆、
  *   與既有商品相符幾筆、新增幾筆），結果不如預期時看得出卡在哪一步。
  * - 第二階段加上：與已略過項目相似而排除的筆數、完成適配評分與查詢 Google 趨勢的項目數。
  *
@@ -16,6 +16,7 @@ import { Subscription, timer } from 'rxjs';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
+import { RunHistory, RunHistoryPager } from '../../../../shared/ui/run-history';
 import { DiscoveryApiService, DiscoveryRun, DiscoveryStatus } from '../../../discovery/api/discovery-api.service';
 import { TrendSyncRunStatus } from '../../api/trend-crawler-api.service';
 
@@ -37,7 +38,7 @@ const STATUS_BADGE: Record<TrendSyncRunStatus, string> = {
 
 @Component({
   selector: 'app-discovery-panel',
-  imports: [DatePipe],
+  imports: [DatePipe, RunHistoryPager],
   templateUrl: './discovery-panel.html',
   styleUrl: './discovery-panel.scss',
 })
@@ -45,6 +46,9 @@ export class DiscoveryPanel implements OnInit {
   private readonly api = inject(DiscoveryApiService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** 執行紀錄分頁：第 1 頁用狀態 API 的 recentRuns（輪詢即時更新），其餘頁呼叫分頁 API。 */
+  readonly history = new RunHistory<DiscoveryRun>((page) => this.api.getRuns(page), this.destroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly status = signal<DiscoveryStatus | null>(null);
@@ -68,7 +72,9 @@ export class DiscoveryPanel implements OnInit {
   private pollSubscription: Subscription | null = null;
 
   ngOnInit(): void {
-    if (!this.useMockData) this.load();
+    if (this.useMockData) return;
+    this.load();
+    this.history.refreshTotals();
   }
 
   statusLabel(status: TrendSyncRunStatus): string {
@@ -117,6 +123,7 @@ export class DiscoveryPanel implements OnInit {
             next: (status) => {
               this.isSubmitting.set(false);
               this.applyStatus(status);
+              this.history.refreshTotals(); // 多了一筆執行中的紀錄，總筆數跟著更新
             },
             error: (err: unknown) => {
               this.isSubmitting.set(false);
@@ -144,7 +151,11 @@ export class DiscoveryPanel implements OnInit {
   }
 
   private applyStatus(status: DiscoveryStatus): void {
+    const wasRunning = this.status()?.running ?? false;
     this.status.set(status);
+    if (wasRunning && !status.running) {
+      this.history.refreshTotals(); // 執行剛結束：第 2 頁以後的內容與總筆數可能都變了
+    }
     if (status.running) {
       this.stopPolling();
       this.pollSubscription = timer(DISCOVERY_POLL_MS)

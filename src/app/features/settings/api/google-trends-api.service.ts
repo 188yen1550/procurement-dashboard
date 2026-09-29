@@ -13,8 +13,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiEnvelope } from '../../../core/api/api-envelope';
-import { unwrapData } from '../../../core/api/unwrap';
+import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
+import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
+import { RUN_HISTORY_PAGE_SIZE } from '../../../shared/ui/run-history';
 import { TrendSyncRunStatus, TrendSyncTrigger } from './trend-crawler-api.service';
 
 const SETTINGS_BASE = '/api/settings/google-trends';
@@ -37,7 +38,7 @@ export interface GoogleTrendSignal {
   collectedAt: string;
 }
 
-/** 精簡顯示用（熱度建議清單、熱度排行榜）：方向＋成長率一行字。 */
+/** 精簡顯示用（儀表板熱度排行）：方向＋成長率一行字。 */
 export interface GoogleTrendSummary {
   direction: GoogleTrendDirection | null;
   /** 例如「+25.7%」「搜尋量不足」「尚未查詢」。 */
@@ -125,5 +126,12 @@ export class GoogleTrendsApiService {
   /** 背景執行、立即回 202；進度請輪詢 getStatus()。 */
   syncTop(): Observable<GoogleTrendsStatus> {
     return this.http.post<ApiEnvelope<GoogleTrendsStatus>>(`${SETTINGS_BASE}/sync-top`, {}).pipe(unwrapData());
+  }
+
+  /** 2026-09-29：執行紀錄分頁（新到舊，page 從 0 開始）。 */
+  getRuns(page: number, size = RUN_HISTORY_PAGE_SIZE): Observable<PagedResult<GoogleTrendRun>> {
+    return this.http
+      .get<ApiEnvelope<PageEnvelope<GoogleTrendRun>>>(`${SETTINGS_BASE}/runs`, { params: { page, size } })
+      .pipe(unwrapPage((run: GoogleTrendRun) => run));
   }
 }

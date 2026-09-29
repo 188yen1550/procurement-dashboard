@@ -6,8 +6,8 @@
  * 2026-09-24 拆分（決策 D5）：
  *   - 「自訂屬性與因子」分頁 → tabs/custom-extensions（清單狀態在 state/custom-definitions.store）
  *   - 「天氣連動」分頁 → tabs/weather-linkage
- *   - 演算法參數分頁下方的「排程作業」面板 → tabs/ai-suggestion-batch-panel
- *     （2026-09-29 排程面板改放「系統管理 › 排程與同步」分頁，分頁代碼 jobs）
+ *   - 排程作業面板改放「系統管理 › 排程與同步」分頁（2026-09-29，分頁代碼 jobs）；
+ *     原本的熱度規則選品面板（tabs/ai-suggestion-batch-panel）已隨熱度建議清單移除
  * 只抽出這三塊，其餘分頁維持原狀（最小修改）。分頁狀態同步到網址 ?tab=，
  * 可從其他頁面或書籤直接開到指定分頁。
  */
@@ -54,7 +54,6 @@ import { CustomDefinitionsStore } from './state/custom-definitions.store';
 import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensions/custom-extensions';
 import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
 import { FESTIVAL_BOOST_CAP_KEY, FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
-import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
 import { DiscoveryPanel } from './tabs/discovery-panel/discovery-panel';
 import { TrendCrawlerPanel } from './tabs/trend-crawler-panel/trend-crawler-panel';
 import { GoogleTrendsPanel } from './tabs/google-trends-panel/google-trends-panel';
@@ -403,7 +402,6 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
     CustomExtensions,
     WeatherLinkage,
     FestiveCampaigns,
-    AiSuggestionBatchPanel,
     DiscoveryPanel,
     TrendCrawlerPanel,
     GoogleTrendsPanel,
@@ -733,7 +731,7 @@ export class Settings implements OnInit {
         this.loadProductTypes('extensions');
         return;
       case 'jobs':
-        // 四個排程面板（PTT 新品探索、PTT 熱度同步、Google 趨勢、熱度規則選品）各自在首次渲染時載入狀態；
+        // 三個排程面板（PTT 新品探索、PTT 熱度同步、Google 趨勢）各自在首次渲染時載入狀態；
         // 這個分頁本身沒有要抓的資料。
         this.markLoaded('jobs');
         return;

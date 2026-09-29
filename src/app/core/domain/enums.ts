@@ -19,8 +19,11 @@ export type ReviewStatus = 'PENDING' | 'REJECTED' | 'APPROVED';
 /** enums/ProductItemStatus.java。 */
 export type ItemStatus = 'ACTIVE' | 'ARCHIVED';
 
-/** enums/ProductCandidateStatus.java。 */
-export type CandidateStatus = 'AI_SUGGESTED' | 'CANDIDATE';
+/**
+ * enums/ProductCandidateStatus.java。2026-09-29 熱度建議清單移除後只會是 CANDIDATE
+ * （後端保留已停用的 AI_SUGGESTED 只為了與 DB ENUM 定義一致，API 不會再回傳）。
+ */
+export type CandidateStatus = 'CANDIDATE';
 
 /** enums/ProductPricingType.java。⚠️ 與 productTypeId（商品實際分類）語意完全不同。 */
 export type PricingType = 'NEW' | 'RESALE';

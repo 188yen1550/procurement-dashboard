@@ -17,7 +17,6 @@ import { CustomFieldDefinitionResponsePayload } from '../../settings/api/setting
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
 import {
   AiAnalysisResponsePayload,
-  AiSuggestionBatchResultPayload,
   EvaluationResponsePayload,
   FestivalBoostResponsePayload,
   PRODUCT_API,
@@ -85,20 +84,7 @@ export class ProductApiService {
     return this.listWithTypeNames(PRODUCT_API.list, query);
   }
 
-  /**
-   * 2. GET /api/products/ai-suggested：熱度建議清單。
-   *
-   * ⚠️ 後端這支**只吃 Pageable，不吃任何篩選參數**
-   * （ProductController.searchAiSuggested 的簽名只有 Pageable），
-   * 送 keyword／reviewStatus 過去不會有作用也不會報錯，會靜默被忽略。
-   * 所以參數型別刻意收窄成只有分頁，避免呼叫端誤以為可以篩選。
-   */
-  listAiSuggested(
-    // 2026-09-29：後端新增唯一一個篩選參數 createdByMe（只看我建立的），其餘仍只吃分頁。
-    query: { page?: number; size?: number; sort?: string; createdByMe?: boolean } = {},
-  ): Observable<PagedResult<ProductListItem>> {
-    return this.listWithTypeNames(PRODUCT_API.aiSuggested, query);
-  }
+  // 2. GET /api/products/ai-suggested（熱度建議清單）已於 2026-09-29 移除，連同 promote-to-candidate、batch-generate。
 
   /** 3. GET /api/products/{id}：商品核心資料（原始 payload）。 */
   getProduct(id: number | string): Observable<ProductResponsePayload> {
@@ -208,11 +194,6 @@ export class ProductApiService {
     return this.postAction(PRODUCT_API.restore(id));
   }
 
-  /** 11. POST /api/products/{id}/promote-to-candidate：AI_SUGGESTED → CANDIDATE。 */
-  promoteToCandidate(id: number | string): Observable<ProductResponsePayload> {
-    return this.postAction(PRODUCT_API.promote(id));
-  }
-
   /**
    * 13. GET /api/products/similar-candidates：RESALE 商品搜尋相似參考商品。
    *
@@ -295,29 +276,6 @@ export class ProductApiService {
   getAllActiveCustomFieldSchema(): Observable<CustomFieldDefinitionResponsePayload[]> {
     return this.http
       .get<ApiEnvelope<CustomFieldDefinitionResponsePayload[]>>(PRODUCT_API.customFieldSchemaAll)
-      .pipe(unwrapData());
-  }
-
-  /**
-   * 14. POST /api/products/ai-suggested/batch-generate [僅管理]
-   *
-   * 手動觸發 熱度規則選品。正式排程是 AiSuggestionBatchService 的
-   * @Scheduled（每日凌晨三點），這支端點存在的理由是 demo／開發時
-   * 不用乾等到凌晨三點才看得到效果。
-   *
-   * ⚠️ **這支會實際呼叫 Gemini 並消耗配額**，且執行時間隨商品數量增加，
-   *    不是瞬間回應。畫面上必須：
-   *    1. 觸發前要二次確認（避免誤點）
-   *    2. 執行中把按鈕 disable（避免連點送出多批）
-   *    3. 完成後用回傳的 checkedCount／suggestedCount 給明確回饋
-   *
-   * ⚠️ 後端 Controller 上有 @PreAuthorize("hasRole('MANAGER')")，
-   *    採購角色呼叫會是 403。前端要一併隱藏按鈕，但**不能只靠前端隱藏**
-   *    ——後端那道檢查才是真正的防線。
-   */
-  triggerAiSuggestionBatch(): Observable<AiSuggestionBatchResultPayload> {
-    return this.http
-      .post<ApiEnvelope<AiSuggestionBatchResultPayload>>(PRODUCT_API.aiSuggestedBatchGenerate, {})
       .pipe(unwrapData());
   }
 

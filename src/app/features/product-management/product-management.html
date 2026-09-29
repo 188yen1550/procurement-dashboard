@@ -229,7 +229,7 @@
     <div class="empty-state">
       <app-icon name="inbox" />
       <h3>目前沒有正式候選品項</h3>
-      <p>可新增品項，或從獨立 熱度建議清單加入候選。</p>
+      <p>可新增品項、批次匯入，或從「PTT 新品探索」建立商品。</p>
       <button type="button" (click)="retryLoad()">{{ useMockData ? '恢復 Demo 資料' : '重新整理' }}</button>
     </div>
     } @else if (filteredProducts().length === 0) {
@@ -265,6 +265,14 @@
             [class.archived-row]="product.itemStatus === 'ARCHIVED'">
             <td class="product-cell">
               <strong [title]="product.name">{{ product.name }}</strong><span>#{{ product.id }}</span>
+              <!-- 2026-09-29：取代熱度建議清單——最近 3 次熱度同步都上升時提醒，不改變商品狀態、不影響評分。 -->
+              @if (product.recentTrend?.consecutiveRise) {
+              <small class="rise-note">
+                <span class="badge badge-rise" [title]="riseTitle(product.recentTrend)">
+                  <app-icon name="trending-up" size="sm" /> 連續上升
+                </span>
+              </small>
+              }
               @if (product.reviewStatus === 'APPROVED') {
               <small class="lock-note"><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</small>
               }

@@ -24,6 +24,7 @@ import { Observable } from 'rxjs';
 import { ApiEnvelope, Decimal, PageEnvelope } from '../../../core/api/api-envelope';
 import { buildParams } from '../../../core/api/http-params';
 import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
+import { RUN_HISTORY_PAGE_SIZE } from '../../../shared/ui/run-history';
 import { GateStatus, TemperatureZone } from '../../../core/domain/enums';
 import { TrendSyncRunStatus, TrendSyncTrigger } from '../../settings/api/trend-crawler-api.service';
 
@@ -185,6 +186,13 @@ export class DiscoveryApiService {
 
   getStatus(): Observable<DiscoveryStatus> {
     return this.http.get<ApiEnvelope<DiscoveryStatus>>('/api/settings/discovery').pipe(unwrapData());
+  }
+
+  /** 2026-09-29：執行紀錄分頁（新到舊，page 從 0 開始）。 */
+  getRuns(page: number, size = RUN_HISTORY_PAGE_SIZE): Observable<PagedResult<DiscoveryRun>> {
+    return this.http
+      .get<ApiEnvelope<PageEnvelope<DiscoveryRun>>>('/api/settings/discovery/runs', { params: { page, size } })
+      .pipe(unwrapPage((run: DiscoveryRun) => run));
   }
 
   /** ⚠️ PTT 停用、未設定 AI 金鑰或已在執行時回 409。 */

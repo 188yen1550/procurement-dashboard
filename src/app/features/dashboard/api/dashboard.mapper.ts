@@ -128,6 +128,8 @@ export interface TrendLeaderboardItem {
   keyword: string;
   /** Google 趨勢參考最新一筆；沒查過為 null。 */
   googleTrend: GoogleTrendSignal | null;
+  /** 2026-09-29：最近 3 次同步都上升。 */
+  consecutiveRise: boolean;
 }
 
 export function toTrendLeaderboardItem(
@@ -143,5 +145,6 @@ export function toTrendLeaderboardItem(
     isRealSource: payload.source === 'PTT',
     keyword: payload.keyword ?? '',
     googleTrend: payload.googleTrend ?? null,
+    consecutiveRise: payload.consecutiveRise === true,
   };
 }

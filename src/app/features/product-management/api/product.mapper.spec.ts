@@ -140,19 +140,8 @@ describe('toProductActionAvailability', () => {
     expect(actions.canRestore).toBe(true);
   });
 
-  it('REJECTED 且 ACTIVE，但 candidateStatus 還是 AI_SUGGESTED：不可重審', () => {
-    // 2026-09-16修正：與後端 ProductService.resubmit() 的候選狀態檢查對稱——
-    // 熱度建議商品理論上不該出現在這個判斷式面對的清單裡（品項管理預設只查
-    // CANDIDATE），但檢查邏輯本身要獨立成立，不能只靠「不會走到這裡」假設安全。
-    const actions = toProductActionAvailability({
-      reviewStatus: 'REJECTED',
-      itemStatus: 'ACTIVE',
-      candidateStatus: 'AI_SUGGESTED',
-      submissionCount: 1,
-    });
-
-    expect(actions.canResubmit).toBe(false);
-  });
+  // 2026-09-29：原「candidateStatus 仍是 AI_SUGGESTED 時不可重審」測試移除——熱度建議清單移除後
+  // CandidateStatus 型別只剩 'CANDIDATE'，這個情境已無法表示（後端 resubmit() 的防禦性檢查仍保留）。
 
   it('APPROVED：核心資料鎖定', () => {
     const actions = toProductActionAvailability({
@@ -165,19 +154,48 @@ describe('toProductActionAvailability', () => {
     expect(actions.isCoreLocked).toBe(true);
   });
 
-  it('AI_SUGGESTED：可加入候選', () => {
-    const actions = toProductActionAvailability({
-      reviewStatus: 'PENDING',
-      itemStatus: 'ACTIVE',
-      candidateStatus: 'AI_SUGGESTED',
-      submissionCount: 1,
-    });
-
-    expect(actions.canPromote).toBe(true);
-  });
 });
 
 describe('toProductListItem', () => {
+  // 2026-09-29：熱度建議清單移除後，清單以「連續上升」標記取代
+  it('帶入最新熱度摘要，最近方向改為舊到新、連續上升照後端判定', () => {
+    const item = toProductListItem(
+      makeProduct({
+        trendScore: 74.5,
+        trendDirection: 'UP',
+        trendSource: 'PTT',
+        recentTrendDirections: ['UP', 'UP', 'STABLE'],
+        consecutiveRise: false,
+      }),
+    );
+    expect(item.recentTrend).toEqual({
+      popularityScore: 74.5,
+      direction: 'UP',
+      isRealSource: true,
+      recentDirections: ['STABLE', 'UP', 'UP'],
+      consecutiveRise: false,
+    });
+  });
+
+  it('連續上升且最新一筆是模擬資料時，標出非真實來源', () => {
+    const item = toProductListItem(
+      makeProduct({
+        trendScore: 80,
+        trendDirection: 'UP',
+        trendSource: 'SIMULATED',
+        recentTrendDirections: ['UP', 'UP', 'UP'],
+        consecutiveRise: true,
+      }),
+    );
+    expect(item.recentTrend?.consecutiveRise).toBe(true);
+    expect(item.recentTrend?.isRealSource).toBe(false);
+  });
+
+  it('沒有熱度資料（或非清單端點）時 recentTrend 為 null，不造出全空物件', () => {
+    expect(toProductListItem(makeProduct()).recentTrend).toBeNull();
+    expect(toProductListItem(makeProduct({ trendScore: null, trendDirection: null })).recentTrend).toBeNull();
+  });
+
   it('把逗號分隔的 campaignTags 拆成陣列', () => {
     const item = toProductListItem(makeProduct({ campaignTags: 'bbq,gift, moon_cake ' }));
 

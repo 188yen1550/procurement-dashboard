@@ -10,11 +10,17 @@
           </span>
         }
       </h3>
-      <p>
-        {{ status()?.schedule ?? '每週一 04:00' }}查詢 PTT 熱度前 {{ status()?.batchSize ?? 40 }} 名商品在台灣近 3 個月的
-        Google 搜尋趨勢，比較近 7 天與前 4 週的搜尋量，算出方向與成長率。只作為品項詳情頁的參考資訊，
-        <strong>不併入熱度分數</strong>、不影響熱度規則選品。資料來源為 SerpApi（非官方代抓服務）。
-      </p>
+      <p>{{ status()?.schedule ?? '每週一 04:00' }}：查詢熱度前 {{ status()?.batchSize ?? 40 }} 名商品的 Google 搜尋趨勢，<strong>只作參考</strong>。</p>
+      <!-- 2026-09-29：長說明改成可收合，預設收合；用量、金鑰、執行中、停用等狀態在下方，永遠顯示。 -->
+      <details class="config-panel-details">
+        <summary>運作方式與紀錄欄位說明</summary>
+        <p>
+          查詢 PTT 熱度前 {{ status()?.batchSize ?? 40 }} 名商品在台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的搜尋量，
+          算出方向與成長率。顯示在品項詳情頁與儀表板熱度排行，<strong>不併入熱度分數</strong>、不影響排序與評分。
+          資料來源為 SerpApi（非官方代抓服務）。
+        </p>
+        <p>紀錄欄位：商品數＝本次查詢的商品；取得趨勢／查無資料／失敗＝各自的商品數。「查無資料」也會用掉 1 次額度。</p>
+      </details>
     </div>
     <div class="config-panel-actions">
       <button type="button" class="btn" [disabled]="!status() || isSubmitting() || running()" (click)="toggleEnabled()">
@@ -61,7 +67,7 @@
     } @else {
       <div class="config-table-wrap">
         <table class="config-table">
-          <caption class="sr-only">最近 10 次 Google 趨勢查詢紀錄</caption>
+          <caption class="sr-only">Google 趨勢查詢執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
           <thead>
             <tr>
               <th scope="col">開始時間</th>
@@ -75,7 +81,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (run of s.recentRuns; track run.id) {
+            @for (run of history.rows(s.recentRuns); track run.id) {
               <tr>
                 <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
                 <td>{{ triggerLabel(run) }}</td>
@@ -90,6 +96,9 @@
           </tbody>
         </table>
       </div>
+      <app-run-history-pager label="Google 趨勢執行紀錄" [pageNumber]="history.pageNumber()"
+        [totalPages]="history.totalPages()" [totalElements]="history.totalElements()"
+        [loading]="history.loading()" [error]="history.error()" (pageChange)="history.goTo($event)" />
     }
   } @else {
     <p class="helper" role="status">正在載入 Google 趨勢狀態…</p>

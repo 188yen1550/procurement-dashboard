@@ -14,7 +14,6 @@ import {
   TrendDirection,
 } from '../../../core/domain/enums';
 import { joinCampaignTags, splitCampaignTags, WEATHER_REGION_LABEL } from '../../../core/domain/labels';
-import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 import {
   AiAnalysisResponsePayload,
   EvaluationResponsePayload,
@@ -101,25 +100,23 @@ export interface ProductListItem {
   /** 操作按鈕的啟用條件，集中在這裡算好，樣板不再重複判斷。 */
   actions: ProductActionAvailability;
   /**
-   * 「為什麼被 AI 推薦」——只有 GET /api/products/ai-suggested 這支端點
-   * 會有值，其餘端點固定是 undefined。原本這個概念完全沒有被計算或
-   * 回傳過，熱度建議清單一直顯示不出「為什麼」。
+   * 2026-09-29：最新熱度摘要（只有 GET /api/products 清單有值），取代已移除的熱度建議清單。
+   * null＝這個商品還沒有任何熱度資料。
    */
-  suggestionReason?: string | null;
-  /** 2026-09-28：熱度建議清單的趨勢說明（只有 ai-suggested 端點有值），見 ProductResponsePayload。 */
-  suggestionTrend?: SuggestionTrend;
+  recentTrend: RecentTrend | null;
 }
 
-/** 熱度建議清單每張卡片的「推薦依據」資料。 */
-export interface SuggestionTrend {
-  /** 最新一筆熱度分數；尚無趨勢資料為 null。 */
+/** 品項清單的熱度摘要與「連續上升」標記（後端 RecentTrendService）。 */
+export interface RecentTrend {
+  /** 最新一筆熱度分數。 */
   popularityScore: number | null;
   direction: 'UP' | 'DOWN' | 'STABLE' | null;
   /** false＝最新一筆是 PTT 抓不到時的模擬資料。 */
   isRealSource: boolean;
   /** 最近最多 3 筆方向，舊到新（畫面由左到右閱讀）。 */
   recentDirections: ('UP' | 'DOWN' | 'STABLE')[];
-  googleTrend: GoogleTrendSignal | null;
+  /** 最近 3 次同步都上升；只是提醒，不改變商品狀態。 */
+  consecutiveRise: boolean;
 }
 
 /**
@@ -132,7 +129,6 @@ export interface SuggestionTrend {
  * | 重審 | 非 REJECTED／已封存（"請先復用後再重審"）                    |
  * | 封存   | 非 APPROVED 也非 REJECTED／非 ACTIVE                            |
  * | 復用   | 非 APPROVED 也非 REJECTED／非 ARCHIVED                          |
- * | 加入候選 | 非 AI_SUGGESTED                                                |
  * | 刪除   | 非 PENDING 或 submissionCount > 1（1 起算，見下方 canDelete）  |
  *
  * ⚠️ 兩個最容易漏掉的條件：
@@ -146,7 +142,6 @@ export interface ProductActionAvailability {
   canResubmit: boolean;
   canArchive: boolean;
   canRestore: boolean;
-  canPromote: boolean;
   canDelete: boolean;
   /** 核心資料是否鎖定；APPROVED 時後端會以 409 擋下修改。 */
   isCoreLocked: boolean;
@@ -162,15 +157,13 @@ export function toProductActionAvailability(
     payload.reviewStatus === 'APPROVED' || payload.reviewStatus === 'REJECTED';
 
   return {
-    // 與後端 ProductService.resubmit() 的候選狀態檢查對稱：熱度建議商品須先
-    // 加入正式候選才能重新送審，即使 reviewStatus/itemStatus 條件都符合。
+    // 與後端 ProductService.resubmit() 的候選狀態檢查對稱（2026-09-29 起正常資料一律是 CANDIDATE，保留作防禦）。
     canResubmit:
       payload.reviewStatus === 'REJECTED' &&
       payload.itemStatus === 'ACTIVE' &&
       payload.candidateStatus === 'CANDIDATE',
     canArchive: payload.itemStatus === 'ACTIVE' && hasReviewResult,
     canRestore: payload.itemStatus === 'ARCHIVED' && hasReviewResult,
-    canPromote: payload.candidateStatus === 'AI_SUGGESTED',
     // 2026-09-24：submissionCount 改為 1 起算（建立商品即第 1 次送審），「PENDING 且第 1 次送審」
     // 才等於「從未被審核過」，與後端 ProductService.deleteProduct() 同步由 0 改為 1。
     canDelete: payload.reviewStatus === 'PENDING' && payload.submissionCount === 1,
@@ -214,17 +207,16 @@ export function toProductListItem(
     submittedAt: payload.submittedAt ?? null,
     submittedByName: payload.submittedByName ?? null,
     actions: toProductActionAvailability(payload),
-    suggestionReason: payload.suggestionReason,
-    // 只有 ai-suggested 端點會帶這組欄位；其他端點維持 undefined，不要造出一個全空的物件
-    suggestionTrend:
-      payload.trendScore === undefined && payload.googleTrend === undefined
-        ? undefined
+    // 2026-09-29：清單端點才有熱度摘要；其他端點（或尚無熱度資料）trendScore 等欄位為 null／undefined
+    recentTrend:
+      payload.trendDirection == null && payload.trendScore == null
+        ? null
         : {
             popularityScore: payload.trendScore ?? null,
             direction: payload.trendDirection ?? null,
             isRealSource: payload.trendSource === 'PTT',
             recentDirections: [...(payload.recentTrendDirections ?? [])].reverse(),
-            googleTrend: payload.googleTrend ?? null,
+            consecutiveRise: payload.consecutiveRise === true,
           },
   };
 }

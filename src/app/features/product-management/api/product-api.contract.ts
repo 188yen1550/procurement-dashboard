@@ -1,6 +1,5 @@
 import { Decimal, IsoDateTime } from '../../../core/api/api-envelope';
 import { PageQuery } from '../../../core/api/unwrap';
-import { GoogleTrendSignal } from '../../settings/api/google-trends-api.service';
 import {
   CandidateStatus,
   DataSource,
@@ -34,7 +33,6 @@ import {
 
 export const PRODUCT_API = {
   list: '/api/products',
-  aiSuggested: '/api/products/ai-suggested',
   create: '/api/products',
   batchCreate: '/api/products/batch',
   detail: (id: number | string) => `/api/products/${id}`,
@@ -50,7 +48,6 @@ export const PRODUCT_API = {
   resubmit: (id: number | string) => `/api/products/${id}/resubmit`,
   archive: (id: number | string) => `/api/products/${id}/archive`,
   restore: (id: number | string) => `/api/products/${id}/restore`,
-  promote: (id: number | string) => `/api/products/${id}/promote-to-candidate`,
   /** GET：RESALE 商品搜尋相似參考商品。唯讀查詢，不會修改任何資料。
    * ⚠️ 品項表單已改用逐層過濾（resaleReferenceSuppliers／resaleReferenceProducts），
    * 這支端點保留在後端但目前沒有畫面呼叫，見團隊決議。 */
@@ -59,8 +56,6 @@ export const PRODUCT_API = {
   resaleReferenceSuppliers: '/api/products/resale-reference/suppliers',
   /** GET：逐層過濾參考商品第二層，列出指定品類＋供應商下可選的商品。 */
   resaleReferenceProducts: '/api/products/resale-reference/products',
-  /** POST [僅管理]：手動觸發熱度規則選品（原 AI 主動選品批次，2026-09-29 改名；只有固定規則，不呼叫 AI）。 */
-  aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
   /** GET：依 productTypeId 取得自訂商品屬性（動態問卷）題目清單，2026-09-20新增。 */
   customFieldSchema: '/api/products/custom-field-schema',
   /** 2026-09-24：不限品類、只含生效中題目，批次匯入組「自訂屬性」聯集欄位用。 */
@@ -196,20 +191,15 @@ export interface ProductResponsePayload {
   /** 送審人姓名，後端批次查詢後填入（清單與待審清單端點才有值）。 */
   submittedByName: string | null;
   /**
-   * 「為什麼被 AI 推薦」的說明文字。只有 GET /api/products/ai-suggested
-   * 這支端點會有值，其餘所有回傳這個型別的端點一律是 null——原本這個
-   * 概念完全沒有被計算或回傳過，熱度建議清單想知道「為什麼」只能自己猜。
-   */
-  suggestionReason?: string | null;
-  /**
-   * 2026-09-28：熱度建議清單的趨勢說明，語意同 suggestionReason（只有 ai-suggested 端點有值）。
-   * trendScore 是最新一筆的熱度分數（popularity_score）；recentTrendDirections 為最近最多 3 筆方向，新到舊。
+   * 2026-09-29：最新熱度摘要，只有清單 GET /api/products 會有值（後端 RecentTrendService），其餘端點為 null。
+   * trendScore 是最新一筆的熱度分數（popularity_score）；recentTrendDirections 為最近最多 3 筆方向，新到舊；
+   * consecutiveRise＝最近 3 次都上升。原熱度建議清單專用的 suggestionReason、googleTrend 已移除。
    */
   trendScore?: Decimal;
   trendDirection?: 'UP' | 'DOWN' | 'STABLE' | null;
   trendSource?: string | null;
   recentTrendDirections?: ('UP' | 'DOWN' | 'STABLE')[] | null;
-  googleTrend?: GoogleTrendSignal | null;
+  consecutiveRise?: boolean | null;
 }
 
 /** 對應後端 json/WeightFactorSnapshot.java。 */
@@ -525,9 +515,7 @@ export interface ProductBatchCreateResponsePayload {
 /**
  * GET /api/products 的查詢參數，逐一對照 ProductController.search()。
  *
- * ⚠️ candidateStatus 不帶時，ProductService 內部預設帶入 CANDIDATE。
- * 主清單不要主動送 AI_SUGGESTED——查看 熱度建議一律走獨立的
- * GET /api/products/ai-suggested，避免兩個入口重疊。
+ * ⚠️ candidateStatus 不帶時，ProductService 內部預設帶入 CANDIDATE（2026-09-29 起也只有這個值）。
  *
  * ⚠️ 三種狀態是三個獨立維度，不是互斥選項。一個商品可以同時是
  * 「已通過 + 已封存 + 正式候選」，篩選 UI 要做成三個獨立下拉。
@@ -638,17 +626,6 @@ export interface SimilarProductCandidatePayload {
   supplierSimilarity: Decimal | null;
   /** 0~1，排序依據。 */
   combinedScore: Decimal;
-}
-
-/**
- * 對應後端 AiSuggestionBatchService.BatchResult（record）。
- *
- * checkedCount 是本次掃描過的商品數，suggestedCount 是實際新增的
- * AI_SUGGESTED 候選數。兩者相差很大是正常的——大部分商品不符合建議條件。
- */
-export interface AiSuggestionBatchResultPayload {
-  checkedCount: number;
-  suggestedCount: number;
 }
 
 // =========================================================================

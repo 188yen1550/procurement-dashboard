@@ -58,7 +58,6 @@ export const ITEM_STATUS_LABEL: Record<ItemStatus, string> = {
 
 export const CANDIDATE_STATUS_LABEL: Record<CandidateStatus, string> = {
   CANDIDATE: '正式候選',
-  AI_SUGGESTED: '熱度建議',
 };
 
 export const PRICING_TYPE_LABEL: Record<PricingType, string> = {

@@ -38,12 +38,7 @@ export interface DashboardStatisticsResponsePayload {
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
-  /**
-   * 2026-09-16修正：與 pendingCount 互斥（不再是子集）——candidate_status=
-   * AI_SUGGESTED 且 review_status=PENDING 的商品數，pendingCount 已改為
-   * 只算 candidate_status=CANDIDATE 的部分。
-   */
-  aiSuggestedPendingCount: number;
+  // 2026-09-29：aiSuggestedPendingCount 隨熱度建議清單移除（後端 DashboardStatisticsResponse 同步刪除）。
 }
 
 /**
@@ -148,4 +143,6 @@ export interface DashboardTrendLeaderboardResponsePayload {
   keyword: string | null;
   /** 2026-09-28：Google 趨勢參考最新一筆，沒查過為 null；不參與排序（相對值，不同商品不可比）。 */
   googleTrend?: GoogleTrendSignal | null;
+  /** 2026-09-29：最近 3 次同步都上升（後端 RecentTrendService）；只是提醒，不參與排序。 */
+  consecutiveRise?: boolean;
 }

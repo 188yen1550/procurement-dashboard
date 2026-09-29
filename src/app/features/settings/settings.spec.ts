@@ -220,9 +220,8 @@ describe('Settings', () => {
     ),
   };
 
-  const productApi = {
-    triggerAiSuggestionBatch: vi.fn(() => of({ checkedCount: 10, suggestedCount: 2 })),
-  };
+  // 2026-09-29：熱度規則選品面板移除，設定頁已不呼叫 ProductApiService 的批次端點；保留空物件給 DI 使用。
+  const productApi = {};
   const productTypeLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getName: vi.fn() };
   const riskOptionLookup = { invalidate: vi.fn(), getNameMap: vi.fn(), getNames: vi.fn() };
 
@@ -696,7 +695,6 @@ describe('Settings', () => {
     expect(host.querySelector('h2')?.textContent).toContain('計分與判定參數');
     expect(host.querySelector('app-trend-crawler-panel')).toBeNull();
     expect(host.querySelector('app-google-trends-panel')).toBeNull();
-    expect(host.querySelector('app-ai-suggestion-batch-panel')).toBeNull();
     // 天氣加成上限與比重留在天氣連動元件，這裡只放前往連結
     const link = host.querySelector('.settings-cross-link a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/settings/data?tab=weather');
@@ -706,7 +704,8 @@ describe('Settings', () => {
     expect(host.querySelector('h2')?.textContent).toContain('排程與同步');
     expect(host.querySelector('app-trend-crawler-panel')).toBeTruthy();
     expect(host.querySelector('app-google-trends-panel')).toBeTruthy();
-    expect(host.querySelector('app-ai-suggestion-batch-panel')).toBeTruthy();
+    // 2026-09-29：熱度規則選品面板隨熱度建議清單移除
+    expect(host.querySelector('app-ai-suggestion-batch-panel')).toBeNull();
     expect(component.pageState()).toBe('default');
   });
 

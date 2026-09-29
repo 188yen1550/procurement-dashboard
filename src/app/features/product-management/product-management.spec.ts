@@ -30,10 +30,21 @@ describe('ProductManagement', () => {
     expect(component.pageState()).toBe('default');
   });
 
-  it('shows only formal candidate mock products by default', () => {
+  // 2026-09-29：熱度建議（AI_SUGGESTED）移除後，Mock 不再放一筆「應被隱藏」的熱度建議商品
+  it('shows the formal candidate mock products by default', () => {
     expect(component.candidateProducts().length).toBe(6);
     expect(component.filteredProducts().every((item) => item.candidateStatus === 'CANDIDATE')).toBe(true);
-    expect(component.filteredProducts().some((item) => item.name.includes('旅行用全能'))).toBe(false);
+  });
+
+  // 2026-09-29：取代熱度建議清單——最近 3 次熱度同步都上升的商品，名稱下方顯示「連續上升」
+  it('marks products whose last three heat syncs all rose', () => {
+    fixture.detectChanges();
+    const badges = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.product-cell .badge-rise'));
+    // Mock：只有 102 輕量智慧溫控電熱杯 consecutiveRise 為 true
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent).toContain('連續上升');
+    expect(badges[0].closest('.product-cell')?.textContent).toContain('電熱杯');
+    expect(badges[0].getAttribute('title')).toBe('最近 3 次熱度同步都上升，最新熱度 74 分。僅提醒，不影響評分與審核。');
   });
 
   // 2026-09-25 對齊現行畫面：表頭拆成「實際分類」（不排序）＋「新品／再販售」（pricingType 排序），

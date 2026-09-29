@@ -7,6 +7,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DialogService } from '../../../../core/dialog/dialog.service';
+import { PagedResult } from '../../../../core/api/unwrap';
 import { TrendCrawlerApiService, TrendCrawlerStatus, TrendSyncRun } from '../../api/trend-crawler-api.service';
 import { TREND_CRAWLER_POLL_MS, TrendCrawlerPanel } from './trend-crawler-panel';
 
@@ -44,10 +45,15 @@ function status(overrides: Partial<TrendCrawlerStatus> = {}): TrendCrawlerStatus
     running: false,
     processedCount: null,
     totalCount: null,
-    schedule: '每天 02:00（早於 03:00 熱度規則選品）',
+    schedule: '每天 02:00',
     recentRuns: [COMPLETED_RUN, SKIPPED_RUN],
     ...overrides,
   };
+}
+
+/** 分頁 API 的回應（2026-09-29）。預設只有一頁、兩筆，分頁列不顯示。 */
+function runsPage(pageNumber = 0, totalElements = 2, items: TrendSyncRun[] = [COMPLETED_RUN, SKIPPED_RUN]): PagedResult<TrendSyncRun> {
+  return { items, totalElements, totalPages: Math.ceil(totalElements / 10), pageNumber, pageSize: 10 };
 }
 
 describe('TrendCrawlerPanel', () => {
@@ -59,6 +65,7 @@ describe('TrendCrawlerPanel', () => {
     setEnabled: vi.fn((enabled: boolean) => of(status({ enabled }))),
     // 後端剛開始時進度是 null（背景執行緒還沒讀完商品清單），照真實回應寫
     syncAll: vi.fn(() => of(status({ running: true, processedCount: null, totalCount: null }))),
+    getRuns: vi.fn((page: number) => of(runsPage(page))),
   };
 
   async function create(): Promise<void> {
@@ -87,9 +94,72 @@ describe('TrendCrawlerPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getStatus.mockImplementation(() => of(status()));
+    api.getRuns.mockImplementation((page: number) => of(runsPage(page)));
   });
 
   afterEach(() => vi.useRealTimers());
+
+  // 2026-09-29：說明文字可收合，預設收合；摘要與狀態訊息永遠看得到
+  it('collapses the long description by default and keeps the one-line summary visible', async () => {
+    await create();
+    const details = (fixture.nativeElement as HTMLElement).querySelector('details.config-panel-details') as HTMLDetailsElement;
+    expect(details).toBeTruthy();
+    expect(details.open).toBe(false);
+    expect(details.querySelector('summary')?.textContent).toContain('運作方式');
+    expect(text()).toContain('更新所有未封存商品的 PTT 熱度分數');
+    expect(text()).not.toContain('熱度規則選品');
+  });
+
+  it('keeps the disabled-source notice outside the collapsible description', async () => {
+    api.getStatus.mockImplementation(() => of(status({ enabled: false })));
+    await create();
+    const notice = (fixture.nativeElement as HTMLElement).querySelector('.notice');
+    expect(notice?.textContent).toContain('PTT 熱度來源已停用');
+    expect(notice?.closest('details')).toBeNull();
+  });
+
+  // 2026-09-29：執行紀錄每頁 10 筆；第 1 頁用狀態 API 的 recentRuns，其餘頁呼叫分頁 API
+  it('hides the pager when all runs fit on one page', async () => {
+    await create();
+    expect(api.getRuns).toHaveBeenCalledWith(0);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.run-history-pager')).toBeNull();
+  });
+
+  it('pages through older runs ten at a time', async () => {
+    const older: TrendSyncRun = { ...SKIPPED_RUN, id: 99, message: '第二頁的舊紀錄' };
+    api.getRuns.mockImplementation((page: number) =>
+      of(page === 0 ? runsPage(0, 23) : runsPage(page, 23, [older])),
+    );
+    await create();
+    expect(text()).toContain('第 1 / 3 頁，共 23 筆');
+    expect(button('上一頁').disabled).toBe(true);
+    // 第 1 頁顯示狀態 API 的最近紀錄
+    expect(text()).toContain('手動觸發（管理測試人員）');
+
+    button('下一頁').click();
+    fixture.detectChanges();
+    expect(api.getRuns).toHaveBeenLastCalledWith(1);
+    expect(text()).toContain('第 2 / 3 頁，共 23 筆');
+    expect(text()).toContain('第二頁的舊紀錄');
+    expect(text()).not.toContain('手動觸發（管理測試人員）');
+    expect(button('上一頁').disabled).toBe(false);
+
+    button('上一頁').click();
+    fixture.detectChanges();
+    expect(text()).toContain('第 1 / 3 頁');
+    expect(text()).toContain('手動觸發（管理測試人員）');
+  });
+
+  it('keeps the current page and shows an error when an older page cannot be loaded', async () => {
+    api.getRuns.mockImplementation((page: number) =>
+      page === 0 ? of(runsPage(0, 23)) : throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Server Error' })),
+    );
+    await create();
+    button('下一頁').click();
+    fixture.detectChanges();
+    expect(text()).toContain('第 1 / 3 頁');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.run-history-pager-error')).toBeTruthy();
+  });
 
   it('shows the source switch state and recent runs', async () => {
     await create();

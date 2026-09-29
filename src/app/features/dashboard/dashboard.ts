@@ -38,7 +38,6 @@ const EMPTY_DASHBOARD: DashboardMockData = {
     pendingReviews: 0,
     approvedProducts: 0,
     rejectedProducts: 0,
-    aiSuggestedPending: 0,
     conversionRate: null,
     conversionScope: null,
     conversionApprovedCount: 0,
@@ -51,6 +50,8 @@ const EMPTY_DASHBOARD: DashboardMockData = {
 };
 
 type RealLoadState = 'loading' | 'loaded' | 'error';
+/** 商品排行卡片的頁籤（2026-09-29）。 */
+type RankingTab = 'recommendations' | 'trend';
 
 @Component({
   selector: 'app-dashboard',
@@ -85,6 +86,38 @@ export class Dashboard implements OnInit, OnDestroy {
    */
   readonly isManager = computed(() => this.auth.isManager());
 
+  /**
+   * 2026-09-29：「推薦 Top 10／熱度排行」頁籤。預設推薦 Top 10（原本儀表板的主表）。
+   * 不寫進網址：這是同一張卡片裡的檢視切換，不是可分享的獨立頁面。
+   */
+  readonly rankingTab = signal<RankingTab>('recommendations');
+
+  selectRankingTab(tab: RankingTab): void {
+    this.rankingTab.set(tab);
+  }
+
+  /**
+   * WAI-ARIA tabs（自動啟用）：左右方向鍵切換並把焦點移到新頁籤，Home／End 到第一個／最後一個。
+   * 只有兩個頁籤，左右都視為「切到另一個」。
+   */
+  onRankingTabKeydown(event: KeyboardEvent): void {
+    const order: RankingTab[] = ['recommendations', 'trend'];
+    const current = order.indexOf(this.rankingTab());
+    let next: RankingTab | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      next = order[(current + 1) % order.length];
+    } else if (event.key === 'Home') {
+      next = order[0];
+    } else if (event.key === 'End') {
+      next = order[order.length - 1];
+    }
+    if (next === null) return;
+    event.preventDefault();
+    this.rankingTab.set(next);
+    const tablist = (event.currentTarget as HTMLElement | null)?.parentElement;
+    tablist?.querySelector<HTMLElement>(`[data-ranking-tab="${next}"]`)?.focus();
+  }
+
   readonly useMockData = APP_CONFIG.useMockData;
 
   /** 只在 Mock 模式下有意義的示範狀態；真實模式一律走 realLoadState。 */
@@ -102,12 +135,6 @@ export class Dashboard implements OnInit, OnDestroy {
   );
 
   /**
-   * 2026-09-24 職責分離：儀表板兩個角色都看得到，但不呈現「沒有對應頁面」的資訊。
-   * 「熱度建議待確認」屬於操作層的 熱度建議清單，管理層畫面不顯示這張卡、也不在
-   * 狀態分布裡出現。拿掉這一塊之後分母要跟著扣掉，否則「狀態合計 ≠ 總數」的
-   * 不一致警示會在管理層畫面常駐誤報。
-   */
-  /**
    * 2026-09-29：操作層統計卡是個人口徑（後端 scope=PERSONAL），點進清單時要帶 createdByMe=true，
    * 清單筆數才會跟卡片數字一致。非個人口徑回 null（Router 會略過 null 的 query 參數）。
    */
@@ -115,10 +142,8 @@ export class Dashboard implements OnInit, OnDestroy {
     this.data().statistics.statisticsScope === 'PERSONAL' ? 'true' : null,
   );
 
-  readonly scopeTotal = computed(() => {
-    const stats = this.data().statistics;
-    return this.isManager() ? stats.totalProducts - stats.aiSuggestedPending : stats.totalProducts;
-  });
+  /** 2026-09-29：熱度建議（AI_SUGGESTED）移除後，兩種角色的分母都是候選商品總數。 */
+  readonly scopeTotal = computed(() => this.data().statistics.totalProducts);
 
   readonly statusBreakdown = computed(() => {
     const stats = this.data().statistics;
@@ -128,9 +153,6 @@ export class Dashboard implements OnInit, OnDestroy {
       { label: '審核通過', count: stats.approvedProducts, color: '#379773' },
       { label: '審核拒絕', count: stats.rejectedProducts, color: '#c76661' },
     ];
-    if (!this.isManager()) {
-      items.push({ label: '熱度建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' });
-    }
     return items.map((item) => ({
       ...item,
       percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0',
@@ -353,7 +375,6 @@ function toDashboardPageData(
       pendingReviews: result.statistics?.pendingCount ?? 0,
       approvedProducts: result.statistics?.approvedCount ?? 0,
       rejectedProducts: result.statistics?.rejectedCount ?? 0,
-      aiSuggestedPending: result.statistics?.aiSuggestedPendingCount ?? 0,
       // hasData 為 false 時（尚無商品送審過）維持 null，不要顯示成 0%。
       conversionRate:
         result.conversionRate?.hasData ? result.conversionRate.ratePercentage : null,
@@ -415,6 +436,7 @@ function toDashboardPageData(
       isRealSource: item.isRealSource,
       keyword: item.keyword || NOT_PROVIDED,
       googleTrend: item.googleTrend,
+      consecutiveRise: item.consecutiveRise,
     })),
   };
 }

@@ -49,7 +49,7 @@
       儀表板
     </a>
 
-    <!-- 2026-09-24 職責分離：品項管理、熱度建議清單只給操作層；選品審核、設定
+    <!-- 2026-09-24 職責分離：品項管理、PTT 新品探索只給操作層；選品審核、設定
          只給管理層。儀表板與歷史銷售紀錄兩邊都有，內容依角色各自呈現。 -->
     @if (!isManager) {
       <a
@@ -60,15 +60,6 @@
       >
         <span class="nav-icon"><app-icon name="list" size="md" /></span>
         品項管理
-      </a>
-
-      <a
-        routerLink="/products/ai-suggestions"
-        routerLinkActive="active"
-        (click)="closeRequested.emit()"
-      >
-        <span class="nav-icon"><app-icon name="trending-up" size="md" /></span>
-        熱度建議清單
       </a>
 
       <!-- 2026-09-29：PTT 新品探索——系統裡還沒有、PTT 上正在被討論的商品線索。 -->

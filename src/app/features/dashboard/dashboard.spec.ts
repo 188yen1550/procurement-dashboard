@@ -39,14 +39,14 @@ describe('Dashboard', () => {
   });
 
   // ⚠️ 2026-09-25 新增：跟推薦 Top 10 刻意區隔的熱度排行榜，見
-  // dashboard.mapper.ts 的 TrendLeaderboardItem 類別註解。
-  it('exposes five trend leaderboard entries from mock data', () => {
-    expect(component.data().trendLeaderboard).toHaveLength(5);
+  // dashboard.mapper.ts 的 TrendLeaderboardItem 類別註解。2026-09-29：5 → 10 筆（與 Top 10 同一張卡片的頁籤）。
+  it('exposes ten trend leaderboard entries from mock data', () => {
+    expect(component.data().trendLeaderboard).toHaveLength(10);
   });
 
   it('marks simulated trend data with the is-simulated class, not real PTT data', () => {
     fixture.detectChanges();
-    const rows = fixture.nativeElement.querySelectorAll('.trend-leaderboard-panel .score');
+    const rows = fixture.nativeElement.querySelectorAll('.trend-leaderboard .score');
     // Mock 資料第 4 筆（機能防曬外套）isRealSource 為 false，其餘為 true。
     const simulatedRows = Array.from(rows).filter((el) =>
       (el as HTMLElement).classList.contains('is-simulated'),
@@ -54,44 +54,78 @@ describe('Dashboard', () => {
     expect(simulatedRows).toHaveLength(1);
   });
 
-  // 2026-09-28 回歸測試：熱度排行榜放進 .content-grid（Top 10＋高風險提示的 flex 並排列）時，
-  // 會依內容寬度吃掉整排，把 Top 10 與高風險提示擠成 0px。jsdom 量不到寬度，改驗結構。
-  it('keeps the trend leaderboard outside the Top 10 / risk flex row', () => {
-    fixture.detectChanges();
+  // 2026-09-29：推薦 Top 10 與熱度排行改成同一張卡片的兩個頁籤（取代 2026-09-28 的「排行榜獨立一列」）。
+  // 熱度排行放在排行卡片「裡面」，不是 .content-grid 的另一個 flex 成員（避免 09-28 那次把 Top 10 擠成 0 寬的問題）。
+  it('puts Top 10 and the trend leaderboard in one tabbed card, Top 10 selected by default', () => {
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.content-grid .recommendations-panel')).not.toBeNull();
-    expect(root.querySelector('.trend-leaderboard-panel')).not.toBeNull();
-    expect(root.querySelector('.content-grid .trend-leaderboard-panel')).toBeNull();
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('.ranking-tabs [role="tab"]'));
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['推薦 Top 10', '熱度排行']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
+    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1']);
+    expect(root.querySelector('.rankings-panel .trend-leaderboard')).not.toBeNull();
+    expect(root.querySelector('.content-grid > .trend-leaderboard')).toBeNull();
+    expect(root.querySelector('#ranking-panel-trend')?.classList).toContain('is-inactive');
+    expect(root.querySelector('#ranking-panel-recommendations')?.classList).not.toContain('is-inactive');
+  });
+
+  it('switches ranking tabs by click and by arrow keys, moving focus to the new tab', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    const [top10Tab, trendTab] = Array.from(root.querySelectorAll<HTMLButtonElement>('.ranking-tabs [role="tab"]'));
+
+    trendTab.click();
+    fixture.detectChanges();
+    expect(component.rankingTab()).toBe('trend');
+    expect(trendTab.getAttribute('aria-selected')).toBe('true');
+    expect(root.querySelector('#ranking-panel-trend')?.classList).not.toContain('is-inactive');
+    expect(root.querySelector('#ranking-panel-recommendations')?.classList).toContain('is-inactive');
+
+    trendTab.focus();
+    trendTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.rankingTab()).toBe('recommendations');
+    expect(document.activeElement).toBe(top10Tab);
+
+    top10Tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.rankingTab()).toBe('trend');
+  });
+
+  it('shows the consecutive-rise badge only for entries the backend marked', () => {
+    const badges = (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard .badge-rise');
+    // Mock：只有第 1 筆（磁吸快充行動電源）consecutiveRise 為 true
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent).toContain('連續上升');
   });
 
   it('shows a Google trend column in the leaderboard, with explicit text for missing data', () => {
     fixture.detectChanges();
     const cells = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard-panel td.lb-google'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard td.lb-google'),
       (td) => td.textContent?.trim().replace(/\s+/g, ' '),
     );
-    // Mock：持平 -8.6%、上升 +25.7%、下降 -18.2%、尚未查詢、查無資料
-    expect(cells).toEqual(['持平 -8.6%', '上升 +25.7%', '下降 -18.2%', '尚未查詢', '搜尋量不足']);
+    // Mock：持平 -8.6%、上升 +25.7%、下降 -18.2%、尚未查詢、查無資料，第 6～10 筆都尚未查詢
+    expect(cells.slice(0, 5)).toEqual(['持平 -8.6%', '上升 +25.7%', '下降 -18.2%', '尚未查詢', '搜尋量不足']);
+    expect(cells.slice(5)).toEqual(['尚未查詢', '尚未查詢', '尚未查詢', '尚未查詢', '尚未查詢']);
   });
 
-  it('includes AI suggestions in the chart breakdown and exposes inconsistent totals', () => {
-    expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14, 5]);
-    expect(component.statusTotal()).toBe(109);
+  // 2026-09-29：熱度建議待確認移除，狀態分布只剩三種審核狀態；Mock 的合計仍刻意與總數不一致，驗證提示。
+  it('shows three review states in the chart breakdown and exposes inconsistent totals', () => {
+    expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14]);
+    expect(component.statusTotal()).toBe(104);
     const rows = fixture.nativeElement.querySelectorAll('.status-breakdown li');
-    expect(rows).toHaveLength(4);
-    expect(rows[3].textContent).toContain('熱度建議待確認');
+    expect(rows).toHaveLength(3);
+    expect(fixture.nativeElement.textContent).not.toContain('熱度建議');
     expect(fixture.nativeElement.querySelector('.status-note').textContent).toContain('128');
   });
 
   // 2026-09-27：統計卡帶上審核狀態，品項管理依卡片語意預先篩選（候選商品總數＝全部）。
-  it('links the four product cards to management with the matching review filter and keeps the AI suggestion destination', () => {
+  it('links the four product cards to management with the matching review filter', () => {
     const links = fixture.nativeElement.querySelectorAll('.stat-card-link');
     expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href'))).toEqual([
       '/products?reviewStatus=ALL',
       '/products?reviewStatus=PENDING',
       '/products?reviewStatus=APPROVED',
       '/products?reviewStatus=REJECTED',
-      '/products/ai-suggestions',
     ]);
   });
 
@@ -100,8 +134,6 @@ describe('Dashboard', () => {
     const text = fixture.nativeElement.querySelector('.conversion-panel').textContent;
     expect(text).toContain('送審過的 122 件商品中，78 件審核通過');
     expect(text).toContain('全公司口徑');
-    // 2026-09-24：管理層口徑剔除 熱度建議商品，文案需讓主管知道分母範圍。
-    expect(text).toContain('不含尚未轉正的 熱度建議商品');
     expect(text).not.toContain('我的選品轉換率');
   });
 
@@ -145,7 +177,6 @@ describe('Dashboard', () => {
       '/products?reviewStatus=PENDING&createdByMe=true',
       '/products?reviewStatus=APPROVED&createdByMe=true',
       '/products?reviewStatus=REJECTED&createdByMe=true',
-      '/products/ai-suggestions?createdByMe=true',
     ]);
     expect(fixture.nativeElement.textContent).toContain('以下統計只計算你建立的商品');
   });
@@ -188,9 +219,10 @@ describe('Dashboard', () => {
   });
 
   it('keeps a sticky action structure and the correct action type for every Top 10 row', () => {
-    const rows = fixture.nativeElement.querySelectorAll('.recommendations-panel tbody tr');
+    // 2026-09-29：Top 10 與熱度排行同在一張卡片，限定在 Top 10 的頁籤面板內計算
+    const rows = fixture.nativeElement.querySelectorAll('#ranking-panel-recommendations tbody tr');
     const actions = fixture.nativeElement.querySelectorAll(
-      '.recommendations-panel tbody .actions-column',
+      '#ranking-panel-recommendations tbody .actions-column',
     );
     expect(fixture.nativeElement.querySelector('thead .actions-column')).toBeTruthy();
     expect(rows.length).toBe(10);
@@ -209,8 +241,7 @@ describe('Dashboard', () => {
 });
 
 /**
- * 2026-09-24 職責分離：同一份 Mock 資料，管理層畫面不呈現沒有對應頁面的資訊
- * （熱度建議待確認），統計卡改連到審核頁，待審的 Top 10 直接進審核詳情。
+ * 2026-09-24 職責分離：同一份 Mock 資料，管理層統計卡改連到審核頁，待審的 Top 10 直接進審核詳情。
  */
 describe('Dashboard (manager view)', () => {
   let component: Dashboard;
@@ -244,11 +275,16 @@ describe('Dashboard (manager view)', () => {
     expect(links).toContain('/products/1');
     expect(links).toContain('/products/2');
   });
-  it('hides the AI suggestion card and chart slice, and adjusts the total accordingly', () => {
+  it('uses the same three review states and the full total as the operator view', () => {
     expect(fixture.nativeElement.textContent).not.toContain('熱度建議待確認');
     expect(component.statusBreakdown().map((item) => item.label)).toEqual(['待人工審核', '審核通過', '審核拒絕']);
-    const stats = component.data().statistics;
-    expect(component.scopeTotal()).toBe(stats.totalProducts - stats.aiSuggestedPending);
+    expect(component.scopeTotal()).toBe(component.data().statistics.totalProducts);
+  });
+
+  it('keeps the risk side column next to the tabbed ranking card', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.content-grid > .rankings-panel')).toBeTruthy();
+    expect(root.querySelector('.content-grid > .side-column .risk-panel')).toBeTruthy();
   });
 
   it('links stat cards to the review page instead of product management', () => {

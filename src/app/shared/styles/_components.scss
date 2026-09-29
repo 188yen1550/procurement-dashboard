@@ -683,6 +683,14 @@
   color: var(--c-ink-muted);
   background: #eef1f3;
 }
+/* 2026-09-29：「連續上升」提醒（最近 3 次熱度同步都上升）。品項管理清單與儀表板熱度排行共用；
+   用琥珀色與「成功／錯誤」區隔——它是值得留意的訊號，不是審核結果。文字本身就寫明意思，不只靠顏色。 */
+.badge-rise {
+  gap: 0.2rem;
+  color: var(--c-warn);
+  background: var(--c-warn-tint);
+  border: 1px solid var(--c-warn-border);
+}
 
 /*
  * ===================== 設定面板（.config-panel）=====================
@@ -730,6 +738,33 @@
   color: var(--c-ink-muted);
   font-size: var(--t-sm);
   line-height: var(--lh-base);
+}
+
+/* 2026-09-29：排程面板的長說明改成可收合（原生 <details>，鍵盤與螢幕閱讀器都支援），預設收合。
+   標題下只留一行摘要（排程時間＋用途）；狀態訊息（執行中、已停用、錯誤、額度）放在收合區外，永遠看得到。 */
+.config-panel-details {
+  max-width: 62ch;
+  margin-top: var(--s-2);
+  color: var(--c-ink-muted);
+  font-size: var(--t-sm);
+  line-height: var(--lh-base);
+}
+.config-panel-details > summary {
+  width: fit-content;
+  color: var(--c-brand);
+  font-weight: 700;
+  cursor: pointer;
+}
+.config-panel-details > summary:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+.config-panel-details[open] > summary {
+  margin-bottom: var(--s-2);
+}
+.config-panel-head .config-panel-details p + p {
+  margin-top: var(--s-2);
 }
 
 .config-panel-actions {

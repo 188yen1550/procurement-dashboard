@@ -14,12 +14,6 @@ export interface DashboardStatistics {
   approvedProducts: number;
   rejectedProducts: number;
   /**
-   * 2026-09-16修正：與 pendingReviews 互斥（不再是子集）——後端已改為
-   * pendingReviews 只算已轉正候選（CANDIDATE）的商品，熱度建議尚未轉正的
-   * 商品只計入這個欄位，兩者相加才等於全部 PENDING 商品數。
-   */
-  aiSuggestedPending: number;
-  /**
    * ⚠️ 可能為 null：後端分母（曾送審過的不重複商品數）為 0 時
    * （系統剛啟用、還沒有任何商品送審過）回傳 null，代表「尚無資料」，
    * 不是「轉換率 0%」。這兩者意義完全不同，樣板必須分開處理，
@@ -40,7 +34,7 @@ export interface DashboardStatistics {
   conversionApprovedCount: number;
   conversionSubmittedCount: number;
   /**
-   * 統計卡（總數／待審／通過／拒絕／熱度建議）的計算口徑（2026-09-29）：PERSONAL＝只算目前登入者
+   * 統計卡（總數／待審／通過／拒絕）的計算口徑（2026-09-29）：PERSONAL＝只算目前登入者
    * 建立的商品（操作人員），COMPANY＝全公司（管理人員）。null 代表統計 API 載入失敗。
    */
   statisticsScope: 'PERSONAL' | 'COMPANY' | null;
@@ -92,6 +86,8 @@ export interface DashboardTrendLeaderboardEntry {
   keyword: string;
   /** 2026-09-28：Google 趨勢參考（方向＋成長率）；沒查過為 null。 */
   googleTrend: GoogleTrendSignal | null;
+  /** 2026-09-29：最近 3 次同步都上升，顯示「連續上升」標記（取代熱度規則選品）。 */
+  consecutiveRise: boolean;
 }
 
 export interface DashboardMockData {

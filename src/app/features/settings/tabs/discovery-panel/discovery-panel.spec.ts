@@ -46,6 +46,10 @@ describe('DiscoveryPanel', () => {
   const api = {
     getStatus: vi.fn(() => of(status())),
     run: vi.fn(() => of(status({ running: false }))),
+    // 2026-09-29：執行紀錄分頁；預設一頁，分頁列不顯示
+    getRuns: vi.fn((page: number) =>
+      of({ items: [], totalElements: 1, totalPages: 1, pageNumber: page, pageSize: 10 }),
+    ),
   };
 
   beforeEach(async () => {
@@ -68,6 +72,17 @@ describe('DiscoveryPanel', () => {
     expect(text).toContain('58（6／9／4）');
     expect(text).toContain('27／5');
     expect(text).toContain('12 / 400');
+  });
+
+  // 2026-09-29：說明文字與紀錄欄位解釋收進可收合區塊（預設收合）；本月額度這類狀態留在外面
+  it('keeps the explanation collapsed but the monthly AI usage visible', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    const details = root.querySelector('details.config-panel-details') as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain('紀錄欄位');
+    expect(details.textContent).toContain('Groq');
+    const usage = Array.from(root.querySelectorAll('.helper')).find((el) => el.textContent?.includes('本月 AI 呼叫'));
+    expect(usage?.closest('details')).toBeNull();
   });
 
   it('runs after confirmation', () => {

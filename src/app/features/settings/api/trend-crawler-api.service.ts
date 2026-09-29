@@ -7,8 +7,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiEnvelope } from '../../../core/api/api-envelope';
-import { unwrapData } from '../../../core/api/unwrap';
+import { ApiEnvelope, PageEnvelope } from '../../../core/api/api-envelope';
+import { PagedResult, unwrapData, unwrapPage } from '../../../core/api/unwrap';
+import { RUN_HISTORY_PAGE_SIZE } from '../../../shared/ui/run-history';
 
 const BASE = '/api/settings/trend-crawler';
 
@@ -63,5 +64,12 @@ export class TrendCrawlerApiService {
    */
   syncAll(): Observable<TrendCrawlerStatus> {
     return this.http.post<ApiEnvelope<TrendCrawlerStatus>>(`${BASE}/sync-all`, {}).pipe(unwrapData());
+  }
+
+  /** 2026-09-29：執行紀錄分頁（新到舊，page 從 0 開始）。 */
+  getRuns(page: number, size = RUN_HISTORY_PAGE_SIZE): Observable<PagedResult<TrendSyncRun>> {
+    return this.http
+      .get<ApiEnvelope<PageEnvelope<TrendSyncRun>>>(`${BASE}/runs`, { params: { page, size } })
+      .pipe(unwrapPage((run: TrendSyncRun) => run));
   }
 }

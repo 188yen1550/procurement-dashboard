@@ -633,12 +633,11 @@
   </section>
   <!-- 2026-09-29：PTT 新品探索（01:30）排最前面，依每日執行順序。 -->
   <app-discovery-panel />
-  <!-- PTT 熱度同步（02:00）排在熱度規則選品（03:00）之前。 -->
+  <!-- PTT 熱度同步（02:00）。 -->
   <app-trend-crawler-panel />
   <!-- 2026-09-28：Google 趨勢參考（SerpApi，每週一 04:00），緊接在 PTT 熱度同步之後——它挑選要查詢的商品時依據的是 PTT 熱度。 -->
   <app-google-trends-panel />
-  <!-- 2026-09-24 決策 D2：原本在 熱度建議清單頁、只給管理層的批次觸發按鈕（2026-09-29 改稱熱度規則選品）。 -->
-  <app-ai-suggestion-batch-panel />
+  <!-- 2026-09-29：熱度規則選品面板（03:00 批次）隨熱度建議清單移除。 -->
   } @else if (activeTab() === 'accounts') {
   <section class="management-head">
     <div>

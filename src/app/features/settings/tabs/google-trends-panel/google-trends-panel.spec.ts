@@ -18,7 +18,7 @@ function status(overrides: Partial<GoogleTrendsStatus> = {}): GoogleTrendsStatus
     processedCount: null,
     totalCount: null,
     batchSize: 40,
-    schedule: '每週一 04:00（PTT 熱度同步 02:00、熱度規則選品 03:00 之後）',
+    schedule: '每週一 04:00（PTT 熱度同步 02:00 之後）',
     recentRuns: [
       {
         id: 1,
@@ -46,6 +46,10 @@ describe('GoogleTrendsPanel', () => {
     getStatus: vi.fn(() => of(status())),
     setEnabled: vi.fn((enabled: boolean) => of(status({ enabled }))),
     syncTop: vi.fn(() => of(status({ running: true }))),
+    // 2026-09-29：執行紀錄分頁；預設一頁，分頁列不顯示
+    getRuns: vi.fn((page: number) =>
+      of({ items: [], totalElements: 1, totalPages: 1, pageNumber: page, pageSize: 10 }),
+    ),
   };
 
   async function create(): Promise<HTMLElement> {

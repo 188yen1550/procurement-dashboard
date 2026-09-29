@@ -164,9 +164,6 @@ button:focus-visible {
 .stat-card.rejected::before {
   background: #c76661;
 }
-.stat-card.ai-suggested::before {
-  background: #8a63d2;
-}
 .stat-card {
   padding: 0;
 }
@@ -821,17 +818,70 @@ td {
   animation: shimmer 1.4s infinite;
 }
 
-/* 熱度排行榜（2026-09-27）：原本借用 Top 10 的 .col-rank／.col-score，只有兩欄有寬度，
-   其餘兩欄平分剩下的 79%，趨勢方向欄右側空出一大塊。改用自己的欄寬，
-   並把最小寬度從 Top 10 的 850px 降到 560px——只有四欄，不需要那麼寬才開始水平捲動。 */
-.trend-leaderboard-panel table {
+/* ===================== 商品排行頁籤（2026-09-29）=====================
+   「推薦 Top 10」與「熱度排行」合併成同一張卡片的兩個頁籤（WAI-ARIA tabs：方向鍵切換、
+   只有目前頁籤在 Tab 順序裡）。頁籤列貼齊標題列底線，選中的頁籤用品牌色底線＋粗體，
+   不只靠顏色區分（色弱使用者也看得出來）。 */
+.rankings-header {
+  padding-bottom: 0;
+}
+.ranking-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: -1px; /* 讓選中頁籤的底線蓋在 .panel-header 的分隔線上 */
+}
+.ranking-tabs [role='tab'] {
+  padding: 0.55rem 0.95rem 0.6rem;
+  color: var(--c-ink-muted);
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  font-size: var(--t-base);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ranking-tabs [role='tab']:hover {
+  color: var(--c-ink);
+}
+.ranking-tabs [role='tab'][aria-selected='true'] {
+  color: var(--c-brand);
+  border-bottom-color: var(--c-brand);
+  font-weight: 800;
+}
+.ranking-tabs [role='tab']:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: -2px;
+  border-radius: 0.4rem 0.4rem 0 0;
+}
+/* 兩個頁籤面板疊在同一格：卡片高度＝兩者較高者，切換時不跳動（高風險側欄的高度跟著這張卡片）。
+   未選的面板 visibility:hidden——不顯示、不可聚焦，也不會被螢幕閱讀器讀到，但仍佔位。 */
+.ranking-panels {
+  display: grid;
+}
+.ranking-panel {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.ranking-panel.is-inactive {
+  visibility: hidden;
+}
+.ranking-subtitle {
+  margin: 0;
+  padding: 0.75rem 1.1rem 0.5rem;
+}
+
+/* 熱度排行（2026-09-27 起的欄寬沿用）：五欄合計 100%，只有五個短欄位，最小寬度 640px 就夠，
+   不需要跟 Top 10 一樣 850px 才開始水平捲動。 */
+.trend-leaderboard table {
   min-width: 640px;
 }
-/* 2026-09-28：熱度排行榜改成 .content-grid 下方的獨立一列（見 dashboard.html 註解），
-   不再是 flex 並排列的成員，才不會把 Top 10 與高風險提示擠成 0 寬。 */
-.trend-leaderboard-panel {
-  margin-top: 1.25rem;
-  overflow: hidden;
+/* 放進排行卡片後表格變窄，「排名」等短表頭不要被擠成兩行。 */
+.trend-leaderboard th {
+  white-space: nowrap;
+}
+.lb-rise {
+  margin-left: 0.35rem;
+  white-space: nowrap;
 }
 /* 2026-09-28：多一欄 Google 趨勢（五欄合計 100%），最小寬度 560 → 640px。 */
 .col-lb-rank {

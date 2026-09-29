@@ -4,9 +4,9 @@
  * - 來源開關：預設停用（要花 SerpApi 額度的外部服務，不能自己開始呼叫）
  * - 本月用量／上限：SerpApi 免費方案每月 250 次，系統上限預設 200；「查無資料」也計費
  * - 立即查詢熱度前 N 名：只查最新一筆 PTT 熱度 > 0 的商品，後端背景執行，這裡輪詢進度
- * - 最近 10 次執行紀錄
+ * - 執行紀錄（2026-09-29 起每頁 10 筆可翻頁，見 shared/ui/run-history）
  *
- * Google 趨勢是獨立參考資訊（方向與成長率），不併入熱度分數、不影響 熱度規則選品門檻。
+ * Google 趨勢是獨立參考資訊（方向與成長率），不併入熱度分數、不影響排序與評分。
  * 結構比照旁邊的 TrendCrawlerPanel。
  */
 import { DatePipe } from '@angular/common';
@@ -16,6 +16,7 @@ import { Subscription, timer } from 'rxjs';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
+import { RunHistory, RunHistoryPager } from '../../../../shared/ui/run-history';
 import { GoogleTrendRun, GoogleTrendsApiService, GoogleTrendsStatus } from '../../api/google-trends-api.service';
 import { TrendSyncRunStatus } from '../../api/trend-crawler-api.service';
 
@@ -37,13 +38,16 @@ const STATUS_BADGE: Record<TrendSyncRunStatus, string> = {
 
 @Component({
   selector: 'app-google-trends-panel',
-  imports: [DatePipe],
+  imports: [DatePipe, RunHistoryPager],
   templateUrl: './google-trends-panel.html',
 })
 export class GoogleTrendsPanel implements OnInit {
   private readonly api = inject(GoogleTrendsApiService);
   private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** 執行紀錄分頁：第 1 頁用狀態 API 的 recentRuns（輪詢即時更新），其餘頁呼叫分頁 API。 */
+  readonly history = new RunHistory<GoogleTrendRun>((page) => this.api.getRuns(page), this.destroyRef);
 
   readonly useMockData = APP_CONFIG.useMockData;
   readonly status = signal<GoogleTrendsStatus | null>(null);
@@ -74,7 +78,9 @@ export class GoogleTrendsPanel implements OnInit {
   private pollSubscription: Subscription | null = null;
 
   ngOnInit(): void {
-    if (!this.useMockData) this.load();
+    if (this.useMockData) return;
+    this.load();
+    this.history.refreshTotals();
   }
 
   statusLabel(status: TrendSyncRunStatus): string {
@@ -101,7 +107,7 @@ export class GoogleTrendsPanel implements OnInit {
       ? [
           '啟用後，每週一 04:00 會自動查詢 PTT 熱度前幾名商品的 Google 搜尋趨勢，管理層也可以在品項詳情頁手動查詢單一商品。',
           '每次查詢都會用掉 1 次 SerpApi 額度（含「查無資料」），到達本月上限後自動停止。',
-          'Google 趨勢只作為參考資訊，不會改變熱度分數與熱度規則選品結果。',
+          'Google 趨勢只作為參考資訊，不會改變熱度分數、排行與評分。',
         ]
       : ['停用後不會再呼叫 SerpApi，既有的 Google 趨勢資料會保留。'];
     this.dialog
@@ -155,6 +161,7 @@ export class GoogleTrendsPanel implements OnInit {
             next: (status) => {
               this.isSubmitting.set(false);
               this.applyStatus(status);
+              this.history.refreshTotals(); // 多了一筆執行中的紀錄，總筆數跟著更新
             },
             error: (err: unknown) => {
               this.isSubmitting.set(false);
@@ -182,7 +189,11 @@ export class GoogleTrendsPanel implements OnInit {
   }
 
   private applyStatus(status: GoogleTrendsStatus): void {
+    const wasRunning = this.status()?.running ?? false;
     this.status.set(status);
+    if (wasRunning && !status.running) {
+      this.history.refreshTotals(); // 查詢剛結束：第 2 頁以後的內容與總筆數可能都變了
+    }
     if (status.running) {
       this.stopPolling();
       this.pollSubscription = timer(GOOGLE_TRENDS_POLL_MS)

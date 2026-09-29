@@ -3,13 +3,12 @@
  *
  * - PTT 熱度來源開關：停用後每日 02:00 排程記錄為「已略過」，手動同步（單一商品或全部）
  *   也會被後端擋下。刻意不改用模擬資料替代——模擬資料是隨機漫步，每晚跑會讓
- *   熱度規則選品（原 AI 主動選品）被雜訊觸發（見後端 TrendCrawlerSettings 說明）。
+ *   「連續上升」標記與熱度排行被雜訊影響（見後端 TrendCrawlerSettings 說明）。
  * - 立即同步全部商品：後端在背景執行、立即回應，這裡每 3 秒輪詢一次進度，
  *   直到結束。離開頁面不會中斷同步。
- * - 最近 10 次執行紀錄：排程與手動觸發都會留紀錄。
+ * - 執行紀錄：排程與手動觸發都會留紀錄（2026-09-29 起每頁 10 筆可翻頁，見 shared/ui/run-history）。
  *
- * 跟「熱度規則選品」面板放在一起：兩者是同一條每日排程鏈（02:00 熱度同步 →
- * 03:00 熱度建議批次），管理者要一起看才看得出順序。
+ * 2026-09-29：03:00 熱度規則選品批次與其面板移除，本面板不再有「排在它之前」的順序限制。
  */
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
@@ -19,6 +18,7 @@ import { Subscription, timer } from 'rxjs';
 import { toApiError } from '../../../../core/api/api-error';
 import { APP_CONFIG } from '../../../../core/config/app-config';
 import { DialogService } from '../../../../core/dialog/dialog.service';
+import { RunHistory, RunHistoryPager } from '../../../../shared/ui/run-history';
 import {
   TrendCrawlerApiService,
   TrendCrawlerStatus,
@@ -54,7 +54,7 @@ const TRIGGER_LABEL: Record<TrendSyncTrigger, string> = {
 
 @Component({
   selector: 'app-trend-crawler-panel',
-  imports: [DatePipe],
+  imports: [DatePipe, RunHistoryPager],
   templateUrl: './trend-crawler-panel.html',
 })
 export class TrendCrawlerPanel implements OnInit {
@@ -64,6 +64,9 @@ export class TrendCrawlerPanel implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+
+  /** 執行紀錄分頁：第 1 頁用狀態 API 的 recentRuns（輪詢即時更新），其餘頁呼叫分頁 API。 */
+  readonly history = new RunHistory<TrendSyncRun>((page) => this.api.getRuns(page), this.destroyRef);
 
   /** 儀表板「前往管理」帶 #trend-crawler 過來時，第一次載入完捲到這個面板。 */
   private pendingScroll = this.route.snapshot.fragment === 'trend-crawler';
@@ -92,7 +95,9 @@ export class TrendCrawlerPanel implements OnInit {
   private pollSubscription: Subscription | null = null;
 
   ngOnInit(): void {
-    if (!this.useMockData) this.load();
+    if (this.useMockData) return;
+    this.load();
+    this.history.refreshTotals();
   }
 
   statusLabel(status: TrendSyncRunStatus): string {
@@ -130,7 +135,7 @@ export class TrendCrawlerPanel implements OnInit {
       : [
           '停用後，每日 02:00 的熱度同步與 01:30 的新品探索會略過不執行，品項詳情頁的「立即更新」也會暫停使用。',
           '既有的熱度資料會保留，但不會再更新；時間越久，趨勢分數會依時效衰減逐漸回到中性值。',
-          '停用期間不會改用模擬資料替代，避免隨機數字觸發熱度規則選品；PTT 新品探索也會一併暫停。',
+          '停用期間不會改用模擬資料替代，避免隨機數字影響熱度排行與「連續上升」標記；PTT 新品探索也會一併暫停。',
         ];
     this.dialog
       .confirm(enable ? '要啟用 PTT 熱度來源嗎？' : '要停用 PTT 熱度來源嗎？', lines, enable ? '啟用' : '停用')
@@ -181,6 +186,7 @@ export class TrendCrawlerPanel implements OnInit {
             next: (status) => {
               this.isSubmitting.set(false);
               this.applyStatus(status);
+              this.history.refreshTotals(); // 多了一筆執行中的紀錄，總筆數跟著更新
             },
             error: (err: unknown) => {
               this.isSubmitting.set(false);
@@ -211,7 +217,11 @@ export class TrendCrawlerPanel implements OnInit {
 
   /** 執行中就排下一次輪詢；結束就停止。 */
   private applyStatus(status: TrendCrawlerStatus): void {
+    const wasRunning = this.status()?.running ?? false;
     this.status.set(status);
+    if (wasRunning && !status.running) {
+      this.history.refreshTotals(); // 同步剛結束：第 2 頁以後的內容與總筆數可能都變了
+    }
     if (status.running) {
       this.schedulePoll();
     } else {

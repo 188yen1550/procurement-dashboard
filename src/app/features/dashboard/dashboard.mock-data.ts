@@ -27,9 +27,6 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
     pendingReviews: 18,
     approvedProducts: 72,
     rejectedProducts: 14,
-    // Mock 情境：18 筆已轉正候選、待人工審核；另外 5 筆是 熱度建議、
-    // 尚未轉正候選，兩者互斥，用來展示「熱度建議待確認」卡片。
-    aiSuggestedPending: 5,
     conversionRate: 63.7,
     conversionScope: 'COMPANY',
     conversionApprovedCount: 78,
@@ -155,11 +152,16 @@ export const DASHBOARD_MOCK_DATA: DashboardMockData = {
   // ⚠️ 2026-09-25 新增：展示模式的示範資料，數字純粹示意，跟 recommendations
   // 沒有對應關係——這張表刻意只看趨勢單一因子，商品組合本來就可能不同。
   trendLeaderboard: [
-    { id: 1, rank: 1, name: '磁吸快充行動電源', popularityScore: 84.37, trendDirection: 'UP', isRealSource: true, keyword: '行動電源', googleTrend: mockGoogle(1, 'STABLE', -8.6) },
-    { id: 2, rank: 2, name: '手工蛋捲禮盒家庭號', popularityScore: 75.0, trendDirection: 'UP', isRealSource: true, keyword: '蛋捲', googleTrend: mockGoogle(2, 'UP', 25.7) },
-    { id: 3, rank: 3, name: '沐浴乳補充包', popularityScore: 63.0, trendDirection: 'DOWN', isRealSource: true, keyword: '沐浴乳', googleTrend: mockGoogle(3, 'DOWN', -18.2) },
-    { id: 4, rank: 4, name: '機能防曬外套', popularityScore: 55.2, trendDirection: 'STABLE', isRealSource: false, keyword: '防曬外套', googleTrend: null },
-    { id: 5, rank: 5, name: '低糖精品月餅禮盒', popularityScore: 48.1, trendDirection: 'DOWN', isRealSource: true, keyword: '月餅', googleTrend: mockGoogle(5, null, null) },
+    { id: 1, rank: 1, name: '磁吸快充行動電源', popularityScore: 84.37, trendDirection: 'UP', isRealSource: true, keyword: '行動電源', googleTrend: mockGoogle(1, 'STABLE', -8.6), consecutiveRise: true },
+    { id: 2, rank: 2, name: '手工蛋捲禮盒家庭號', popularityScore: 75.0, trendDirection: 'UP', isRealSource: true, keyword: '蛋捲', googleTrend: mockGoogle(2, 'UP', 25.7), consecutiveRise: false },
+    { id: 3, rank: 3, name: '沐浴乳補充包', popularityScore: 63.0, trendDirection: 'DOWN', isRealSource: true, keyword: '沐浴乳', googleTrend: mockGoogle(3, 'DOWN', -18.2), consecutiveRise: false },
+    { id: 4, rank: 4, name: '機能防曬外套', popularityScore: 55.2, trendDirection: 'STABLE', isRealSource: false, keyword: '防曬外套', googleTrend: null, consecutiveRise: false },
+    { id: 5, rank: 5, name: '低糖精品月餅禮盒', popularityScore: 48.1, trendDirection: 'DOWN', isRealSource: true, keyword: '月餅', googleTrend: mockGoogle(5, null, null), consecutiveRise: false },
+    { id: 6, rank: 6, name: '冷凍鹽酥雞分享包', popularityScore: 46.3, trendDirection: 'UP', isRealSource: true, keyword: '鹽酥雞', googleTrend: null, consecutiveRise: false },
+    { id: 7, rank: 7, name: '免沖洗寵物清潔慕斯', popularityScore: 44.0, trendDirection: 'STABLE', isRealSource: true, keyword: '寵物清潔', googleTrend: null, consecutiveRise: false },
+    { id: 8, rank: 8, name: '台南古早味肉燥罐', popularityScore: 41.8, trendDirection: 'UP', isRealSource: true, keyword: '肉燥', googleTrend: null, consecutiveRise: false },
+    { id: 9, rank: 9, name: '竹炭除濕包 20 入', popularityScore: 39.5, trendDirection: 'DOWN', isRealSource: true, keyword: '除濕包', googleTrend: null, consecutiveRise: false },
+    { id: 10, rank: 10, name: '手搖研磨咖啡豆', popularityScore: 36.2, trendDirection: 'STABLE', isRealSource: true, keyword: '咖啡豆', googleTrend: null, consecutiveRise: false },
   ],
 };
 

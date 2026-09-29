@@ -1,7 +1,8 @@
 /**
  * 檔案用途：正式候選 CANDIDATE 商品主清單、篩選及生命週期操作。
- * 真實模式由後端處理搜尋、篩選與分頁；展示模式使用本地資料。AI_SUGGESTED
- * 不在主清單顯示，刪除只允許尚未審核過（第 1 次送審中）的商品。
+ * 真實模式由後端處理搜尋、篩選與分頁；展示模式使用本地資料。
+ * 刪除只允許尚未審核過（第 1 次送審中）的商品。
+ * 2026-09-29：熱度建議清單移除，商品名稱下方改以「連續上升」標記提醒最近 3 次熱度同步都上升。
  */
 import { ListSort, ListSortControls, SortHeader, sortRows } from '../../shared/ui/list-sort';
 import { CommonModule } from '@angular/common';
@@ -29,7 +30,7 @@ import {
   SUBMISSION_BATCH_NONE,
   SubmissionBatchResponsePayload,
 } from './api/product-api.contract';
-import { ProductListItem, toProductActionAvailability } from './api/product.mapper';
+import { ProductListItem, RecentTrend, toProductActionAvailability } from './api/product.mapper';
 import { ProductTypeLookupService } from '../settings/api/product-type-lookup.service';
 import { Icon } from '../../shared/components/icon/icon';
 
@@ -54,9 +55,10 @@ function mockItem(
   dataCompleteness: number,
   reviewStatus: ReviewStatus,
   itemStatus: ItemStatus,
-  candidateStatus: 'CANDIDATE' | 'AI_SUGGESTED',
+  candidateStatus: 'CANDIDATE',
   updatedAt: string,
   submissionCount: number,
+  consecutiveRise = false,
 ): ProductListItem {
   return {
     id,
@@ -87,18 +89,20 @@ function mockItem(
       candidateStatus,
       submissionCount,
     }),
+    recentTrend: consecutiveRise
+      ? { popularityScore: 74, direction: 'UP', isRealSource: true, recentDirections: ['UP', 'UP', 'UP'], consecutiveRise: true }
+      : null,
   };
 }
 
 // submissionCount 為 1 起算（建立即第 1 次送審，2026-09-24 修正）；≥ 2 代表曾被拒絕後重送。
 const MOCK_PRODUCTS: readonly ProductListItem[] = [
   mockItem(101, '中秋炭烤海陸組合禮盒', '食品／生鮮', 'RESALE', '潮港鮮物有限公司', 92.4, 96, 'APPROVED', 'ACTIVE', 'CANDIDATE', '2026-08-31T09:25:00+08:00', 2),
-  mockItem(102, '輕量智慧溫控電熱杯', '3C／家電', 'NEW', '沐光科技', 81.6, 78, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-30T16:40:00+08:00', 1),
+  mockItem(102, '輕量智慧溫控電熱杯', '3C／家電', 'NEW', '沐光科技', 81.6, 78, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-30T16:40:00+08:00', 1, true),
   mockItem(103, '無香低敏濃縮洗衣紙補充組', '日用品', 'RESALE', '淨好生活實業', 74.8, 88, 'REJECTED', 'ACTIVE', 'CANDIDATE', '2026-08-29T11:15:00+08:00', 2),
   mockItem(104, '超輕量折疊收納推車', '生活雜貨', 'NEW', '簡居創意工坊', null, 48, 'PENDING', 'ACTIVE', 'CANDIDATE', '2026-08-28T14:08:00+08:00', 1),
   mockItem(105, '敏弱肌保濕修護組', '美妝保養', 'RESALE', '禾心生技', 86.2, 100, 'APPROVED', 'ARCHIVED', 'CANDIDATE', '2026-08-26T10:30:00+08:00', 2),
   mockItem(106, '可機洗抗菌涼感被', '寢具家用', 'RESALE', '眠好家紡織', null, 55, 'REJECTED', 'ARCHIVED', 'CANDIDATE', '2026-08-24T13:50:00+08:00', 3),
-  mockItem(107, '旅行用全能轉接充電器', '3C／家電', 'RESALE', '沐光科技', 79.1, 82, 'PENDING', 'ACTIVE', 'AI_SUGGESTED', '2026-08-31T07:10:00+08:00', 1),
 ];
 
 /** 進階篩選的條件群組（清除單一條件時使用；日期區間起訖一起清除）。 */
@@ -382,6 +386,13 @@ export class ProductManagement implements OnInit {
       .getDescriptionMap()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((map) => this.productTypeDescriptions.set(map));
+  }
+
+  /** 「連續上升」標記的滑鼠提示：附上最新熱度與資料來源，並說明只是提醒。 */
+  riseTitle(trend: RecentTrend): string {
+    const score = trend.popularityScore === null ? '' : `，最新熱度 ${trend.popularityScore} 分`;
+    const source = trend.isRealSource ? '' : '（最新一筆為模擬資料）';
+    return `最近 3 次熱度同步都上升${score}${source}。僅提醒，不影響評分與審核。`;
   }
 
   /**
