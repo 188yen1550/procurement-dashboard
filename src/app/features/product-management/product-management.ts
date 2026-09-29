@@ -388,11 +388,13 @@ export class ProductManagement implements OnInit {
       .subscribe((map) => this.productTypeDescriptions.set(map));
   }
 
-  /** 「連續上升」標記的滑鼠提示：附上最新熱度與資料來源，並說明只是提醒。 */
+  /**
+   * 「連續上升」標記的滑鼠提示：附上最新熱度，並說明只是提醒。
+   * 後端只在最近 3 筆都是真實資料時才標連續上升（2026-09-29），所以這裡不需要再區分模擬資料。
+   */
   riseTitle(trend: RecentTrend): string {
     const score = trend.popularityScore === null ? '' : `，最新熱度 ${trend.popularityScore} 分`;
-    const source = trend.isRealSource ? '' : '（最新一筆為模擬資料）';
-    return `最近 3 次熱度同步都上升${score}${source}。僅提醒，不影響評分與審核。`;
+    return `最近 3 次熱度同步都上升${score}。僅提醒，不影響評分與審核。`;
   }
 
   /**

@@ -53,8 +53,28 @@ describe('summarizeCrawlerStatus', () => {
     expect(s.warnings).toEqual(['2 個商品 PTT 抓不到，改用模擬資料']);
   });
 
-  it('有失敗或中斷時標示為錯誤', () => {
-    expect(summarizeCrawlerStatus(status({ recentRuns: [run({ failedCount: 1 })] })).tone).toBe('error');
+  // 2026-09-29：PTT 抓不到不再改用模擬資料——少數商品未更新是警示（已保留上一筆），整次失敗才是錯誤
+  it('少數商品未更新時標示為警示，說明已保留上一筆熱度', () => {
+    const s = summarizeCrawlerStatus(status({ recentRuns: [run({ realCount: 6, failedCount: 1 })] }));
+    expect(s.tone).toBe('warn');
+    expect(s.label).toBe('部分未更新');
+    expect(s.warnings).toEqual(['1 個商品本次未更新，已保留上一筆熱度']);
+  });
+
+  it('全部商品都抓不到（後端記為中斷）時標示為錯誤，只顯示中斷原因', () => {
+    const s = summarizeCrawlerStatus(
+      status({
+        recentRuns: [
+          run({ status: 'FAILED', realCount: 0, failedCount: 7, message: '所有商品都無法取得 PTT 熱度（可能是 PTT 暫時無法連線），已保留各商品上一筆熱度資料' }),
+        ],
+      }),
+    );
+    expect(s.tone).toBe('error');
+    expect(s.warnings).toHaveLength(1);
+    expect(s.warnings[0]).toContain('所有商品都無法取得 PTT 熱度');
+  });
+
+  it('同步中斷時標示為錯誤', () => {
     const interrupted = summarizeCrawlerStatus(
       status({ recentRuns: [run({ status: 'FAILED', message: '應用程式在同步途中關閉，本次未完成' })] }),
     );

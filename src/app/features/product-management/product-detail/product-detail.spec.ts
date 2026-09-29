@@ -352,7 +352,8 @@ describe('ProductDetail', () => {
     expect(component.product()?.trendScore).toBe(90);
   });
 
-  it('clearly labels simulated fallback data after sync', () => {
+  // 2026-09-29：PTT 抓不到不再改用模擬資料；只有開發時改用模擬來源才會回 SIMULATED，仍需清楚標示
+  it('clearly labels simulated data (developer stub source) after sync', () => {
     api.syncTrend.mockReturnValueOnce(
       of({ source: 'SIMULATED', keyword: '中秋烤肉', trendScore: 51, popularityScore: 49, trendDirection: 'UP' as const, collectedAt: '2026-09-25T10:00:00' }),
     );
@@ -360,7 +361,19 @@ describe('ProductDetail', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('模擬資料');
-    expect(text).toContain('PTT 暫時無法取得');
+    expect(text).toContain('不列入評分');
+  });
+
+  it('shows the backend message when PTT is unavailable (502), keeping the previous trend data', () => {
+    const message = '暫時無法從 PTT 取得「中秋烤肉」的熱度，已保留上一筆熱度資料，請稍後再試';
+    api.syncTrend.mockReturnValueOnce(
+      throwError(() => new HttpErrorResponse({ status: 502, error: { success: false, message, data: null } })),
+    );
+    component.syncTrend();
+    fixture.detectChanges();
+    expect(component.syncState()).toBe('error');
+    const section = fixture.nativeElement.querySelector('.evaluation-item.trend') as HTMLElement;
+    expect(section.textContent).toContain('已保留上一筆熱度資料');
   });
 
   it('shows a readable timeout message for trend sync and lets the user retry', () => {

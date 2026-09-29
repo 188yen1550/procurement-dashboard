@@ -449,7 +449,7 @@
             @if (p.trendSource === 'PTT') {
             資料來源：PTT 討論量
             } @else if (p.trendSource === 'SIMULATED') {
-            資料來源：<strong>模擬資料</strong>（PTT 暫時無法取得，下次同步會再試）
+            資料來源：<strong>模擬資料</strong>（舊版遺留，不列入評分；下次成功同步後會由 PTT 資料取代）
             } @else {
             資料來源：{{ p.trendSource ?? '未知' }}
             }

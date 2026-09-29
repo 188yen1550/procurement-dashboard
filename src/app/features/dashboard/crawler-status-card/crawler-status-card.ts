@@ -38,11 +38,13 @@ export function summarizeCrawlerStatus(status: TrendCrawlerStatus): CrawlerCardS
   if (lastRun?.status === 'FAILED') {
     warnings.push(lastRun.message ? `上次同步中斷：${lastRun.message}` : '上次同步中斷');
   }
+  // 只有 2026-09-29 以前的紀錄（或開發時改用模擬來源）才會有 fallbackCount
   if (lastRun && lastRun.fallbackCount > 0) {
     warnings.push(`${lastRun.fallbackCount} 個商品 PTT 抓不到，改用模擬資料`);
   }
-  if (lastRun && lastRun.failedCount > 0) {
-    warnings.push(`${lastRun.failedCount} 個商品同步失敗`);
+  // 2026-09-29 起 PTT 抓不到不再改用模擬資料，改計入 failedCount 並保留上一筆熱度
+  if (lastRun && lastRun.status !== 'FAILED' && lastRun.failedCount > 0) {
+    warnings.push(`${lastRun.failedCount} 個商品本次未更新，已保留上一筆熱度`);
   }
 
   if (status.running) {
@@ -55,8 +57,13 @@ export function summarizeCrawlerStatus(status: TrendCrawlerStatus): CrawlerCardS
   if (!status.enabled) {
     return { tone: 'muted', label: '已停用', lastRun, warnings };
   }
-  if (lastRun?.status === 'FAILED' || (lastRun && lastRun.failedCount > 0)) {
+  // 整次中斷或全部商品都沒更新（後端記為 FAILED）才是錯誤；少數商品 PTT 暫時抓不到是可預期的，
+  // 已保留上一筆資料、評分照常衰減，列為警示即可，避免卡片天天亮紅燈而失去意義。
+  if (lastRun?.status === 'FAILED') {
     return { tone: 'error', label: '需要注意', lastRun, warnings };
+  }
+  if (lastRun && lastRun.failedCount > 0) {
+    return { tone: 'warn', label: '部分未更新', lastRun, warnings };
   }
   if (warnings.length > 0) {
     return { tone: 'warn', label: '部分模擬資料', lastRun, warnings };

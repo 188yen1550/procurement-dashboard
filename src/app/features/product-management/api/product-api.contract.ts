@@ -193,7 +193,7 @@ export interface ProductResponsePayload {
   /**
    * 2026-09-29：最新熱度摘要，只有清單 GET /api/products 會有值（後端 RecentTrendService），其餘端點為 null。
    * trendScore 是最新一筆的熱度分數（popularity_score）；recentTrendDirections 為最近最多 3 筆方向，新到舊；
-   * consecutiveRise＝最近 3 次都上升。原熱度建議清單專用的 suggestionReason、googleTrend 已移除。
+   * consecutiveRise＝最近 3 次都是真實資料且都上升。原熱度建議清單專用的 suggestionReason、googleTrend 已移除。
    */
   trendScore?: Decimal;
   trendDirection?: 'UP' | 'DOWN' | 'STABLE' | null;
@@ -353,7 +353,8 @@ export interface AiAnalysisResponsePayload {
  */
 export interface TrendSnapshotPayload {
   /**
-   * 資料來源："PTT"（真實 PTT 討論量）或 "SIMULATED"（PTT 暫時取不到時的模擬備援）。
+   * 資料來源："PTT"（真實 PTT 討論量）或 "SIMULATED"（舊版 PTT 取不到時的模擬備援；2026-09-29 起不再產生，
+   * 抓不到改為保留上一筆，單一商品手動同步回 502）。
    * 舊資料可能出現其他值（例如 seed 資料的 "GOOGLE_TRENDS"），畫面請容錯處理。
    */
   source: string | null;

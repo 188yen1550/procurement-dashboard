@@ -111,11 +111,11 @@ export interface RecentTrend {
   /** 最新一筆熱度分數。 */
   popularityScore: number | null;
   direction: 'UP' | 'DOWN' | 'STABLE' | null;
-  /** false＝最新一筆是 PTT 抓不到時的模擬資料。 */
+  /** false＝最新一筆是舊版遺留的模擬資料（2026-09-29 起不再產生）。 */
   isRealSource: boolean;
   /** 最近最多 3 筆方向，舊到新（畫面由左到右閱讀）。 */
   recentDirections: ('UP' | 'DOWN' | 'STABLE')[];
-  /** 最近 3 次同步都上升；只是提醒，不改變商品狀態。 */
+  /** 最近 3 次同步都是真實資料且都上升（模擬資料不算）；只是提醒，不改變商品狀態。 */
   consecutiveRise: boolean;
 }
 

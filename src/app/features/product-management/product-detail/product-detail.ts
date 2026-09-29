@@ -690,7 +690,8 @@ export class ProductDetail implements OnInit, OnDestroy {
           this.statusMessageState.show(
             trend.source === 'PTT'
               ? '趨勢資料已依 PTT 討論量更新。'
-              : 'PTT 暫時無法取得資料，本次先以模擬資料更新，可稍後再試。',
+              // 2026-09-29 起 PTT 抓不到會回 502（走 error 分支，保留上一筆）；只有開發時改用模擬來源才會走到這裡
+              : '本次為模擬資料（開發用模擬來源），不列入評分。',
           );
           this.product.update((p) =>
             p
