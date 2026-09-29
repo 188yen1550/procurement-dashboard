@@ -742,3 +742,13 @@ a:focus-visible {
 .claim-meta-item {
   white-space: nowrap;
 }
+
+/* 2026-09-29：從 PTT 新品探索建立商品時的提示。 */
+.discovery-source {
+  margin: 0 0 var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  color: var(--c-ink-soft);
+  background: var(--c-brand-tint);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+}

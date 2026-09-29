@@ -59,7 +59,7 @@ export const PRODUCT_API = {
   resaleReferenceSuppliers: '/api/products/resale-reference/suppliers',
   /** GET：逐層過濾參考商品第二層，列出指定品類＋供應商下可選的商品。 */
   resaleReferenceProducts: '/api/products/resale-reference/products',
-  /** POST [僅管理]：手動觸發 AI 主動選品批次。 */
+  /** POST [僅管理]：手動觸發熱度規則選品（原 AI 主動選品批次，2026-09-29 改名；只有固定規則，不呼叫 AI）。 */
   aiSuggestedBatchGenerate: '/api/products/ai-suggested/batch-generate',
   /** GET：依 productTypeId 取得自訂商品屬性（動態問卷）題目清單，2026-09-20新增。 */
   customFieldSchema: '/api/products/custom-field-schema',
@@ -198,11 +198,11 @@ export interface ProductResponsePayload {
   /**
    * 「為什麼被 AI 推薦」的說明文字。只有 GET /api/products/ai-suggested
    * 這支端點會有值，其餘所有回傳這個型別的端點一律是 null——原本這個
-   * 概念完全沒有被計算或回傳過，AI 建議清單想知道「為什麼」只能自己猜。
+   * 概念完全沒有被計算或回傳過，熱度建議清單想知道「為什麼」只能自己猜。
    */
   suggestionReason?: string | null;
   /**
-   * 2026-09-28：AI 建議清單的趨勢說明，語意同 suggestionReason（只有 ai-suggested 端點有值）。
+   * 2026-09-28：熱度建議清單的趨勢說明，語意同 suggestionReason（只有 ai-suggested 端點有值）。
    * trendScore 是最新一筆的熱度分數（popularity_score）；recentTrendDirections 為最近最多 3 筆方向，新到舊。
    */
   trendScore?: Decimal;
@@ -403,6 +403,11 @@ export interface TrendHistoryPointPayload {
  * ⚠️ 後端不檢查商品名稱重複（同名可能合法），防止手滑送兩次是前端責任。
  */
 export interface ProductCreateRequestPayload {
+  /**
+   * 2026-09-29：從「PTT 新品探索」建立商品時帶入探索項目 id（只在新增時送）。後端建立成功後在同一個
+   * 交易裡把該項目標成「已建立商品」；項目已經轉過商品時整筆回 409、商品不會建立。
+   */
+  discoveredItemId?: number;
   productTypeId: number;
   pricingType: PricingType;
   name: string;
@@ -521,7 +526,7 @@ export interface ProductBatchCreateResponsePayload {
  * GET /api/products 的查詢參數，逐一對照 ProductController.search()。
  *
  * ⚠️ candidateStatus 不帶時，ProductService 內部預設帶入 CANDIDATE。
- * 主清單不要主動送 AI_SUGGESTED——查看 AI 建議一律走獨立的
+ * 主清單不要主動送 AI_SUGGESTED——查看 熱度建議一律走獨立的
  * GET /api/products/ai-suggested，避免兩個入口重疊。
  *
  * ⚠️ 三種狀態是三個獨立維度，不是互斥選項。一個商品可以同時是

@@ -79,7 +79,7 @@ describe('Dashboard', () => {
     expect(component.statusTotal()).toBe(109);
     const rows = fixture.nativeElement.querySelectorAll('.status-breakdown li');
     expect(rows).toHaveLength(4);
-    expect(rows[3].textContent).toContain('AI 建議待確認');
+    expect(rows[3].textContent).toContain('熱度建議待確認');
     expect(fixture.nativeElement.querySelector('.status-note').textContent).toContain('128');
   });
 
@@ -100,8 +100,8 @@ describe('Dashboard', () => {
     const text = fixture.nativeElement.querySelector('.conversion-panel').textContent;
     expect(text).toContain('送審過的 122 件商品中，78 件審核通過');
     expect(text).toContain('全公司口徑');
-    // 2026-09-24：管理層口徑剔除 AI 建議商品，文案需讓主管知道分母範圍。
-    expect(text).toContain('不含尚未轉正的 AI 建議商品');
+    // 2026-09-24：管理層口徑剔除 熱度建議商品，文案需讓主管知道分母範圍。
+    expect(text).toContain('不含尚未轉正的 熱度建議商品');
     expect(text).not.toContain('我的選品轉換率');
   });
 
@@ -210,7 +210,7 @@ describe('Dashboard', () => {
 
 /**
  * 2026-09-24 職責分離：同一份 Mock 資料，管理層畫面不呈現沒有對應頁面的資訊
- * （AI 建議待確認），統計卡改連到審核頁，待審的 Top 10 直接進審核詳情。
+ * （熱度建議待確認），統計卡改連到審核頁，待審的 Top 10 直接進審核詳情。
  */
 describe('Dashboard (manager view)', () => {
   let component: Dashboard;
@@ -245,7 +245,7 @@ describe('Dashboard (manager view)', () => {
     expect(links).toContain('/products/2');
   });
   it('hides the AI suggestion card and chart slice, and adjusts the total accordingly', () => {
-    expect(fixture.nativeElement.textContent).not.toContain('AI 建議待確認');
+    expect(fixture.nativeElement.textContent).not.toContain('熱度建議待確認');
     expect(component.statusBreakdown().map((item) => item.label)).toEqual(['待人工審核', '審核通過', '審核拒絕']);
     const stats = component.data().statistics;
     expect(component.scopeTotal()).toBe(stats.totalProducts - stats.aiSuggestedPending);

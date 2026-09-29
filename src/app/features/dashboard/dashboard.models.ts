@@ -15,7 +15,7 @@ export interface DashboardStatistics {
   rejectedProducts: number;
   /**
    * 2026-09-16修正：與 pendingReviews 互斥（不再是子集）——後端已改為
-   * pendingReviews 只算已轉正候選（CANDIDATE）的商品，AI 建議尚未轉正的
+   * pendingReviews 只算已轉正候選（CANDIDATE）的商品，熱度建議尚未轉正的
    * 商品只計入這個欄位，兩者相加才等於全部 PENDING 商品數。
    */
   aiSuggestedPending: number;
@@ -40,7 +40,7 @@ export interface DashboardStatistics {
   conversionApprovedCount: number;
   conversionSubmittedCount: number;
   /**
-   * 統計卡（總數／待審／通過／拒絕／AI 建議）的計算口徑（2026-09-29）：PERSONAL＝只算目前登入者
+   * 統計卡（總數／待審／通過／拒絕／熱度建議）的計算口徑（2026-09-29）：PERSONAL＝只算目前登入者
    * 建立的商品（操作人員），COMPANY＝全公司（管理人員）。null 代表統計 API 載入失敗。
    */
   statisticsScope: 'PERSONAL' | 'COMPANY' | null;

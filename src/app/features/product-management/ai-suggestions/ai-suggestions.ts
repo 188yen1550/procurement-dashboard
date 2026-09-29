@@ -40,7 +40,7 @@ interface Suggestion {
   google: GoogleTrendSignal | null;
   /** 綜合分數（最終分數）；尚無評估紀錄為 null。 */
   finalScore: number | null;
-  /** 真實模式讀取 AI 建議端點的 suggestionReason。 */
+  /** 真實模式讀取 熱度建議端點的 suggestionReason。 */
   reason: string | null;
   audienceMatch: number | null;
   risk: string | null;
@@ -163,7 +163,7 @@ export class AiSuggestions implements OnInit {
   readonly pageState = signal<AiState>('default');
   readonly query = signal('');
   /**
-   * 2026-09-29：只看我建立的（後端篩選）。儀表板「AI 建議待確認」卡片是個人口徑，
+   * 2026-09-29：只看我建立的（後端篩選）。儀表板「熱度建議待確認」卡片是個人口徑，
    * 連過來時帶 ?createdByMe=true，清單才會與卡片數字一致；使用者可自行取消勾選看全部。
    */
   readonly createdByMe = signal(this.route.snapshot.queryParamMap.get('createdByMe') === 'true');
@@ -173,7 +173,7 @@ export class AiSuggestions implements OnInit {
 
   constructor() {
     // 自動消失邏輯已內建在 createDismissibleMessage() 裡，不需要另外註冊監看。
-    // 原地重新點擊「AI 建議清單」連結時 ngOnInit() 不會再被觸發，要靠這裡
+    // 原地重新點擊「熱度建議清單」連結時 ngOnInit() 不會再被觸發，要靠這裡
     // 才能重新抓最新的 AI_SUGGESTED 清單。Mock 模式不套用。
     if (!this.useMockData) reloadOnRevisit(() => this.load());
   }
@@ -209,7 +209,7 @@ export class AiSuggestions implements OnInit {
    * 2026-09-24 職責分離（決策 D2）：「批次篩選熱門候選」手動觸發按鈕移到
    * 設定 › 系統管理 › 排程與同步（見 settings/tabs/ai-suggestion-batch-panel）。
    * 後端端點本來就只給 MANAGER，管理層不再進入這頁後，這顆按鈕留在這裡
-   * 就沒有任何人按得到。這頁回歸純操作層畫面：檢視並轉正 AI 建議。
+   * 就沒有任何人按得到。這頁回歸純操作層畫面：檢視並轉正 熱度建議。
    */
 
   load(): void {
@@ -250,7 +250,7 @@ export class AiSuggestions implements OnInit {
     if (this.useMockData) {
       this.items.set(SUGGESTIONS.map((i) => ({ ...i })));
       this.pageState.set('default');
-      this.statusMessageState.show('已恢復 AI 建議 Mock 資料。');
+      this.statusMessageState.show('已恢復 熱度建議 Mock 資料。');
       return;
     }
     this.load();

@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { Observable, combineLatest, forkJoin, of } from 'rxjs';
 import { catchError, debounceTime, map, startWith } from 'rxjs/operators';
 import { toApiError } from '../../../core/api/api-error';
@@ -206,6 +206,25 @@ export class ProductForm implements OnInit {
   readonly useMockData = APP_CONFIG.useMockData;
   readonly productId = this.route.snapshot.paramMap.get('id');
   readonly isEditMode = !!this.productId;
+
+  /**
+   * 2026-09-29：從「PTT 新品探索」點「建立商品」進來時帶 ?discoveryId=&name=&productTypeId=。
+   * 只在新增模式採用；送出時把 discoveryId 一併送給後端（見 ProductCreateRequestPayload.discoveredItemId）。
+   */
+  readonly discoverySource = this.isEditMode ? null : ProductForm.readDiscoverySource(this.route.snapshot.queryParamMap);
+
+  private static readDiscoverySource(
+    params: ParamMap,
+  ): { id: number; name: string; productTypeId: number | null } | null {
+    const id = Number(params.get('discoveryId'));
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const typeId = Number(params.get('productTypeId'));
+    return {
+      id,
+      name: (params.get('name') ?? '').trim().slice(0, 100),
+      productTypeId: Number.isInteger(typeId) && typeId > 0 ? typeId : null,
+    };
+  }
 
   readonly pageState = signal<FormPageState>('default');
   readonly saved = signal(false);
@@ -732,7 +751,18 @@ export class ProductForm implements OnInit {
     this.wireCustomFieldSchemaCascade();
     this.wirePriceAboveMarketWarning();
 
-    if (!this.productId) return; // 新增模式，沒有既有資料可載入
+    if (!this.productId) {
+      // 新增模式，沒有既有資料可載入；從 PTT 新品探索過來時預先帶入名稱與品類。
+      // 品類要等 loadProductTypes() 的選項回來才看得到，但 FormControl 先設值不受影響。
+      const source = this.discoverySource;
+      if (source) {
+        this.form.patchValue({
+          name: source.name,
+          ...(source.productTypeId !== null ? { productTypeId: source.productTypeId } : {}),
+        });
+      }
+      return;
+    }
 
     if (this.useMockData) {
       const entry = EDIT_DATA[this.productId];
@@ -1051,7 +1081,9 @@ export class ProductForm implements OnInit {
 
     const save$ = this.isEditMode
       ? this.api.update(this.productId!, payload)
-      : this.api.create(payload);
+      : this.api.create(
+          this.discoverySource ? { ...payload, discoveredItemId: this.discoverySource.id } : payload,
+        );
 
     save$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (product) => this.afterSaveSuccess(product.id, resubmit),

@@ -103,14 +103,14 @@ export interface ProductListItem {
   /**
    * 「為什麼被 AI 推薦」——只有 GET /api/products/ai-suggested 這支端點
    * 會有值，其餘端點固定是 undefined。原本這個概念完全沒有被計算或
-   * 回傳過，AI 建議清單一直顯示不出「為什麼」。
+   * 回傳過，熱度建議清單一直顯示不出「為什麼」。
    */
   suggestionReason?: string | null;
-  /** 2026-09-28：AI 建議清單的趨勢說明（只有 ai-suggested 端點有值），見 ProductResponsePayload。 */
+  /** 2026-09-28：熱度建議清單的趨勢說明（只有 ai-suggested 端點有值），見 ProductResponsePayload。 */
   suggestionTrend?: SuggestionTrend;
 }
 
-/** AI 建議清單每張卡片的「推薦依據」資料。 */
+/** 熱度建議清單每張卡片的「推薦依據」資料。 */
 export interface SuggestionTrend {
   /** 最新一筆熱度分數；尚無趨勢資料為 null。 */
   popularityScore: number | null;
@@ -162,7 +162,7 @@ export function toProductActionAvailability(
     payload.reviewStatus === 'APPROVED' || payload.reviewStatus === 'REJECTED';
 
   return {
-    // 與後端 ProductService.resubmit() 的候選狀態檢查對稱：AI建議商品須先
+    // 與後端 ProductService.resubmit() 的候選狀態檢查對稱：熱度建議商品須先
     // 加入正式候選才能重新送審，即使 reviewStatus/itemStatus 條件都符合。
     canResubmit:
       payload.reviewStatus === 'REJECTED' &&

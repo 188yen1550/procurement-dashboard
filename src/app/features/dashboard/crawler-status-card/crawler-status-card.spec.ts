@@ -32,7 +32,7 @@ function status(overrides: Partial<TrendCrawlerStatus> = {}): TrendCrawlerStatus
     running: false,
     processedCount: null,
     totalCount: null,
-    schedule: '每天 02:00（早於 03:00 AI 主動選品批次）',
+    schedule: '每天 02:00（早於 03:00 熱度規則選品）',
     recentRuns: [run()],
     ...overrides,
   };

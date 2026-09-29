@@ -101,7 +101,7 @@ export interface DetailProduct {
   trendSource: string | null;
   /** 實際拿去搜尋的關鍵字（商品名稱去掉規格字樣後）。 */
   trendKeyword: string | null;
-  /** 熱度分數 0–100，AI 主動選品以 >70 判斷。 */
+  /** 熱度分數 0–100，熱度規則選品（原 AI 主動選品）以 >70 判斷。 */
   popularityScore: number | null;
   aiSummary: string | null;
   aiReasons: string[];

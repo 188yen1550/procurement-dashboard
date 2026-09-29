@@ -37,7 +37,7 @@ export interface GoogleTrendSignal {
   collectedAt: string;
 }
 
-/** 精簡顯示用（AI 建議清單、熱度排行榜）：方向＋成長率一行字。 */
+/** 精簡顯示用（熱度建議清單、熱度排行榜）：方向＋成長率一行字。 */
 export interface GoogleTrendSummary {
   direction: GoogleTrendDirection | null;
   /** 例如「+25.7%」「搜尋量不足」「尚未查詢」。 */

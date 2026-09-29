@@ -1,11 +1,10 @@
-<!-- 檔案用途：排程作業面板——AI 主動選品批次的手動觸發與最後一次執行結果。 -->
+<!-- 檔案用途：排程作業面板——熱度規則選品（原 AI 主動選品批次）的手動觸發與最後一次執行結果。 -->
 <section class="config-panel" aria-labelledby="ai-batch-title">
   <div class="config-panel-head">
     <div>
-      <h3 id="ai-batch-title">排程作業：AI 主動選品批次</h3>
+      <h3 id="ai-batch-title">排程作業：熱度規則選品</h3>
       <p>
-        系統每日 03:00 自動掃描現有商品，把符合條件的熱門商品加入操作人員的「AI 建議清單」。
-        需要立即看到結果時可在這裡手動執行一次，會實際消耗 Gemini 配額。
+        系統每日 03:00 依固定規則（熱度超過 70 分，或連續 3 次同步都上升）檢查現有商品，把符合條件的待審商品加入操作人員的「熱度建議清單」。這是規則判斷，不呼叫 AI；要找系統裡還沒有的新品，請看上方「PTT 新品探索」。
       </p>
     </div>
     <div class="config-panel-actions">
@@ -18,13 +17,13 @@
     @if (isRunning()) {
       批次執行中，請稍候。
     } @else if (lastRun(); as run) {
-      批次完成：檢查 {{ run.checkedCount }} 個商品，新增 {{ run.suggestedCount }} 個 AI 建議候選。
+      批次完成：檢查 {{ run.checkedCount }} 個商品，新增 {{ run.suggestedCount }} 個 熱度建議候選。
     }
   </p>
   @if (lastRun(); as run) {
     <p class="helper">
       最後一次手動執行（{{ run.finishedAt.toLocaleString('zh-Hant') }}）：檢查
-      {{ run.checkedCount }} 個商品，新增 {{ run.suggestedCount }} 個 AI 建議候選。
+      {{ run.checkedCount }} 個商品，新增 {{ run.suggestedCount }} 個 熱度建議候選。
       檢查數遠大於新增數是正常的，多數商品不符合建議條件。
     </p>
   }

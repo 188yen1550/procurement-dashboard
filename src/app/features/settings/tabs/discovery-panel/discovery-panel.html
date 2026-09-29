@@ -1,0 +1,91 @@
+<!-- 檔案用途：排程作業面板——PTT 新品探索的立即執行、AI 額度與最近執行紀錄。 -->
+<section id="ptt-discovery" class="config-panel" aria-labelledby="discovery-title">
+  <div class="config-panel-head">
+    <div>
+      <h3 id="discovery-title">排程作業：PTT 新品探索</h3>
+      <p>
+        {{ status()?.schedule ?? '每天 01:30（早於 02:00 熱度同步）' }}讀取 PTT 近 7 天的文章標題，由 AI
+        找出系統裡還沒有的商品，放進操作人員的「PTT 新品探索」清單。AI 抽出的名稱必須真的出現在引用的標題裡才會保留。新項目會再由 AI 依核心客群評適配度，適配度最高的前幾項另查 Google 趨勢（使用 Google 趨勢的 SerpApi 月額度）。
+      </p>
+    </div>
+    <div class="config-panel-actions">
+      <button type="button" class="btn-primary" [disabled]="!canRun()" (click)="run()">
+        {{ running() ? '探索中…' : '立即執行探索' }}
+      </button>
+    </div>
+  </div>
+
+  <p class="sr-only" aria-live="polite">
+    @if (running()) {
+      PTT 新品探索執行中。
+    }
+  </p>
+
+  @if (useMockData) {
+    <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示執行紀錄。</p>
+  } @else if (loadError()) {
+    <p class="alert" role="alert">
+      無法載入探索狀態：{{ loadError() }}
+      <button type="button" class="text-action" (click)="load()">重新載入</button>
+    </p>
+  } @else if (status(); as s) {
+    @if (s.running) {
+      <p class="notice" role="status">探索執行中，約需 5～30 分鐘（新標題越多越久）；離開這個頁面不會中斷。</p>
+    } @else if (blockedReason(); as reason) {
+      <p class="notice">目前無法執行：{{ reason }}</p>
+    }
+    <p class="helper">本月 AI 呼叫：{{ s.aiCallsThisMonth }} / {{ s.aiMonthlyLimit }} 次（探索專用額度）。AI 使用 Groq 免費方案，受每分鐘 token 上限影響約每分鐘處理一批。</p>
+    <p class="helper">
+      紀錄欄位：掃到的文章數／去重後送給 AI 的標題數；AI 抽出的商品數（名稱不在標題內而丟棄的筆數／與既有商品相符的筆數／與已略過項目相似的筆數）；新增／再次被提及而更新的探索項目數；完成適配評分／查詢 Google 趨勢的項目數。AI 呼叫次數包含抽取與適配評分。
+    </p>
+
+    @if (s.recentRuns.length === 0) {
+      <p class="helper">尚無執行紀錄。每日 01:30 排程或手動執行後會出現在這裡。</p>
+    } @else {
+      <div class="config-table-wrap">
+        <table class="config-table discovery-runs">
+          <caption class="sr-only">最近 10 次 PTT 新品探索紀錄</caption>
+          <thead>
+            <tr>
+              <th scope="col">開始時間</th>
+              <th scope="col">觸發方式</th>
+              <th scope="col">狀態</th>
+              <th scope="col" class="num">文章／標題</th>
+              <th scope="col" class="num">AI 抽出<small>（丟棄／既有／近似已略過）</small></th>
+              <th scope="col" class="num">新增／更新</th>
+              <th scope="col" class="num">適配評分<small>／Google 趨勢</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of s.recentRuns; track run.id) {
+              <tr>
+                <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+                <td>{{ triggerLabel(run) }}</td>
+                <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
+                @if (hasCounts(run)) {
+                  <td class="num">{{ run.postCount }}／{{ run.titleCount }}</td>
+                  <td class="num">{{ run.extractedCount }}（{{ run.rejectedCount }}／{{ run.matchedExistingCount }}／{{ run.similarDismissedCount }}）</td>
+                  <td class="num">{{ run.newCount }}／{{ run.updatedCount }}</td>
+                  <td class="num">{{ run.fitCount }}／{{ run.googleCount }}</td>
+                } @else {
+                  <td class="num">—</td>
+                  <td class="num">—</td>
+                  <td class="num">—</td>
+                  <td class="num">—</td>
+                }
+              </tr>
+              @if (run.message) {
+                <!-- 說明（警告或中斷原因）可能很長，獨立一列跨全部欄位，不把數字欄擠出表格。 -->
+                <tr class="run-message">
+                  <td colspan="7">{{ run.message }}</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    <p class="helper" role="status">正在載入探索狀態…</p>
+  }
+</section>

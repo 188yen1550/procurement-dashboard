@@ -1,0 +1,28 @@
+/*
+ * 執行紀錄欄位多：數字與狀態儲存格不換行（避免「已完成」徽章被擠成直排）；
+ * 說明（第二階段起）放在下一列跨全部欄位，只有它可以換行。
+ * 真的放不下時交給全域 .config-table-wrap 的水平捲動。
+ */
+.discovery-runs td {
+  white-space: nowrap;
+}
+
+.discovery-runs tr:has(+ .run-message) td {
+  border-bottom: 0;
+}
+
+.discovery-runs .run-message td {
+  padding-top: 0;
+  color: var(--c-ink-muted);
+  font-size: var(--t-xs);
+  white-space: normal;
+}
+
+/* 第二階段欄位變多：表頭的括號說明換到第二行，欄寬跟著數字而不是跟著長標題。 */
+.discovery-runs th small {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  white-space: nowrap;
+}
+

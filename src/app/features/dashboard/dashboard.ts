@@ -103,7 +103,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   /**
    * 2026-09-24 職責分離：儀表板兩個角色都看得到，但不呈現「沒有對應頁面」的資訊。
-   * 「AI 建議待確認」屬於操作層的 AI 建議清單，管理層畫面不顯示這張卡、也不在
+   * 「熱度建議待確認」屬於操作層的 熱度建議清單，管理層畫面不顯示這張卡、也不在
    * 狀態分布裡出現。拿掉這一塊之後分母要跟著扣掉，否則「狀態合計 ≠ 總數」的
    * 不一致警示會在管理層畫面常駐誤報。
    */
@@ -129,7 +129,7 @@ export class Dashboard implements OnInit, OnDestroy {
       { label: '審核拒絕', count: stats.rejectedProducts, color: '#c76661' },
     ];
     if (!this.isManager()) {
-      items.push({ label: 'AI 建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' });
+      items.push({ label: '熱度建議待確認', count: stats.aiSuggestedPending, color: '#8a63d2' });
     }
     return items.map((item) => ({
       ...item,

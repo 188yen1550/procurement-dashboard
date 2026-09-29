@@ -4,6 +4,12 @@
 -->
 <main class="form-page" aria-labelledby="form-title">
   <header class="page-header"><div><a routerLink="/products" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回品項管理</a><h1 id="form-title">{{ isEditMode ? '編輯品項' : '新增品項' }}</h1><p>{{ isApproved() ? '審核通過：一般基本資料可更新，核心選品資料已鎖定。' : (useMockData ? '建立或更新正式候選品項的本地 Mock 資料。' : '建立或更新正式候選品項資料。') }}</p></div><span class="mode-badge">{{ isEditMode ? 'EDIT' : 'CREATE' }}</span></header>
+  @if (discoverySource) {
+  <!-- 2026-09-29：從 PTT 新品探索建立。名稱／品類只是預先帶入，供應商、價格等仍需自行填寫。 -->
+  <p class="discovery-source" role="note">
+    來自 PTT 新品探索：已帶入商品名稱{{ discoverySource.productTypeId !== null ? '與品類' : '' }}，請確認後補齊供應商、成本與售價等資料。儲存後這筆探索項目會標記為「已建立商品」。
+  </p>
+  }
   @if (useMockData) { <section class="state-bar"><div><strong>UI 狀態</strong><span>不呼叫後端</span></div><div role="group" aria-label="切換表單狀態">@for (state of stateOptions; track state) { <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state" (click)="setState(state)">{{ state }}</button> }</div></section> }
   <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage() && !saved()) { <div class="feedback-toast" [attr.role]="pageState() === 'error' || imageState() === 'error' ? 'alert' : 'status'">{{ statusMessage() }}</div> }

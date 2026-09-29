@@ -152,9 +152,9 @@
 
     <!--
       2026-09-24 職責分離：統計卡依角色連到各自有權限的頁面。
-      管理層：待審 → 選品審核；通過／拒絕 → 決策紀錄；不顯示「AI 建議待確認」
-      （AI 建議清單是操作層頁面）。總數卡沒有單一對應頁面，管理層畫面不做連結。
-      操作層：維持原本連到品項管理／AI 建議清單。
+      管理層：待審 → 選品審核；通過／拒絕 → 決策紀錄；不顯示「熱度建議待確認」
+      （熱度建議清單是操作層頁面）。總數卡沒有單一對應頁面，管理層畫面不做連結。
+      操作層：維持原本連到品項管理／熱度建議清單。
     -->
     @if (data().statistics.statisticsScope === 'PERSONAL') {
     <p class="stats-scope-note">以下統計只計算你建立的商品。</p>
@@ -198,7 +198,7 @@
         <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
         </a>
         <!-- 2026-09-16修正：後端 pendingReviews 已改為只算已轉正候選（CANDIDATE）
-             的商品，不再含 AI 建議尚未轉正候選的部分，兩者是互斥集合，
+             的商品，不再含 熱度建議尚未轉正候選的部分，兩者是互斥集合，
              這裡不用再額外說明子集關係。 -->
       </article>
       <article class="stat-card approved">
@@ -215,8 +215,8 @@
       </article>
       <article class="stat-card ai-suggested">
         <a class="stat-card-link" routerLink="/products/ai-suggestions"
-          [queryParams]="{ createdByMe: createdByMeParam() }" aria-label="AI 建議待確認：前往確認清單">
-          <span>AI 建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
+          [queryParams]="{ createdByMe: createdByMeParam() }" aria-label="熱度建議待確認：前往確認清單">
+          <span>熱度建議待確認</span><strong>{{ data().statistics.aiSuggestedPending }}</strong>
         </a>
       </article>
       }
@@ -275,7 +275,7 @@
             <p>自身曾送審的不重複商品為分母，商品審核通過者為分子。</p>
           } @else {
             <h2 id="conversion-title">選品轉換率</h2>
-            <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑（不含尚未轉正的 AI 建議商品）：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
+            <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑（不含尚未轉正的 熱度建議商品）：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
           }
           @if (data().statistics.conversionRate === null) {
             <p class="hint">{{ data().statistics.conversionScope === 'PERSONAL' ? '你建立的選品目前尚未送審過' : '目前尚無商品送審過' }}，因此無法計算轉換率。</p>

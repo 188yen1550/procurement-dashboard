@@ -1,8 +1,8 @@
-<!-- 檔案用途：AI 建議清單；清楚區隔 AI_SUGGESTED 與正式 CANDIDATE，並呈現各種 UI 狀態。 -->
+<!-- 檔案用途：熱度建議清單；清楚區隔 AI_SUGGESTED 與正式 CANDIDATE，並呈現各種 UI 狀態。 -->
 <main class="ai-page" aria-labelledby="ai-title">
   <header class="page-header">
     <div>
-      <h1 id="ai-title">AI 建議清單</h1>
+      <h1 id="ai-title">熱度建議清單</h1>
     </div>
     <div class="header-actions">
       <a class="btn" routerLink="/products">回到正式候選清單</a>
@@ -13,7 +13,7 @@
     <summary>這份清單怎麼來的？怎麼使用？</summary>
     <ol>
       <li>
-        <strong>怎麼產生：</strong>每天 02:00 系統搜尋 PTT 公開看板更新每個商品的熱度，03:00 挑出
+        <strong>怎麼產生：</strong>每天 02:00 系統搜尋 PTT 公開看板更新每個商品的熱度，03:00 以「熱度規則選品」挑出
         「最新熱度超過 70 分」或「連續 3 次同步都上升」的商品，放進這份清單。
       </li>
       <li>
@@ -21,16 +21,17 @@
         每週一更新）。Google 趨勢只作參考，不影響是否被推薦。
       </li>
       <li>
-        <strong>怎麼使用：</strong>AI 只負責挑出值得看的商品，不會自己加入候選。覺得值得評估的，勾選後按
+        <strong>怎麼使用：</strong>系統只依熱度規則挑出值得看的商品，不會自己加入候選。覺得值得評估的，勾選後按
         「加入已選候選」（或單張卡片的「加入 CANDIDATE 候選」），商品才會進入正式候選清單、開始計分與送審。
       </li>
       <li><strong>想看完整走勢：</strong>點「查看趨勢走勢」進入品項詳情，有近 30 天的熱度折線圖。</li>
+      <li><strong>找系統裡還沒有的商品：</strong>這份清單只看既有商品；PTT 上新出現的商品請看「<a routerLink="/products/discoveries">PTT 新品探索</a>」。</li>
     </ol>
   </details>
   @if (useMockData) {
   <section class="state-bar">
     <div><strong>UI 狀態</strong><span>AI_SUGGESTED 與 CANDIDATE 單獨呈現</span></div>
-    <div role="group" aria-label="切換 AI 頁面狀態">
+    <div role="group" aria-label="切換熱度建議頁面狀態">
       @for (state of stateOptions; track state) {
         <button
           type="button"
@@ -51,13 +52,13 @@
   }
   @if (pageState() === 'error') {
     <section class="empty error" role="alert">
-      <h2>AI 建議資料載入失敗</h2>
+      <h2>熱度建議資料載入失敗</h2>
       <p>{{ useMockData ? '這是本地錯誤狀態，未呼叫 LLM 或後端。' : statusMessage() }}</p>
       <button type="button" (click)="reset()">重試</button>
     </section>
   } @else if (pageState() === 'loading') {
     <section class="skeleton" role="status">
-      正在載入 AI 建議…
+      正在載入 熱度建議…
       @for (line of [1, 2, 3, 4]; track line) {
         <span></span>
       }
@@ -70,7 +71,7 @@
       </section>
     }
     <section class="toolbar">
-      <label for="ai-search">搜尋 AI 建議</label
+      <label for="ai-search">搜尋 熱度建議</label
       ><input
         id="ai-search"
         type="search"
@@ -95,18 +96,18 @@
     </section>
     @if (items().length === 0) {
       <section class="empty">
-        <h2>目前沒有 AI 建議品項</h2>
+        <h2>目前沒有 熱度建議品項</h2>
         <p>建議可能已全數加入候選，或 Demo 資料為空。</p>
         <button type="button" (click)="reset()">{{ useMockData ? '恢復 Demo 資料' : '重新整理' }}</button>
       </section>
     } @else if (filtered().length === 0) {
       <section class="empty">
-        <h2>找不到符合的 AI 建議</h2>
+        <h2>找不到符合的 熱度建議</h2>
         <button type="button" (click)="query.set('')">清除搜尋</button>
       </section>
     } @else {
-      <app-list-sort [sort]="suggestionSort" [choices]="suggestionSortChoices" label="AI 建議品項" />
-  <section class="suggestion-grid" aria-label="AI 建議品項">
+      <app-list-sort [sort]="suggestionSort" [choices]="suggestionSortChoices" label="熱度建議品項" />
+  <section class="suggestion-grid" aria-label="熱度建議品項">
         @for (item of filtered() | sortRows: suggestionSort.state(); track item.id) {
           <article>
             <header>

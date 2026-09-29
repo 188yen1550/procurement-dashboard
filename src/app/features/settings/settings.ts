@@ -55,6 +55,7 @@ import { CustomExtensions, CustomExtensionsNextTab } from './tabs/custom-extensi
 import { WeatherLinkage } from './tabs/weather-linkage/weather-linkage';
 import { FESTIVAL_BOOST_CAP_KEY, FestiveCampaigns } from './tabs/festive-campaigns/festive-campaigns';
 import { AiSuggestionBatchPanel } from './tabs/ai-suggestion-batch-panel/ai-suggestion-batch-panel';
+import { DiscoveryPanel } from './tabs/discovery-panel/discovery-panel';
 import { TrendCrawlerPanel } from './tabs/trend-crawler-panel/trend-crawler-panel';
 import { GoogleTrendsPanel } from './tabs/google-trends-panel/google-trends-panel';
 
@@ -403,6 +404,7 @@ const MOCK_ACCOUNTS: readonly AccountVM[] = [
     WeatherLinkage,
     FestiveCampaigns,
     AiSuggestionBatchPanel,
+    DiscoveryPanel,
     TrendCrawlerPanel,
     GoogleTrendsPanel,
     // 「計分與判定參數」前往另一組（選品基礎資料 › 天氣連動）的提示連結。
@@ -731,7 +733,7 @@ export class Settings implements OnInit {
         this.loadProductTypes('extensions');
         return;
       case 'jobs':
-        // 三個排程面板（PTT 熱度同步、Google 趨勢、AI 主動選品批次）各自在首次渲染時載入狀態；
+        // 四個排程面板（PTT 新品探索、PTT 熱度同步、Google 趨勢、熱度規則選品）各自在首次渲染時載入狀態；
         // 這個分頁本身沒有要抓的資料。
         this.markLoaded('jobs');
         return;

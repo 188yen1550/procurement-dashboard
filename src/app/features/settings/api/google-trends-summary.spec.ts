@@ -1,5 +1,5 @@
 /**
- * 檔案用途：驗證 Google 趨勢一行摘要（AI 建議清單、熱度排行榜共用）：
+ * 檔案用途：驗證 Google 趨勢一行摘要（熱度建議清單、熱度排行榜共用）：
  * 沒查過與查無資料都要明講，不能顯示成 0 或「持平」。
  */
 import { GoogleTrendSignal, summarizeGoogleTrend } from './google-trends-api.service';

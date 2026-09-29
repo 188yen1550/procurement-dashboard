@@ -86,7 +86,7 @@ export class ProductApiService {
   }
 
   /**
-   * 2. GET /api/products/ai-suggested：AI 建議清單。
+   * 2. GET /api/products/ai-suggested：熱度建議清單。
    *
    * ⚠️ 後端這支**只吃 Pageable，不吃任何篩選參數**
    * （ProductController.searchAiSuggested 的簽名只有 Pageable），
@@ -301,7 +301,7 @@ export class ProductApiService {
   /**
    * 14. POST /api/products/ai-suggested/batch-generate [僅管理]
    *
-   * 手動觸發 AI 主動選品批次。正式排程是 AiSuggestionBatchService 的
+   * 手動觸發 熱度規則選品。正式排程是 AiSuggestionBatchService 的
    * @Scheduled（每日凌晨三點），這支端點存在的理由是 demo／開發時
    * 不用乾等到凌晨三點才看得到效果。
    *

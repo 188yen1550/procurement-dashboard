@@ -1,5 +1,5 @@
 /**
- * 檔案用途：驗證 AI 建議搜尋、Empty 與人工加入候選流程。
+ * 檔案用途：驗證 熱度建議搜尋、Empty 與人工加入候選流程。
  *
  * ⚠️ 這次接上真實 API 後才發現：useMockData 目前是 false（見 app-config.ts），
  * 代表 ngOnInit() 一定會呼叫 ProductApiService.listAiSuggested()。
@@ -142,7 +142,7 @@ describe('AiSuggestions', () => {
   });
 
   it('explains that suggestions must be promoted before scoring and review', () => {
-    expect(fixture.nativeElement.textContent).toContain('AI 建議清單');
+    expect(fixture.nativeElement.textContent).toContain('熱度建議清單');
     expect(fixture.nativeElement.textContent).toContain('加入 CANDIDATE 候選');
   });
 
@@ -233,10 +233,10 @@ describe('AiSuggestions', () => {
     expect(fixture.nativeElement.textContent).toContain('加入候選操作目前已停用');
     component.setState('loading');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('正在載入 AI 建議');
+    expect(fixture.nativeElement.textContent).toContain('正在載入 熱度建議');
     component.setState('empty');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('目前沒有 AI 建議品項');
+    expect(fixture.nativeElement.textContent).toContain('目前沒有 熱度建議品項');
     component.setState('error');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('載入失敗');

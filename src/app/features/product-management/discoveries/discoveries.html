@@ -1,0 +1,206 @@
+<!-- 檔案用途：PTT 新品探索清單（操作層）。每張卡片是一個「PTT 上被討論、系統裡還沒有」的商品線索。 -->
+<main class="discovery-page" aria-labelledby="discovery-title">
+  <header class="page-header">
+    <div>
+      <h1 id="discovery-title">PTT 新品探索</h1>
+      <p>PTT 上正在被討論、系統裡還沒有的商品。值得評估的就建立商品，不相關的略過。</p>
+    </div>
+  </header>
+
+  <details class="discovery-guide">
+    <summary>這份清單怎麼來的？</summary>
+    <ol>
+      <li><strong>掃描：</strong>每天 01:30 讀取 PTT 7 個看板近 7 天的文章標題（不讀內文、不登入）。</li>
+      <li><strong>抽取：</strong>由 AI 從標題找出具體商品；系統再檢查商品名稱確實出現在引用的標題裡，AI 捏造的一律丟棄。</li>
+      <li><strong>排除既有商品：</strong>名稱與系統商品相同或非常接近的不列出，那些商品已經由每日熱度同步追蹤。</li>
+      <li><strong>熱度：</strong>當天提及最多的前 10 項會再查 PTT 近 90 天的討論量，換算方式與商品熱度相同。
+        這是<strong>討論量</strong>，不是銷量。</li>
+      <li><strong>適配度：</strong>AI 依目前啟用的核心客群與團購通路條件給 0～100 分，並寫出理由與疑慮；
+        這是 AI 的意見，請搭配理由判斷。客群設定改了之後會重新評分。</li>
+      <li><strong>溫層：</strong>依品類的預設溫層，由系統規則判定通路能不能配送（不是 AI 判斷）。</li>
+      <li><strong>Google 趨勢：</strong>每次只替適配度最高的前幾項查 Google 搜尋趨勢，交叉確認不是只有 PTT 在討論。</li>
+      <li><strong>略過的原因會被記住：</strong>選「不是實體商品」，AI 之後不會再抽出類似名稱；其他原因會在評適配度時當作反例。
+        名稱與已略過項目非常相似的新結果也不會再列出。</li>
+    </ol>
+  </details>
+
+  <div class="list-toolbar">
+    <div class="status-tabs" role="tablist" aria-label="處理狀態">
+      @for (tab of tabs; track tab.status) {
+        <button type="button" role="tab" [attr.aria-selected]="status() === tab.status" [class.active]="status() === tab.status"
+          (click)="selectTab(tab.status)">
+          {{ tab.label }}
+          @if (status() === tab.status && pageState() === 'ready') {
+            <span class="tab-count">{{ totalElements() }}</span>
+          }
+        </button>
+      }
+    </div>
+    <label class="sort-select">
+      排序
+      <select [value]="sort()" (change)="selectSort($any($event.target).value)">
+        @for (option of sortOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (pageState() === 'loading') {
+    <p class="helper" role="status">正在載入探索結果…</p>
+  } @else if (pageState() === 'error') {
+    <p class="alert" role="alert">
+      無法載入探索結果：{{ loadError() }}
+      <button type="button" class="text-action" (click)="load()">重新載入</button>
+    </p>
+  } @else if (items().length === 0) {
+    <section class="empty discovery-empty">
+      <app-icon name="inbox" size="md" />
+      <p>{{ useMockData ? 'Mock 模式沒有探索資料（探索結果來自每日排程）。' : emptyText() }}</p>
+    </section>
+  } @else {
+    <ul class="discovery-list" aria-label="探索結果">
+      @for (item of items(); track item.id) {
+        <li class="panel discovery-card">
+          <header>
+            <div>
+              <h2>{{ item.displayName }}</h2>
+              <p class="category">
+                <span>{{ item.categoryHint ?? '品類未判定' }}</span>
+                @if (temperatureBadge(item); as temp) {
+                  <span class="temp-badge" [attr.data-tone]="temp.tone" [title]="temp.title">{{ temp.text }}</span>
+                }
+              </p>
+            </div>
+            @if (item.fitScore !== null) {
+              <div class="fit" title="AI 依核心客群與團購通路條件評估的適配度（0～100），是意見不是事實，請看下方理由">
+                <strong>{{ item.fitScore }}</strong>
+                <span>適配度</span>
+              </div>
+            } @else {
+              <div class="fit fit-unchecked"><span>未評適配度</span></div>
+            }
+          </header>
+
+          @if (item.fitScore !== null && (item.fitReason || item.fitConcerns.length > 0)) {
+            <div class="fit-detail">
+              @if (item.fitReason) {
+                <p><span class="ai-tag">AI 評估</span>{{ item.fitReason }}</p>
+              }
+              @if (item.fitConcerns.length > 0) {
+                <ul class="concerns" aria-label="AI 列出的疑慮">
+                  @for (concern of item.fitConcerns; track $index) {
+                    <li>{{ concern }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+
+          <dl class="metrics">
+            <div><dt>近 7 天提及</dt><dd>{{ item.mentionCount }} 篇</dd></div>
+            <div><dt>淨推文</dt><dd>{{ item.pushVolume }}</dd></div>
+            <div>
+              <dt>PTT 熱度</dt>
+              @if (item.popularityScore !== null) {
+                <dd [attr.data-direction]="item.trendDirection">{{ item.popularityScore }}・{{ directionLabel(item.trendDirection) }}</dd>
+              } @else {
+                <dd class="unchecked">未查</dd>
+              }
+            </div>
+            @if (item.windowVolume !== null) {
+              <div><dt>90 天討論量</dt><dd>{{ item.windowVolume }}</dd></div>
+            }
+            <div>
+              <dt>Google 趨勢</dt>
+              <dd [attr.data-direction]="item.googleDirection" [class.unchecked]="item.googleStatus !== 'OK'">{{ googleText(item) }}</dd>
+            </div>
+            <div><dt>最後出現</dt><dd>{{ item.lastSeenAt | date: 'MM/dd' }}</dd></div>
+          </dl>
+
+          @if (item.evidence.length > 0) {
+            <div class="evidence">
+              <h3>PTT 原文</h3>
+              <ul>
+                @for (post of item.evidence; track post.url) {
+                  <li>
+                    <span class="board">{{ post.board }}</span>
+                    <a [href]="post.url" target="_blank" rel="noopener noreferrer">{{ post.title }}</a>
+                    <span class="post-meta">{{ post.postedAt | date: 'MM/dd' }}@if (post.pushVolume > 0) { · 推 {{ post.pushVolume }} }</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          <footer>
+            @switch (item.status) {
+              @case ('NEW') {
+                @if (dismissingId() === item.id) {
+                  <form class="dismiss-form" (submit)="$event.preventDefault(); submitDismiss(item)">
+                    <label class="field">
+                      略過原因 <em>*</em>
+                      <select [value]="dismissCode() ?? ''" (change)="selectDismissCode($any($event.target).value)"
+                        [attr.aria-describedby]="'dismiss-hint-' + item.id">
+                        <option value="" disabled>請選擇</option>
+                        @for (reason of dismissReasons; track reason.code) {
+                          <option [value]="reason.code">{{ reason.label }}</option>
+                        }
+                      </select>
+                    </label>
+                    <p class="helper" [id]="'dismiss-hint-' + item.id">
+                      {{ dismissHint() || '略過後，之後再被 PTT 提及也不會重新出現；略過錯了可以到「已略過」分頁移回。' }}
+                    </p>
+                    <label class="field">
+                      補充說明@if (dismissNoteRequired()) { <em>*</em> } @else {（選填）}
+                      <input type="text" [value]="dismissNote()" [maxLength]="dismissNoteMaxLength"
+                        (input)="updateDismissNote($any($event.target).value)" />
+                    </label>
+                    <div class="actions">
+                      <button type="button" class="btn" [disabled]="busyId() !== null" (click)="cancelDismiss()">取消</button>
+                      <button type="submit" class="btn-primary" [disabled]="!canSubmitDismiss()">
+                        {{ busyId() === item.id ? '略過中…' : '確認略過' }}
+                      </button>
+                    </div>
+                  </form>
+                } @else {
+                  <p>第一次出現：{{ item.firstSeenAt | date: 'yyyy/MM/dd' }}</p>
+                  <div class="actions">
+                    <button type="button" class="btn" [disabled]="busyId() !== null" (click)="startDismiss(item)">略過</button>
+                    <a class="btn-primary" routerLink="/products/new" [queryParams]="createQueryParams(item)">建立商品</a>
+                  </div>
+                }
+              }
+              @case ('DISMISSED') {
+                <p>
+                  {{ item.handledByName ?? '—' }} 於 {{ item.handledAt | date: 'yyyy/MM/dd' }} 略過@if (dismissedReasonText(item); as reasonText) {：{{ reasonText }}}
+                </p>
+                <div class="actions">
+                  <button type="button" class="btn" [disabled]="busyId() !== null" (click)="restore(item)">移回待處理</button>
+                </div>
+              }
+              @case ('CONVERTED') {
+                <p>{{ item.handledByName ?? '—' }} 於 {{ item.handledAt | date: 'yyyy/MM/dd' }} 建立商品</p>
+                @if (item.convertedProductId !== null) {
+                  <div class="actions">
+                    <a class="btn" [routerLink]="['/products', item.convertedProductId]">查看商品</a>
+                  </div>
+                } @else {
+                  <p class="helper">商品已刪除</p>
+                }
+              }
+            }
+          </footer>
+        </li>
+      }
+    </ul>
+
+    @if (totalPages() > 1) {
+      <nav class="pager" aria-label="分頁">
+        <button type="button" class="btn" [disabled]="!hasPrevious()" (click)="goToPage(pageNumber() - 1)">上一頁</button>
+        <span>第 {{ pageNumber() + 1 }} / {{ totalPages() }} 頁，共 {{ totalElements() }} 筆</span>
+        <button type="button" class="btn" [disabled]="!hasNext()" (click)="goToPage(pageNumber() + 1)">下一頁</button>
+      </nav>
+    }
+  }
+</main>

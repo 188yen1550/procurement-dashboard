@@ -11,6 +11,7 @@
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { NEVER, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DialogService } from '../../../core/dialog/dialog.service';
@@ -444,5 +445,44 @@ describe('ProductForm', () => {
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(component.statusMessage()).toContain('請勿重複送出');
     expect(fixture.nativeElement.querySelector('.primary').disabled).toBe(true);
+  });
+  // 2026-09-29：從 PTT 新品探索點「建立商品」進來，名稱與品類預先帶入，送出時一併帶 discoveredItemId。
+  it('prefills name and category from a PTT discovery and sends discoveredItemId on create', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'products/new', component: ProductForm }]),
+        { provide: ProductApiService, useValue: api },
+        { provide: SettingsApiService, useValue: settingsApi },
+      ],
+    }).compileComponents();
+    const harness = await RouterTestingHarness.create();
+    const form = await harness.navigateByUrl(
+      '/products/new?discoveryId=7&name=%E7%BE%A9%E7%BE%8E%E5%B0%8F%E6%B3%A1%E8%8A%99&productTypeId=2',
+      ProductForm,
+    );
+    harness.detectChanges();
+
+    expect(form.discoverySource).toEqual({ id: 7, name: '義美小泡芙', productTypeId: 2 });
+    expect(form.form.controls.name.value).toBe('義美小泡芙');
+    expect(form.form.controls.productTypeId.value).toBe(2);
+    expect(harness.routeNativeElement?.textContent).toContain('來自 PTT 新品探索');
+
+    form.form.patchValue({ supplierName: '義美食品', campaignTags: ['daily'], targetCustomer: '家庭' });
+    form.submit();
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ discoveredItemId: 7, name: '義美小泡芙' }));
+  });
+
+  it('ignores an invalid discoveryId and does not send discoveredItemId', () => {
+    expect(component.discoverySource).toBeNull();
+    component.form.patchValue({
+      name: '測試商品',
+      supplierName: '測試供應商',
+      productTypeId: 2,
+      campaignTags: ['daily'],
+      targetCustomer: '家庭',
+    });
+    component.submit();
+    expect(api.create.mock.calls[0][0]).not.toHaveProperty('discoveredItemId');
   });
 });

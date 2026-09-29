@@ -6,7 +6,7 @@
  * - 立即查詢熱度前 N 名：只查最新一筆 PTT 熱度 > 0 的商品，後端背景執行，這裡輪詢進度
  * - 最近 10 次執行紀錄
  *
- * Google 趨勢是獨立參考資訊（方向與成長率），不併入熱度分數、不影響 AI 主動選品門檻。
+ * Google 趨勢是獨立參考資訊（方向與成長率），不併入熱度分數、不影響 熱度規則選品門檻。
  * 結構比照旁邊的 TrendCrawlerPanel。
  */
 import { DatePipe } from '@angular/common';
@@ -101,7 +101,7 @@ export class GoogleTrendsPanel implements OnInit {
       ? [
           '啟用後，每週一 04:00 會自動查詢 PTT 熱度前幾名商品的 Google 搜尋趨勢，管理層也可以在品項詳情頁手動查詢單一商品。',
           '每次查詢都會用掉 1 次 SerpApi 額度（含「查無資料」），到達本月上限後自動停止。',
-          'Google 趨勢只作為參考資訊，不會改變熱度分數與 AI 主動選品結果。',
+          'Google 趨勢只作為參考資訊，不會改變熱度分數與熱度規則選品結果。',
         ]
       : ['停用後不會再呼叫 SerpApi，既有的 Google 趨勢資料會保留。'];
     this.dialog
