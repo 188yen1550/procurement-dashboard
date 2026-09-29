@@ -52,6 +52,17 @@ import {
 } from './product-detail.model';
 import { CandidateStatus } from '../../../core/domain/enums';
 
+/** 2026-09-30：Google 趨勢 vs PTT 熱度方向比對結果（見 ProductDetail.googlePttComparison）。 */
+export interface GooglePttComparison {
+  state: 'MATCH' | 'OPPOSITE' | 'DIFFERENT' | 'UNAVAILABLE';
+  text: string;
+}
+
+const DIRECTION_LABEL: Record<'UP' | 'DOWN' | 'STABLE', string> = { UP: '上升', DOWN: '下降', STABLE: '持平' };
+
+/** Google 每週查一次、PTT 每天同步；相差超過這個天數就在比對結果註明，提醒兩者不是同一時期。 */
+const COMPARISON_MAX_GAP_DAYS = 7;
+
 /**
  * 把 AiAnalysisModel 轉成 toDetailProduct() 要的 extras 形狀。
  *
@@ -275,6 +286,56 @@ export class ProductDetail implements OnInit, OnDestroy {
   private readonly googleTrendsApi = inject(GoogleTrendsApiService);
   readonly isManager = this.readOnly;
   readonly googleTrend = signal<GoogleTrendSignal | null>(null);
+  /**
+   * 2026-09-30：卡片標題右側的數值（比照市場趨勢卡的分數位置），只放成長率「+23.5%」。
+   * 沒查過、查無資料、基準期為 0（沒有成長率）一律「—」，原因由卡片內文說明。
+   */
+  readonly googleTrendHeadline = computed(() => {
+    const signal = this.googleTrend();
+    if (!signal || signal.status === 'NO_DATA' || signal.growthRate === null) return '—';
+    const rounded = roundGrowthRate(signal.growthRate);
+    return `${rounded > 0 ? '+' : ''}${rounded}%`;
+  });
+
+  /**
+   * 2026-09-30：Google 趨勢 vs PTT 熱度的方向比對（交叉驗證提示，不影響任何分數）。
+   * - MATCH：方向相同。
+   * - OPPOSITE：一升一降，提示主管人工確認（黃色提示，不是錯誤）。
+   * - DIFFERENT：其中一方持平，另一方有升降，僅供參考。
+   * - UNAVAILABLE：PTT 尚未同步或為舊版模擬資料，無法比對。
+   * Google 沒查過或查無資料時回 null（整行不顯示；卡片內文已說明原因）。
+   * 兩者資料時間相差超過 7 天時另外註明，避免拿不同時期的方向硬比。
+   */
+  readonly googlePttComparison = computed<GooglePttComparison | null>(() => {
+    const google = this.googleTrend();
+    const product = this.product();
+    if (!google || google.status !== 'OK' || !google.direction || !product) return null;
+    if (!product.lastSyncedAt) return { state: 'UNAVAILABLE', text: 'PTT 尚無熱度資料，無法比對' };
+    if (product.trendSource === 'SIMULATED') return { state: 'UNAVAILABLE', text: 'PTT 為舊版模擬資料，無法比對' };
+
+    const googleDir = google.direction;
+    const pttDir = product.trendDirection;
+    let result: GooglePttComparison;
+    if (googleDir === pttDir) {
+      result = { state: 'MATCH', text: `與 PTT 方向一致（皆${DIRECTION_LABEL[googleDir]}）` };
+    } else if (googleDir !== 'STABLE' && pttDir !== 'STABLE') {
+      result = {
+        state: 'OPPOSITE',
+        text: `與 PTT 方向相反（Google ${DIRECTION_LABEL[googleDir]}、PTT ${DIRECTION_LABEL[pttDir]}），建議人工確認`,
+      };
+    } else {
+      result = {
+        state: 'DIFFERENT',
+        text: `與 PTT 方向不同（Google ${DIRECTION_LABEL[googleDir]}、PTT ${DIRECTION_LABEL[pttDir]}），僅供參考`,
+      };
+    }
+
+    const gapDays = Math.abs(Date.parse(google.collectedAt) - Date.parse(product.lastSyncedAt)) / 86_400_000;
+    if (Number.isFinite(gapDays) && gapDays > COMPARISON_MAX_GAP_DAYS) {
+      result = { ...result, text: `${result.text}；兩者資料時間相差 ${Math.round(gapDays)} 天` };
+    }
+    return result;
+  });
   readonly googleTrendState = signal<'idle' | 'syncing' | 'error'>('idle');
   readonly googleTrendError = signal('');
   /**
@@ -305,8 +366,9 @@ export class ProductDetail implements OnInit, OnDestroy {
     }
 
     const chartData = {
-      // collectedAt 只取到分鐘，避免同一天多次同步時橫軸標籤過長擠在一起。
-      labels: history.map((point) => (point.collectedAt ? point.collectedAt.slice(5, 16) : '')),
+      // 2026-09-30：橫軸只顯示日期（MM-DD），去掉 ISO 字串「T02:00」之後的時間。
+      // 排程一天同步一次；同一天手動再同步時會出現相同日期的兩個點，屬預期。
+      labels: history.map((point) => (point.collectedAt ? point.collectedAt.slice(5, 10) : '')),
       datasets: [
         {
           data: history.map((point) => point.popularityScore),

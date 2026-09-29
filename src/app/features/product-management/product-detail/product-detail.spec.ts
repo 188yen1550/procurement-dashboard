@@ -332,6 +332,25 @@ describe('ProductDetail', () => {
     expect(canvas).toBeTruthy();
     expect(fixture.nativeElement.textContent).not.toContain('歷史資料筆數還不夠');
   });
+  // 2026-09-30：橫軸只顯示日期（MM-DD），不再帶 ISO 字串「T02:00」之後的時間
+  it('labels the trend chart x-axis with the date only', () => {
+    const chart = (component as unknown as { trendChart: { data: { labels: unknown[] } } | null }).trendChart;
+    expect(chart).toBeTruthy();
+    expect(chart!.data.labels).toEqual(['09-23', '09-24']);
+  });
+  // 2026-09-30：第一行核心客群／歷史銷售／預估購買；第二行 Google 趨勢（左）＋市場趨勢（右），兩者為同層級的獨立卡片
+  it('lays out evaluation cards: three in the first row, then Google trend and market trend as sibling cards', () => {
+    const metrics = fixture.nativeElement.querySelector('.evaluation-metrics') as HTMLElement;
+    const items = Array.from(metrics.children) as HTMLElement[];
+    expect(items.every((item) => item.classList.contains('evaluation-item'))).toBe(true);
+    expect(items.map((item) => item.querySelector(':scope > header > h2')?.textContent?.trim().slice(0, 4))).toEqual([
+      '核心客群', '歷史銷售', '預估購買', 'Goog', '市場趨勢',
+    ]);
+    expect(items[3].classList).toContain('google-trend');
+    expect(items[4].classList).toContain('trend');
+    // Google 趨勢不再嵌在市場趨勢卡片裡
+    expect(items[4].querySelector('.google-trend')).toBeNull();
+  });
   it('shows a hint instead of a chart when trend history has fewer than 2 points', () => {
     api.getTrendHistory.mockReturnValueOnce(
       of([{ collectedAt: '2026-09-24T02:00:00', popularityScore: 63.37, trendDirection: 'UP' as const }]),
@@ -549,6 +568,18 @@ describe('ProductDetail', () => {
       expect(block.textContent).toContain('下降');
       expect(block.textContent).toContain('近 7 天比前 4 週 -18.2%');
       expect(block.textContent).toContain('搜尋關鍵字「中秋烤肉」');
+      // 2026-09-30：卡片標題右側只放成長率，依方向上色
+      const headline = block.querySelector(':scope > header > strong')!;
+      expect(headline.textContent?.trim()).toBe('-18.2%');
+      expect(headline.getAttribute('data-direction')).toBe('DOWN');
+      // 成長率計算依據
+      const metrics = Array.from(block.querySelectorAll('.google-trend-metrics dd'), (dd) => dd.textContent?.trim());
+      expect(metrics).toEqual(['30', '36.7', '92 筆']);
+      // PTT 上升（fixture）vs Google 下降 → 方向相反，提示人工確認；相差 3 天不加註
+      const compare = block.querySelector('.google-ptt-compare')!;
+      expect(compare.getAttribute('data-state')).toBe('OPPOSITE');
+      expect(compare.textContent).toContain('與 PTT 方向相反（Google 下降、PTT 上升），建議人工確認');
+      expect(compare.textContent).not.toContain('相差');
       // 區塊內只剩說明提示（info-tip）的按鈕，沒有會花額度的查詢按鈕
       const buttons = Array.from(block.querySelectorAll('button'), (b) => b.textContent ?? '');
       expect(buttons.some((text) => text.includes('查詢 Google 趨勢'))).toBe(false);
@@ -563,6 +594,70 @@ describe('ProductDetail', () => {
       );
       const { root } = await render(false);
       expect(root.querySelector('.google-trend')!.textContent).toContain('Google 搜尋量不足，無法判斷趨勢');
+      expect(root.querySelector('.google-trend > header > strong')!.textContent?.trim()).toBe('—');
+      expect(root.querySelector('.google-trend-metrics')).toBeNull();
+      expect(root.querySelector('.google-ptt-compare')).toBeNull();
+    });
+
+    // 2026-09-30：與 PTT 方向比對（PTT fixture：上升、2026-09-25 同步）
+    describe('與 PTT 方向比對', () => {
+      function okSignal(direction: 'UP' | 'DOWN' | 'STABLE', collectedAt = '2026-09-28T04:00:00'): GoogleTrendSignal {
+        return {
+          productId: 101, keyword: '中秋烤肉', status: 'OK', direction, growthRate: 12,
+          recentAvg: 40, baselineAvg: 35.7, pointCount: 92, collectedAt,
+        };
+      }
+
+      it('方向相同顯示一致', async () => {
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
+        const { root } = await render(false);
+        const compare = root.querySelector('.google-ptt-compare')!;
+        expect(compare.getAttribute('data-state')).toBe('MATCH');
+        expect(compare.textContent?.trim()).toBe('與 PTT 方向一致（皆上升）');
+      });
+
+      it('一方持平、一方有升降時顯示方向不同、僅供參考', async () => {
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('STABLE')));
+        const { root } = await render(false);
+        const compare = root.querySelector('.google-ptt-compare')!;
+        expect(compare.getAttribute('data-state')).toBe('DIFFERENT');
+        expect(compare.textContent).toContain('與 PTT 方向不同（Google 持平、PTT 上升），僅供參考');
+      });
+
+      it('兩者資料時間相差超過 7 天時註明天數', async () => {
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP', '2026-10-10T02:00:00')));
+        const { root } = await render(false);
+        expect(root.querySelector('.google-ptt-compare')!.textContent).toContain('兩者資料時間相差 15 天');
+      });
+
+      it('剛好 7 天不加註', async () => {
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP', '2026-10-02T02:00:00')));
+        const { root } = await render(false);
+        expect(root.querySelector('.google-ptt-compare')!.textContent).not.toContain('相差');
+      });
+
+      it('PTT 尚無熱度資料時說明無法比對', async () => {
+        api.getLatestTrend.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404 })));
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
+        const { root } = await render(false);
+        const compare = root.querySelector('.google-ptt-compare')!;
+        expect(compare.getAttribute('data-state')).toBe('UNAVAILABLE');
+        expect(compare.textContent).toContain('PTT 尚無熱度資料，無法比對');
+      });
+
+      it('PTT 為舊版模擬資料時不比對', async () => {
+        api.getLatestTrend.mockReturnValueOnce(
+          of({ source: 'SIMULATED', keyword: '中秋烤肉', trendScore: 51, popularityScore: 49, trendDirection: 'UP' as const, collectedAt: '2026-09-25T02:00:00' }),
+        );
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
+        const { root } = await render(false);
+        expect(root.querySelector('.google-ptt-compare')!.textContent).toContain('PTT 為舊版模擬資料，無法比對');
+      });
+
+      it('Google 尚未查詢時不顯示比對', async () => {
+        const { root } = await render(false);
+        expect(root.querySelector('.google-ptt-compare')).toBeNull();
+      });
     });
 
     it('尚未查詢時顯示後端的批次涵蓋說明，不再一律承諾每週自動查詢', async () => {
@@ -604,6 +699,7 @@ describe('ProductDetail', () => {
       const { root } = await render(false);
       expect(root.textContent).toContain('總分');
       expect(root.querySelector('.google-trend')!.textContent).toContain('尚未查詢');
+      expect(root.querySelector('.google-trend > header > strong')!.textContent?.trim()).toBe('—');
     });
 
     it('管理層按「查詢 Google 趨勢」會先確認會用掉額度，確認後顯示新結果', async () => {
