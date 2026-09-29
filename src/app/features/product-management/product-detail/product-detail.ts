@@ -27,7 +27,12 @@ import {
   TEMPERATURE_ZONE_LABEL,
 } from '../../../core/domain/labels';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
-import { GoogleTrendSignal, GoogleTrendsApiService, roundGrowthRate } from '../../settings/api/google-trends-api.service';
+import {
+  GoogleTrendCoverage,
+  GoogleTrendSignal,
+  GoogleTrendsApiService,
+  roundGrowthRate,
+} from '../../settings/api/google-trends-api.service';
 import { ProductApiService } from '../api/product-api.service';
 import { WeatherBoostDetailPayload } from '../api/product-api.contract';
 import { Icon } from '../../../shared/components/icon/icon';
@@ -272,6 +277,11 @@ export class ProductDetail implements OnInit, OnDestroy {
   readonly googleTrend = signal<GoogleTrendSignal | null>(null);
   readonly googleTrendState = signal<'idle' | 'syncing' | 'error'>('idle');
   readonly googleTrendError = signal('');
+  /**
+   * 2026-09-30：尚未查詢時，下次每週批次會不會查到這個商品、原因。只在最新一筆為 null 時查；
+   * 讀取失敗維持 null，畫面退回通用說明。
+   */
+  readonly googleCoverage = signal<GoogleTrendCoverage | null>(null);
 
   // ----- 熱度趨勢圖（chart.js）-----
   // ⚠️ 2026-09-25 新增：跟 dashboard.ts 的狀態分布圖用同一套模式，理由
@@ -503,6 +513,7 @@ export class ProductDetail implements OnInit, OnDestroy {
       .subscribe({
         next: ({ product, evaluation, festival, aiAnalysis, reviewHistory, typeName, trend, trendHistory, googleTrend }) => {
           this.googleTrend.set(googleTrend);
+          if (!googleTrend) this.loadGoogleCoverage();
           this.product.set(
             toDetailProduct(product, evaluation, festival, typeName, {
               ...toAiExtras(aiAnalysis),
@@ -520,6 +531,18 @@ export class ProductDetail implements OnInit, OnDestroy {
           this.statusMessageState.show('品項詳情載入失敗，請稍後重試。');
         },
       });
+  }
+
+  /** 尚未查詢時的批次涵蓋說明（GET /api/products/{id}/google-trend/coverage，唯讀）。 */
+  private loadGoogleCoverage(): void {
+    this.googleCoverage.set(null);
+    this.googleTrendsApi
+      .getCoverage(this.productId)
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((coverage) => this.googleCoverage.set(coverage));
   }
 
   /**

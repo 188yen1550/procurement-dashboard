@@ -18,6 +18,7 @@ function status(overrides: Partial<GoogleTrendsStatus> = {}): GoogleTrendsStatus
     processedCount: null,
     totalCount: null,
     batchSize: 40,
+    recheckDays: 7,
     schedule: '每週一 04:00（PTT 熱度同步 02:00 之後）',
     recentRuns: [
       {

@@ -495,7 +495,7 @@
                不併入上面的熱度分數（Google 的 0～100 是相對值，不同商品之間不可比）。 -->
           <div class="google-trend" aria-labelledby="google-trend-title">
             <h3 id="google-trend-title">
-              Google 趨勢參考<app-info-tip text="台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的平均搜尋量。Google 的數字是相對於自己高峰的比例，只能看同一個商品的升降，不能跟其他商品比，所以只當參考、不併入熱度分數。每週一 04:00 自動查詢 PTT 熱度前 40 名。" />
+              Google 趨勢參考<app-info-tip text="台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的平均搜尋量。Google 的數字是相對於自己高峰的比例，只能看同一個商品的升降，不能跟其他商品比，所以只當參考、不併入熱度分數。每週一 04:00 自動查詢：待審商品優先，剩餘名額依 PTT 熱度補滿，最多 40 個；7 天內查過的略過。" />
             </h3>
             @if (googleTrend(); as g) {
             @if (g.status === 'NO_DATA') {
@@ -514,7 +514,14 @@
             <p class="trend-source">搜尋關鍵字「{{ g.keyword }}」・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
             }
             } @else {
-            <p class="hint">尚未查詢。每週一會自動查詢 PTT 熱度前 40 名的商品{{ isManager ? '，也可以按下方按鈕立即查詢' : '' }}。</p>
+            <!-- 2026-09-30：依後端批次涵蓋說明顯示實際原因，不再一律承諾「每週一會自動查詢」。 -->
+            @if (googleCoverage(); as c) {
+            <p class="hint" [attr.data-coverage]="c.reason">
+              尚未查詢。{{ c.message }}{{ isManager ? (c.willBeQueried ? '也可以按下方按鈕立即查詢。' : '可以按下方按鈕單獨查詢。') : '' }}
+            </p>
+            } @else {
+            <p class="hint">尚未查詢。每週一 04:00 會自動查詢，待審商品優先{{ isManager ? '；也可以按下方按鈕立即查詢' : '' }}。</p>
+            }
             }
             @if (isManager) {
             <button type="button" (click)="syncGoogleTrend()" [disabled]="googleTrendState() === 'syncing'">

@@ -3,7 +3,8 @@
  *
  * - 來源開關：預設停用（要花 SerpApi 額度的外部服務，不能自己開始呼叫）
  * - 本月用量／上限：SerpApi 免費方案每月 250 次，系統上限預設 200；「查無資料」也計費
- * - 立即查詢熱度前 N 名：只查最新一筆 PTT 熱度 > 0 的商品，後端背景執行，這裡輪詢進度
+ * - 立即查詢（最多 N 個）：待審商品優先、剩餘名額依 PTT 熱度補滿，重查間隔內查過的略過（2026-09-30）；
+ *   後端背景執行，這裡輪詢進度
  * - 執行紀錄（2026-09-29 起每頁 10 筆可翻頁，見 shared/ui/run-history）
  *
  * Google 趨勢是獨立參考資訊（方向與成長率），不併入熱度分數、不影響排序與評分。
@@ -105,7 +106,7 @@ export class GoogleTrendsPanel implements OnInit {
     const enable = !this.enabled();
     const lines = enable
       ? [
-          '啟用後，每週一 04:00 會自動查詢 PTT 熱度前幾名商品的 Google 搜尋趨勢，管理層也可以在品項詳情頁手動查詢單一商品。',
+          '啟用後，每週一 04:00 會自動查詢 Google 搜尋趨勢（待審商品優先，剩餘名額依 PTT 熱度補滿），管理層也可以在品項詳情頁手動查詢單一商品。',
           '每次查詢都會用掉 1 次 SerpApi 額度（含「查無資料」），到達本月上限後自動停止。',
           'Google 趨勢只作為參考資訊，不會改變熱度分數、排行與評分。',
         ]
@@ -142,9 +143,9 @@ export class GoogleTrendsPanel implements OnInit {
     const expected = Math.min(s.batchSize, this.remaining());
     this.dialog
       .confirm(
-        `要立即查詢熱度前 ${s.batchSize} 名的 Google 趨勢嗎？`,
+        `要立即查詢 Google 趨勢嗎？`,
         [
-          `只查詢最新一筆 PTT 熱度大於 0 的商品，最多 ${expected} 個，每個商品用掉 1 次額度（本月剩餘 ${this.remaining()} 次）。`,
+          `待審商品優先，剩餘名額依 PTT 熱度補滿；${s.recheckDays} 天內查過的略過。最多 ${expected} 個，每個商品用掉 1 次額度（本月剩餘 ${this.remaining()} 次）。`,
           '每個商品約需 10 秒，在背景執行，離開這個頁面不會中斷。',
           '每週一 04:00 已有自動排程，手動查詢通常只在需要立即看到結果時使用。',
         ],

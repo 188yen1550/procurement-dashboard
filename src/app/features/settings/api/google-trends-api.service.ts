@@ -4,6 +4,7 @@
  *
  * 對應後端 GoogleTrendController：
  * - GET  /api/products/{id}/google-trend          操作＋管理，唯讀、不花額度
+ * - GET  /api/products/{id}/google-trend/coverage 操作＋管理，下次每週批次會不會查到、原因（2026-09-30）
  * - POST /api/products/{id}/google-trend/sync     限管理層，花 1 次額度
  * - GET／PUT enabled／POST sync-top /api/settings/google-trends  限管理層
  *
@@ -36,6 +37,32 @@ export interface GoogleTrendSignal {
   baselineAvg: number | null;
   pointCount: number;
   collectedAt: string;
+}
+
+/** 對應後端 GoogleTrendCoverageReason。 */
+export type GoogleTrendCoverageReason =
+  | 'SOURCE_DISABLED'
+  | 'NOT_CONFIGURED'
+  | 'ARCHIVED'
+  | 'RECENTLY_QUERIED'
+  | 'PENDING_PRIORITY'
+  | 'PTT_RANKED'
+  | 'QUOTA_SHORT'
+  | 'PENDING_OVER_LIMIT'
+  | 'NO_PTT_DATA'
+  | 'PTT_ZERO'
+  | 'RANKED_OUT';
+
+/**
+ * 對應後端 GoogleTrendCoverageResponse（2026-09-30）：商品下次每週批次會不會被查到。
+ * 品項詳情「尚未查詢」時顯示實際原因——PTT 熱度為 0 或沒有 PTT 資料的非待審商品
+ * 永遠不會被批次查到，不能一律寫「每週一會自動查詢」。
+ */
+export interface GoogleTrendCoverage {
+  willBeQueried: boolean;
+  reason: GoogleTrendCoverageReason;
+  /** 後端產生的說明文字，與批次規則同一處維護。 */
+  message: string;
 }
 
 /** 精簡顯示用（儀表板熱度排行）：方向＋成長率一行字。 */
@@ -91,6 +118,8 @@ export interface GoogleTrendsStatus {
   processedCount: number | null;
   totalCount: number | null;
   batchSize: number;
+  /** 重查間隔（天）：這段期間內查過的商品，批次略過（2026-09-30）。 */
+  recheckDays: number;
   schedule: string;
   recentRuns: GoogleTrendRun[];
 }
@@ -103,6 +132,13 @@ export class GoogleTrendsApiService {
   getLatest(productId: string | number): Observable<GoogleTrendSignal | null> {
     return this.http
       .get<ApiEnvelope<GoogleTrendSignal | null>>(`/api/products/${productId}/google-trend`)
+      .pipe(unwrapData());
+  }
+
+  /** 下次每週批次會不會查到這個商品、原因；唯讀、不花額度。 */
+  getCoverage(productId: string | number): Observable<GoogleTrendCoverage> {
+    return this.http
+      .get<ApiEnvelope<GoogleTrendCoverage>>(`/api/products/${productId}/google-trend/coverage`)
       .pipe(unwrapData());
   }
 

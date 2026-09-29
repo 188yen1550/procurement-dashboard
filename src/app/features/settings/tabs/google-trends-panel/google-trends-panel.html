@@ -10,12 +10,16 @@
           </span>
         }
       </h3>
-      <p>{{ status()?.schedule ?? '每週一 04:00' }}：查詢熱度前 {{ status()?.batchSize ?? 40 }} 名商品的 Google 搜尋趨勢，<strong>只作參考</strong>。</p>
+      <p>{{ status()?.schedule ?? '每週一 04:00' }}：查詢最多 {{ status()?.batchSize ?? 40 }} 個商品的 Google 搜尋趨勢（待審商品優先），<strong>只作參考</strong>。</p>
       <!-- 2026-09-29：長說明改成可收合，預設收合；用量、金鑰、執行中、停用等狀態在下方，永遠顯示。 -->
       <details class="config-panel-details">
         <summary>運作方式與紀錄欄位說明</summary>
         <p>
-          查詢 PTT 熱度前 {{ status()?.batchSize ?? 40 }} 名商品在台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的搜尋量，
+          每次最多查詢 {{ status()?.batchSize ?? 40 }} 個商品：<strong>待審商品優先</strong>（送審較早的先查，不看 PTT 熱度），
+          剩餘名額依 PTT 熱度由高到低補滿（只取熱度大於 0 的商品）；{{ status()?.recheckDays ?? 7 }} 天內查過的商品略過。
+        </p>
+        <p>
+          查詢台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的搜尋量，
           算出方向與成長率。顯示在品項詳情頁與儀表板熱度排行，<strong>不併入熱度分數</strong>、不影響排序與評分。
           資料來源為 SerpApi（非官方代抓服務）。
         </p>
@@ -27,7 +31,7 @@
         {{ enabled() ? '停用 Google 來源' : '啟用 Google 來源' }}
       </button>
       <button type="button" class="btn-primary" [disabled]="!canSyncTop()" (click)="syncTop()">
-        {{ running() ? '查詢中…' : '立即查詢熱度前 ' + (status()?.batchSize ?? 40) + ' 名' }}
+        {{ running() ? '查詢中…' : '立即查詢（最多 ' + (status()?.batchSize ?? 40) + ' 個）' }}
       </button>
     </div>
   </div>

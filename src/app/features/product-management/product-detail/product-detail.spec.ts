@@ -13,7 +13,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Auth } from '../../../core/auth/auth';
 import { DialogService } from '../../../core/dialog/dialog.service';
 import { ProductTypeLookupService } from '../../settings/api/product-type-lookup.service';
-import { GoogleTrendSignal, GoogleTrendsApiService } from '../../settings/api/google-trends-api.service';
+import {
+  GoogleTrendCoverage,
+  GoogleTrendSignal,
+  GoogleTrendsApiService,
+} from '../../settings/api/google-trends-api.service';
 import { ProductApiService } from '../api/product-api.service';
 import { ReviewRecordModel } from '../../review/api/review.mapper';
 import { ProductDetail } from './product-detail';
@@ -127,6 +131,14 @@ describe('ProductDetail', () => {
   // 2026-09-28：Google 趨勢參考（獨立服務）。預設回「尚未查詢」，個別測試再覆寫。
   const googleTrendsApi = {
     getLatest: vi.fn(() => of<GoogleTrendSignal | null>(null)),
+    // 2026-09-30：尚未查詢時的批次涵蓋說明。預設回「待審優先」，個別測試再覆寫。
+    getCoverage: vi.fn(() =>
+      of<GoogleTrendCoverage>({
+        willBeQueried: true,
+        reason: 'PENDING_PRIORITY',
+        message: '待審商品，下次批次（每週一 04:00）會優先查詢。',
+      }),
+    ),
     sync: vi.fn(() =>
       of<GoogleTrendSignal>({
         productId: 101,
@@ -551,6 +563,40 @@ describe('ProductDetail', () => {
       );
       const { root } = await render(false);
       expect(root.querySelector('.google-trend')!.textContent).toContain('Google 搜尋量不足，無法判斷趨勢');
+    });
+
+    it('尚未查詢時顯示後端的批次涵蓋說明，不再一律承諾每週自動查詢', async () => {
+      googleTrendsApi.getCoverage.mockReturnValueOnce(
+        of<GoogleTrendCoverage>({
+          willBeQueried: false,
+          reason: 'PTT_ZERO',
+          message: '非待審商品，且 PTT 熱度為 0，每週批次不會查詢。',
+        }),
+      );
+      const { root } = await render(true);
+      const hint = root.querySelector('.google-trend [data-coverage]')!;
+      expect(hint.getAttribute('data-coverage')).toBe('PTT_ZERO');
+      expect(hint.textContent).toContain('PTT 熱度為 0，每週批次不會查詢');
+      expect(hint.textContent).toContain('可以按下方按鈕單獨查詢');
+      expect(hint.textContent).not.toContain('每週一會自動查詢');
+    });
+
+    it('已有查詢結果時不查批次涵蓋說明', async () => {
+      googleTrendsApi.getCoverage.mockClear();
+      googleTrendsApi.getLatest.mockReturnValueOnce(
+        of<GoogleTrendSignal | null>({
+          productId: 101, keyword: '中秋烤肉', status: 'OK', direction: 'UP', growthRate: 20,
+          recentAvg: 30, baselineAvg: 25, pointCount: 92, collectedAt: '2026-09-28T04:00:00',
+        }),
+      );
+      await render(false);
+      expect(googleTrendsApi.getCoverage).not.toHaveBeenCalled();
+    });
+
+    it('批次涵蓋說明讀取失敗時退回通用說明（待審優先）', async () => {
+      googleTrendsApi.getCoverage.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const { root } = await render(false);
+      expect(root.querySelector('.google-trend')!.textContent).toContain('尚未查詢。每週一 04:00 會自動查詢，待審商品優先');
     });
 
     it('讀取失敗只讓這一區顯示尚未查詢，不影響整頁', async () => {
