@@ -66,7 +66,7 @@
         </footer>
       </section>
     } @else {
-    @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong><span>通過審核只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
+    @if (isApproved() || pageState() === 'locked') { <section class="notice locked"><div><strong><app-icon name="lock" size="sm" /> 核心選品資料已鎖定</strong><span>審核通過只代表選品決策完成，不代表已上架、已銷售或已簽約。Disabled 欄位保留鎖定時的審核條件。</span></div></section> }
     @if (isRejected()) { <section class="notice rejected"><div><strong>此品項上次審核拒絕</strong><span>可修改後「儲存並重審」，歷史審核紀錄不會被覆蓋。</span></div></section> }
     <!-- 儲存成功／失敗一律用 DialogService 呈現，不在這裡重複顯示第二層提示。 -->
     <form class="form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -144,7 +144,7 @@
         </div></section>
       }
 
-      <section aria-labelledby="basic-title"><header><span>{{ isResale() ? '03' : '02' }}</span><div><h2 id="basic-title">商品基本資料</h2><p>通過審核後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
+      <section aria-labelledby="basic-title"><header><span>{{ isResale() ? '03' : '02' }}</span><div><h2 id="basic-title">商品基本資料</h2><p>審核通過後仍可更新的識別與供應商資訊。</p></div></header><div class="form-grid">
         @if (isResale() && resaleReferenceProductId()) {
         <!-- ⚠️ 2026-09-17修正：原本這裡寫「商品名稱不會自動帶入」，但名稱
              現在已經改成會預填（見 product-form.ts 的 prefillFromReference()

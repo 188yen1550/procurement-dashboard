@@ -123,6 +123,11 @@ const RECORD_SORT_ROW_FIELD: Record<DecisionRecordSortKey, string> = {
 
 const DEFAULT_RECORD_SORT_KEY: DecisionRecordSortKey = 'reviewedAt';
 
+/** 網址參數 reviewStatus → 決策紀錄的審核結果篩選；非白名單值視為 ALL。 */
+function toRecordResultFilter(value: string | null): 'ALL' | 'APPROVED' | 'REJECTED' {
+  return value === 'APPROVED' || value === 'REJECTED' ? value : 'ALL';
+}
+
 /** 'yyyy/MM/dd'（Mock）或 ISO 日期時間（後端）→ 'yyyy-MM-dd'，供日期區間比較。 */
 function toDateKey(value: string | null): string {
   return (value ?? '').replaceAll('/', '-').slice(0, 10);
@@ -189,7 +194,14 @@ export class ReviewComponent implements OnInit {
   // loadDecisionRecords()）。原本關鍵字與排序只作用在當頁 20 筆，另外還殘留一層
   // 沒有 UI 的 recordSort（固定日期新到舊）跟表頭排序疊在一起，已一併移除。
   readonly recordSearch = signal('');
-  readonly recordResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>('ALL');
+  /**
+   * 2026-09-30：管理層儀表板的「審核通過／審核拒絕」統計卡帶 ?tab=records&reviewStatus=…
+   * 進來，直接套用對應的審核結果篩選，列表筆數才會跟卡片一致。只接受白名單值，
+   * 其餘（含未帶參數）一律為 ALL。
+   */
+  readonly recordResultFilter = signal<'ALL' | 'APPROVED' | 'REJECTED'>(
+    toRecordResultFilter(this.route.snapshot.queryParamMap.get('reviewStatus')),
+  );
   /** 審核日期區間（yyyy-MM-dd，兩端皆含當天）。 */
   readonly recordReviewedFrom = signal('');
   readonly recordReviewedTo = signal('');

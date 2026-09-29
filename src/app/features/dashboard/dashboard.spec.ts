@@ -292,7 +292,11 @@ describe('Dashboard (manager view)', () => {
       fixture.nativeElement.querySelectorAll('a.stat-card-link'),
       (link) => (link as HTMLAnchorElement).getAttribute('href'),
     );
-    expect(links).toEqual(['/review', '/review?tab=records', '/review?tab=records']);
+    expect(links).toEqual([
+      '/review',
+      '/review?tab=records&reviewStatus=APPROVED',
+      '/review?tab=records&reviewStatus=REJECTED',
+    ]);
     expect(fixture.nativeElement.querySelector('a[href^="/products"].stat-card-link')).toBeNull();
   });
 

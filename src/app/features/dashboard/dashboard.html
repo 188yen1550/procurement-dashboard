@@ -171,13 +171,13 @@
         </a>
       </article>
       <article class="stat-card approved">
-        <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records' }"
-          aria-label="通過審核：前往決策紀錄">
-          <span>通過審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
+        <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'APPROVED' }"
+          aria-label="審核通過：前往決策紀錄">
+          <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card rejected">
-        <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records' }"
+        <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'REJECTED' }"
           aria-label="審核拒絕：前往決策紀錄">
           <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
         </a>
@@ -199,8 +199,8 @@
       </article>
       <article class="stat-card approved">
         <a class="stat-card-link" routerLink="/products"
-          [queryParams]="{ reviewStatus: 'APPROVED', createdByMe: createdByMeParam() }" aria-label="通過審核：前往品項管理">
-        <span>通過審核</span><strong>{{ data().statistics.approvedProducts }}</strong>
+          [queryParams]="{ reviewStatus: 'APPROVED', createdByMe: createdByMeParam() }" aria-label="審核通過：前往品項管理">
+        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}</strong>
         </a>
       </article>
       <article class="stat-card rejected">

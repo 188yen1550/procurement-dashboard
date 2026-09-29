@@ -2,6 +2,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of, throwError } from 'rxjs';
 import { ReviewApiService } from './api/review-api.service';
 import { Review, toReviewItem } from './review';
@@ -419,5 +421,36 @@ describe('toReviewItem（V25 送審時間／送審人）', () => {
     const item = toReviewItem({ ...base, submittedAt: null, submittedByName: null });
     expect(item.submittedAt).toBe('2026-09-20T10:00:00');
     expect(item.submittedBy).toBe('林小美');
+  });
+});
+
+describe('Review 由儀表板統計卡進入', () => {
+  async function openWith(url: string): Promise<Review> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'review', component: Review }]),
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+    return harness.navigateByUrl(url, Review);
+  }
+
+  it('applies reviewStatus=APPROVED to the decision-record result filter', async () => {
+    const review = await openWith('/review?tab=records&reviewStatus=APPROVED');
+    expect(review.view()).toBe('records');
+    expect(review.recordResultFilter()).toBe('APPROVED');
+  });
+
+  it('applies reviewStatus=REJECTED to the decision-record result filter', async () => {
+    const review = await openWith('/review?tab=records&reviewStatus=REJECTED');
+    expect(review.recordResultFilter()).toBe('REJECTED');
+  });
+
+  it('falls back to ALL for missing or unknown reviewStatus', async () => {
+    expect((await openWith('/review?tab=records')).recordResultFilter()).toBe('ALL');
+    TestBed.resetTestingModule();
+    expect((await openWith('/review?tab=records&reviewStatus=PENDING')).recordResultFilter()).toBe('ALL');
   });
 });
