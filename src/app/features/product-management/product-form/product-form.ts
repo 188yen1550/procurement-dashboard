@@ -208,7 +208,7 @@ export class ProductForm implements OnInit {
   readonly isEditMode = !!this.productId;
 
   /**
-   * 2026-09-29：從「PTT 新品探索」點「建立商品」進來時帶 ?discoveryId=&name=&productTypeId=。
+   * 2026-09-29：從「AI 商品雷達」點「建立商品」進來時帶 ?discoveryId=&name=&productTypeId=。
    * 只在新增模式採用；送出時把 discoveryId 一併送給後端（見 ProductCreateRequestPayload.discoveredItemId）。
    */
   readonly discoverySource = this.isEditMode ? null : ProductForm.readDiscoverySource(this.route.snapshot.queryParamMap);
@@ -752,7 +752,7 @@ export class ProductForm implements OnInit {
     this.wirePriceAboveMarketWarning();
 
     if (!this.productId) {
-      // 新增模式，沒有既有資料可載入；從 PTT 新品探索過來時預先帶入名稱與品類。
+      // 新增模式，沒有既有資料可載入；從 AI 商品雷達過來時預先帶入名稱與品類。
       // 品類要等 loadProductTypes() 的選項回來才看得到，但 FormControl 先設值不受影響。
       const source = this.discoverySource;
       if (source) {

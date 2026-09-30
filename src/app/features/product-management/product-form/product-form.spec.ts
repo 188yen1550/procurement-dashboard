@@ -446,7 +446,7 @@ describe('ProductForm', () => {
     expect(component.statusMessage()).toContain('請勿重複送出');
     expect(fixture.nativeElement.querySelector('.primary').disabled).toBe(true);
   });
-  // 2026-09-29：從 PTT 新品探索點「建立商品」進來，名稱與品類預先帶入，送出時一併帶 discoveredItemId。
+  // 2026-09-29：從 AI 商品雷達點「建立商品」進來，名稱與品類預先帶入，送出時一併帶 discoveredItemId。
   it('prefills name and category from a PTT discovery and sends discoveredItemId on create', async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
@@ -466,7 +466,7 @@ describe('ProductForm', () => {
     expect(form.discoverySource).toEqual({ id: 7, name: '義美小泡芙', productTypeId: 2 });
     expect(form.form.controls.name.value).toBe('義美小泡芙');
     expect(form.form.controls.productTypeId.value).toBe(2);
-    expect(harness.routeNativeElement?.textContent).toContain('來自 PTT 新品探索');
+    expect(harness.routeNativeElement?.textContent).toContain('來自 AI 商品雷達');
 
     form.form.patchValue({ supplierName: '義美食品', campaignTags: ['daily'], targetCustomer: '家庭' });
     form.submit();

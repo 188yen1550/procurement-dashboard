@@ -2,7 +2,7 @@
  * 檔案用途：品項模組路由。
  * `new`、`discoveries` 等靜態路由必須排在 `:id` 前；表單路由套用離頁 Guard 防止未儲存內容遺失。
  *
- * 2026-09-24 職責分離（決策 D1）：清單、新增、編輯、批次新增、PTT 新品探索只給操作層
+ * 2026-09-24 職責分離（決策 D1）：清單、新增、編輯、批次新增、AI 商品雷達只給操作層
  * （purchaserGuard）；`:id` 詳情兩個角色都能進，管理層看到的是唯讀模式，
  * 供審核頁「決策紀錄」查看商品完整評估。
  */
@@ -22,7 +22,7 @@ export const PRODUCT_ROUTES: Routes = [
   // 2026-09-29：熱度建議清單移除；舊書籤或連結導回品項管理，不讓 'ai-suggestions' 被 `:id` 當成商品編號。
   { path: 'ai-suggestions', redirectTo: '', pathMatch: 'full' },
   {
-    // 2026-09-29：PTT 新品探索（操作層；建立商品也是操作層的工作）。
+    // 2026-09-29：AI 商品雷達（操作層；建立商品也是操作層的工作）。
     path: 'discoveries',
     canActivate: [purchaserGuard],
     loadComponent: () => import('./discoveries/discoveries').then((m) => m.Discoveries),

@@ -1,5 +1,5 @@
 /**
- * 檔案用途：PTT 新品探索清單（操作層，2026-09-29 第一階段）。
+ * 檔案用途：AI 商品雷達清單（操作層，2026-09-29 第一階段）。
  *
  * 系統每天 01:30 掃 PTT 7 個看板近 7 天的文章標題，由 AI（2026-09-29 起改用 Groq）抽出具體商品、Java 驗證名稱
  * 確實出現在引用的標題裡，再排除系統已有的商品。這頁讓操作人員逐筆決定：
@@ -111,7 +111,7 @@ export class Discoveries implements OnInit {
   readonly hasNext = computed(() => this.pageNumber() + 1 < this.totalPages());
 
   constructor() {
-    // 原地重點側欄「PTT 新品探索」時重新載入（ngOnInit 不會再觸發）。
+    // 原地重點側欄「AI 商品雷達」時重新載入（ngOnInit 不會再觸發）。
     if (!this.useMockData) reloadOnRevisit(() => this.load());
   }
 

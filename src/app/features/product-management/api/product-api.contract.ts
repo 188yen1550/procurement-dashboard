@@ -395,7 +395,7 @@ export interface TrendHistoryPointPayload {
  */
 export interface ProductCreateRequestPayload {
   /**
-   * 2026-09-29：從「PTT 新品探索」建立商品時帶入探索項目 id（只在新增時送）。後端建立成功後在同一個
+   * 2026-09-29：從「AI 商品雷達」建立商品時帶入探索項目 id（只在新增時送）。後端建立成功後在同一個
    * 交易裡把該項目標成「已建立商品」；項目已經轉過商品時整筆回 409、商品不會建立。
    */
   discoveredItemId?: number;

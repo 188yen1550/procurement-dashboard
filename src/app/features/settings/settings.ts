@@ -731,7 +731,7 @@ export class Settings implements OnInit {
         this.loadProductTypes('extensions');
         return;
       case 'jobs':
-        // 三個排程面板（PTT 新品探索、PTT 熱度同步、Google 趨勢）各自在首次渲染時載入狀態；
+        // 三個排程面板（AI 商品雷達、PTT 熱度同步、Google 趨勢）各自在首次渲染時載入狀態；
         // 這個分頁本身沒有要抓的資料。
         this.markLoaded('jobs');
         return;

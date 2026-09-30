@@ -1,5 +1,5 @@
 /**
- * 檔案用途：PTT 新品探索（2026-09-29，第一階段）的 API 與型別。
+ * 檔案用途：AI 商品雷達（2026-09-29，第一階段）的 API 與型別。
  *
  * 對應後端 DiscoveryController：
  * - GET  /api/discoveries                  探索結果清單（兩個角色都可讀）

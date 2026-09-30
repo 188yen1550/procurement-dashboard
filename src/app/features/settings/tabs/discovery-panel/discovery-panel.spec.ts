@@ -1,4 +1,4 @@
-/** 檔案用途：PTT 新品探索排程面板——無法執行的原因、確認後執行、執行紀錄數字。 */
+/** 檔案用途：AI 商品雷達排程面板——無法執行的原因、確認後執行、執行紀錄數字。 */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DialogService } from '../../../../core/dialog/dialog.service';

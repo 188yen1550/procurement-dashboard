@@ -1,14 +1,14 @@
-<!-- 檔案用途：排程作業面板——PTT 新品探索的立即執行、AI 額度與最近執行紀錄。 -->
+<!-- 檔案用途：排程作業面板——AI 商品雷達的立即執行、AI 額度與最近執行紀錄。 -->
 <section id="ptt-discovery" class="config-panel" aria-labelledby="discovery-title">
   <div class="config-panel-head">
     <div>
-      <h3 id="discovery-title">排程作業：PTT 新品探索</h3>
+      <h3 id="discovery-title">排程作業：AI 商品雷達（PTT）</h3>
       <p>{{ status()?.schedule ?? '每天 01:30（早於 02:00 熱度同步）' }}：從 PTT 找出系統裡還沒有的商品。</p>
       <!-- 2026-09-29：長說明改成可收合，預設收合；狀態訊息（執行中、無法執行、額度）在下方，永遠顯示。 -->
       <details class="config-panel-details">
         <summary>運作方式與紀錄欄位說明</summary>
         <p>
-          讀取 PTT 近 7 天的文章標題，由 AI 找出系統裡還沒有的商品，放進操作人員的「PTT 新品探索」清單。AI
+          讀取 PTT 近 7 天的文章標題，由 AI 找出系統裡還沒有的商品，放進操作人員的「AI 商品雷達」清單。AI
           抽出的名稱必須真的出現在引用的標題裡才會保留。新項目會再由 AI 依核心客群評適配度，適配度最高的前幾項另查
           Google 趨勢（使用 Google 趨勢的 SerpApi 月額度）。
         </p>
@@ -27,7 +27,7 @@
 
   <p class="sr-only" aria-live="polite">
     @if (running()) {
-      PTT 新品探索執行中。
+      AI 商品雷達執行中。
     }
   </p>
 
@@ -51,7 +51,7 @@
     } @else {
       <div class="config-table-wrap">
         <table class="config-table discovery-runs">
-          <caption class="sr-only">PTT 新品探索執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
+          <caption class="sr-only">AI 商品雷達執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
           <thead>
             <tr>
               <th scope="col">開始時間</th>
@@ -91,7 +91,7 @@
           </tbody>
         </table>
       </div>
-      <app-run-history-pager label="PTT 新品探索執行紀錄" [pageNumber]="history.pageNumber()"
+      <app-run-history-pager label="AI 商品雷達執行紀錄" [pageNumber]="history.pageNumber()"
         [totalPages]="history.totalPages()" [totalElements]="history.totalElements()"
         [loading]="history.loading()" [error]="history.error()" (pageChange)="history.goTo($event)" />
     }
