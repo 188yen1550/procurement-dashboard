@@ -107,11 +107,22 @@ export class SortRowsPipe implements PipeTransform {
   styles: [
     `
       .list-sort-header {
-        display: inline-flex;
+        /* 對齊修正：改為佔滿 th 的 flex 容器，水平位置交給 th 的 text-align
+           （--sort-header-justify，預設靠左，維持其他頁面原樣），垂直由 align-items 置中；
+           不再是 inline-flex——inline 元素會以 baseline 對齊行框，和純文字表頭
+           差出約 1px 的高度，同列表頭看起來不等高。 */
+        display: flex;
+        width: 100%;
+        justify-content: var(--sort-header-justify, flex-start);
         align-items: center;
         gap: 0.4rem;
+        /* 對齊修正：原本 padding: 0.25rem 0 讓可排序表頭比純文字表頭多出上下
+           0.25rem，在 th 使用 vertical-align: top 時文字會整體往下偏移，
+           造成同一列表頭高度不一致。點擊範圍由 th 本身的 padding 提供即可。 */
         border: 0;
-        padding: 0.25rem 0;
+        padding: 0;
+        margin: 0;
+        line-height: inherit;
         background: transparent;
         white-space: nowrap;
         color: inherit;
@@ -123,6 +134,8 @@ export class SortRowsPipe implements PipeTransform {
       .list-sort-header span {
         flex: 0 0 auto;
         font-size: 1rem;
+        /* 箭頭字形不撐高行高，讓按鈕高度與同列純文字表頭一致 */
+        line-height: 1;
       }
       .list-sort-header:hover {
         color: #195789;

@@ -283,6 +283,17 @@ describe('toProductRequestPayload', () => {
     expect(payload.campaignTags).not.toContain('、');
   });
 
+  // 2026-09-30：搜尋關鍵字（V37）來回轉換
+  it('搜尋關鍵字：回填時 null 轉空字串，送出時去頭尾空白、空白送 null', () => {
+    expect(toProductFormModel(makeProduct()).base.searchKeyword).toBe('');
+    const form = toProductFormModel(makeProduct({ searchKeyword: '文旦' }));
+    expect(form.base.searchKeyword).toBe('文旦');
+    form.base.searchKeyword = '  麻豆文旦 ';
+    expect(toProductRequestPayload(form).searchKeyword).toBe('麻豆文旦');
+    form.base.searchKeyword = '   ';
+    expect(toProductRequestPayload(form).searchKeyword).toBeNull();
+  });
+
   it('空標籤陣列送 null 而非空字串', () => {
     const form = toProductFormModel(makeProduct());
     form.core.campaignTags = [];

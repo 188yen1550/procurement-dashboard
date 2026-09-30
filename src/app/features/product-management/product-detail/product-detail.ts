@@ -302,7 +302,7 @@ export class ProductDetail implements OnInit, OnDestroy {
    * - MATCH：方向相同。
    * - OPPOSITE：一升一降，提示主管人工確認（黃色提示，不是錯誤）。
    * - DIFFERENT：其中一方持平，另一方有升降，僅供參考。
-   * - UNAVAILABLE：PTT 尚未同步或為舊版模擬資料，無法比對。
+   * - UNAVAILABLE：PTT 尚未同步、為舊版模擬資料，或近 90 天沒有討論（熱度 0），無法比對。
    * Google 沒查過或查無資料時回 null（整行不顯示；卡片內文已說明原因）。
    * 兩者資料時間相差超過 7 天時另外註明，避免拿不同時期的方向硬比。
    */
@@ -312,6 +312,8 @@ export class ProductDetail implements OnInit, OnDestroy {
     if (!google || google.status !== 'OK' || !google.direction || !product) return null;
     if (!product.lastSyncedAt) return { state: 'UNAVAILABLE', text: 'PTT 尚無熱度資料，無法比對' };
     if (product.trendSource === 'SIMULATED') return { state: 'UNAVAILABLE', text: 'PTT 為舊版模擬資料，無法比對' };
+    // 2026-09-30：熱度 0＝PTT 搜不到討論，方向是中性的 STABLE（不是真的持平），不能拿來比對
+    if (product.popularityScore === 0) return { state: 'UNAVAILABLE', text: 'PTT 近 90 天沒有討論，無法比對' };
 
     const googleDir = google.direction;
     const pttDir = product.trendDirection;

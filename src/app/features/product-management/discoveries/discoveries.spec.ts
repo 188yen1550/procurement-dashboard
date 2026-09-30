@@ -100,10 +100,20 @@ describe('Discoveries', () => {
     expect(href).toContain('discoveryId=7');
     expect(href).toContain('productTypeId=2');
     expect(decodeURIComponent(href)).toContain('name=義美小泡芙');
+    // 2026-09-30：AI 抽出的搜尋關鍵字一併帶去新增表單
+    expect(decodeURIComponent(href)).toContain('keyword=義美小泡芙');
   });
 
   it('omits productTypeId when the category could not be matched', () => {
-    expect(component.createQueryParams(item({ productTypeId: null }))).toEqual({ discoveryId: 7, name: '義美小泡芙' });
+    expect(component.createQueryParams(item({ productTypeId: null }))).toEqual({
+      discoveryId: 7,
+      name: '義美小泡芙',
+      keyword: '義美小泡芙',
+    });
+  });
+
+  it('omits keyword when the discovery has no search keyword', () => {
+    expect(component.createQueryParams(item({ searchKeyword: '' }))).not.toHaveProperty('keyword');
   });
 
   it('shows the AI fit score with its reason and concerns, and Google trend growth', () => {

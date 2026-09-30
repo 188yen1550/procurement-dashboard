@@ -130,6 +130,8 @@ export interface TrendLeaderboardItem {
   googleTrend: GoogleTrendSignal | null;
   /** 2026-09-29：最近 3 次同步都上升。 */
   consecutiveRise: boolean;
+  /** 2026-09-30：熱度採集時間；沒有時為 null。 */
+  collectedAt: string | null;
 }
 
 export function toTrendLeaderboardItem(
@@ -146,5 +148,6 @@ export function toTrendLeaderboardItem(
     keyword: payload.keyword ?? '',
     googleTrend: payload.googleTrend ?? null,
     consecutiveRise: payload.consecutiveRise === true,
+    collectedAt: payload.collectedAt ?? null,
   };
 }

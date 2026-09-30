@@ -145,4 +145,6 @@ export interface DashboardTrendLeaderboardResponsePayload {
   googleTrend?: GoogleTrendSignal | null;
   /** 2026-09-29：最近 3 次同步都上升（後端 RecentTrendService）；只是提醒，不參與排序。 */
   consecutiveRise?: boolean;
+  /** 2026-09-30：這筆熱度的採集時間（PTT 熱度同步寫入時間，ISO 字串）；舊版後端沒有此欄位。 */
+  collectedAt?: string | null;
 }

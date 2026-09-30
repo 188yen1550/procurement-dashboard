@@ -98,6 +98,11 @@ export interface ProductResponsePayload {
   productTypeId: number | null;
   pricingType: PricingType;
   name: string;
+  /**
+   * 2026-09-30（V37）：使用者設定的搜尋關鍵字；null＝未設定，PTT 熱度同步與 Google 趨勢改用商品名稱自動簡化。
+   * 設為選填：舊版後端沒有這個欄位時視同 null。
+   */
+  searchKeyword?: string | null;
   description: string | null;
   /** 例 "/images/products/xxx.jpg"，可為 null（選填欄位）。 */
   imageUrl: string | null;
@@ -395,13 +400,15 @@ export interface TrendHistoryPointPayload {
  */
 export interface ProductCreateRequestPayload {
   /**
-   * 2026-09-29：從「AI 商品雷達」建立商品時帶入探索項目 id（只在新增時送）。後端建立成功後在同一個
+   * 2026-09-29：從「AI 商品雷達」建立商品時帶入商品線索 id（只在新增時送）。後端建立成功後在同一個
    * 交易裡把該項目標成「已建立商品」；項目已經轉過商品時整筆回 409、商品不會建立。
    */
   discoveredItemId?: number;
   productTypeId: number;
   pricingType: PricingType;
   name: string;
+  /** 2026-09-30：搜尋關鍵字（選填，最長 100 字）；null／空白＝由商品名稱自動簡化。從 AI 商品雷達建立且未填時，後端帶入雷達的關鍵字。 */
+  searchKeyword?: string | null;
   description?: string | null;
   imageUrl?: string | null;
   supplierName?: string | null;

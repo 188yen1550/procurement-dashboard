@@ -169,6 +169,7 @@ select:focus-visible {
   gap: .9rem;
   padding: .9rem 0 .2rem;
 }
+
 .pagination button {
   padding: .48rem .9rem;
   color: #38536a;
@@ -178,12 +179,14 @@ select:focus-visible {
   font-size: var(--t-xs);
   font-weight: 700;
 }
+
 .pagination button:disabled {
   color: #a9b7c2;
   background: #f4f7f9;
   border-color: #e0e8ee;
   cursor: not-allowed;
 }
+
 .pagination span {
   color: #6c7a89;
   font-size: var(--t-xs);
@@ -356,6 +359,13 @@ td {
 }
 
 th {
+  /* 表頭垂直置中：可排序（內含按鈕）與不可排序（純文字）表頭在同一列
+     對齊同一條中線；td 仍維持 top，讓多行內容從上方開始排列。 */
+  vertical-align: middle;
+  text-align: center;
+  /* 可排序表頭的按鈕是 flex 容器，不吃 text-align，改用變數讓它同樣置中 */
+  --sort-header-justify: center;
+  line-height: 1.45;
   color: #6c7a89;
   background: #f8fafc;
   font-size: var(--t-xs);
@@ -404,11 +414,11 @@ td {
 }
 
 .col-supplier {
-  width: 14%;
+  width: 12%;
 }
 
 .col-score {
-  width: 7%;
+  width: 9%;
 }
 
 .col-completeness {

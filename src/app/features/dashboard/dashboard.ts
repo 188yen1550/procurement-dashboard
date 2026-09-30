@@ -5,6 +5,7 @@
  */
 import { ListSort, SortHeader, SortRowsPipe, ListSortControls } from '../../shared/ui/list-sort';
 import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, afterRenderEffect, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -55,7 +56,7 @@ type RankingTab = 'recommendations' | 'trend';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon, CrawlerStatusCard],
+  imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon, CrawlerStatusCard, DatePipe],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
 })
@@ -353,6 +354,17 @@ export class Dashboard implements OnInit, OnDestroy {
   /** 熱度排行榜的 Google 趨勢欄（方向＋成長率；沒查過、查無資料都明講）。 */
   readonly googleSummary = summarizeGoogleTrend;
 
+  /**
+   * 2026-09-30：熱度排行的資料時間＝榜上各商品熱度採集時間的最新一筆（PTT 熱度同步每天 02:00）。
+   * ISO 字串可以直接比大小；沒有任何時間（Mock 或舊版後端）時為 null，樣板不顯示。
+   */
+  readonly trendLeaderboardSyncedAt = computed(() =>
+    this.data().trendLeaderboard.reduce<string | null>(
+      (latest, item) => (item.collectedAt && (!latest || item.collectedAt > latest) ? item.collectedAt : latest),
+      null,
+    ),
+  );
+
   ngOnDestroy(): void {
     this.chart?.destroy();
   }
@@ -437,6 +449,7 @@ function toDashboardPageData(
       keyword: item.keyword || NOT_PROVIDED,
       googleTrend: item.googleTrend,
       consecutiveRise: item.consecutiveRise,
+      collectedAt: item.collectedAt,
     })),
   };
 }

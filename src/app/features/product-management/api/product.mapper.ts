@@ -236,6 +236,8 @@ export function toProductListItem(
 export interface ProductFormModel {
   base: {
     name: string;
+    /** 2026-09-30：搜尋關鍵字；空字串＝未設定（一般基本資料，審核通過後仍可修改）。 */
+    searchKeyword: string;
     description: string;
     imageUrl: string;
     supplierName: string;
@@ -289,6 +291,7 @@ export function toProductFormModel(payload: ProductResponsePayload): ProductForm
   return {
     base: {
       name: payload.name,
+      searchKeyword: payload.searchKeyword ?? '',
       description: payload.description ?? '',
       imageUrl: payload.imageUrl ?? '',
       supplierName: payload.supplierName ?? '',
@@ -352,6 +355,8 @@ export function toProductRequestPayload(
     productTypeId: form.core.productTypeId,
     pricingType: form.core.pricingType,
     name: form.base.name.trim(),
+    // 2026-09-30：PUT 是整份覆蓋，漏送會把既有關鍵字清成 null
+    searchKeyword: form.base.searchKeyword.trim() || null,
     description: form.base.description.trim() || null,
     imageUrl: form.base.imageUrl.trim() || null,
     supplierName: form.base.supplierName.trim() || null,

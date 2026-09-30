@@ -7,6 +7,7 @@
  * 元件仍會注入 HttpClient，樣板也使用 RouterLink，所以保留兩者的測試 provider。
  */
 import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
@@ -312,3 +313,65 @@ describe('Dashboard (manager view)', () => {
   });
 });
 
+// 2026-09-30：熱度排行只列 PTT 有討論的商品（後端排除熱度 0），不足 10 名時說明原因，並顯示最近一次同步時間。
+// 用真實 API 模式：HttpTestingController 讓元件自己的請求保持 pending，畫面資料由測試直接寫入 realData。
+describe('Dashboard trend leaderboard (real API mode)', () => {
+  let component: Dashboard;
+  let fixture: ComponentFixture<Dashboard>;
+
+  const entry = (id: number, collectedAt: string | null) => ({
+    id,
+    rank: id,
+    name: `商品 ${id}`,
+    popularityScore: 60 - id,
+    trendDirection: 'STABLE' as const,
+    isRealSource: true,
+    keyword: `商品 ${id}`,
+    googleTrend: null,
+    consecutiveRise: false,
+    collectedAt,
+  });
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Dashboard],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Dashboard);
+    component = fixture.componentInstance;
+    (component as unknown as { useMockData: boolean }).useMockData = false;
+    fixture.detectChanges();
+  });
+
+  function render(entries: ReturnType<typeof entry>[]): HTMLElement {
+    component.realData.update((data) => ({ ...data, trendLeaderboard: entries }));
+    component.realLoadState.set('loaded');
+    component.rankingTab.set('trend');
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('shows the latest sync time and explains why fewer than 10 entries are listed', () => {
+    const root = render([entry(1, '2026-09-30T02:00:41'), entry(2, '2026-09-30T02:03:10')]);
+    const panel = root.querySelector('.trend-leaderboard')!;
+    expect(component.trendLeaderboardSyncedAt()).toBe('2026-09-30T02:03:10');
+    expect(panel.textContent).toContain('最近一次同步：2026/09/30 02:03');
+    expect(panel.textContent).toContain('其餘商品在 PTT 近 90 天沒有討論或尚未同步熱度，未列入排行');
+    expect(panel.textContent).toContain('PTT 熱度同步');
+  });
+
+  it('does not show the fewer-than-10 note when the list is full, nor a sync time when none is known', () => {
+    const root = render(Array.from({ length: 10 }, (_, i) => entry(i + 1, null)));
+    const panel = root.querySelector('.trend-leaderboard')!;
+    expect(component.trendLeaderboardSyncedAt()).toBeNull();
+    expect(panel.textContent).not.toContain('最近一次同步');
+    expect(panel.textContent).not.toContain('未列入排行');
+  });
+
+  it('explains the empty state (no discussion or not yet synced)', () => {
+    const root = render([]);
+    expect(root.querySelector('.trend-leaderboard')!.textContent).toContain(
+      '目前沒有商品在 PTT 近 90 天有討論，或尚未執行 PTT 熱度同步',
+    );
+  });
+});

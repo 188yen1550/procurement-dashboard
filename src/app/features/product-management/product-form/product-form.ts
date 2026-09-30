@@ -58,6 +58,7 @@ interface ProductTypeOptionGroup {
 /** 送出驗證失敗時，用來把 FormControl 名稱轉成使用者看得懂的欄位標籤。 */
 const FIELD_LABELS: Record<string, string> = {
   name: '商品名稱',
+  searchKeyword: '搜尋關鍵字',
   supplierName: '供應商名稱',
   productTypeId: '商品實際分類',
   pricingType: '訂價分流',
@@ -215,13 +216,15 @@ export class ProductForm implements OnInit {
 
   private static readDiscoverySource(
     params: ParamMap,
-  ): { id: number; name: string; productTypeId: number | null } | null {
+  ): { id: number; name: string; keyword: string; productTypeId: number | null } | null {
     const id = Number(params.get('discoveryId'));
     if (!Number.isInteger(id) || id <= 0) return null;
     const typeId = Number(params.get('productTypeId'));
     return {
       id,
       name: (params.get('name') ?? '').trim().slice(0, 100),
+      // 2026-09-30：雷達 AI 抽出的搜尋關鍵字，帶進「搜尋關鍵字」欄位讓使用者看得到、可以改
+      keyword: (params.get('keyword') ?? '').trim().slice(0, 100),
       productTypeId: Number.isInteger(typeId) && typeId > 0 ? typeId : null,
     };
   }
@@ -303,6 +306,8 @@ export class ProductForm implements OnInit {
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, nonBlank, Validators.maxLength(100)]],
+    // 2026-09-30：PTT 熱度同步與 Google 趨勢用的搜尋關鍵字（選填）。屬一般基本資料，審核通過後仍可修改。
+    searchKeyword: ['', Validators.maxLength(100)],
     supplierName: ['', [Validators.required, nonBlank, Validators.maxLength(100)]],
     productTypeId: [null as number | null, Validators.required],
     pricingType: ['NEW', Validators.required],
@@ -758,6 +763,7 @@ export class ProductForm implements OnInit {
       if (source) {
         this.form.patchValue({
           name: source.name,
+          searchKeyword: source.keyword,
           ...(source.productTypeId !== null ? { productTypeId: source.productTypeId } : {}),
         });
       }
@@ -784,6 +790,7 @@ export class ProductForm implements OnInit {
         next: (model) => {
           this.form.patchValue({
             name: model.base.name,
+            searchKeyword: model.base.searchKeyword,
             supplierName: model.base.supplierName,
             productTypeId: model.core.productTypeId,
             pricingType: model.core.pricingType || 'NEW',
@@ -1050,6 +1057,7 @@ export class ProductForm implements OnInit {
       productTypeId: raw.productTypeId!,
       pricingType: raw.pricingType as 'NEW' | 'RESALE',
       name: raw.name.trim(),
+      searchKeyword: raw.searchKeyword.trim() || null,
       description: raw.description.trim() || null,
       // 這支表單沒有可編輯的圖片網址欄位；沒動過圖片時原封送回載入時的值，
       // 避免整份覆蓋（PUT）把使用者既有圖片洗成 null。

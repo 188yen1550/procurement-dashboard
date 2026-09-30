@@ -458,19 +458,24 @@ describe('ProductForm', () => {
     }).compileComponents();
     const harness = await RouterTestingHarness.create();
     const form = await harness.navigateByUrl(
-      '/products/new?discoveryId=7&name=%E7%BE%A9%E7%BE%8E%E5%B0%8F%E6%B3%A1%E8%8A%99&productTypeId=2',
+      '/products/new?discoveryId=7&name=%E7%BE%A9%E7%BE%8E%E5%B0%8F%E6%B3%A1%E8%8A%99&productTypeId=2&keyword=%E5%B0%8F%E6%B3%A1%E8%8A%99',
       ProductForm,
     );
     harness.detectChanges();
 
-    expect(form.discoverySource).toEqual({ id: 7, name: '義美小泡芙', productTypeId: 2 });
+    expect(form.discoverySource).toEqual({ id: 7, name: '義美小泡芙', keyword: '小泡芙', productTypeId: 2 });
     expect(form.form.controls.name.value).toBe('義美小泡芙');
+    // 2026-09-30：雷達 AI 抽出的搜尋關鍵字一併帶入，可以修改
+    expect(form.form.controls.searchKeyword.value).toBe('小泡芙');
+    expect(harness.routeNativeElement?.textContent).toContain('已帶入 AI 商品雷達抽出的關鍵字');
     expect(form.form.controls.productTypeId.value).toBe(2);
-    expect(harness.routeNativeElement?.textContent).toContain('來自 AI 商品雷達');
+    expect(harness.routeNativeElement?.textContent).toContain('來自 AI 商品雷達（PTT）');
 
     form.form.patchValue({ supplierName: '義美食品', campaignTags: ['daily'], targetCustomer: '家庭' });
     form.submit();
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ discoveredItemId: 7, name: '義美小泡芙' }));
+    expect(api.create).toHaveBeenCalledWith(
+      expect.objectContaining({ discoveredItemId: 7, name: '義美小泡芙', searchKeyword: '小泡芙' }),
+    );
   });
 
   it('ignores an invalid discoveryId and does not send discoveredItemId', () => {
@@ -484,5 +489,7 @@ describe('ProductForm', () => {
     });
     component.submit();
     expect(api.create.mock.calls[0][0]).not.toHaveProperty('discoveredItemId');
+    // 2026-09-30：沒填搜尋關鍵字時送 null（後端改用商品名稱自動簡化），不是空字串
+    expect(api.create.mock.calls[0][0]).toHaveProperty('searchKeyword', null);
   });
 });

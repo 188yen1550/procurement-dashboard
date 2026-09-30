@@ -503,6 +503,9 @@
           <p>
             @if (!p.lastSyncedAt) {
             尚無趨勢資料
+            } @else if (p.popularityScore === 0) {
+            <!-- 2026-09-30：熱度 0＝PTT 搜不到任何討論，後端趨勢方向會是中性的 STABLE，不能顯示成「持平」 -->
+            <app-icon name="trending-flat" size="sm" /> PTT 近 90 天無討論
             } @else if (p.trendDirection === 'UP') {
             <app-icon name="trending-up" size="sm" /> 趨勢上升
             } @else if (p.trendDirection === 'DOWN') {

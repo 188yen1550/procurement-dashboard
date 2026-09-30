@@ -654,6 +654,22 @@ describe('ProductDetail', () => {
         expect(root.querySelector('.google-ptt-compare')!.textContent).toContain('PTT 為舊版模擬資料，無法比對');
       });
 
+      // 2026-09-30：熱度 0＝PTT 搜不到討論，後端方向是中性的 STABLE，不能當成「持平」拿來比對
+      it('PTT 近 90 天無討論（熱度 0）時不比對，市場趨勢卡也不顯示成持平', async () => {
+        api.getLatestTrend.mockReturnValueOnce(
+          // 預設 mock 的型別被推斷成 trendDirection: 'UP'，這裡轉成同一個回傳型別
+          of({ source: 'PTT', keyword: '中秋烤肉', trendScore: 50, popularityScore: 0, trendDirection: 'STABLE', collectedAt: '2026-09-25T02:00:00' }) as unknown as ReturnType<typeof api.getLatestTrend>,
+        );
+        googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
+        const { root } = await render(false);
+        const compare = root.querySelector('.google-ptt-compare')!;
+        expect(compare.getAttribute('data-state')).toBe('UNAVAILABLE');
+        expect(compare.textContent).toContain('PTT 近 90 天沒有討論，無法比對');
+        const trendCard = root.querySelector('.evaluation-item.trend')!;
+        expect(trendCard.textContent).toContain('PTT 近 90 天無討論');
+        expect(trendCard.textContent).not.toContain('趨勢持平');
+      });
+
       it('Google 尚未查詢時不顯示比對', async () => {
         const { root } = await render(false);
         expect(root.querySelector('.google-ptt-compare')).toBeNull();

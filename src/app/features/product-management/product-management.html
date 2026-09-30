@@ -132,10 +132,12 @@
           <span class="field-label" id="updated-range-label">修改時間</span>
           <span class="date-range" role="group" aria-labelledby="updated-range-label">
             <input id="updated-from" type="date" aria-label="修改時間（起）" [ngModel]="updatedFromDraft()"
-              (ngModelChange)="updateUpdatedFrom($event)" [disabled]="isLoading()" [max]="updatedToDraft() || undefined" />
+              (ngModelChange)="updateUpdatedFrom($event)" [disabled]="isLoading()"
+              [max]="updatedToDraft() || undefined" />
             <span aria-hidden="true">～</span>
             <input id="updated-to" type="date" aria-label="修改時間（訖）" [ngModel]="updatedToDraft()"
-              (ngModelChange)="updateUpdatedTo($event)" [disabled]="isLoading()" [min]="updatedFromDraft() || undefined" />
+              (ngModelChange)="updateUpdatedTo($event)" [disabled]="isLoading()"
+              [min]="updatedFromDraft() || undefined" />
           </span>
         </div>
         <div class="field">
@@ -146,8 +148,8 @@
               [max]="reviewedToDraft() || undefined" [attr.aria-invalid]="reviewedDateRangeInvalid()" />
             <span aria-hidden="true">～</span>
             <input id="reviewed-to" type="date" aria-label="審核日期（訖）" [ngModel]="reviewedToDraft()"
-              (ngModelChange)="updateReviewedTo($event)" [disabled]="isLoading()" [min]="reviewedFromDraft() || undefined"
-              [attr.aria-invalid]="reviewedDateRangeInvalid()" />
+              (ngModelChange)="updateReviewedTo($event)" [disabled]="isLoading()"
+              [min]="reviewedFromDraft() || undefined" [attr.aria-invalid]="reviewedDateRangeInvalid()" />
           </span>
         </div>
       </fieldset>

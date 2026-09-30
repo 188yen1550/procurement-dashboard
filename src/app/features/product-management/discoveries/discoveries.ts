@@ -7,7 +7,7 @@
  *   後端在同一個交易裡把這筆標成「已建立商品」（見 DiscoveryApiService 檔頭說明）。
  * - 略過：之後再被 PTT 提及也不會重新冒出來；略過錯了可以在「已略過」分頁移回。
  *
- * 探索結果只是「值得看一眼的線索」，不是商品，也不會自動進入評分或審核（Human-in-the-loop）。
+ * 商品線索只是「值得看一眼的線索」，不是商品，也不會自動進入評分或審核（Human-in-the-loop）。
  *
  * 第二階段：
  * - 每張卡片並列 AI 適配分（附理由與疑慮）、溫層判定（規則）、PTT 熱度、Google 趨勢，
@@ -173,6 +173,8 @@ export class Discoveries implements OnInit {
   /** 新增品項表單的 query 參數：名稱帶標題裡最常見的寫法，品類對得上才帶。 */
   createQueryParams(item: DiscoveredItem): Record<string, string | number> {
     const params: Record<string, string | number> = { discoveryId: item.id, name: item.displayName };
+    // 2026-09-30：一併帶入 AI 抽出的搜尋關鍵字，新商品的 PTT 熱度同步才會用同一個詞搜尋
+    if (item.searchKeyword) params['keyword'] = item.searchKeyword;
     if (item.productTypeId !== null) params['productTypeId'] = item.productTypeId;
     return params;
   }
@@ -267,11 +269,11 @@ export class Discoveries implements OnInit {
   emptyText(): string {
     switch (this.status()) {
       case 'NEW':
-        return '目前沒有待處理的新品。系統每天 01:30 掃描 PTT，最近 14 天內仍被提及的項目會列在這裡。';
+        return '目前沒有待處理的商品線索。系統每天 01:30 掃描 PTT，最近 14 天內仍被提及的項目會列在這裡。';
       case 'DISMISSED':
         return '沒有已略過的項目。';
       default:
-        return '還沒有從探索結果建立的商品。';
+        return '還沒有從商品線索建立的商品。';
     }
   }
 }

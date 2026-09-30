@@ -383,6 +383,11 @@ a:focus-visible {
   line-height: 1.4
 }
 
+/* 2026-09-30：欄位說明（.helper）維持中性色；上面的紅字只給驗證錯誤用。 */
+.form-grid small.helper {
+  color: var(--c-ink-muted)
+}
+
 .form-grid em {
   color: #a43d36;
   font-style: normal

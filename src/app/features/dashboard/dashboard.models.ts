@@ -88,6 +88,8 @@ export interface DashboardTrendLeaderboardEntry {
   googleTrend: GoogleTrendSignal | null;
   /** 2026-09-29：最近 3 次同步都上升，顯示「連續上升」標記（取代熱度規則選品）。 */
   consecutiveRise: boolean;
+  /** 2026-09-30：熱度採集時間（PTT 熱度同步）；Mock 資料沒有時省略。 */
+  collectedAt?: string | null;
 }
 
 export interface DashboardMockData {
