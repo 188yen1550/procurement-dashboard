@@ -127,8 +127,8 @@
                 </select>
                 @if (isLoadingResaleCandidates()) { <small class="helper">商品清單載入中…</small> }
                 @else if (resaleCandidateError()) { <small role="alert">{{ resaleCandidateError() }}</small> }
-                @else if (resaleCandidateProducts().length === 0) { <small class="helper">這個供應商在這個分類下沒有其他既有商品，下方請直接手動填寫。</small> }
-                @else { <small class="helper">這裡選的是「要比對哪件舊商品來預填資料」，選定後會一併帶入下方的商品名稱等欄位，仍可自行修改。</small> }
+                @else if (resaleCandidateProducts().length === 0) { <small class="helper">這個供應商在這個分類下沒有已審核過的既有商品（未審核的品項還在選品流程中，不列入參考），下方請直接手動填寫。</small> }
+                @else { <small class="helper">這裡選的是「要比對哪件舊商品來預填資料」，只列出已審核過（通過或拒絕）的品項；選定後會一併帶入下方的商品名稱等欄位，仍可自行修改。</small> }
               </label>
             }
 
