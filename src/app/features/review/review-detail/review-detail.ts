@@ -3,7 +3,7 @@
  * 送出前驗證必選結果、其他風險備註與審核留言；409 代表商品已由他人審核，
  * 需提示使用者並返回清單。AI 只提供摘要，最終決策由人工選擇。
  */
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -15,7 +15,10 @@ import { ReviewApiService } from '../api/review-api.service';
 import { createDismissibleMessage } from '../../../core/ui/auto-dismiss';
 import { splitAiReasonLines } from '../../../core/ui/ai-reason-lines';
 import { Icon } from '../../../shared/components/icon/icon';
+import { InfoTip } from '../../../shared/components/info-tip/info-tip';
 import { describeMatchedCampaignScope } from '../../product-management/api/product.mapper';
+import { DATA_COMPLETENESS_THRESHOLD } from '../../../core/domain/labels';
+import { buildScoreGroups } from './score-breakdown';
 import {
   OTHER_RISK_OPTION_NAME,
   ReviewDetailModel,
@@ -55,6 +58,20 @@ function mockDetail(productId: string): ReviewDetailModel {
       evaluationModeName: '均衡模式',
       evaluationModeVersion: 1,
     },
+    weights: {
+      modeCode: 'BALANCED',
+      modeName: '均衡模式',
+      version: 1,
+      factors: [
+        { factorCode: 'MARGIN_RATE', factorName: '毛利率（已扣運費）', category: 'BUSINESS', weight: 10 },
+        { factorCode: 'DISCOUNT_DEPTH', factorName: '折扣深度', category: 'BUSINESS', weight: 7.5 },
+        { factorCode: 'SUPPLY_STABILITY', factorName: '供應穩定性', category: 'BUSINESS', weight: 7.5 },
+        { factorCode: 'AUDIENCE_MATCH', factorName: '核心客群匹配度', category: 'AUDIENCE', weight: 25 },
+        { factorCode: 'HISTORY_FULFILLMENT', factorName: '歷史成團率', category: 'HISTORY', weight: 25 },
+        { factorCode: 'PURCHASE_RATE', factorName: '預估購買率', category: 'FORECAST', weight: 12.5 },
+        { factorCode: 'TREND_HEAT', factorName: '市場趨勢熱度', category: 'FORECAST', weight: 12.5 },
+      ],
+    },
     matchedCampaign: null,
     weatherDetail: null,
     ai: {
@@ -83,7 +100,7 @@ const MOCK_PREVIOUS_COMMENT = '上次因備援供應方案不足而未通過，�
 
 @Component({
   selector: 'app-review-detail',
-  imports: [FormsModule, RouterLink, Icon, DatePipe],
+  imports: [FormsModule, RouterLink, Icon, InfoTip, DatePipe, DecimalPipe],
   templateUrl: './review-detail.html',
   styleUrl: './review-detail.scss',
 })
@@ -139,6 +156,18 @@ export class ReviewDetail implements OnInit {
    * splitAiReasonLines() 會先試 \n，沒有才退而用編號標記（不是句號）
    * 拆行，詳見該檔案註解說明為何不能用「。」判斷。
    */
+  /** 評分門檻（資料完整度 %），低於此值不計算分數。 */
+  readonly completenessThreshold = DATA_COMPLETENESS_THRESHOLD;
+
+  /**
+   * 2026-09-30：因子明細 2×2 卡片（分組＋權重＋來源＋? 說明）。取代原本 6 格固定 grid 的分組分數卡片，
+   * 讓「基本分數怎麼來的」可以從畫面上看懂；資料限制見 score-breakdown.ts 檔頭。
+   */
+  readonly scoreGroups = computed(() => {
+    const p = this.product();
+    return p ? buildScoreGroups(p.scores, p.weights) : [];
+  });
+
   readonly aiReasonLines = computed(() => splitAiReasonLines(this.product()?.ai.reasons));
 
   ngOnInit(): void {

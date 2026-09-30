@@ -3,6 +3,7 @@ import { splitCampaignTags } from '../../../core/domain/labels';
 import {
   MatchedCampaignPayload,
   WeatherBoostDetailPayload,
+  WeightSnapshotPayload,
 } from '../../product-management/api/product-api.contract';
 import {
   NOT_PROVIDED,
@@ -85,6 +86,11 @@ export interface ReviewDetailModel {
   isResubmission: boolean;
 
   scores: ReviewScoreBreakdown;
+  /**
+   * 2026-09-30：評估模式的因子權重快照（後端原本就有回傳，先前前端沒有接）。
+   * 審核詳情「因子明細」表格用來顯示各因子權重；null＝商品尚未評估過。
+   */
+  weights: WeightSnapshotPayload | null;
   matchedCampaign: MatchedCampaignPayload | null;
   /** V26：審核頁即時計算的天氣加成明細；沒有時不顯示天氣區塊。 */
   weatherDetail: WeatherBoostDetailPayload | null;
@@ -130,6 +136,7 @@ export function toReviewDetailModel(
       evaluationModeVersion: payload.evaluationModeVersion,
     },
 
+    weights: payload.weights ?? null,
     matchedCampaign: payload.matchedCampaign,
     weatherDetail: payload.weatherBoostDetail ?? null,
 

@@ -65,51 +65,96 @@
       </div>
       <span>{{ p.pricingType === 'NEW' ? '新品 NEW' : '再販售 RESALE' }}</span>
     </header>
-    <div class="scores">
-      <article>
-        <span>資料完整度</span><strong>{{ p.scores.dataCompleteness ?? '—' }}%</strong>
-      </article>
-      <article>
-        <span>基本分數</span><strong>{{ p.scores.totalScore ?? '—' }}</strong>
-      </article>
-      <article>
-        <span>節慶分數</span><strong>+{{ p.scores.festivalBoost ?? 0 }}</strong>
-      </article>
-      <article>
-        <span>天氣分數</span><strong>{{ p.scores.weatherBoost === null ? '—' : '+' + p.scores.weatherBoost }}</strong>
-      </article>
-      <article class="final">
-        <span>最終分數</span><strong>{{ p.scores.finalScore ?? '—' }}</strong>
-      </article>
-      <article><span>商業效益</span><strong>{{ p.scores.businessScore ?? '—' }}</strong></article>
-      <article><span>客群契合</span><strong>{{ p.scores.audienceScore ?? '—' }}</strong></article>
-      <article><span>歷史表現</span><strong>{{ p.scores.historicalScore ?? '—' }}</strong></article>
-      <article><span>購買意願</span><strong>{{ p.scores.purchaseScore ?? '—' }}</strong></article>
-      <article><span>市場趨勢</span><strong>{{ p.scores.trendScore ?? '—' }}</strong></article>
-      <article><span>需求預測</span><strong>{{ p.scores.forecastScore ?? '—' }}</strong></article>
+    <!--
+      2026-09-30 版面重整（方案 A）：原本 11 格同款卡片混排在固定 6 欄 grid，
+      「商業效益」剛好排在「最終分數」後面、「資料完整度」看起來也像一項分數，
+      且畫面沒有權重。改為三塊：①分數公式 ②因子明細（權重／來源） ③加成與外部數據。
+    -->
+    @let s = p.scores;
+    <div class="formula" role="group" aria-label="最終分數計算方式">
+      <div class="term">
+        <span>基本分數</span>
+        <strong>{{ s.totalScore === null ? '—' : (s.totalScore | number: '1.2-2') }}</strong>
+        <small>因子依權重加權平均</small>
+      </div>
+      <span class="op" aria-label="加">＋</span>
+      <div class="term boost">
+        <span>節慶加成</span>
+        <strong>+{{ (s.festivalBoost ?? 0) | number: '1.2-2' }}</strong>
+        <small>{{ p.matchedCampaign ? '命中：' + p.matchedCampaign.campaignName : '未命中檔期' }}</small>
+      </div>
+      <span class="op" aria-label="加">＋</span>
+      <div class="term boost">
+        <span>天氣加成</span>
+        <strong>{{ s.weatherBoost === null ? '—' : '+' + (s.weatherBoost | number: '1.2-2') }}</strong>
+        <small>{{ s.weatherBoost === null ? '尚未計算'
+          : (p.weatherDetail && p.weatherDetail.matchedTags.length > 0 ? '命中：' + p.weatherDetail.matchedTags.join('、') : '未命中天氣標籤') }}</small>
+      </div>
+      <span class="op" aria-label="等於">＝</span>
+      <div class="term final">
+        <span>最終分數</span>
+        <strong>{{ s.finalScore === null ? '—' : (s.finalScore | number: '1.2-2') }}</strong>
+        <small>用於排序與 Top10</small>
+      </div>
     </div>
-    @if (p.matchedCampaign) {
-    <div class="campaign-match">
-      <strong>命中檔期：{{ p.matchedCampaign.campaignName }} </strong>
-      <span>標籤：{{ p.matchedCampaign.matchedTags.join('、') }}</span>
-      @if (campaignScope(p.matchedCampaign); as scope) {
-      <span>期間：{{ scope }}</span>
-      }
+
+    @let passed = s.dataCompleteness !== null && s.dataCompleteness >= completenessThreshold;
+    <p class="gate" [class.gate-warn]="!passed">
+      <span class="gate-badge">{{ passed ? '✓ 可評分' : '⚠ 資料待補' }}</span>
+      資料完整度 <strong>{{ s.dataCompleteness === null ? '—' : (s.dataCompleteness | number: '1.0-0') + '%' }}</strong>
+      （評分門檻 {{ completenessThreshold }}%{{ passed ? '，已達標' : (s.totalScore === null ? '，未達標不計分' : '，未達標不重算，以下為上次有效分數') }}）
+      <span class="gate-mode">評估模式：{{ s.evaluationModeName }} · v{{ s.evaluationModeVersion ?? '—' }}</span>
+    </p>
+
+    <div class="factor-block">
+      <h3>因子明細 <small>權重與分數為審核快照唯讀資訊</small></h3>
+      <!-- 2026-09-30：四大分組改為 2×2 卡片；因子內容與算法說明收進 ? 提示泡泡（同設定頁目標區間／折扣深度的做法）。 -->
+      <div class="factor-cards">
+        @for (g of scoreGroups(); track g.key) {
+        @let single = g.rows.length === 1 && g.key !== 'CUSTOM';
+        <article class="factor-card" [class.excluded]="!g.counted" [class.custom]="g.key === 'CUSTOM'"
+          [attr.aria-label]="g.label + '分組'">
+          <header>
+            <h4>{{ g.label }}<app-info-tip [text]="g.hint" /></h4>
+            <span class="card-weight">權重 {{ g.weight === null ? '—' : (g.weight | number: '1.0-2') + '%' }}</span>
+          </header>
+
+          <div class="card-score">
+            @if (g.score === undefined) {
+            <span class="muted">分數見品項詳情</span>
+            } @else if (g.score === null) {
+            <span class="tag tag-muted">無資料・不計入</span>
+            } @else {
+            <strong>{{ g.score | number: '1.2-2' }}</strong>
+            <small>{{ single ? '因子分數' : '組內加權（參考）' }}</small>
+            }
+          </div>
+
+          <ul class="factor-list">
+            @for (r of g.rows; track r.code) {
+            <li [class.excluded]="r.score === null">
+              <span class="factor-name">{{ r.name }}<app-info-tip [text]="r.hint" /></span>
+              <span class="tag" [attr.data-source]="r.source">{{ r.source }}</span>
+              @if (!single) {
+              <span class="factor-weight">{{ r.weight === null ? '—' : (r.weight | number: '1.0-2') + '%' }}</span>
+              <span class="factor-score">
+                @if (r.score === undefined) {
+                <span class="muted">{{ g.key === 'CUSTOM' ? '見詳情' : '併入組分' }}</span>
+                } @else if (r.score === null) {
+                <span class="muted">無資料</span>
+                } @else {
+                {{ r.score | number: '1.2-2' }}
+                }
+              </span>
+              }
+            </li>
+            }
+          </ul>
+        </article>
+        }
+      </div>
     </div>
-    }
-    @if (p.weatherDetail; as w) {
-    <!-- V26：天氣加成（與節慶加成並列）。送出審核時會以當下的值凍結進審核紀錄。 -->
-    <div class="campaign-match weather-match">
-      <strong>天氣加成：+{{ w.weatherBoost }} 分</strong>
-      <span>命中標籤：{{ w.matchedTags.length > 0 ? w.matchedTags.join('、') : '無' }}</span>
-      <span>歷史 {{ w.historyScore ?? '無資料' }}（{{ w.historyWeightPercentage }}%）· 預測 {{ w.forecastScore ?? '無資料' }}（{{ w.forecastWeightPercentage }}%）</span>
-      <span>資料更新：{{ w.dataUpdatedAt ? (w.dataUpdatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}</span>
-    </div>
-    }
-    <div class="weights">
-      <strong>{{ p.scores.evaluationModeName }} · Version {{ p.scores.evaluationModeVersion ?? '—' }}</strong>
-      <small>權重為審核快照唯讀資訊。</small>
-    </div>
+
   </section>
 
   <section class="panel ai">
