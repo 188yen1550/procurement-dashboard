@@ -940,3 +940,25 @@
     width: 100%;
   }
 }
+
+/*
+ * 數值單位（分、筆…）：接在大字級數字後面，例如 <strong>49.80<span class="unit">分</span></strong>。
+ * 字級比數字小、不搶視覺重點；下限維持全站最小字級 --t-xs（16px）。
+ * 一般內文或表格中的數字直接寫「N 分」「N 筆」，不需要這個 class。
+ *
+ * 為什麼用 !important：單位會被放進各頁既有的數字容器（.stat-card、.score-grid、
+ * .chart-center…），這些元件樣式普遍寫了「容器 span { display:block; font-size… }」
+ * 之類的後代選擇器，加上 Angular 的屬性選擇器後權重（0,3,1）高於任何合理的全域
+ * class。這是刻意設計成「不論放在哪裡都長一樣」的 utility class，用 !important
+ * 比在每個元件各寫一份覆蓋規則更集中、更不會漏。
+ */
+.unit {
+  display: inline !important;
+  margin: 0 0 0 0.15em !important;
+  padding: 0 !important;
+  color: inherit !important;
+  font-size: max(var(--t-xs), 0.5em) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  opacity: 0.72;
+}

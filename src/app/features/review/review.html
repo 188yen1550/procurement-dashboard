@@ -128,7 +128,7 @@
     @for (item of filtered() | sortRows: pendingSort.state(); track item.id) {
     <article [class.disabled]="pageState() === 'disabled'">
       <div class="score">
-        <strong>{{ item.finalScore ?? '—' }}</strong><span>最終分數</span>
+        <strong>{{ item.finalScore ?? '—' }}@if (item.finalScore !== null) {<span class="unit">分</span>}</strong><span>最終分數</span>
       </div>
       <div>
         <span class="category">{{ item.category }}</span>
@@ -256,7 +256,7 @@
                 decisionLabel(record.result)
                 }}</span>
             </td>
-            <td>{{ record.score ?? '—' }}</td>
+            <td>{{ record.score === null ? '—' : record.score + ' 分' }}</td>
             <td>{{ record.reviewer ?? '—' }}</td>
             <td>{{ record.date | date: 'yyyy/MM/dd' }}</td>
             <td>{{ record.comment }}</td>

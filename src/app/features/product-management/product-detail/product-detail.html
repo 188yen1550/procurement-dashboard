@@ -147,17 +147,17 @@
   </div>
   <section class="score-grid" aria-label="評估分數">
     <article>
-      <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}</strong><small>綜合加權分數</small>
+      <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}@if (p.baseScore !== null) {<span class="unit">分</span>}</strong><small>綜合加權分數</small>
     </article>
     <article>
-      <span>節慶分數</span><strong>+{{ p.festivalBoost }}</strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
+      <span>節慶分數</span><strong>+{{ p.festivalBoost }}<span class="unit">分</span></strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
     </article>
     <article>
-      <span>天氣分數</span><strong>{{ p.weatherBoost === null ? '—' : '+' + p.weatherBoost }}</strong>
+      <span>天氣分數</span><strong>{{ p.weatherBoost === null ? '—' : '+' + p.weatherBoost }}@if (p.weatherBoost !== null) {<span class="unit">分</span>}</strong>
       <small>{{ p.weatherBoost === null ? '審核時尚無天氣加成' : weatherBoostCaption(p.weatherDetail) }}</small>
     </article>
     <article class="final">
-      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}</strong><small>dataSource:
+      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}@if (p.finalScore !== null) {<span class="unit">分</span>}</strong><small>dataSource:
         {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
     </article>
   </section>
@@ -231,11 +231,11 @@
     <dl class="metrics boost-breakdown">
       <div>
         <dt>歷史天氣分<app-info-tip text="過去一段期間（預設 30 天）四區每日天氣對應到商品標籤的命中分數平均（核心 1.0、一般 0.6、弱 0.3，同一天取最高），再依四區業務占比加權，換算成 0～100 分。沒有資料的日子不列入平均。" /></dt>
-        <dd>{{ w.historyScore ?? '無資料' }}</dd>
+        <dd>{{ w.historyScore === null ? '無資料' : w.historyScore + ' 分' }}</dd>
       </div>
       <div>
         <dt>預測天氣分<app-info-tip text="今天起的預報期間（預設 14 天）以同樣方式計算的 0～100 分。" /></dt>
-        <dd>{{ w.forecastScore ?? '無資料' }}</dd>
+        <dd>{{ w.forecastScore === null ? '無資料' : w.forecastScore + ' 分' }}</dd>
       </div>
       <div class="boost-result">
         <dt>本次天氣加成<app-info-tip text="天氣分 ÷ 100 × 加成上限；天氣分＝歷史天氣分 × 歷史比重 ＋ 預測天氣分 × 預測比重（只有一邊有資料時直接用那一邊）。" /></dt>
@@ -367,7 +367,7 @@
         </div>
         <div>
           <dt>供應商產能上限</dt>
-          <dd>{{ p.supplierMaxCapacity ?? '不限制' }}</dd>
+          <dd>{{ p.supplierMaxCapacity === null ? '不限制' : p.supplierMaxCapacity + ' 組' }}</dd>
         </div>
         <div class="col-half">
           <dt>處理注意事項</dt>
@@ -407,21 +407,21 @@
         <section class="evaluation-item">
           <header>
             <h2>核心客群匹配<app-info-tip text="目前生效中的核心客群關鍵字，與「目標客群描述＋商品名稱」的命中比例（命中關鍵字數 ÷ 關鍵字總數）。" /></h2>
-            <strong>{{ p.audienceScore }}</strong>
+            <strong>{{ p.audienceScore }}<span class="unit">分</span></strong>
           </header>
           <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
         </section>
         <section class="evaluation-item">
           <header>
             <h2>歷史銷售資料<app-info-tip text="歷史成團率的三層貝氏收縮：商品自己的成團率向所屬商品類型收斂，商品類型再向全體收斂；樣本越少越接近上一層。分母不含取消開團。" /></h2>
-            <strong>{{ p.historicalScore }}</strong>
+            <strong>{{ p.historicalScore }}<span class="unit">分</span></strong>
           </header>
           <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
         </section>
         <section class="evaluation-item">
           <header>
             <h2>預估購買<app-info-tip text="採購人工填寫的預估購買率（0～100%），直接換算為分數，非系統自動推算。" /></h2>
-            <strong>{{ p.purchaseScore }}</strong>
+            <strong>{{ p.purchaseScore }}<span class="unit">分</span></strong>
           </header>
           <p>
             {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
@@ -498,7 +498,7 @@
         <section class="evaluation-item trend">
           <header>
             <h2>市場趨勢／熱門度<app-info-tip text="依 PTT 公開看板近 90 天的討論量（貼文＋推文）換算，是相對熱度，不等於銷售量。熱度：一般商品約 40–60 分，最近 3 次同步都上升時品項清單會標示「連續上升」。趨勢：比較近 7 天與 90 天平均的討論速度，50 分為持平。計分時取趨勢分與熱度的平均，並依距採集日天數做指數衰減、收斂到中性基準分。" /></h2>
-            <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}</strong>
+            <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}@if (p.lastSyncedAt) {<span class="unit">分</span>}</strong>
           </header>
           <p>
             @if (!p.lastSyncedAt) {

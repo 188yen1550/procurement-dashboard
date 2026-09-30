@@ -74,26 +74,26 @@
     <div class="formula" role="group" aria-label="最終分數計算方式">
       <div class="term">
         <span>基本分數</span>
-        <strong>{{ s.totalScore === null ? '—' : (s.totalScore | number: '1.2-2') }}</strong>
+        <strong>{{ s.totalScore === null ? '—' : (s.totalScore | number: '1.2-2') }}@if (s.totalScore !== null) {<span class="unit">分</span>}</strong>
         <small>因子依權重加權平均</small>
       </div>
       <span class="op" aria-label="加">＋</span>
       <div class="term boost">
         <span>節慶加成</span>
-        <strong>+{{ (s.festivalBoost ?? 0) | number: '1.2-2' }}</strong>
+        <strong>+{{ (s.festivalBoost ?? 0) | number: '1.2-2' }}<span class="unit">分</span></strong>
         <small>{{ p.matchedCampaign ? '命中：' + p.matchedCampaign.campaignName : '未命中檔期' }}</small>
       </div>
       <span class="op" aria-label="加">＋</span>
       <div class="term boost">
         <span>天氣加成</span>
-        <strong>{{ s.weatherBoost === null ? '—' : '+' + (s.weatherBoost | number: '1.2-2') }}</strong>
+        <strong>{{ s.weatherBoost === null ? '—' : '+' + (s.weatherBoost | number: '1.2-2') }}@if (s.weatherBoost !== null) {<span class="unit">分</span>}</strong>
         <small>{{ s.weatherBoost === null ? '尚未計算'
           : (p.weatherDetail && p.weatherDetail.matchedTags.length > 0 ? '命中：' + p.weatherDetail.matchedTags.join('、') : '未命中天氣標籤') }}</small>
       </div>
       <span class="op" aria-label="等於">＝</span>
       <div class="term final">
         <span>最終分數</span>
-        <strong>{{ s.finalScore === null ? '—' : (s.finalScore | number: '1.2-2') }}</strong>
+        <strong>{{ s.finalScore === null ? '—' : (s.finalScore | number: '1.2-2') }}@if (s.finalScore !== null) {<span class="unit">分</span>}</strong>
         <small>用於排序與 Top10</small>
       </div>
     </div>
@@ -125,7 +125,7 @@
             } @else if (g.score === null) {
             <span class="tag tag-muted">無資料・不計入</span>
             } @else {
-            <strong>{{ g.score | number: '1.2-2' }}</strong>
+            <strong>{{ g.score | number: '1.2-2' }}<span class="unit">分</span></strong>
             <small>{{ single ? '因子分數' : '組內加權（參考）' }}</small>
             }
           </div>
@@ -143,7 +143,7 @@
                 } @else if (r.score === null) {
                 <span class="muted">無資料</span>
                 } @else {
-                {{ r.score | number: '1.2-2' }}
+                {{ r.score | number: '1.2-2' }} 分
                 }
               </span>
               }
@@ -153,8 +153,48 @@
         </article>
         }
       </div>
+      <p class="factor-note">
+        基本分數＝有資料的因子依權重加權平均；<strong>無資料的因子不計入</strong>，其權重依比例分配給其他因子，不以 0 分計算。
+        分組分數為參考用的組內彙總，不另外加總。
+      </p>
     </div>
 
+    <div class="external-block">
+      <h3>加成與外部數據</h3>
+      <ul class="external-list">
+        <li>
+          <span class="tag" data-source="系統計算">節慶檔期</span>
+          @if (p.matchedCampaign) {
+          <span>命中「{{ p.matchedCampaign.campaignName }}」</span>
+          <span>標籤：{{ p.matchedCampaign.matchedTags.join('、') }}</span>
+          @if (campaignScope(p.matchedCampaign); as scope) {
+          <span>期間：{{ scope }}</span>
+          }
+          } @else {
+          <span>目前未命中準備期或進行中的檔期</span>
+          }
+        </li>
+        @if (p.weatherDetail; as w) {
+        <!-- V26：天氣加成（與節慶加成並列）。送出審核時會以當下的值凍結進審核紀錄。 -->
+        <li>
+          <span class="tag" data-source="外部數據">天氣</span>
+          <span>命中標籤：{{ w.matchedTags.length > 0 ? w.matchedTags.join('、') : '無' }}</span>
+          <span>過去天氣 {{ w.historyScore === null ? '無資料' : w.historyScore + ' 分' }}（佔 {{ w.historyWeightPercentage }}%）</span>
+          <span>未來預報 {{ w.forecastScore === null ? '無資料' : w.forecastScore + ' 分' }}（佔 {{ w.forecastWeightPercentage }}%）</span>
+          <span>資料更新：{{ w.dataUpdatedAt ? (w.dataUpdatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}</span>
+        </li>
+        }
+        <li>
+          <span class="tag" data-source="外部數據">市場熱度</span>
+          @if (s.trendScore === null) {
+          <span>尚無真實外部資料，不列入計分</span>
+          } @else {
+          <span>熱度分數 {{ s.trendScore | number: '1.2-2' }} 分</span>
+          <span>相對熱度（非銷售量），資料越舊越往中性值收斂</span>
+          }
+        </li>
+      </ul>
+    </div>
   </section>
 
   <section class="panel ai">

@@ -239,6 +239,8 @@ export class Dashboard implements OnInit, OnDestroy {
         cutout: '68%',
         plugins: {
           legend: { display: false },
+          // 2026-09-30：提示泡泡補上單位（原本只顯示「待人工審核: 5」）
+          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}：${ctx.parsed} 筆` } },
         },
       },
     });

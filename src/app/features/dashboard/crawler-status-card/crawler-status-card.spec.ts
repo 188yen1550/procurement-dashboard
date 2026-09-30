@@ -125,7 +125,7 @@ describe('CrawlerStatusCard', () => {
   it('顯示最後同步時間、筆數，以及前往設定頁排程與同步的連結', async () => {
     const el = await create();
     expect(el.textContent).toContain('09/28 02:01');
-    expect(el.textContent).toContain('7/7 取得 PTT 資料');
+    expect(el.textContent).toContain('7 / 7 筆取得 PTT 資料');
     const link = el.querySelector('a.crawler-manage') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/settings/system?tab=jobs#trend-crawler');
   });

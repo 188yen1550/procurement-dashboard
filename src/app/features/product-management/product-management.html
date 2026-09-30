@@ -313,7 +313,7 @@
               } @else if (isIncomplete(product)) {
               <span class="score unavailable">—</span><small class="score-note">待補齊後評分</small>
               } @else {
-              <strong class="score">{{ product.finalScore }}</strong>
+              <strong class="score">{{ product.finalScore }}<span class="unit">分</span></strong>
               }
             </td>
             <td>

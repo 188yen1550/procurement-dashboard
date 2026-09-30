@@ -74,7 +74,7 @@
             </div>
             @if (item.fitScore !== null) {
               <div class="fit" title="AI 依核心客群與團購通路條件評估的適配度（0～100），是意見不是事實，請看下方理由">
-                <strong>{{ item.fitScore }}</strong>
+                <strong>{{ item.fitScore }}<span class="unit">分</span></strong>
                 <span>適配度</span>
               </div>
             } @else {
@@ -99,17 +99,17 @@
 
           <dl class="metrics">
             <div><dt>近 7 天提及</dt><dd>{{ item.mentionCount }} 篇</dd></div>
-            <div><dt>淨推文</dt><dd>{{ item.pushVolume }}</dd></div>
+            <div><dt>淨推文</dt><dd>{{ item.pushVolume }} 則</dd></div>
             <div>
               <dt>PTT 熱度</dt>
               @if (item.popularityScore !== null) {
-                <dd [attr.data-direction]="item.trendDirection">{{ item.popularityScore }}・{{ directionLabel(item.trendDirection) }}</dd>
+                <dd [attr.data-direction]="item.trendDirection">{{ item.popularityScore }} 分・{{ directionLabel(item.trendDirection) }}</dd>
               } @else {
                 <dd class="unchecked">未查</dd>
               }
             </div>
             @if (item.windowVolume !== null) {
-              <div><dt>90 天討論量</dt><dd>{{ item.windowVolume }}</dd></div>
+              <div><dt>90 天討論量</dt><dd>{{ item.windowVolume }} 則</dd></div>
             }
             <div>
               <dt>Google 趨勢</dt>

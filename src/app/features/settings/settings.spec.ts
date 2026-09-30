@@ -279,6 +279,19 @@ describe('Settings', () => {
     ).toBe(false);
   });
 
+  it('計分與判定參數不列出只在目標區間 HISTORICAL 模式生效的三個參數（2026-09-30）', () => {
+    const base = component.systemSettings()[0];
+    component.systemSettings.set([
+      { ...base, key: 'shrinkage_k_category', category: '貝氏收縮' },
+      { ...base, key: 'score_band_min_sample_size', category: '目標區間' },
+      { ...base, key: 'score_band_percentile_lower', category: '目標區間' },
+      { ...base, key: 'score_band_percentile_upper', category: '目標區間' },
+    ]);
+    const groups = component.systemSettingsByCategory();
+    expect(groups.map((g) => g.category)).toEqual(['貝氏收縮']);
+    expect(groups.flatMap((g) => g.items.map((i) => i.key))).toEqual(['shrinkage_k_category']);
+  });
+
   it('prevents normal navigation from entering the hidden audience tab', () => {
     component.setTab('audience');
     expect(component.activeTab()).toBe('modes');
@@ -838,12 +851,12 @@ describe('Settings', () => {
       expect(component.supportsHistoricalBand(typeMargin)).toBe(true);
       expect(component.supportsHistoricalBand(globalBuzz)).toBe(false);
 
-      component.openScoreBandEditor(globalMargin);
+      // 2026-09-30：畫面移除「來源模式」選單，編輯列只剩上下界輸入，一律以手動填入送出。
+      component.openScoreBandEditor(typeMargin);
       fixture.detectChanges();
-      const options = Array.from(
-        fixture.nativeElement.querySelectorAll('tr.is-editing select option') as NodeListOf<HTMLOptionElement>,
-      ).map((o) => o.value);
-      expect(options).toEqual(['MANUAL']);
+      expect(fixture.nativeElement.querySelector('tr.is-editing select')).toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('tr.is-editing input[type=number]').length).toBe(2);
+      expect(component.scoreBandDraftMode()).toBe('MANUAL');
     });
   });
 });

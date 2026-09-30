@@ -58,6 +58,16 @@ import { DiscoveryPanel } from './tabs/discovery-panel/discovery-panel';
 import { TrendCrawlerPanel } from './tabs/trend-crawler-panel/trend-crawler-panel';
 import { GoogleTrendsPanel } from './tabs/google-trends-panel/google-trends-panel';
 
+/**
+ * 2026-09-30：只在目標區間 HISTORICAL（依歷史紀錄計算）模式下才會被讀取的參數。
+ * 畫面已移除 HISTORICAL 入口，「計分與判定參數」分頁不再列出這三項。
+ */
+const HIDDEN_SCORE_BAND_HISTORICAL_KEYS: ReadonlySet<string> = new Set([
+  'score_band_min_sample_size',
+  'score_band_percentile_lower',
+  'score_band_percentile_upper',
+]);
+
 type SettingsState = 'default' | 'disabled' | 'loading' | 'error';
 
 interface EvaluationModeVM {
@@ -1613,6 +1623,9 @@ export class Settings implements OnInit {
     for (const s of this.systemSettings()) {
       // 2026-09-29：節慶加成上限在「節慶檔期」分頁編輯，這裡不重複列出，避免兩個入口。
       if (s.key === FESTIVAL_BOOST_CAP_KEY) continue;
+      // 2026-09-30：目標區間已移除「依歷史紀錄計算」入口，這三個只在 HISTORICAL 模式生效的參數
+      // 在畫面上已無作用，隱藏避免誤解（後端設定與 API 保留，重新開放 HISTORICAL 時移除此判斷即可）。
+      if (HIDDEN_SCORE_BAND_HISTORICAL_KEYS.has(s.key)) continue;
       const arr = groups.get(s.category) ?? [];
       arr.push(s);
       groups.set(s.category, arr);
@@ -1896,7 +1909,8 @@ export class Settings implements OnInit {
   /** 開始編輯一筆既有的目標區間（全域或品類覆寫皆可）。 */
   openScoreBandEditor(band: ScoreBandVM): void {
     this.editingScoreBandId.set(band.id);
-    this.scoreBandDraftMode.set(band.sourceMode);
+    // 2026-09-30：畫面已移除來源模式選單，編輯一律以手動填入送出（見 settings.html 註解）。
+    this.scoreBandDraftMode.set('MANUAL');
     this.scoreBandDraftLower.set(band.lowerBound);
     this.scoreBandDraftUpper.set(band.upperBound);
   }

@@ -356,7 +356,7 @@
 
 .factor-list li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 3.4rem 4.6rem;
+  grid-template-columns: minmax(0, 1fr) auto 3.4rem 5.2rem;
   align-items: center;
   gap: .5rem;
   padding: .2rem 0;
@@ -745,7 +745,7 @@ textarea:focus-visible {
   }
 
   .factor-list li {
-    grid-template-columns: minmax(0, 1fr) 3.2rem 4.4rem
+    grid-template-columns: minmax(0, 1fr) 3.2rem 5rem
   }
 
   /* 手機寬度：來源標籤讓位給權重與分數 */

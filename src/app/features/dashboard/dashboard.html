@@ -142,24 +142,24 @@
     @if (isManager()) {
     <article class="stat-card total">
       <div class="stat-card-link">
-        <span>候選商品總數</span><strong>{{ scopeTotal() }}</strong>
+        <span>候選商品總數</span><strong>{{ scopeTotal() }}<span class="unit">筆</span></strong>
       </div>
     </article>
     <article class="stat-card pending">
       <a class="stat-card-link" routerLink="/review" aria-label="待人工審核：前往選品審核">
-        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="unit">筆</span></strong>
       </a>
     </article>
     <article class="stat-card approved">
       <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'APPROVED' }"
         aria-label="審核通過：前往決策紀錄">
-        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}</strong>
+        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="unit">筆</span></strong>
       </a>
     </article>
     <article class="stat-card rejected">
       <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'REJECTED' }"
         aria-label="審核拒絕：前往決策紀錄">
-        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
+        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="unit">筆</span></strong>
       </a>
     </article>
     } @else {
@@ -168,25 +168,25 @@
     <article class="stat-card total">
       <a class="stat-card-link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'ALL', createdByMe: createdByMeParam() }" aria-label="候選商品總數：前往品項管理">
-        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}</strong>
+        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}<span class="unit">筆</span></strong>
       </a>
     </article>
     <article class="stat-card pending">
       <a class="stat-card-link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'PENDING', createdByMe: createdByMeParam() }" aria-label="待人工審核：前往品項管理">
-        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}</strong>
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="unit">筆</span></strong>
       </a>
     </article>
     <article class="stat-card approved">
       <a class="stat-card-link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'APPROVED', createdByMe: createdByMeParam() }" aria-label="審核通過：前往品項管理">
-        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}</strong>
+        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="unit">筆</span></strong>
       </a>
     </article>
     <article class="stat-card rejected">
       <a class="stat-card-link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'REJECTED', createdByMe: createdByMeParam() }" aria-label="審核拒絕：前往品項管理">
-        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}</strong>
+        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="unit">筆</span></strong>
       </a>
     </article>
     }
@@ -210,7 +210,7 @@
       <div class="status-overview">
         <div class="status-chart-wrap">
           <canvas #statusChartCanvas [attr.aria-label]="statusChartLabel()" role="img"></canvas>
-          <div class="chart-center" aria-hidden="true"><strong>{{ statusTotal() }}</strong><span>狀態合計</span></div>
+          <div class="chart-center" aria-hidden="true"><strong>{{ statusTotal() }}<span class="unit">筆</span></strong><span>狀態合計</span></div>
         </div>
         <ul class="status-breakdown" aria-label="商品狀態筆數與占總數比例">
           @for (item of statusBreakdown(); track item.label) {
@@ -332,7 +332,7 @@
                     @if (!hasFinalScore(item)) {
                     <span class="unavailable">—</span>
                     } @else {
-                    <strong class="score">{{ item.finalScore }}</strong>
+                    <strong class="score">{{ item.finalScore }}<span class="unit">分</span></strong>
                     }
                   </td>
                   <td class="actions-column">
@@ -397,7 +397,7 @@
                     <span class="unavailable">—</span>
                     } @else {
                     <strong class="score" [class.is-simulated]="!item.isRealSource">
-                      {{ item.popularityScore }}@if (!item.isRealSource) {（模擬）}
+                      {{ item.popularityScore }}<span class="unit">分</span>@if (!item.isRealSource) {（模擬）}
                     </strong>
                     }
                   </td>

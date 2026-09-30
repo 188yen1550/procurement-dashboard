@@ -18,7 +18,7 @@
         @if (s.lastRun; as run) {
           最後同步：{{ (run.finishedAt ?? run.startedAt) | date: 'MM/dd HH:mm' }}
           <span aria-hidden="true">・</span>
-          {{ run.realCount }}/{{ run.totalCount }} 取得 PTT 資料
+          {{ run.realCount }} / {{ run.totalCount }} 筆取得 PTT 資料
         } @else {
           尚無同步紀錄
         }

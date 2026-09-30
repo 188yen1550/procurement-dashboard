@@ -399,8 +399,14 @@ export class ProductDetail implements OnInit, OnDestroy {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, max: 100 } },
+        // 2026-09-30：縱軸與提示泡泡補上單位（熱度為 0～100 的相對分數，不是討論篇數）
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ` 熱度 ${ctx.parsed.y} 分` } },
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, title: { display: true, text: '熱度（分）' } },
+        },
       },
     });
   });
