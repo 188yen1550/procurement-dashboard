@@ -1,6 +1,6 @@
 <!-- 檔案用途：後台殼層；main 的識別碼提供 skip link 及輔助科技直接定位主要內容。 -->
 <div class="admin-layout">
-  <a class="skip-link" href="#main-content">跳到主要內容</a>
+  <a class="admin-layout__skip-link" href="#main-content">跳到主要內容</a>
 
   <app-sidebar [isOpen]="isMenuOpen()" [isManager]="isManager()" [locked]="mustChangePassword()"
     (closeRequested)="closeMenu()" />
@@ -8,13 +8,13 @@
   @if (isMenuOpen()) {
     <button
       type="button"
-      class="sidebar-backdrop"
+      class="admin-layout__backdrop"
       aria-label="關閉導覽選單"
       (click)="closeMenu()"
     ></button>
   }
 
-  <div class="admin-main">
+  <div class="admin-layout__main">
     <app-header
       [roleLabel]="roleLabel()"
       [userName]="userName()"
@@ -22,7 +22,7 @@
       (logoutRequested)="logout()"
     />
 
-    <main id="main-content" class="page-content" tabindex="-1">
+    <main id="main-content" class="admin-layout__content" tabindex="-1">
       <router-outlet />
     </main>
   </div>

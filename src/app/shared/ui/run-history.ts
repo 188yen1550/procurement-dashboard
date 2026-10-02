@@ -89,7 +89,7 @@ export class RunHistory<T> {
           下一頁
         </button>
         @if (error()) {
-          <span class="run-history-pager-error" role="alert">無法載入：{{ error() }}</span>
+          <span class="run-history-pager__error" role="alert">無法載入：{{ error() }}</span>
         }
       </nav>
     }
@@ -101,11 +101,11 @@ export class RunHistory<T> {
       align-items: center;
       gap: 0.5rem 0.75rem;
       margin-top: 0.75rem;
-      font-size: var(--t-sm);
-      color: var(--c-ink-soft);
+      font-size: var(--font-size-sm);
+      color: var(--color-ink-soft);
     }
-    .run-history-pager-error {
-      color: var(--c-danger);
+    .run-history-pager__error {
+      color: var(--color-danger);
     }
   `,
 })

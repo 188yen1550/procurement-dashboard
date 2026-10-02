@@ -19,81 +19,87 @@
 
 /* ===================== 分頁列 ===================== */
 
-.tabs {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--s-1);
-  margin-bottom: var(--s-4);
-  overflow-x: auto;
-  border-bottom: 1px solid var(--c-border);
-  scrollbar-width: thin;
-}
+.settings {
+  &__tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-1);
+    margin-bottom: var(--spacing-4);
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: thin;
+  }
 
-/* 分頁分組的細分隔線（評分／資料字典／檔期／帳號），2026-09-24 分頁增為 10 個後加入。 */
-.tab-divider {
-  flex: 0 0 1px;
-  align-self: center;
-  height: 1.25rem;
-  margin: 0 var(--s-1);
-  background: var(--c-border-strong);
-}
+  /* 分頁分組的細分隔線（評分／資料字典／檔期／帳號），2026-09-24 分頁增為 10 個後加入。 */
+  &__tab-divider {
+    flex: 0 0 1px;
+    align-self: center;
+    height: 1.25rem;
+    margin: 0 var(--spacing-1);
+    background: var(--color-border-strong);
+  }
 
-.tabs button {
-  padding: 0.55rem 0.85rem;
-  color: var(--c-ink-soft);
-  background: transparent;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
-  font: inherit;
-  font-size: var(--t-sm);
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-}
+  &__tabs button {
+    padding: 0.55rem 0.85rem;
+    color: var(--color-ink-soft);
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
 
-.tabs button:hover {
-  background: var(--c-surface-hover);
-}
+  &__tabs button:hover {
+    background: var(--color-surface-hover);
+  }
 
-.tabs button.active {
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
-  border-bottom-color: var(--c-brand);
+  &__tabs button.is-active {
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
+    border-bottom-color: var(--color-brand);
+  }
 }
 
 /* Demo 狀態切換鈕（僅 useMockData 模式顯示）。 */
-.state-bar button {
-  padding: 0.45rem 0.7rem;
-  color: var(--c-ink-soft);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-sm);
-  font: inherit;
-  font-size: var(--t-sm);
-  font-weight: 700;
-  cursor: pointer;
-}
+.state-bar {
+  button {
+    padding: 0.45rem 0.7rem;
+    color: var(--color-ink-soft);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
 
-.state-bar button.active {
-  color: var(--c-surface);
-  background: var(--c-brand);
-  border-color: var(--c-brand);
-}
+  button.is-active {
+    color: var(--color-surface);
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+  }
 
-.state-bar > div:last-child {
-  display: flex;
-  gap: var(--s-1);
+  > div:last-child {
+    display: flex;
+    gap: var(--spacing-1);
+  }
 }
 
 /* 2026-09-29：「計分與判定參數」前往天氣連動（另一組側邊欄）的提示連結。 */
-.settings-cross-link {
-  margin: 0 0 var(--s-4);
-}
+.settings {
+  &__cross-link {
+    margin: 0 0 var(--spacing-4);
+  }
 
-/* 操作回饋 toast：沿用 .notice 外觀，只調整為不佔滿寬度的行內區塊。 */
-.status-toast {
-  justify-content: flex-start;
+  /* 操作回饋 toast：沿用 .notice 外觀，只調整為不佔滿寬度的行內區塊。 */
+  &__toast {
+    justify-content: flex-start;
+  }
 }
 
 /* ===================== 評估模式 ===================== */
@@ -102,129 +108,112 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
-}
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
 
-.mode-intro h2 {
-  margin: 0 0 0.25rem;
-  font-size: var(--t-xl);
-}
-
-.mode-intro p {
-  margin: 0.2rem 0 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-}
-
-/* 「唯讀」標記。 */
-.mode-intro > span {
-  padding: 0.3rem 0.6rem;
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border-radius: var(--r-pill);
-  font-size: var(--t-xs);
-  font-weight: 800;
-  white-space: nowrap;
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: var(--font-size-xl);
+  }
 }
 
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-4);
-}
+  gap: var(--spacing-4);
 
-.mode-grid article {
-  position: relative;
-  padding: var(--s-4);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-card);
-}
+  article {
+    position: relative;
+    padding: var(--spacing-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
 
-/* 目前生效的模式：綠色框線 + 抬升陰影，一眼看出是哪一套。 */
-.mode-grid article.active {
-  border-color: #74af98;
-  box-shadow: var(--sh-raised);
-}
+  /* 目前生效的模式：綠色框線 + 抬升陰影，一眼看出是哪一套。 */
+  article.is-active {
+    border-color: #74af98;
+    box-shadow: var(--shadow-raised);
+  }
 
-.mode-grid article header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s-2);
-}
+  article header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+  }
 
-.mode-grid h3 {
-  margin: 0.15rem 0;
-  font-size: var(--t-lg);
-}
+  h3 {
+    margin: 0.15rem 0;
+    font-size: var(--font-size-lg);
+  }
 
-.mode-grid header span {
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
+  header span {
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
 
-/* min-height 讓三張卡的權重清單起始高度一致，不會因說明長短而錯位。 */
-.mode-grid p {
-  min-height: 3.2em;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-}
+  /* min-height 讓三張卡的權重清單起始高度一致，不會因說明長短而錯位。 */
+  p {
+    min-height: 3.2em;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+  }
 
-.mode-grid dl {
-  display: grid;
-  gap: var(--s-1);
-  margin: var(--s-4) 0;
-}
+  dl {
+    display: grid;
+    gap: var(--spacing-1);
+    margin: var(--spacing-4) 0;
+  }
 
-.mode-grid dl div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s-2);
-  padding: 0.45rem 0.6rem;
-  background: var(--c-surface-sunken);
-  border-radius: var(--r-sm);
-}
+  dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    padding: 0.45rem 0.6rem;
+    background: var(--color-surface-sunken);
+    border-radius: var(--radius-sm);
+  }
 
-.mode-grid dt,
-.mode-grid dd {
-  font-size: var(--t-sm);
-}
+  dt,
+  dd {
+    font-size: var(--font-size-sm);
+  }
 
-/* 權重數值等寬，三張卡縱向比對時位數會對齊。 */
-.mode-grid dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-}
+  /* 權重數值等寬，三張卡縱向比對時位數會對齊。 */
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
 
-/* 已停用的自訂因子：保留在權重表但不參與計分，淡化並加註。 */
-.mode-grid dl div.is-inactive {
-  color: var(--c-ink-muted);
-}
+  /* 已停用的自訂因子：保留在權重表但不參與計分，淡化並加註。 */
+  dl div.is-inactive {
+    color: var(--color-ink-muted);
+  }
 
-.mode-grid dl div.is-inactive dd {
-  font-weight: 400;
-  text-decoration: line-through;
-}
+  dl div.is-inactive dd {
+    font-weight: 400;
+    text-decoration: line-through;
+  }
 
-.mode-grid dl div.is-inactive small {
-  margin-left: var(--s-1);
-  font-size: var(--t-xs);
-}
+  dl div.is-inactive small {
+    margin-left: var(--spacing-1);
+    font-size: var(--font-size-xs);
+  }
 
-.current {
-  display: block;
-  padding: 0.45rem;
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-  border-radius: var(--r-sm);
-  font-size: var(--t-sm);
-  font-weight: 700;
-  text-align: center;
+  &__current {
+    display: block;
+    padding: 0.45rem;
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-align: center;
+  }
 }
 
 /* ===================== 管理區塊標頭 ===================== */
@@ -233,213 +222,200 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: var(--font-size-xl);
+  }
 }
 
-.management-head h2 {
-  margin: 0 0 0.25rem;
-  font-size: var(--t-xl);
-}
+.settings-modal {
+  fieldset {
+    margin: var(--spacing-3) 0;
+    padding: var(--spacing-3);
+    border: 1px solid #dbe4ea;
+    border-radius: var(--radius-md);
+  }
 
-.management-head p{
-  margin: 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-}
+  /* 新增商品類型：大類 vs 小類 二選一，跟 .campaign-status-mode 同一套版面。 */
+  &__type-level {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+    border: none;
+    padding: 0;
+    margin: 0 0 var(--spacing-3);
+  }
 
-.settings-modal fieldset {
-  margin: var(--s-3) 0;
-  padding: var(--s-3);
-  border: 1px solid #dbe4ea;
-  border-radius: var(--r-md);
-}
+  &__type-level legend {
+    width: 100%;
+    margin-bottom: var(--spacing-1);
+    font-weight: 700;
+  }
 
-.settings-modal fieldset > button {
-  margin-top: var(--s-2);
-}
+  &__type-level .settings-modal__radio {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-weight: normal;
+    white-space: nowrap;
+  }
 
-/* 新增商品類型：大類 vs 小類 二選一，跟 .campaign-status-mode 同一套版面。 */
-.product-type-level {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--s-4);
-  border: none;
-  padding: 0;
-  margin: 0 0 var(--s-3);
-}
-.product-type-level legend {
-  width: 100%;
-  margin-bottom: var(--s-1);
-  font-weight: 700;
-}
-.product-type-level .radio-option {
-  display: flex;
-  align-items: center;
-  gap: var(--s-1);
-  font-weight: normal;
-  white-space: nowrap;
-}
-.product-type-level .helper {
-  width: 100%;
-  margin: 0;
+  &__type-level .helper {
+    width: 100%;
+    margin: 0;
+  }
 }
 
 /* ===================== 目標區間 ===================== */
 
-.score-band-group + .score-band-group {
-  margin-top: var(--s-5);
-}
+.score-band-group {
+  + .score-band-group {
+    margin-top: var(--spacing-5);
+  }
 
-.score-band-group-title {
-  margin: 0 0 var(--s-2);
-  font-size: var(--t-lg);
-}
+  &__title {
+    margin: 0 0 var(--spacing-2);
+    font-size: var(--font-size-lg);
+  }
 
-.score-band-group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  margin-bottom: var(--s-2);
-}
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-2);
+  }
 
-.score-band-group-header .score-band-group-title {
-  margin: 0;
-}
+  &__header .score-band-group__title {
+    margin: 0;
+  }
 
-.score-band-create-form {
-  margin-bottom: var(--s-3);
-}
+  &__create-form {
+    margin-bottom: var(--spacing-3);
+  }
 
-.score-band-edit-grid {
-  display: flex;
-  gap: var(--s-3);
-}
+  &__edit-grid {
+    display: flex;
+    gap: var(--spacing-3);
+  }
 
-.score-band-edit-grid label {
-  display: block;
-  color: var(--c-ink-soft);
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
+  &__edit-grid label {
+    display: block;
+    color: var(--color-ink-soft);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 
-.score-band-edit-grid input,
-.score-band-edit-grid select {
-  display: block;
-  width: 100%;
-  margin-top: var(--s-1);
-  padding: 0.45rem 0.55rem;
-  background: var(--c-surface-sunken);
-  border: 1px solid #d4dee6;
-  border-radius: var(--r-sm);
-  font: inherit;
+  &__edit-grid input {
+    display: block;
+    width: 100%;
+    margin-top: var(--spacing-1);
+    padding: 0.45rem 0.55rem;
+    background: var(--color-surface-sunken);
+    border: 1px solid #d4dee6;
+    border-radius: var(--radius-sm);
+    font: inherit;
+  }
 }
 
 tr.is-editing {
-  background: var(--c-surface-alt);
-}
-
-tr.is-editing select {
-  display: block;
-  padding: 0.45rem 0.55rem;
-  background: var(--c-surface);
-  border: 1px solid #d4dee6;
-  border-radius: var(--r-sm);
-  font: inherit;
+  background: var(--color-surface-alt);
 }
 
 /* ===================== 權重編輯器 ===================== */
 
 .weight-editor {
   display: grid;
-  gap: var(--s-2);
-  margin: var(--s-3) 0;
-  padding: var(--s-3);
-  background: var(--c-surface-sunken);
-  border-radius: var(--r-sm);
-}
+  gap: var(--spacing-2);
+  margin: var(--spacing-3) 0;
+  padding: var(--spacing-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
 
-.weight-editor-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
-  color: var(--c-ink-soft);
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    color: var(--color-ink-soft);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
 
-/*
+  /*
  * 2026-09-20新增（自訂模式增刪因子）：checkbox＋文字放一組，數字輸入框
- * 放另一邊，取代原本單一 <label> 直接當作 .weight-editor-row 的舊排版。
+ * 放另一邊，取代原本單一 <label> 直接當作 .weight-editor__row 的舊排版。
  * min-width: 0 讓長標籤（例如「毛利率（已扣運費）」）能在 flex 容器裡正常
  * 換行，不會把數字輸入框擠出畫面或撐開整列高度不一致。
  */
-.weight-editor-row-label {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  &__label input[type='checkbox'] {
+    flex-shrink: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+  }
+
+  &__value {
+    flex-shrink: 0;
+    width: 5.5rem;
+    padding: 0.35rem 0.5rem;
+    text-align: right;
+    background: var(--color-surface);
+    border: 1px solid #d4dee6;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__value:disabled {
+    color: var(--color-ink-soft);
+    background: var(--color-surface-sunken);
+    opacity: 0.6;
+  }
+
+  &__total {
+    padding: var(--spacing-2);
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-align: center;
+  }
+
+  /* 加總不是 100 時只變色提示，不擋輸入——依決議只在送出時擋。 */
+  &__total.is-invalid {
+    color: var(--color-danger);
+    background: var(--color-danger-tint);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--spacing-2);
+  }
+
+  &__actions .btn,
+  &__actions .btn--primary {
+    flex: 1;
+  }
 }
 
-.weight-editor-row-label input[type='checkbox'] {
-  flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin: 0;
-}
-
-.weight-editor-row-value {
-  flex-shrink: 0;
-  width: 5.5rem;
-  padding: 0.35rem 0.5rem;
-  text-align: right;
-  background: var(--c-surface);
-  border: 1px solid #d4dee6;
-  border-radius: var(--r-sm);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-}
-
-.weight-editor-row-value:disabled {
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  opacity: 0.6;
-}
-
-.weight-editor-total {
-  padding: var(--s-2);
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-  border-radius: var(--r-sm);
-  font-size: var(--t-sm);
-  font-weight: 800;
-  text-align: center;
-}
-
-/* 加總不是 100 時只變色提示，不擋輸入——依決議只在送出時擋。 */
-.weight-editor-total.is-invalid {
-  color: var(--c-danger);
-  background: var(--c-danger-tint);
-}
-
-.weight-editor-actions {
-  display: flex;
-  gap: var(--s-2);
-}
-
-.weight-editor-actions .btn,
-.weight-editor-actions .btn-primary {
-  flex: 1;
-}
-
-.edit-weights-button {
+.mode-grid__edit-weights {
   width: 100%;
-  margin-top: var(--s-2);
+  margin-top: var(--spacing-2);
 }
 
 /* 自訂因子／自訂屬性表單樣式 2026-09-24 移到 tabs/custom-extensions。 */
@@ -461,16 +437,18 @@ tr.is-editing select {
  * scoped），只會套用到這個元件渲染出來的 7 個表格，不會影響
  * group-buy／product-management 頁面用到的同名 class。
  */
-.data-table table {
-  table-layout: fixed;
-}
+.data-table {
+  table {
+    table-layout: fixed;
+  }
 
-.data-table th {
-  white-space: normal;
-}
+  th {
+    white-space: normal;
+  }
 
-.data-table td {
-  overflow-wrap: break-word;
+  td {
+    overflow-wrap: break-word;
+  }
 }
 
 /*
@@ -487,120 +465,118 @@ tr.is-editing select {
   justify-content: flex-end;
 }
 
-.risk-col-actions,
-.type-col-status-actions,
-.band-global-col-actions,
-.band-override-col-actions,
-.setting-col-actions,
-.account-col-actions {
-  text-align: right;
-}
+.data-table {
+  &__col--risk-actions,
+  &__col--type-actions,
+  &__col--global-actions,
+  &__col--override-actions,
+  &__col--setting-actions,
+  &__col--account-actions {
+    text-align: right;
+  }
 
-/* 風險選項 */
-.risk-col-name {
-  width: 22%;
-}
+  /* 風險選項 */
+  &__col--risk-name {
+    width: 22%;
+  }
 
-.risk-col-keywords {
-  width: 48%;
-}
+  &__col--risk-keywords {
+    width: 48%;
+  }
 
-.risk-col-status {
-  width: 12%;
-}
+  &__col--risk-status {
+    width: 12%;
+  }
 
-.risk-col-actions {
-  width: 18%;
-}
+  &__col--risk-actions {
+    width: 18%;
+  }
 
-/* 商品類型設定（「來源」欄已移除，空間分配給其餘三欄） */
-.type-col-name {
-  width: 35%;
-}
+  /* 商品類型設定（「來源」欄已移除，空間分配給其餘三欄） */
+  &__col--type-name {
+    width: 35%;
+  }
 
-.type-col-used {
-  width: 15%;
-}
+  &__col--type-actions {
+    width: 50%;
+  }
 
-.type-col-status-actions {
-  width: 50%;
-}
+  /* 目標區間－全域預設 */
+  &__col--global-factor {
+    width: 40%;
+  }
 
-/* 目標區間－全域預設 */
-.band-global-col-factor {
-  width: 40%;
-}
+  &__col--global-bound {
+    width: 18%;
+  }
 
-.band-global-col-bound {
-  width: 18%;
-}
+  &__col--global-actions {
+    width: 24%;
+  }
 
-.band-global-col-actions {
-  width: 24%;
-}
-
-/* 目標區間－各商品類型覆寫（欄位比全域預設多一欄「商品類型」，
+  /* 目標區間－各商品類型覆寫（欄位比全域預設多一欄「商品類型」，
    比例跟全域預設那組不共用，即使兩者都有「因子」「上下界」） */
-.band-override-col-type {
-  width: 24%;
-}
+  &__col--override-type {
+    width: 24%;
+  }
 
-.band-override-col-factor {
-  width: 24%;
-}
+  &__col--override-factor {
+    width: 24%;
+  }
 
-.band-override-col-bound {
-  width: 16%;
-}
+  &__col--override-bound {
+    width: 16%;
+  }
 
-.band-override-col-actions {
-  width: 20%;
-}
+  &__col--override-actions {
+    width: 20%;
+  }
 
-/* 演算法參數 */
-.setting-col-param {
-  width: 52%;
-}
+  /* 演算法參數 */
+  &__col--setting-param {
+    width: 52%;
+  }
 
-.setting-col-value {
-  width: 22%;
-}
+  &__col--setting-value {
+    width: 22%;
+  }
 
-.setting-col-updated {
-  width: 12%;
-}
+  &__col--setting-updated {
+    width: 12%;
+  }
 
-.setting-col-actions {
-  width: 14%;
-}
+  &__col--setting-actions {
+    width: 14%;
+  }
 
-/* 帳號管理
+  /* 帳號管理
    2026-09-27：原本五欄加總 110%（32+18+16+14+30），瀏覽器會等比例縮小每一欄，
    操作欄實際只剩約 196px，放「（本人）」加兩顆按鈕就被擠到換行。改成加總 100%，
-   操作欄放大到 40%，並在下面的 .account-actions 禁止換行。 */
-.account-col-username {
-  width: 18%;
-}
+   操作欄放大到 40%，並在下面的 .row-actions--account 禁止換行。 */
+  &__col--account-username {
+    width: 18%;
+  }
 
-.account-col-name {
-  width: 18%;
-}
+  &__col--account-name {
+    width: 18%;
+  }
 
-.account-col-role {
-  width: 10%;
-}
+  &__col--account-role {
+    width: 10%;
+  }
 
-.account-col-status {
-  width: 14%;
-}
+  &__col--account-status {
+    width: 14%;
+  }
 
-.account-col-actions {
-  width: 40%;
+  &__col--account-actions {
+    width: 40%;
+  }
 }
 
 /* 按鈕排在儲存格內層的容器，不把 <td> 本身設成 flex——<td> 變成 flex 後不再是
    表格儲存格，高度不會跟整列一起撐開，底線會跟同一列其他欄位錯開。 */
-.account-actions {
+.row-actions--account {
   flex-wrap: nowrap;
   white-space: nowrap;
 }
@@ -618,7 +594,7 @@ tr.is-editing select {
     grid-template-columns: 1fr;
   }
 
-  .management-head .btn-primary {
+  .management-head .btn--primary {
     width: 100%;
   }
 
@@ -627,28 +603,34 @@ tr.is-editing select {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .tabs {
-    overflow-x: auto;
-  }
+  .settings {
+    &__tabs {
+      overflow-x: auto;
+    }
 
-  .tabs button {
-    flex: 0 0 auto;
+    &__tabs button {
+      flex: 0 0 auto;
+    }
   }
 
 }
 
 /* ===== 商品分類階層顯示（大類/小類） ===== */
-.type-major-row td {
-  background: #f4f7f9;
-  border-top: 2px solid #d7e0e6;
-}
-.type-minor-row .type-minor-name {
-  padding-left: 2rem;
-  color: #38536a;
-}
-.type-minor-row .type-minor-name::before {
-  content: '└ ';
-  color: #9aabb8;
+.data-table {
+  &__row--major td {
+    background: #f4f7f9;
+    border-top: 2px solid #d7e0e6;
+  }
+
+  &__row--minor .data-table__minor-name {
+    padding-left: 2rem;
+    color: #38536a;
+  }
+
+  &__row--minor .data-table__minor-name::before {
+    content: '└ ';
+    color: #9aabb8;
+  }
 }
 
 /* 大類展開／收合按鈕：預設收合，點擊切換該大類底下的小類是否顯示。 */
@@ -662,34 +644,42 @@ tr.is-editing select {
   cursor: pointer;
   font: inherit;
   color: inherit;
-}
-.type-toggle:disabled {
-  cursor: default;
-}
-.type-toggle-caret {
-  display: inline-block;
-  font-size: 0.7em;
-  color: #6b8299;
-  transition: transform 0.15s ease;
-}
-.type-toggle.is-expanded .type-toggle-caret {
-  transform: rotate(90deg);
-}
-.type-toggle:disabled .type-toggle-caret {
-  visibility: hidden;
-}
-.type-toggle-count {
-  color: #6b8299;
-  font-weight: normal;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &__caret {
+    display: inline-block;
+    font-size: 0.7em;
+    color: #6b8299;
+    transition: transform 0.15s ease;
+  }
+
+  &.is-expanded .type-toggle__caret {
+    transform: rotate(90deg);
+  }
+
+  &:disabled .type-toggle__caret {
+    visibility: hidden;
+  }
+
+  &__count {
+    color: #6b8299;
+    font-weight: normal;
+  }
 }
 
 /* ===== 評估模式卡片：擴大點擊範圍 ===== */
-.mode-grid article.is-selectable {
-  cursor: pointer;
-}
-.mode-grid article.is-selectable:hover {
-  border-color: #9db8cc;
-  box-shadow: 0 4px 14px rgba(28, 82, 134, 0.1);
+.mode-grid {
+  article.is-selectable {
+    cursor: pointer;
+  }
+
+  article.is-selectable:hover {
+    border-color: #9db8cc;
+    box-shadow: 0 4px 14px rgba(28, 82, 134, 0.1);
+  }
 }
 
 /* ===== 風險關鍵字標籤區塊化（chip） ===== */
@@ -702,54 +692,60 @@ tr.is-editing select {
   background: #fff;
   border: 1px solid #d4dee6;
   border-radius: 0.4rem;
-}
-.keyword-chip-input input {
-  flex: 1;
-  min-width: 8rem;
-  padding: 0.3rem 0.2rem;
-  border: none;
-  outline: none;
+
+  input {
+    flex: 1;
+    min-width: 8rem;
+    padding: 0.3rem 0.2rem;
+    border: none;
+    outline: none;
+  }
 }
 .keyword-chip-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-}
-.keyword-chip-list.readonly {
-  margin-top: 0.2rem;
-}
-.keyword-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.5rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
-  border: 1px solid #b7d3ea;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  white-space: nowrap;
-}
-.keyword-chip.readonly {
-  color: #38536a;
-  background: #f0f4f7;
-  border-color: #dbe4ea;
-}
-.keyword-chip-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  color: inherit;
-  background: none;
-  border: none;
-  cursor: pointer;
-  line-height: 1;
-}
-.keyword-chip-remove:hover {
-  color: #b23b3b;
+
+  &--readonly {
+    margin-top: 0.2rem;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
+    border: 1px solid #b7d3ea;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+
+  &__chip--readonly {
+    color: #38536a;
+    background: #f0f4f7;
+    border-color: #dbe4ea;
+  }
+
+  &__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  &__remove:hover {
+    color: #b23b3b;
+  }
 }
 
 /* ===== 以下class原本用在HTML卻完全沒有對應樣式，補上 ===== */
@@ -768,23 +764,23 @@ tr.is-editing select {
    正常字級／字重顯示，其餘（INTEGER／DECIMAL）維持原本放大強調。
    未來如果後端新增其他 STRING 型設定，會自動套用同一套處理，不用
    再一一加特例。 */
-.system-setting-value {
-  font-size: var(--t-lg);
+.setting-value {
+  font-size: var(--font-size-lg);
   font-weight: 650;
-  color: var(--c-brand, var(--c-brand));
+  color: var(--color-brand, var(--color-brand));
+
+  &.is-text-value {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
 }
 
-.system-setting-value.is-text-value {
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
-
-.unit {
+.u-unit {
   margin-left: 0.3rem;
   color: #6c7a89;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
 }
-.system-setting-edit-field {
+.setting-edit-field {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -798,7 +794,7 @@ tr.is-editing select {
 }
 
 /* 目標區間／貝氏收縮／趨勢分析／MOQ判定 這四個分類的滑桿編輯欄位。 */
-.system-setting-slider-field {
+.setting-slider {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -806,24 +802,24 @@ tr.is-editing select {
 
   input[type='range'] {
     flex: 1;
-    accent-color: var(--c-brand);
+    accent-color: var(--color-brand);
   }
-}
 
-.system-setting-slider-manual {
-  width: 6rem;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid #d4dee6;
-  border-radius: 0.4rem;
-  color: var(--c-brand);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  &__input {
+    width: 6rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #d4dee6;
+    border-radius: 0.4rem;
+    color: var(--color-brand);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
 }
 
 /* 溫層判定：常溫／冷藏／冷凍三個固定選項的勾選方塊，跟關鍵字 chip
    視覺呼應（都是「多選、可個別切換」的概念），但用 checkbox 而不是
    自由輸入＋刪除鈕，因為選項是封閉集合，不需要新增/命名。 */
-.temperature-zone-checkboxes {
+.zone-checkboxes {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -838,27 +834,27 @@ tr.is-editing select {
   background: #f0f4f7;
   border: 1px solid #d4dee6;
   border-radius: 999px;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   cursor: pointer;
 
   input[type='checkbox'] {
-    accent-color: var(--c-brand);
+    accent-color: var(--color-brand);
   }
 
   &:has(input:checked) {
-    color: var(--c-brand);
-    background: var(--c-brand-tint);
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
     border-color: #b7d3ea;
     font-weight: 700;
   }
 }
 
-.footer-actions {
+.score-band-group__form-actions {
   display: flex;
   gap: 0.6rem;
 }
 
-.settings-page {
+.settings {
   max-width: 1100px;
   margin: 0 auto;
 }

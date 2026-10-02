@@ -421,8 +421,8 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(component.isCoreLocked()).toBe(true);
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelectorAll('.tag-toggle-group button.tag-toggle')).toHaveLength(0);
-    const chips = Array.from(root.querySelectorAll('.tag-toggle-group .tag-toggle.is-readonly'));
+    expect(root.querySelectorAll('.tag-toggle-group button.tag-toggle-group__item')).toHaveLength(0);
+    const chips = Array.from(root.querySelectorAll('.tag-toggle-group .tag-toggle-group__item.is-readonly'));
     expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['daily']);
   });
 
@@ -444,7 +444,7 @@ describe('ProductForm', () => {
     fixture.detectChanges();
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(component.statusMessage()).toContain('請勿重複送出');
-    expect(fixture.nativeElement.querySelector('.primary').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('.product-form__primary-action').disabled).toBe(true);
   });
   // 2026-09-29：從 AI 商品雷達點「建立商品」進來，名稱與品類預先帶入，送出時一併帶 discoveredItemId。
   it('prefills name and category from a PTT discovery and sends discoveredItemId on create', async () => {

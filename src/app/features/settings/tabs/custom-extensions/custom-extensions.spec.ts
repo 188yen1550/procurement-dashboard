@@ -109,7 +109,7 @@ describe('CustomExtensions', () => {
 
     // 父元件的評估模式權重編輯器讀同一份 store，新增後立刻看得到。
     expect(store.factorDefinitions().map((f) => f.factorCode)).toEqual(['MOQ_FIT']);
-    const nextStep = fixture.nativeElement.querySelector('.next-step');
+    const nextStep = fixture.nativeElement.querySelector('.custom-extensions__next-step');
     expect(nextStep.textContent).toContain('訂購量適配');
     nextStep.querySelector('button').click();
     expect(navigate).toHaveBeenCalledWith('scoreBands');

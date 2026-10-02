@@ -77,7 +77,7 @@ describe('DiscoveryPanel', () => {
   // 2026-09-29：說明文字與紀錄欄位解釋收進可收合區塊（預設收合）；本月額度這類狀態留在外面
   it('keeps the explanation collapsed but the monthly AI usage visible', () => {
     const root = fixture.nativeElement as HTMLElement;
-    const details = root.querySelector('details.config-panel-details') as HTMLDetailsElement;
+    const details = root.querySelector('details.config-panel__details') as HTMLDetailsElement;
     expect(details.open).toBe(false);
     expect(details.textContent).toContain('紀錄欄位');
     expect(details.textContent).toContain('Groq');

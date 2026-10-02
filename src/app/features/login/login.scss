@@ -4,7 +4,7 @@
 // ========================================
 
 // 主要品牌色
-$primary-blue: var(--c-brand);
+$primary-blue: var(--color-brand);
 
 // 按鈕滑鼠移入時的顏色
 $primary-hover: #153e66;
@@ -55,39 +55,34 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 // 3. 登入頁主容器
 // ========================================
 
-.login-container {
+.login {
   display: flex;
   width: 100%;
   min-height: 100dvh;
 
   // ======================================
-  // 3-1. 左側品牌視覺區
-  // ======================================
 
-  .brand-panel {
+  // 3-1. 左側品牌視覺區
+
+  // ======================================
+  .login__brand-panel {
     position: relative;
 
     // 左右兩區各占一半空間
     flex: 1;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     overflow: hidden;
-
     background: linear-gradient(135deg, $bg-dark-start 0%, $bg-dark-end 100%);
 
     // 背景點狀科技紋理
     &::before {
       content: '';
       position: absolute;
-
       width: 200%;
       height: 200%;
-
       background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-
       background-size: 30px 30px;
       opacity: 0.6;
     }
@@ -96,31 +91,25 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     &::after {
       content: '';
       position: absolute;
-
       top: 50%;
       left: 50%;
-
       width: 600px;
       height: 600px;
-
       border: 2px solid rgba(0, 180, 216, 0.15);
       border-radius: 50%;
-
       transform: translate(-50%, -50%);
       box-shadow: 0 0 50px rgba(0, 180, 216, 0.1);
     }
 
     // 品牌 Logo 容器
-    .brand-content {
+    .login__brand-content {
       position: relative;
       z-index: 2;
 
-      .logo-icon {
+      .login__logo {
         width: 120px;
         height: 120px;
-
         color: #00b4d8;
-
         filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
       }
     }
@@ -132,44 +121,41 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   }
 
   // ======================================
+
   // 3-2. 右側登入表單區
+
   // ======================================
-
-  .form-panel {
+  .login__form-panel {
     flex: 1;
-
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-
     min-width: 0;
     padding: 2rem;
-
     background-color: #f4f6f9;
 
     // 平板與手機版改成單欄滿版
     @media (max-width: 900px) {
       flex: none;
-
       width: 100%;
       min-height: 100dvh;
       padding: 1rem;
     }
   }
-}
 
-// ========================================
-// 4. 登入卡片與頁尾的置中容器
-// ========================================
+  // ========================================
 
-.login-card-wrapper {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  // 4. 登入卡片與頁尾的置中容器
 
-  width: 100%;
+  // ========================================
+  &__card-wrapper {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 // ========================================
@@ -197,12 +183,12 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   // 5-1. 卡片標題區
   // ======================================
 
-  .card-header {
+  .login-card__header {
     margin-bottom: 2rem;
     text-align: center;
 
     // 卡片上方小型 Logo
-    .logo-icon-small {
+    .login-card__logo {
       width: 48px;
       height: 48px;
       margin-bottom: 0.5rem;
@@ -211,22 +197,13 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     }
 
     // 登入頁主標題
-    .card-title {
+    .login-card__title {
       margin: 0 0 0.25rem;
 
       color: $text-main;
 
       font-size: 1.5rem;
       font-weight: 700;
-    }
-
-    // 登入頁副標題
-    .card-subtitle {
-      margin: 0;
-
-      color: $text-muted;
-
-      font-size: var(--t-sm);
     }
   }
 }
@@ -242,7 +219,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   // 6-1. 單一表單欄位
   // ======================================
 
-  .form-group {
+  .login-form__group {
     margin-bottom: 1.25rem;
 
     // 輸入欄位標籤
@@ -252,19 +229,19 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
       color: $text-main;
 
-      font-size: var(--t-sm);
+      font-size: var(--font-size-sm);
       font-weight: 600;
     }
 
     // 輸入框和圖示的定位容器
-    .input-wrapper {
+    .login-form__input-wrapper {
       position: relative;
 
       display: flex;
       align-items: center;
 
       // 帳號、密碼的裝飾圖示
-      .input-icon {
+      .login-form__input-icon {
         position: absolute;
         z-index: 1;
         left: 12px;
@@ -278,7 +255,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
       }
 
       // 顯示／隱藏密碼按鈕：疊在輸入框右側
-      .password-toggle {
+      .login-form__password-toggle {
         position: absolute;
         right: 6px;
         z-index: 1;
@@ -331,7 +308,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
         outline: none;
 
         font: inherit;
-        font-size: var(--t-base);
+        font-size: var(--font-size-base);
 
         transition:
           border-color 0.2s,
@@ -371,7 +348,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   // 6-2. 登入按鈕
   // ======================================
 
-  .btn-primary {
+  .btn--primary {
     width: 100%;
     margin-top: 0.5rem;
     padding: 0.8rem;
@@ -383,7 +360,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     border-radius: 6px;
 
     font: inherit;
-    font-size: var(--t-base);
+    font-size: var(--font-size-base);
     font-weight: 600;
 
     cursor: pointer;
@@ -435,7 +412,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
   p {
     color: $text-main;
-    font-size: var(--t-xs);
+    font-size: var(--font-size-xs);
     font-weight: 700;
   }
 
@@ -443,34 +420,34 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
     display: block;
     margin-top: 0.2rem;
     color: $text-muted;
-    font-size: var(--t-xs);
+    font-size: var(--font-size-xs);
   }
-}
 
-.demo-account-actions {
-  display: flex;
-  gap: 0.4rem;
+  &__actions {
+    display: flex;
+    gap: 0.4rem;
 
-  button {
-    padding: 0.4rem 0.55rem;
-    color: $primary-blue;
-    background: #fff;
-    border: 1px solid #b9cee0;
-    border-radius: 0.4rem;
-    font: inherit;
-    font-size: var(--t-xs);
-    font-weight: 700;
-    cursor: pointer;
+    button {
+      padding: 0.4rem 0.55rem;
+      color: $primary-blue;
+      background: #fff;
+      border: 1px solid #b9cee0;
+      border-radius: 0.4rem;
+      font: inherit;
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      cursor: pointer;
 
-    &:hover {
-      color: #fff;
-      background: $primary-blue;
-      border-color: $primary-blue;
-    }
+      &:hover {
+        color: #fff;
+        background: $primary-blue;
+        border-color: $primary-blue;
+      }
 
-    &:focus-visible {
-      outline: 3px solid rgba(28, 82, 134, 0.25);
-      outline-offset: 2px;
+      &:focus-visible {
+        outline: 3px solid rgba(28, 82, 134, 0.25);
+        outline-offset: 2px;
+      }
     }
   }
 }
@@ -484,7 +461,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
   color: $error-color;
 
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   line-height: 1.4;
 }
 
@@ -500,42 +477,25 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   border: 1px solid #efc1be;
   border-radius: 0.5rem;
 
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   line-height: 1.4;
 }
 
 .login-form input[readonly] { cursor: wait; opacity: 0.72; }
-.demo-account-actions button:disabled { cursor: not-allowed; opacity: 0.58; }
+.demo-accounts__actions button:disabled { cursor: not-allowed; opacity: 0.58; }
 
 // ========================================
 // 10. 登入頁底部資訊
 // ========================================
 
-.system-footer {
+.login__footer {
   margin-top: 2rem;
 
   color: $text-muted;
 
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   line-height: 1.5;
   text-align: center;
-
-  // 隱私權政策連結
-  a {
-    color: $text-muted;
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-
-    // 鍵盤操作的焦點提示
-    &:focus-visible {
-      outline: 2px solid $primary-blue;
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
-  }
 }
 
 // ========================================
@@ -543,7 +503,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 // ========================================
 
 @media (max-height: 650px) {
-  .login-card-wrapper {
+  .login__card-wrapper {
     // 高度不足時不要強制完全垂直置中
     justify-content: flex-start;
     padding-top: 1rem;
@@ -552,13 +512,13 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
   .login-card {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
+
+    .login-card__header {
+      margin-bottom: 1.25rem;
+    }
   }
 
-  .login-card .card-header {
-    margin-bottom: 1.25rem;
-  }
-
-  .system-footer {
+  .login__footer {
     margin-top: 1.25rem;
   }
 
@@ -576,7 +536,7 @@ $shadow-card: 0 20px 40px rgba(0, 0, 0, 0.08);
 
 @media (prefers-reduced-motion: reduce) {
   .login-form input,
-  .login-form .btn-primary {
+  .login-form .btn--primary {
     transition: none;
   }
 }

@@ -10,7 +10,7 @@
  * 「圖示過小、不易辨識」的主要成因之一。
  *
  * 統一改用這個元件而不是在每個樣板各自貼一段 SVG：
- * - 尺寸只由 --icon-sm／--icon-md 兩個 token 控制，改一處全站生效
+ * - 尺寸只由 --icon-size-sm／--icon-size-md 兩個 token 控制，改一處全站生效
  * - 顏色用 currentColor，自動跟隨外層文字顏色（連結、按鈕的 hover/active
  *   狀態不用另外處理圖示顏色）
  * - 用 @switch 而非 [innerHTML]：SVG path 是靜態字串，用 innerHTML 需要
@@ -64,15 +64,15 @@ export type IconName =
   selector: 'app-icon',
   standalone: true,
   template: `
-    <svg
+    <svg class="icon"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      [class.icon-sm]="size() === 'sm'"
-      [class.icon-md]="size() === 'md'"
+      [class.icon--sm]="size() === 'sm'"
+      [class.icon--md]="size() === 'md'"
       [attr.aria-hidden]="hidden() ? 'true' : null"
       [attr.role]="hidden() ? null : 'img'"
     >
@@ -217,7 +217,7 @@ export type IconName =
     /*
      * 圖示實際大小由元件內部的 svg 規則決定，不是外層 host 的 width/height——
      * 呼叫端如果只在自己的 CSS 裡對 app-icon 元素設 width/height，只會撐大
-     * 外層的置中容器，裡面的 svg 還是原本的 --icon-sm/md，看起來就是「圖示
+     * 外層的置中容器，裡面的 svg 還是原本的 --icon-size-sm/md，看起來就是「圖示
      * 沒變大、旁邊卻空了一圈」。
      *
      * 需要非標準尺寸（例如空狀態、圖片預留位置這種裝飾性大圖示）時，呼叫端
@@ -225,13 +225,13 @@ export type IconName =
      *   .empty-state app-icon { --icon-size-override: 2.6rem; }
      */
     svg {
-      width: var(--icon-size-override, var(--icon-md));
-      height: var(--icon-size-override, var(--icon-md));
+      width: var(--icon-size-override, var(--icon-size-md));
+      height: var(--icon-size-override, var(--icon-size-md));
     }
 
-    svg.icon-sm {
-      width: var(--icon-size-override, var(--icon-sm));
-      height: var(--icon-size-override, var(--icon-sm));
+    svg.icon--sm {
+      width: var(--icon-size-override, var(--icon-size-sm));
+      height: var(--icon-size-override, var(--icon-size-sm));
     }
   `,
 })

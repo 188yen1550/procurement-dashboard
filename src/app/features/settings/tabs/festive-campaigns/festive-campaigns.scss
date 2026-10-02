@@ -13,100 +13,104 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: var(--font-size-xl);
+  }
 }
 
-.management-head h2 {
-  margin: 0 0 0.25rem;
-  font-size: var(--t-xl);
-}
+.festive-campaigns {
+  &__scope-note {
+    margin: var(--spacing-3) 0 0;
+    padding: var(--spacing-3);
+    color: var(--color-ink-muted);
+    background: var(--color-surface-alt);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+  }
 
-.scope-note {
-  margin: var(--s-3) 0 0;
-  padding: var(--s-3);
-  color: var(--c-ink-muted);
-  background: var(--c-surface-alt);
-  border-radius: var(--r-md);
-  font-size: var(--t-sm);
-}
-
-.load-error {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-3);
-  color: var(--c-danger);
-  background: var(--c-danger-tint);
-  border-radius: var(--r-md);
+  &__load-error {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    color: var(--color-danger);
+    background: var(--color-danger-tint);
+    border-radius: var(--radius-md);
+  }
 }
 
 /* ----- 列表 ----- */
-.col-name {
-  width: 18%;
-}
+.data-table {
+  &__col--name {
+    width: 18%;
+  }
 
-.col-category {
-  width: 8%;
-}
+  &__col--category {
+    width: 8%;
+  }
 
-.col-rule {
-  width: 22%;
-}
+  &__col--rule {
+    width: 22%;
+  }
 
-.col-range {
-  width: 18%;
-}
+  &__col--range {
+    width: 18%;
+  }
 
-.col-region {
-  width: 10%;
-}
+  &__col--region {
+    width: 10%;
+  }
 
-.col-status {
-  width: 12%;
-}
+  &__col--status {
+    width: 12%;
+  }
 
-.col-actions {
-  width: 12%;
-}
+  &__col--actions {
+    width: 12%;
+  }
 
-.row-code,
-.status-source {
-  display: block;
-  margin-top: 0.15rem;
-  color: var(--c-ink-faint);
-  font-size: var(--t-xs);
-}
+  &__code,
+  &__status-source {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--color-ink-faint);
+    font-size: var(--font-size-xs);
+  }
 
-.rule-text {
-  color: var(--c-ink-soft);
-}
+  &__rule-text {
+    color: var(--color-ink-soft);
+  }
 
-.range-cell {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
+  &__range {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
 
-.mini-badge {
-  margin-left: var(--s-1);
-  padding: 0.05rem 0.4rem;
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border-radius: var(--r-pill);
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
+  &__override-badge {
+    margin-left: var(--spacing-1);
+    padding: 0.05rem 0.4rem;
+    color: var(--color-warn);
+    background: var(--color-warn-tint);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 
-.table-empty {
-  padding: var(--s-4);
-  color: var(--c-ink-muted);
-  text-align: center;
+  &__empty {
+    padding: var(--spacing-4);
+    color: var(--color-ink-muted);
+    text-align: center;
+  }
 }
 
 .row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-1);
+  gap: var(--spacing-1);
 }
 
 /* ----- 表單 ----- */
@@ -114,113 +118,114 @@
   width: min(720px, 100%);
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
-}
 
-.campaign-modal.is-narrow {
-  width: min(480px, 100%);
-}
+  &--status {
+    width: min(480px, 100%);
+  }
 
-.campaign-modal fieldset {
-  margin: var(--s-3) 0;
-  padding: var(--s-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-}
+  fieldset {
+    margin: var(--spacing-3) 0;
+    padding: var(--spacing-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
 
-.campaign-modal legend {
-  padding: 0 var(--s-1);
-  font-weight: 700;
-}
+  legend {
+    padding: 0 var(--spacing-1);
+    font-weight: 700;
+  }
 
-.form-row,
-.rule-inputs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--s-3);
-}
+  &__row,
+  &__rule-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--spacing-3);
+  }
 
-.rule-inputs {
-  margin-top: var(--s-3);
-}
+  &__rule-inputs {
+    margin-top: var(--spacing-3);
+  }
 
-.segmented {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-4);
-}
+  &__choice-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+  }
 
-.radio-option,
-.check-option {
-  display: flex;
-  /* 2026-09-27：文案偏長會換行，center 會讓 radio／checkbox 浮在兩行文字中間；
+  &__radio,
+  &__check {
+    display: flex;
+
+    /* 2026-09-27：文案偏長會換行，center 會讓 radio／checkbox 浮在兩行文字中間；
      改成貼齊第一行，再用 margin-top 把 input 對到第一行文字的中線。 */
-  align-items: flex-start;
-  gap: var(--s-2);
-  font-weight: 400;
-  cursor: pointer;
-}
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    font-weight: 400;
+    cursor: pointer;
+  }
 
-.radio-option input,
-.check-option input {
-  flex-shrink: 0;
-  margin: 0.2em 0 0;
-}
+  &__radio input,
+  &__check input {
+    flex-shrink: 0;
+    margin: 0.2em 0 0;
+  }
 
-.check-option.is-disabled {
-  color: var(--c-ink-faint);
-  cursor: not-allowed;
-}
+  &__check.is-disabled {
+    color: var(--color-ink-faint);
+    cursor: not-allowed;
+  }
 
-.holiday-options,
-.region-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-4);
-  margin-top: var(--s-3);
-}
+  &__holiday-options,
+  &__region-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-4);
+    margin-top: var(--spacing-3);
+  }
 
-/* 補假／連假展開兩個選項文案都偏長，改成上下排列，不靠 flex-wrap 賭會不會擠在同一行。
+  /* 補假／連假展開兩個選項文案都偏長，改成上下排列，不靠 flex-wrap 賭會不會擠在同一行。
    地域（北中南東）很短，維持橫排。 */
-.holiday-options {
-  flex-direction: column;
+  &__holiday-options {
+    flex-direction: column;
+  }
 }
 
 .helper.is-invalid {
-  color: var(--c-danger);
+  color: var(--color-danger);
 }
 
 .occurrence-preview {
-  margin-top: var(--s-3);
-  padding: var(--s-3);
-  background: var(--c-surface-sunken);
-  border-radius: var(--r-md);
-}
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
 
-.occurrence-preview ol {
-  display: grid;
-  gap: var(--s-1);
-  margin: var(--s-2) 0 0;
-  padding: 0;
-  list-style: none;
-  font-variant-numeric: tabular-nums;
-  transition: opacity var(--motion-fast);
-}
+  ol {
+    display: grid;
+    gap: var(--spacing-1);
+    margin: var(--spacing-2) 0 0;
+    padding: 0;
+    list-style: none;
+    font-variant-numeric: tabular-nums;
+    transition: opacity var(--motion-fast);
+  }
 
-.occurrence-preview ol.is-stale {
-  opacity: 0.55;
-}
+  ol.is-stale {
+    opacity: 0.55;
+  }
 
-.occurrence-preview li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-2);
-}
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--spacing-2);
+  }
 
-.preview-cycle {
-  min-width: 3rem;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
+  &__cycle {
+    min-width: 3rem;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+  }
 }
 
 /* ----- 標籤 chip（搬自 settings.scss，改用 token） ----- */
@@ -228,96 +233,98 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+
+  &__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  &__remove:hover {
+    color: var(--color-danger);
+  }
 }
 
-.keyword-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.5rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-pill);
-  font-size: var(--t-xs);
-  white-space: nowrap;
-}
+.campaign-modal {
+  &__tag-tiers,
+  &__overrides {
+    margin-top: var(--spacing-3);
+    padding-top: var(--spacing-2);
+    border-top: 1px dashed var(--color-border-strong);
+  }
 
-.keyword-chip-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  color: inherit;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
+  &__tag-tiers summary,
+  &__overrides summary {
+    font-weight: 700;
+    cursor: pointer;
+  }
 
-.keyword-chip-remove:hover {
-  color: var(--c-danger);
-}
+  &__tag-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    margin: var(--spacing-2) 0;
+  }
 
-.tag-tier-advanced,
-.override-section {
-  margin-top: var(--s-3);
-  padding-top: var(--s-2);
-  border-top: 1px dashed var(--c-border-strong);
-}
+  &__tag-row select {
+    width: 120px;
+  }
 
-.tag-tier-advanced summary,
-.override-section summary {
-  font-weight: 700;
-  cursor: pointer;
-}
+  /* ----- 逐年覆寫 ----- */
+  &__override-table {
+    width: 100%;
+    margin: var(--spacing-2) 0;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+  }
 
-.tag-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  margin: var(--s-2) 0;
-}
-
-.tag-row select {
-  width: 120px;
-}
-
-/* ----- 逐年覆寫 ----- */
-.override-table {
-  width: 100%;
-  margin: var(--s-2) 0;
-  border-collapse: collapse;
-  font-size: var(--t-sm);
-}
-
-.override-table th,
-.override-table td {
-  padding: var(--s-2);
-  border-bottom: 1px solid var(--c-border-soft);
-  text-align: left;
+  &__override-table th,
+  &__override-table td {
+    padding: var(--spacing-2);
+    border-bottom: 1px solid var(--color-border-soft);
+    text-align: left;
+  }
 }
 
 .override-form {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--s-2);
-  margin: var(--s-2) 0;
-}
+  gap: var(--spacing-2);
+  margin: var(--spacing-2) 0;
 
-.override-form .is-grow {
-  flex: 1 1 12rem;
+  .override-form__field--grow {
+    flex: 1 1 12rem;
+  }
 }
 
 /* ----- 標籤選擇 dialog（搬自 settings.scss） ----- */
-.tag-picker-backdrop {
+.modal-backdrop--tag-picker {
   z-index: 110;
 }
 
-.tag-picker-modal {
+.tag-picker {
   width: min(480px, 100%);
 }
 
@@ -329,40 +336,40 @@
   margin-top: 0.5rem;
   padding: 0.5rem;
   overflow-y: auto;
-  background: var(--c-surface-sunken);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+
+  &__option input[type='checkbox'] {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  &__option span {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__option:hover {
+    background: var(--color-brand-tint);
+  }
 }
 
-.tag-picker-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.4rem;
-  border-radius: var(--r-sm);
-  font-size: var(--t-sm);
-  cursor: pointer;
-}
-
-.tag-picker-option input[type='checkbox'] {
-  flex: 0 0 auto;
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
-.tag-picker-option span {
-  flex: 1 1 0;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.tag-picker-option:hover {
-  background: var(--c-brand-tint);
-}
-
-.tag-picker-add-new {
+.tag-picker__add-new {
   align-self: flex-start;
   margin-top: 0.3rem;
 }
@@ -379,43 +386,43 @@
 }
 
 /* 2026-09-29：區域名稱後面的實際取樣縣市提醒，次要資訊用淡色小字。 */
-.region-cities {
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
+.campaign-modal__region-cities {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
   font-weight: 400;
 }
 
 /* ----- 節慶加成上限（2026-09-29）：外框走全域 .config-panel，這裡只排版輸入列。 ----- */
-.boost-cap-panel {
-  margin-top: var(--s-5);
+.festive-campaigns__boost-cap {
+  margin-top: var(--spacing-5);
 }
 
 .boost-cap-form {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--s-3) var(--s-4);
-  margin-top: var(--s-4);
-}
+  gap: var(--spacing-3) var(--spacing-4);
+  margin-top: var(--spacing-4);
 
-.boost-cap-field {
-  display: grid;
-  gap: var(--s-1);
-  font-size: var(--t-sm);
-  font-weight: 600;
+  &__field {
+    display: grid;
+    gap: var(--spacing-1);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+  }
 }
 
 .unit-field {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-}
+  gap: var(--spacing-2);
 
-.unit-field input {
-  width: 7rem;
-}
+  input {
+    width: 7rem;
+  }
 
-.unit-suffix {
-  color: var(--c-ink-muted);
-  font-weight: 400;
+  &__suffix {
+    color: var(--color-ink-muted);
+    font-weight: 400;
+  }
 }

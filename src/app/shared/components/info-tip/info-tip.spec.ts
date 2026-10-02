@@ -24,7 +24,7 @@ describe('InfoTip', () => {
     await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
     fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
-    trigger = fixture.nativeElement.querySelector('.info-tip');
+    trigger = fixture.nativeElement.querySelector('.info-tip__trigger');
   });
 
   const bubble = () => fixture.nativeElement.querySelector('[role="tooltip"]') as HTMLElement | null;

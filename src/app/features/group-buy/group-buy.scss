@@ -10,7 +10,7 @@
   display: block;
 }
 
-.stat-card-grid {
+.group-buy__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
@@ -22,23 +22,23 @@
   border: 1px solid #e1e4e8;
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
-}
 
-.stat-label {
-  font-size: var(--t-sm);
-  color: #6b7280;
-  margin: 0 0 0.35rem;
-}
+  &__label {
+    font-size: var(--font-size-sm);
+    color: #6b7280;
+    margin: 0 0 0.35rem;
+  }
 
-.stat-value {
-  font-size: 1.9rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
+  &__value {
+    font-size: 1.9rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+  }
 }
 
 .stat-hint {
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   color: #9ca3af;
   margin: 0.35rem 0 0;
 }
@@ -46,26 +46,26 @@
 /* 毛利率彙總（僅管理層）：沿用 .stat-card，只補區塊標題與模擬資料備註的間距。 */
 .margin-summary {
   margin: 0 0 1.5rem;
-}
 
-.margin-summary__title {
-  margin: 0;
-  font-size: var(--t-base);
-}
+  &__title {
+    margin: 0;
+    font-size: var(--font-size-base);
+  }
 
-.margin-summary .stat-card-grid {
-  margin: 0.75rem 0 0;
-}
+  .group-buy__stats {
+    margin: 0.75rem 0 0;
+  }
 
-.margin-summary__note {
-  margin-top: 0.5rem;
+  &__note {
+    margin-top: 0.5rem;
+  }
 }
 
 /*
  * 彙總圖表（2026-09-23 分支整併）：卡片外觀沿用上方 .stat-card 的邊框／圓角，
  * 兩張圖並排，窄螢幕自動改為上下堆疊。
  */
-.chart-row {
+.group-buy__charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1rem;
@@ -78,33 +78,33 @@
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   min-width: 0;
+
+  &__title {
+    margin: 0 0 0.75rem;
+    font-size: var(--font-size-base);
+  }
+
+  &__empty {
+    margin: 0;
+    color: #6b7280;
+    font-size: var(--font-size-sm);
+  }
+
+  &__canvas,
+  &__canvas--result {
+    position: relative;
+    height: 280px;
+  }
+
+  &__canvas--result {
+    max-width: 320px;
+    margin: 0 auto;
+  }
 }
 
-.chart-panel__title {
-  margin: 0 0 0.75rem;
-  font-size: var(--t-base);
-}
-
-.chart-panel__empty {
-  margin: 0;
-  color: #6b7280;
-  font-size: var(--t-sm);
-}
-
-.type-rate-chart-wrap,
-.result-chart-wrap {
-  position: relative;
-  height: 280px;
-}
-
-.result-chart-wrap {
-  max-width: 320px;
-  margin: 0 auto;
-}
-
-.csv-headers {
+.group-buy__csv-headers {
   margin: 0.75rem 0;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
 
   summary {
     cursor: pointer;
@@ -118,11 +118,11 @@
     background: #f3f4f6;
     border-radius: 6px;
     word-break: break-all;
-    font-size: var(--t-xs);
+    font-size: var(--font-size-xs);
   }
 }
 
-.modal-actions {
+.modal-card__actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -130,32 +130,34 @@
 }
 
 .helper {
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   color: #6b7280;
 }
 
-.importing-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 0.75rem 0;
-  padding: 0.7rem 0.9rem;
-  color: #38536a;
-  background: #eef4f8;
-  border: 1px solid #dce6ed;
-  border-radius: 0.5rem;
-  font-size: var(--t-xs);
-}
+.group-buy {
+  &__importing {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.75rem 0;
+    padding: 0.7rem 0.9rem;
+    color: #38536a;
+    background: #eef4f8;
+    border: 1px solid #dce6ed;
+    border-radius: 0.5rem;
+    font-size: var(--font-size-xs);
+  }
 
-.spinner {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  border: 2px solid #ccd8e1;
-  border-top-color: var(--c-brand);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  &__spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    border: 2px solid #ccd8e1;
+    border-top-color: var(--color-brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
 }
 
 @keyframes spin {
@@ -185,17 +187,16 @@
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
-    font-size: var(--t-xs);
+    font-size: var(--font-size-xs);
     font-weight: 700;
     color: #38536a;
   }
 
-  input,
   select {
     padding: 0.5rem 0.7rem;
     border: 1px solid #d4dee6;
     border-radius: 0.4rem;
-    font-size: var(--t-sm);
+    font-size: var(--font-size-sm);
   }
 
   /* select 沿用 product-management.scss 篩選下拉的設計語彙（同一色系、
@@ -210,16 +211,10 @@
 
     &:focus-visible {
       outline: none;
-      border-color: var(--c-brand);
+      border-color: var(--color-brand);
       background: #fff;
       box-shadow: 0 0 0 3px rgba(28, 82, 134, 0.15);
     }
-  }
-
-  .helper {
-    align-self: center;
-    color: #6c7a89;
-    font-size: var(--t-xs);
   }
 }
 
@@ -236,14 +231,16 @@
  * white-space: nowrap 在這裡覆寫掉，內容（不管表頭或內文）超出欄寬時
  * 就正常換行，不是被裁切看不到，也不是硬把欄位撐寬打亂其他欄。
  */
-.data-table table {
-  table-layout: fixed;
-}
+.data-table {
+  table {
+    table-layout: fixed;
+  }
 
-.data-table th {
-  white-space: normal;
-}
+  th {
+    white-space: normal;
+  }
 
-.data-table td {
-  overflow-wrap: break-word;
+  td {
+    overflow-wrap: break-word;
+  }
 }

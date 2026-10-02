@@ -11,65 +11,67 @@
 }
 
 /* ----- 流程列：屬性 → 因子 → 權重 → 目標區間 ----- */
-.extension-flow ol {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-3);
-  margin: 0 0 var(--s-5);
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
+.extension-flow {
+  ol {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-3);
+    margin: 0 0 var(--spacing-5);
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
 
-.extension-flow li {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  padding: var(--s-3) var(--s-3) var(--s-3) calc(var(--s-3) + 2rem);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  counter-increment: step;
-}
+  li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) calc(var(--spacing-3) + 2rem);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    counter-increment: step;
+  }
 
-.extension-flow li::before {
-  content: counter(step);
-  position: absolute;
-  top: var(--s-3);
-  left: var(--s-3);
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
-  border-radius: 50%;
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
+  li::before {
+    content: counter(step);
+    position: absolute;
+    top: var(--spacing-3);
+    left: var(--spacing-3);
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
+    border-radius: 50%;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
 
-.extension-flow strong {
-  color: var(--c-ink);
-  font-size: var(--t-sm);
-}
+  strong {
+    color: var(--color-ink);
+    font-size: var(--font-size-sm);
+  }
 
-.extension-flow span {
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
-}
+  span {
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-xs);
+  }
 
-.text-link {
-  align-self: flex-start;
-  padding: 0;
-  color: var(--c-brand);
-  background: none;
-  border: 0;
-  font: inherit;
-  font-size: var(--t-xs);
-  font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
+  &__link {
+    align-self: flex-start;
+    padding: 0;
+    color: var(--color-brand);
+    background: none;
+    border: 0;
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
 }
 
 /* ----- 區塊標頭（對應 settings.scss 的 .management-head） ----- */
@@ -77,121 +79,125 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin: var(--s-6) 0 var(--s-3);
+  gap: var(--spacing-4);
+  margin: var(--spacing-6) 0 var(--spacing-3);
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin: 0 0 var(--spacing-1);
+    font-size: var(--font-size-xl);
+  }
+
+  &__step {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--color-surface);
+    background: var(--color-brand);
+    border-radius: 50%;
+    font-size: var(--font-size-sm);
+  }
 }
 
-.management-head:first-of-type {
-  margin-top: 0;
-}
-
-.management-head h3 {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  margin: 0 0 var(--s-1);
-  font-size: var(--t-xl);
-}
-
-.step-no {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  color: var(--c-surface);
-  background: var(--c-brand);
-  border-radius: 50%;
-  font-size: var(--t-sm);
-}
-
-.next-step {
+.custom-extensions__next-step {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-3);
-  margin-bottom: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border: 1px solid var(--c-warn-border);
-  border-radius: var(--r-md);
-  font-size: var(--t-sm);
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  color: var(--color-warn);
+  background: var(--color-warn-tint);
+  border: 1px solid var(--color-warn-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }
 
 .data-table + .management-head,
 .factor-definition-form {
-  margin-bottom: var(--s-3);
+  margin-bottom: var(--spacing-3);
 }
 
-.form-span-all {
-  grid-column: 1 / -1;
-}
+.factor-definition-form {
+  &__full-row {
+    grid-column: 1 / -1;
+  }
 
-/* ----- 必填核取方塊、表單按鈕列（對應 settings.scss 的 weight-editor 同名規則） ----- */
-.weight-editor-row-label {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  cursor: pointer;
-}
+  /* ----- 必填核取方塊、表單按鈕列（對應 settings.scss 的 weight-editor 同名規則） ----- */
+  &__check-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    cursor: pointer;
+  }
 
-.weight-editor-row-label input[type='checkbox'] {
-  flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin: 0;
-}
+  &__check-label input[type='checkbox'] {
+    flex-shrink: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+  }
 
-.weight-editor-actions {
-  display: flex;
-  gap: var(--s-2);
-}
+  &__actions {
+    display: flex;
+    gap: var(--spacing-2);
+  }
 
-.weight-editor-actions .btn,
-.weight-editor-actions .btn-primary {
-  flex: 1;
+  &__actions .btn,
+  &__actions .btn--primary {
+    flex: 1;
+  }
 }
 
 /* ----- 適用品類勾選清單（對應 settings.scss 的 tag-picker 同名規則） ----- */
 .tag-picker-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-1) var(--s-3);
-  padding: var(--s-2);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
+  gap: var(--spacing-1) var(--spacing-3);
+  padding: var(--spacing-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: 0.35rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+
+  &__option input[type='checkbox'] {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  &__option:hover {
+    background: var(--color-brand-tint);
+  }
 }
 
-.tag-picker-option {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: 0.35rem 0.4rem;
-  border-radius: var(--r-sm);
-  font-size: var(--t-sm);
-  cursor: pointer;
-}
+.factor-definition-form {
+  &__scale-labels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--spacing-2);
+  }
 
-.tag-picker-option input[type='checkbox'] {
-  flex: 0 0 auto;
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
-.tag-picker-option:hover {
-  background: var(--c-brand-tint);
-}
-
-.scale-label-editor {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--s-2);
-}
-
-.scale-label-editor .helper {
-  grid-column: 1 / -1;
+  &__scale-labels .helper {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {
@@ -202,10 +208,10 @@
   .management-head {
     align-items: stretch;
     flex-direction: column;
-  }
 
-  .management-head .btn-primary {
-    width: 100%;
+    .btn--primary {
+      width: 100%;
+    }
   }
 }
 
@@ -219,23 +225,22 @@
  * 多欄、窄螢幕自動變成單欄堆疊。
  */
 .factor-definition-form {
-  padding: var(--s-3);
-  background: var(--c-surface-sunken);
-  border-radius: var(--r-sm);
-}
+  padding: var(--spacing-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
 
-.factor-definition-form form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--s-3);
-  align-items: start;
-}
+  form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--spacing-3);
+    align-items: start;
+  }
 
-/*
+  /*
  * ⚠️ 修正：這裡原本用 `.factor-definition-form label` 這個描述子選擇器，
  * 目的是統一「欄位代碼」「欄位名稱」這類最上層表單欄位的直向排列樣式，
  * 但描述子選擇器不會區分巢狀層級——巢狀在裡面、本來就有自己一套橫向排列
- * 樣式的元件（.tag-picker-option 核取方塊清單、.weight-editor-row-label
+ * 樣式的元件（.tag-picker-list__option 核取方塊清單、.factor-definition-form__check-label
  * 必填核取方塊）恰好也是 <label>，因此被一起強制套用了 flex-direction:
  * column，覆蓋掉它們各自期待的橫向排列。具體症狀：核取方塊跟文字被迫上下
  * 堆疊、置中，畫面上看起來像是「核取方塊清單完全沒有文字標籤」或
@@ -244,49 +249,50 @@
  * 巢狀元件的 <label> 都各自有 class，因此用 label:not([class]) 排除，
  * 比一個一個列舉巢狀元件的 class 更不容易在之後新增巢狀元件時重蹈覆轍。
  */
-.factor-definition-form label:not([class]) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  color: var(--c-ink-soft);
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
+  label:not([class]) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    color: var(--color-ink-soft);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
 
-.factor-definition-form input,
-.factor-definition-form select {
-  padding: 0.45rem 0.6rem;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-sm);
-  font: inherit;
-  font-weight: 400;
-}
+  input,
+  select {
+    padding: 0.45rem 0.6rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-weight: 400;
+  }
 
-.factor-definition-form input::placeholder {
-  color: var(--c-ink-muted);
-}
+  input::placeholder {
+    color: var(--color-ink-muted);
+  }
 
-.factor-definition-form input:disabled,
-.factor-definition-form select:disabled {
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  opacity: 0.6;
-}
+  input:disabled,
+  select:disabled {
+    color: var(--color-ink-soft);
+    background: var(--color-surface-sunken);
+    opacity: 0.6;
+  }
 
-/* 說明文字／勾選加總這類需要橫跨整排寬度的元素，不要被切進某一欄裡。 */
-.factor-definition-form .helper,
-.factor-definition-form .weight-editor-actions {
-  grid-column: 1 / -1;
-}
+  /* 說明文字／勾選加總這類需要橫跨整排寬度的元素，不要被切進某一欄裡。 */
+  .helper,
+  .factor-definition-form__actions {
+    grid-column: 1 / -1;
+  }
 
-.factor-definition-form .helper.is-invalid {
-  color: var(--c-danger);
+  .helper.is-invalid {
+    color: var(--color-danger);
+  }
 }
 
 /* 2026-09-27：自訂屬性／自訂因子兩張清單的短欄位（型態、必填、狀態、運算邏輯——加上「（對數）」後變長）
    與操作按鈕不換行；名稱、適用品類等長文字仍可換行。
    表格是 auto 排版，不換行時欄寬會跟著內容撐開，不會溢出儲存格。 */
-.nowrap-cell {
+.u-nowrap {
   white-space: nowrap;
 }

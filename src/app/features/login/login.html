@@ -1,14 +1,14 @@
 <!-- 檔案用途：登入頁模板；表單 label、錯誤訊息與角色快捷按鈕支援原型展示。 -->
 <!-- 登入頁主要容器 -->
-<div class="login-container">
+<div class="login">
   <!-- =====================================
        左側：品牌與科技背景區
        手機版會透過 CSS 隱藏
        ===================================== -->
-  <div class="brand-panel" aria-hidden="true">
-    <div class="brand-content">
+  <div class="login__brand-panel" aria-hidden="true">
+    <div class="login__brand-content">
       <!-- 品牌 Logo，目前使用 SVG 圖形 -->
-      <svg viewBox="0 0 100 100" class="logo-icon" focusable="false">
+      <svg viewBox="0 0 100 100" class="login__logo" focusable="false">
         <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor" />
         <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor" />
         <path d="M40 70 L80 70 L60 90 L20 90 Z" fill="currentColor" />
@@ -19,20 +19,20 @@
   <!-- =====================================
        右側：登入表單與操作區
        ===================================== -->
-  <div class="form-panel">
+  <div class="login__form-panel">
     <!-- 登入頁主要內容 -->
-    <main class="login-card-wrapper">
+    <main class="login__card-wrapper">
       <section class="login-card" aria-labelledby="login-title">
         <!-- 登入卡片標題區 -->
-        <header class="card-header">
+        <header class="login-card__header">
           <!-- 小型品牌 Logo，純裝飾用途 -->
-          <svg viewBox="0 0 100 100" class="logo-icon-small" aria-hidden="true" focusable="false">
+          <svg viewBox="0 0 100 100" class="login-card__logo" aria-hidden="true" focusable="false">
             <path d="M30 20 L70 20 L80 40 L40 40 Z" fill="currentColor" />
             <path d="M20 45 L60 45 L70 65 L30 65 Z" fill="currentColor" />
           </svg>
 
           <!-- 頁面主標題 -->
-          <h1 id="login-title" class="card-title">團購選品決策輔助系統</h1>
+          <h1 id="login-title" class="login-card__title">團購選品決策輔助系統</h1>
         </header>
 
         <!-- 原型階段提供兩種角色快速登入，串接後端後移除此區塊。 -->
@@ -43,7 +43,7 @@
             <span>共用密碼：demo123</span>
           </div>
 
-          <div class="demo-account-actions">
+          <div class="demo-accounts__actions">
             <button type="button" [disabled]="isLoading()" (click)="useMockAccount('purchaser')">操作人員</button>
             <button type="button" [disabled]="isLoading()" (click)="useMockAccount('manager')">管理人員</button>
           </div>
@@ -59,12 +59,12 @@
           <!-- ===============================
                帳號欄位
                =============================== -->
-          <div class="form-group">
+          <div class="login-form__group">
             <label for="username"> 帳號或電子郵件 </label>
 
-            <div class="input-wrapper">
+            <div class="login-form__input-wrapper">
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
-              <app-icon name="user" size="sm" class="input-icon" />
+              <app-icon name="user" size="sm" class="login-form__input-icon" />
 
               <input id="username" #usernameInput type="text" formControlName="username" placeholder="請輸入帳號或電子郵件"
                 autocomplete="username" [readOnly]="isLoading()" [attr.aria-invalid]="
@@ -91,12 +91,12 @@
           <!-- ===============================
                密碼欄位
                =============================== -->
-          <div class="form-group">
+          <div class="login-form__group">
             <label for="password"> 密碼 </label>
 
-            <div class="input-wrapper">
+            <div class="login-form__input-wrapper">
               <!-- 裝飾圖示，不讓螢幕閱讀器朗讀 -->
-              <app-icon name="lock" size="sm" class="input-icon" />
+              <app-icon name="lock" size="sm" class="login-form__input-icon" />
 
               <input id="password" class="has-toggle" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="請輸入密碼"
                 autocomplete="current-password" [readOnly]="isLoading()" [attr.aria-invalid]="
@@ -107,7 +107,7 @@
                     : null
                 " />
               <!-- 顯示／隱藏密碼：type="button" 避免觸發表單送出；狀態用 aria-pressed 告知輔助科技 -->
-              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()"
+              <button type="button" class="login-form__password-toggle" (click)="togglePasswordVisibility()"
                 [attr.aria-pressed]="showPassword()" [attr.aria-label]="showPassword() ? '隱藏密碼' : '顯示密碼'"
                 [attr.title]="showPassword() ? '隱藏密碼' : '顯示密碼'" [disabled]="isLoading()">
                 <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" size="sm" />
@@ -140,7 +140,7 @@
                登入按鈕
                登入處理中禁止重複送出
                =============================== -->
-          <button type="submit" class="btn-primary" [disabled]="isLoading()" [attr.aria-busy]="isLoading()">
+          <button type="submit" class="btn btn--primary" [disabled]="isLoading()" [attr.aria-busy]="isLoading()">
             {{ isLoading() ? '登入中...' : '登入' }}
           </button>
         </form>
@@ -149,22 +149,22 @@
              2026-09-26：申請表單改為彈出視窗，沿用全站共用的 appModal（焦點鎖定、Esc 關閉、
              點背景關閉、關閉後焦點回到觸發按鈕、鎖定頁面捲動），送出中不可關閉。 -->
         <div class="reset-request">
-          <button type="button" class="reset-link" (click)="openResetPanel()">忘記密碼？</button>
+          <button type="button" class="reset-request__link" (click)="openResetPanel()">忘記密碼？</button>
         </div>
         @if (resetPanelOpen()) {
         <dialog appModal class="reset-dialog-backdrop" role="dialog" aria-labelledby="reset-request-title"
           [modalBusy]="resetSubmitting()" (dismissed)="closeResetPanel()">
           <section class="reset-dialog" (click)="$event.stopPropagation()">
-            <h2 id="reset-request-title" class="reset-title">申請重設密碼</h2>
+            <h2 id="reset-request-title" class="reset-dialog__title">申請重設密碼</h2>
             @if (resetMessage()) {
-            <p class="reset-done" role="status">{{ resetMessage() }}</p>
-            <div class="reset-actions">
-              <button type="button" class="reset-submit" (click)="closeResetPanel()">返回登入</button>
+            <p class="reset-dialog__success" role="status">{{ resetMessage() }}</p>
+            <div class="reset-dialog__actions">
+              <button type="button" class="reset-dialog__submit" (click)="closeResetPanel()">返回登入</button>
             </div>
             } @else {
-            <p class="reset-hint">送出後由管理者審核，請與管理者確認臨時密碼，登入後需先改成自己的密碼。</p>
+            <p class="reset-dialog__hint">送出後由管理者審核，請與管理者確認臨時密碼，登入後需先改成自己的密碼。</p>
             <!-- 不是 formGroup 表單，用原生 submit 並阻止預設（避免整頁重新載入）。 -->
-            <form class="reset-form" (submit)="$event.preventDefault(); submitResetRequest()" novalidate>
+            <form class="reset-dialog__form" (submit)="$event.preventDefault(); submitResetRequest()" novalidate>
               <label for="reset-username">登入帳號</label>
               <input id="reset-username" name="resetUsername" type="text" autocomplete="username" autofocus
                 [value]="resetUsername()" (input)="resetUsername.set($any($event.target).value)"
@@ -173,10 +173,10 @@
               @if (resetError()) {
               <p id="reset-error" class="field-error" role="alert">{{ resetError() }}</p>
               }
-              <div class="reset-actions">
-                <button type="button" class="reset-cancel" [disabled]="resetSubmitting()"
+              <div class="reset-dialog__actions">
+                <button type="button" class="reset-dialog__cancel" [disabled]="resetSubmitting()"
                   (click)="closeResetPanel()">取消</button>
-                <button type="submit" class="reset-submit" [disabled]="resetSubmitting()"
+                <button type="submit" class="reset-dialog__submit" [disabled]="resetSubmitting()"
                   [attr.aria-busy]="resetSubmitting()">{{ resetSubmitting() ? '送出中…' : '送出申請' }}</button>
               </div>
             </form>
@@ -190,7 +190,7 @@
            頁尾資訊
            隱私權頁面完成後替換 href
            ===================================== -->
-      <footer class="system-footer">團購選品決策輔助系統 © 2026</footer>
+      <footer class="login__footer">團購選品決策輔助系統 © 2026</footer>
     </main>
   </div>
 </div>

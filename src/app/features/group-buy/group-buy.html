@@ -8,12 +8,12 @@
     </p> -->
   </div>
   @if (isManager()) {
-  <button type="button" class="btn-primary" (click)="openImportDialog()">匯入 CSV</button>
+  <button type="button" class="btn btn--primary" (click)="openImportDialog()">匯入 CSV</button>
   }
 </section>
 
 @if (statusMessage()) {
-<p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+<p class="notice group-buy__toast" role="status">{{ statusMessage() }}</p>
 }
 
 <!-- ===== 篩選 ===== -->
@@ -45,18 +45,18 @@
 </section>
 
 <!-- ===== 成團率統計卡 ===== -->
-<section class="stat-card-grid">
+<section class="group-buy__stats">
   <article class="stat-card">
-    <p class="stat-label">目前清單筆數</p>
-    <p class="stat-value">{{ filteredRecords().length }}</p>
+    <p class="stat-card__label">目前清單筆數</p>
+    <p class="stat-card__value">{{ filteredRecords().length }}</p>
   </article>
   <article class="stat-card">
-    <p class="stat-label">有效樣本（成團+未成團）</p>
-    <p class="stat-value">{{ effectiveCount() }}</p>
+    <p class="stat-card__label">有效樣本（成團+未成團）</p>
+    <p class="stat-card__value">{{ effectiveCount() }}</p>
   </article>
   <article class="stat-card">
-    <p class="stat-label">成團率</p>
-    <p class="stat-value">
+    <p class="stat-card__label">成團率</p>
+    <p class="stat-card__value">
       @if (fulfillmentRate() !== null) {
       {{ fulfillmentRate() }}%
       } @else {
@@ -73,10 +73,10 @@
 @if (isManager()) {
 <section class="margin-summary" aria-labelledby="margin-summary-title">
   <h2 id="margin-summary-title" class="margin-summary__title">毛利率彙總（僅管理層可見）</h2>
-  <div class="stat-card-grid">
+  <div class="group-buy__stats">
     <article class="stat-card">
-      <p class="stat-label">平均毛利率</p>
-      <p class="stat-value">
+      <p class="stat-card__label">平均毛利率</p>
+      <p class="stat-card__value">
         @if (marginSummary().overall.average !== null) {
         {{ marginSummary().overall.average }}%
         } @else {
@@ -86,8 +86,8 @@
       <p class="stat-hint">{{ marginSummary().overall.sampleCount }} 筆可計算（每筆等權）</p>
     </article>
     <article class="stat-card">
-      <p class="stat-label">成團平均毛利率</p>
-      <p class="stat-value">
+      <p class="stat-card__label">成團平均毛利率</p>
+      <p class="stat-card__value">
         @if (marginSummary().fulfilled.average !== null) {
         {{ marginSummary().fulfilled.average }}%
         } @else {
@@ -97,8 +97,8 @@
       <p class="stat-hint">{{ marginSummary().fulfilled.sampleCount }} 筆可計算</p>
     </article>
     <article class="stat-card">
-      <p class="stat-label">未成團平均毛利率</p>
-      <p class="stat-value">
+      <p class="stat-card__label">未成團平均毛利率</p>
+      <p class="stat-card__value">
         @if (marginSummary().failed.average !== null) {
         {{ marginSummary().failed.average }}%
         } @else {
@@ -115,7 +115,7 @@
 }
 
 @if (pageState() === 'error') {
-<section class="empty error" role="alert">
+<section class="empty empty--error" role="alert">
   <h2>無法載入資料</h2>
   <p>{{ statusMessage() }}</p>
 </section>
@@ -136,13 +136,13 @@
 </section>
 } @else {
 <!-- ===== 彙總圖表（2026-09-23 分支整併）：取代原本的逐筆表格，篩選後即時重算 ===== -->
-<section class="chart-row">
+<section class="group-buy__charts">
   <section class="chart-panel" aria-labelledby="type-rate-title">
     <h2 id="type-rate-title" class="chart-panel__title">各商品類型成團率</h2>
     @if (fulfillmentByProductType().length === 0) {
     <p class="chart-panel__empty">目前篩選範圍內沒有成團／未成團樣本。</p>
     } @else {
-    <div class="type-rate-chart-wrap">
+    <div class="chart-panel__canvas">
       <canvas #typeRateChartCanvas aria-label="各商品類型成團率長條圖，最多顯示前 10 名" role="img"></canvas>
     </div>
     }
@@ -150,7 +150,7 @@
 
   <section class="chart-panel" aria-labelledby="result-title">
     <h2 id="result-title" class="chart-panel__title">結果分布</h2>
-    <div class="result-chart-wrap">
+    <div class="chart-panel__canvas chart-panel__canvas--result">
       <canvas #resultChartCanvas aria-label="成團、未成團、取消開團的比例圖" role="img"></canvas>
     </div>
   </section>
@@ -166,7 +166,7 @@
       CSV 格式須含必要欄位（品類名稱、商品名稱、開團起訖日、實際成團量、結果），
       任何一列格式錯誤會整批拒絕匯入。
     </p>
-    <details class="csv-headers">
+    <details class="group-buy__csv-headers">
       <summary>CSV 可用欄位（點擊展開）</summary>
       <code>{{ csvRequiredHeaders.join(', ') }}</code>
     </details>
@@ -178,17 +178,17 @@
              可以回報——不假裝有精確進度（例如虛構「已檢查 N/M 筆」），
              用不確定進度動畫讓使用者知道系統還在處理、不是卡住了即可。
              檔案很大時這一步可能要等一段時間，純文字按鈕不夠明顯。 -->
-    <div class="importing-indicator" role="status" aria-live="polite">
-      <span class="spinner" aria-hidden="true"></span>
+    <div class="group-buy__importing" role="status" aria-live="polite">
+      <span class="group-buy__spinner" aria-hidden="true"></span>
       <span>檔案處理中，請稍候，時間視資料筆數而定…</span>
     </div>
     }
 
     @if (importResult(); as result) {
     @if (result.success) {
-    <p class="notice status-toast success">匯入成功，共 {{ result.importedRows }} 筆。</p>
+    <p class="notice group-buy__toast notice--success">匯入成功，共 {{ result.importedRows }} 筆。</p>
     } @else {
-    <p class="notice status-toast error">
+    <p class="notice group-buy__toast notice--error">
       匯入失敗，共 {{ result.totalRows }} 列中有 {{ result.errors.length }} 列格式錯誤，整批未寫入：
     </p>
     <div class="data-table">
@@ -214,9 +214,9 @@
     }
     }
 
-    <div class="modal-actions">
+    <div class="modal-card__actions">
       <button type="button" class="btn" [disabled]="isImporting()" (click)="closeImportDialog()">關閉</button>
-      <button type="button" class="btn-primary" [disabled]="!selectedFile() || isImporting()" (click)="submitImport()">
+      <button type="button" class="btn btn--primary" [disabled]="!selectedFile() || isImporting()" (click)="submitImport()">
         {{ isImporting() ? '匯入中…' : '開始匯入' }}
       </button>
     </div>

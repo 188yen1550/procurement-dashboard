@@ -1,12 +1,12 @@
 <!-- 檔案用途：審核清單與決策紀錄；scope 文案明確區分核准與實際銷售，表格僅容器內捲動。 -->
-<main class="review-page" aria-labelledby="review-title">
+<main class="review" aria-labelledby="review-title">
   <header class="page-header">
     <div>
 
       <h1 id="review-title">選品審核</h1>
     </div>
   </header>
-  <!-- <section class="scope-notice">
+  <!-- <section class="review__scope-notice">
     <strong>通過選品審核 ≠ 已銷售</strong><span>僅代表成為可執行團購銷售的候選品項，不代表已上架、已簽約或已產生營收。</span>
   </section> -->
   @if (useMockData) {
@@ -14,7 +14,7 @@
     <div><strong>UI 狀態</strong><span>審核 Mock 不會送出 API</span></div>
     <div role="group" aria-label="切換審核清單狀態">
       @for (state of stateOptions; track state) {
-      <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
+      <button type="button" [class.is-active]="pageState() === state" (click)="setState(state)">
         {{ state }}
       </button>
       }
@@ -22,18 +22,18 @@
   </section>
   }
   <!-- 同時提供螢幕閱讀器通知與可見的操作結果。 -->
-  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  <p class="u-sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-  <p class="scope-notice status-toast" role="status">{{ statusMessage() }}</p>
+  <p class="review__scope-notice review__toast" role="status">{{ statusMessage() }}</p>
   }
-  <nav class="tabs">
-    <button type="button" [class.active]="view() === 'pending'" (click)="view.set('pending')">
-      待審核清單</button><button type="button" [class.active]="view() === 'records'" (click)="view.set('records')">
+  <nav class="review__tabs">
+    <button type="button" [class.is-active]="view() === 'pending'" (click)="view.set('pending')">
+      待審核清單</button><button type="button" [class.is-active]="view() === 'records'" (click)="view.set('records')">
       歷次決策紀錄
     </button>
   </nav>
   @if (pageState() === 'error') {
-  <section class="empty error" role="alert">
+  <section class="empty empty--error" role="alert">
     <h2>審核清單載入失敗</h2>
     <button type="button" (click)="retry()">重試</button>
   </section>
@@ -50,30 +50,30 @@
        改兩欄／單欄，見 review.scss 的 .filter-toolbar。 -->
   <!-- 2026-09-26：真實模式只剩搜尋／分類／送審日期三個條件，改為單行（pending-filters--single-row）；
        Mock 模式多了審核狀態／品項狀態兩個下拉，維持原本兩行。 -->
-  <section class="toolbar filter-toolbar pending-filters" [class.pending-filters--single-row]="!useMockData"
+  <section class="review__toolbar filter-toolbar filter-toolbar--pending" [class.filter-toolbar--single-row]="!useMockData"
     aria-label="待審清單篩選">
     <!-- 2026-09-26：真實模式的搜尋／分類／送審日期改由後端篩選（分頁資訊才會正確）。 -->
-    <label class="field field-search"><span class="field-label">搜尋</span><input type="search"
+    <label class="field field--search"><span class="field__label">搜尋</span><input type="search"
         placeholder="品項名稱或送審人" [ngModel]="query()" (ngModelChange)="updatePendingQuery($event)" /></label>
     <!-- 審核狀態／品項狀態只在 Mock 模式顯示：真實模式下 GET /api/reviews/pending 固定只回
          「未審核＋使用中」，這兩個下拉選其他值只會把當頁濾空、分頁卻不變（2026-09-26 分頁錯亂的
          成因之一）。要查審核通過／拒絕的商品請到「歷次決策紀錄」頁籤。 -->
     @if (useMockData) {
-    <label class="field field-review"><span class="field-label">審核狀態</span><select [ngModel]="reviewFilter()"
+    <label class="field field--review"><span class="field__label">審核狀態</span><select [ngModel]="reviewFilter()"
         (ngModelChange)="reviewFilter.set($event)">
         <option value="ALL">全部</option>
         <option value="PENDING">未審核</option>
         <option value="APPROVED">審核通過</option>
         <option value="REJECTED">審核拒絕</option>
       </select></label>
-    <label class="field field-item"><span class="field-label">品項狀態</span><select [ngModel]="itemFilter()"
+    <label class="field field--item"><span class="field__label">品項狀態</span><select [ngModel]="itemFilter()"
         (ngModelChange)="itemFilter.set($event)">
         <option value="ALL">全部</option>
         <option value="ACTIVE">使用中</option>
         <option value="ARCHIVED">已封存</option>
       </select></label>
     }
-    <label class="field field-category"><span class="field-label">分類</span><select [ngModel]="categoryFilter()"
+    <label class="field field--category"><span class="field__label">分類</span><select [ngModel]="categoryFilter()"
         (ngModelChange)="updateCategoryFilter($event)">
         <option value="ALL">全部</option>
         @if (useMockData) {
@@ -86,9 +86,9 @@
         }
         }
       </select></label>
-    <div class="field field-date" role="group" aria-labelledby="pending-date-label">
-      <span class="field-label" id="pending-date-label">送審日期</span>
-      <span class="date-range">
+    <div class="field field--date" role="group" aria-labelledby="pending-date-label">
+      <span class="field__label" id="pending-date-label">送審日期</span>
+      <span class="field__date-range">
         <input type="date" aria-label="送審日期（起）" [attr.max]="submittedTo() || null" [ngModel]="submittedFrom()"
           [attr.aria-invalid]="pendingDateRangeInvalid()" (ngModelChange)="updateSubmittedFrom($event)" />
         <span aria-hidden="true">～</span>
@@ -96,8 +96,8 @@
           [attr.aria-invalid]="pendingDateRangeInvalid()" (ngModelChange)="updateSubmittedTo($event)" />
       </span>
     </div>
-    <div class="toolbar-actions">
-      <button type="button" class="secondary-action" (click)="clearFilters()">恢復預設</button>
+    <div class="filter-toolbar__actions">
+      <button type="button" class="review__secondary-action" (click)="clearFilters()">恢復預設</button>
     </div>
   </section>
   @if (!useMockData) {
@@ -126,12 +126,12 @@
   <app-list-sort [sort]="pendingSort" [choices]="pendingSortChoices" label="待審品項" />
   <section class="review-list">
     @for (item of filtered() | sortRows: pendingSort.state(); track item.id) {
-    <article [class.disabled]="pageState() === 'disabled'">
-      <div class="score">
-        <strong>{{ item.finalScore ?? '—' }}@if (item.finalScore !== null) {<span class="unit">分</span>}</strong><span>最終分數</span>
+    <article [class.is-disabled]="pageState() === 'disabled'">
+      <div class="review-list__score">
+        <strong>{{ item.finalScore ?? '—' }}@if (item.finalScore !== null) {<span class="u-unit">分</span>}</strong><span>最終分數</span>
       </div>
       <div>
-        <span class="category">{{ item.category }}</span>
+        <span class="review-list__category">{{ item.category }}</span>
         <h2>{{ item.name }}</h2>
         <!-- createdByName 由待審清單 API 提供；有值時才顯示送審人。 -->
         <p>
@@ -141,10 +141,10 @@
           {{ item.submittedAt | date: 'MM/dd HH:mm' }}
         </p>
         @if (item.submissionCount > 1) {
-        <strong class="resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
+        <strong class="review-list__resubmit">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</strong>
         }
       </div>
-      <div class="meta">
+      <div class="review-list__meta">
         <span>完整度 {{ item.completeness !== null ? item.completeness + '%' : '—' }}</span><span>{{
           reviewStatusLabel(item.status) }}</span><span>{{ item.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
       </div>
@@ -161,7 +161,7 @@
   <!-- ⚠️ 補上：totalElements()／totalPages() 由 loadPendingItems() 正確
        設值，但先前沒有任何畫面元素讀取，待審清單永遠只看得到第 1 頁
        20 筆，其餘品項無從得知、也無法翻頁查看。 -->
-  <nav class="pagination" aria-label="待審清單分頁">
+  <nav class="review__pagination" aria-label="待審清單分頁">
     <button type="button" (click)="goToPage(pageNumber() - 1)" [disabled]="pageNumber() === 0 || isLoading">
       上一頁
     </button>
@@ -174,25 +174,25 @@
   }
   }
   } @else {
-  <section class="records">
+  <section class="review__records">
     <header>
       <h2>決策紀錄</h2>
       <p>保留每次送審快照與人工決策依據。</p>
     </header>
     <!-- 2026-09-24：審核結果、審核日期改為篩選；搜尋、篩選、排序全部由後端處理，
          跨分頁結果一致（見 review.ts 的 loadDecisionRecords()）。 -->
-    <section class="toolbar filter-toolbar record-filters" aria-label="決策紀錄篩選">
-      <label class="field field-search"><span class="field-label">搜尋</span><input type="search"
+    <section class="review__toolbar filter-toolbar filter-toolbar--records" aria-label="決策紀錄篩選">
+      <label class="field field--search"><span class="field__label">搜尋</span><input type="search"
           placeholder="商品名稱" [ngModel]="recordSearch()" (ngModelChange)="updateRecordSearch($event)" /></label>
-      <label class="field field-result"><span class="field-label">審核結果</span><select [ngModel]="recordResultFilter()"
+      <label class="field field--result"><span class="field__label">審核結果</span><select [ngModel]="recordResultFilter()"
           (ngModelChange)="updateRecordResultFilter($event)">
           <option value="ALL">全部</option>
           <option value="APPROVED">審核通過</option>
           <option value="REJECTED">審核拒絕</option>
         </select></label>
-      <div class="field field-date" role="group" aria-labelledby="record-date-label">
-        <span class="field-label" id="record-date-label">審核日期</span>
-        <span class="date-range">
+      <div class="field field--date" role="group" aria-labelledby="record-date-label">
+        <span class="field__label" id="record-date-label">審核日期</span>
+        <span class="field__date-range">
           <input type="date" aria-label="審核日期（起）" [attr.max]="recordReviewedTo() || null"
             [attr.aria-invalid]="recordDateRangeInvalid()" [ngModel]="recordReviewedFrom()"
             (ngModelChange)="updateRecordReviewedFrom($event)" />
@@ -202,11 +202,11 @@
             (ngModelChange)="updateRecordReviewedTo($event)" />
         </span>
       </div>
-      <div class="toolbar-actions">
-        <button type="button" class="secondary-action" (click)="clearRecordFilters()">恢復預設</button>
+      <div class="filter-toolbar__actions">
+        <button type="button" class="review__secondary-action" (click)="clearRecordFilters()">恢復預設</button>
         <!-- 2026-09-26：管理層唯讀匯出目前篩選條件下的全部決策紀錄（不影響品項管理的「未曾匯出」）。 -->
         @if (!useMockData) {
-        <button type="button" class="secondary-action" (click)="exportDecisionRecords()"
+        <button type="button" class="review__secondary-action" (click)="exportDecisionRecords()"
           [disabled]="isExportingRecords() || recordDateRangeInvalid()" [attr.aria-busy]="isExportingRecords()"
           title="匯出目前篩選條件下的全部決策紀錄；僅供檢視，不會標記商品為已匯出">
           {{ isExportingRecords() ? '匯出中…' : '匯出 CSV' }}
@@ -214,26 +214,26 @@
         }
       </div>
       @if (recordDateRangeInvalid()) {
-      <p class="field-error" role="alert">審核日期起日不可晚於迄日。</p>
+      <p class="filter-toolbar__error" role="alert">審核日期起日不可晚於迄日。</p>
       }
     </section>
     @if (filteredRecords().length === 0 && !recordDateRangeInvalid()) {
-    <p class="helper record-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
+    <p class="helper review__records-empty-hint">目前的搜尋／篩選條件沒有符合的紀錄。</p>
     }
-    <p class="helper record-sort-hint">預設依審核時間由新到舊；點擊「送審次數」「最終分數」欄位標題可切換升冪／降冪，排序涵蓋全部分頁。</p>
-    <div class="table-wrap">
+    <p class="helper review__records-sort-hint">預設依審核時間由新到舊；點擊「送審次數」「最終分數」欄位標題可切換升冪／降冪，排序涵蓋全部分頁。</p>
+    <div class="review__table-wrap">
       <table>
         <thead>
           <tr>
             <!-- 只有送審次數、最終分數可排序（後端白名單）；結果、審核日期改由上方篩選，
                  商品名稱改由搜尋，審核人、審核留言不排序。 -->
-            <th class="col-name" scope="col">商品</th>
-            <th class="col-round" appSortHeader="submissionCount" [sort]="recordTableSort">送審次數</th>
-            <th class="col-result" scope="col">結果</th>
-            <th class="col-score" appSortHeader="finalScore" [sort]="recordTableSort">最終分數</th>
-            <th class="col-reviewer" scope="col">審核人</th>
-            <th class="col-date" scope="col">審核日期</th>
-            <th class="col-comment" scope="col">審核留言</th>
+            <th class="review__col review__col--name" scope="col">商品</th>
+            <th class="review__col review__col--round" appSortHeader="submissionCount" [sort]="recordTableSort">送審次數</th>
+            <th class="review__col review__col--result" scope="col">結果</th>
+            <th class="review__col review__col--score" appSortHeader="finalScore" [sort]="recordTableSort">最終分數</th>
+            <th class="review__col review__col--reviewer" scope="col">審核人</th>
+            <th class="review__col review__col--date" scope="col">審核日期</th>
+            <th class="review__col review__col--comment" scope="col">審核留言</th>
           </tr>
         </thead>
         <tbody>
@@ -247,7 +247,7 @@
                      canResubmit 判斷），避免這張表同時身兼決策記錄與生命週期操作
                      兩種職責。這裡只提供「點進去看該商品現況」的路徑。 -->
               <!-- 2026-09-24 職責分離：重審由操作人員執行，管理層只看得到提示。 -->
-              <small class="resubmit-hint">操作人員可重新送審</small>
+              <small class="review__resubmit-hint">操作人員可重新送審</small>
               }
             </td>
             <td>第 {{ record.round }} 次</td>
@@ -266,7 +266,7 @@
       </table>
     </div>
     @if (recordTotalPages() > 1) {
-    <nav class="pagination" aria-label="決策紀錄分頁">
+    <nav class="review__pagination" aria-label="決策紀錄分頁">
       <button type="button" (click)="goToRecordPage(recordPageNumber() - 1)" [disabled]="recordPageNumber() === 0">
         上一頁
       </button>

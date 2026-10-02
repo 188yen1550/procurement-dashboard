@@ -13,42 +13,42 @@
  */
 :root {
   /* --- 品牌與互動 --- */
-  --c-brand: #1c5286;
-  --c-brand-hover: #17456f;
-  --c-brand-tint: #eaf3fb;
+  --color-brand: #1c5286;
+  --color-brand-hover: #17456f;
+  --color-brand-tint: #eaf3fb;
 
   /* --- 文字階層（由深到淺）--- */
-  --c-ink: #243447;
-  --c-ink-soft: #455b6e;
-  --c-ink-muted: #6c7a89;
-  --c-ink-faint: #8a969f;
+  --color-ink: #243447;
+  --color-ink-soft: #455b6e;
+  --color-ink-muted: #6c7a89;
+  --color-ink-faint: #8a969f;
 
   /* --- 表面 --- */
-  --c-surface: #fff;
-  --c-surface-sunken: #f8fafc;
-  --c-surface-alt: #eef4f8;
-  --c-surface-hover: #eef1f3;
+  --color-surface: #fff;
+  --color-surface-sunken: #f8fafc;
+  --color-surface-alt: #eef4f8;
+  --color-surface-hover: #eef1f3;
 
   /* --- 框線 --- */
-  --c-border: #e0e8ee;
-  --c-border-strong: #cbd9e3;
-  --c-border-soft: #e8eef2;
+  --color-border: #e0e8ee;
+  --color-border-strong: #cbd9e3;
+  --color-border-soft: #e8eef2;
 
   /* --- 語意色：成功／核准／啟用 --- */
-  --c-ok: #21694f;
-  --c-ok-tint: #e5f5ee;
-  --c-ok-border: #add9c7;
+  --color-ok: #21694f;
+  --color-ok-tint: #e5f5ee;
+  --color-ok-border: #add9c7;
 
   /* --- 語意色：警告／準備中／待處理 --- */
-  --c-warn: #725510;
-  --c-warn-tint: #fff8dc;
-  --c-warn-border: #ead895;
+  --color-warn: #725510;
+  --color-warn-tint: #fff8dc;
+  --color-warn-border: #ead895;
 
   /* --- 語意色：危險／拒絕／刪除 --- */
-  --c-danger: #a43d36;
-  --c-danger-strong: #7a2927;
-  --c-danger-tint: #fff5f4;
-  --c-danger-border: #efc1be;
+  --color-danger: #a43d36;
+  --color-danger-strong: #7a2927;
+  --color-danger-tint: #fff5f4;
+  --color-danger-border: #efc1be;
 
   /*
    * --- 字級 ---
@@ -63,20 +63,20 @@
    * 商品本身的文字，例如商品名稱）當作給視力不佳者使用來設計，全面
    * 合理放大。這裡統一調整 token 本身（而不是逐一調整每個元件的硬編碼
    * 字級），沿用同一套「改一處、全站生效」的設計——只要元件確實是引用
-   * var(--t-xs) 等 token（上一版已經做過這次收斂），這裡改完不需要再
+   * var(--font-size-xs) 等 token（上一版已經做過這次收斂），這裡改完不需要再
    * 到每個 SCSS 檔案裡逐一調整。字級間的比例關係盡量維持，不要讓層級
    * 感（次要說明 vs 一般內文 vs 標題）因為等比例放大而消失。
    */
-  --t-xs: 1rem; /* 16px：徽章、輔助說明、次要標籤——全站最小字級 */
-  --t-sm: 1.0625rem; /* 17px：表格內文、次要文字 */
-  --t-base: 1.125rem; /* 18px：一般內文、表單輸入 */
-  --t-lg: 1.3125rem; /* 21px：卡片標題 */
-  --t-xl: 1.625rem; /* 26px：區塊標題 */
-  --t-display: clamp(1.75rem, 3.2vw, 2.375rem); /* 頁面主標 */
-  --t-metric: clamp(2.25rem, 4.2vw, 3rem); /* 儀表板關鍵數字 */
+  --font-size-xs: 1rem; /* 16px：徽章、輔助說明、次要標籤——全站最小字級 */
+  --font-size-sm: 1.0625rem; /* 17px：表格內文、次要文字 */
+  --font-size-base: 1.125rem; /* 18px：一般內文、表單輸入 */
+  --font-size-lg: 1.3125rem; /* 21px：卡片標題 */
+  --font-size-xl: 1.625rem; /* 26px：區塊標題 */
+  --font-size-display: clamp(1.75rem, 3.2vw, 2.375rem); /* 頁面主標 */
+  --font-size-metric: clamp(2.25rem, 4.2vw, 3rem); /* 儀表板關鍵數字 */
 
-  --lh-tight: 1.25;
-  --lh-base: 1.6;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.6;
 
   /* --- 圖示 ---
    * 側邊欄與清單操作圖示原本是 Unicode 符號（▦ ▤ ✦ 📋 ✓ ⚙ 等），
@@ -84,32 +84,32 @@
    * 不一致。這次改為統一的 inline SVG（stroke-based，24×24 viewBox），
    * 用這兩個 token 統一控制尺寸，不要在個別元件裡各寫一個 width/height。
    */
-  --icon-sm: 1.125rem; /* 18px：表格列內的小型操作圖示 */
-  --icon-md: 1.375rem; /* 22px：側邊欄導覽、按鈕圖示 */
+  --icon-size-sm: 1.125rem; /* 18px：表格列內的小型操作圖示 */
+  --icon-size-md: 1.375rem; /* 22px：側邊欄導覽、按鈕圖示 */
 
   /* --- 間距 --- */
-  --s-1: 0.25rem;
-  --s-2: 0.5rem;
-  --s-2-5: 0.625rem; /* 10px：徽章／標籤內距，介於 s-2 與 s-3 之間 */
-  --s-3: 0.75rem;
-  --s-4: 1rem;
-  --s-5: 1.5rem;
-  --s-6: 2rem;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-2-5: 0.625rem; /* 10px：徽章／標籤內距，介於 spacing-2 與 spacing-3 之間 */
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.5rem;
+  --spacing-6: 2rem;
 
   /* --- 圓角 --- */
-  --r-sm: 0.4rem;
-  --r-md: 0.6rem;
-  --r-lg: 0.8rem;
-  --r-pill: 999px;
+  --radius-sm: 0.4rem;
+  --radius-md: 0.6rem;
+  --radius-lg: 0.8rem;
+  --radius-pill: 999px;
 
   /* --- 陰影 --- */
-  --sh-card: 0 8px 24px rgba(29, 54, 78, 0.05);
-  --sh-raised: 0 8px 24px rgba(39, 119, 90, 0.12);
-  --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.24);
+  --shadow-card: 0 8px 24px rgba(29, 54, 78, 0.05);
+  --shadow-raised: 0 8px 24px rgba(39, 119, 90, 0.12);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.24);
 
   /* --- 其他 --- */
   --focus-ring: 3px solid rgba(28, 82, 134, 0.24);
-  --layout-max: 1100px;
+  --layout-max-width: 1100px;
   --motion-fast: 0.15s ease;
 }
 
@@ -117,13 +117,13 @@
  * --- 角色配色（2026-09-27，UI 規格第 6 點，範圍已確認為「操作層 vs 管理層」）---
  * 登入後由 App 根元件在 <html> 設定 data-role（見 app.ts），一眼看出目前是哪個身分在操作。
  * 操作層（purchaser）與未登入沿用 :root 的藍色；管理層改為深紫色。
- * 只覆蓋品牌色三個 token：全站元件樣式都引用 var(--c-brand*)（原本硬編碼的 #1c5286
+ * 只覆蓋品牌色三個 token：全站元件樣式都引用 var(--color-brand*)（原本硬編碼的 #1c5286
  * 已一併改成引用 token），語意色（成功／警告／危險）維持不變，不讓狀態顏色跟著角色變。
  * 紫色對白字對比約 8.6:1，淡底上的紫字同樣符合 WCAG AA。
  */
 :root[data-role='manager'] {
-  --c-brand: #5b3f8c;
-  --c-brand-hover: #4a3274;
-  --c-brand-tint: #f1ecf8;
+  --color-brand: #5b3f8c;
+  --color-brand-hover: #4a3274;
+  --color-brand-tint: #f1ecf8;
   --focus-ring: 3px solid rgba(91, 63, 140, 0.24);
 }

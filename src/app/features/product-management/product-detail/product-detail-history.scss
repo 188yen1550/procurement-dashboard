@@ -8,124 +8,128 @@
  * 篩選列（2026-09-26 改為單行）：審核結果、審核日期起訖、排序、清除篩選排成一行，
  * 標籤放在欄位左側而不是上方；空間不足（平板以下）才換行。
  */
-.review-history-filters {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  font-size: var(--t-sm);
-}
+.review-history {
+  &__filters {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: var(--font-size-sm);
+  }
 
-.review-history-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  white-space: nowrap;
-}
+  &__field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
 
-.review-history-field select,
-.review-history-field input[type='date'] {
-  height: 2.1rem;
-}
+  &__field select,
+  &__field input[type='date'] {
+    height: 2.1rem;
+  }
 
-.review-history-date-range {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-}
+  &__date-range {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
 
-/* 排序控制併入同一行：去掉元件預設的上下外距。 */
-.review-history-filters app-list-sort {
-  margin: 0;
-}
+  /* 排序控制併入同一行：去掉元件預設的上下外距。 */
+  &__filters app-list-sort {
+    margin: 0;
+  }
 
-.review-history-clear {
-  margin-left: auto;
-  white-space: nowrap;
+  &__clear {
+    margin-left: auto;
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 1100px) {
-  .review-history-filters {
+  .review-history__filters {
     flex-wrap: wrap;
   }
 }
 
-.review-history-hint {
-  margin: 0 0 0.5rem;
-  font-size: var(--t-sm);
-  color: #6b7280;
-}
+.review-history {
+  &__hint {
+    margin: 0 0 0.5rem;
+    font-size: var(--font-size-sm);
+    color: #6b7280;
+  }
 
-.review-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
-.review-history-list li {
-  padding: 0.7rem 0.85rem;
-  background: #f8fafc;
-  border-left: 4px solid #cbd9e3;
-  border-radius: 0.4rem;
-}
+  &__list li {
+    padding: 0.7rem 0.85rem;
+    background: #f8fafc;
+    border-left: 4px solid #cbd9e3;
+    border-radius: 0.4rem;
+  }
 
-.review-history-list li[data-result='APPROVED'] {
-  border-left-color: #2f8f66;
-}
+  &__list li[data-result='APPROVED'] {
+    border-left-color: #2f8f66;
+  }
 
-.review-history-list li[data-result='REJECTED'] {
-  border-left-color: #b94d47;
-}
+  &__list li[data-result='REJECTED'] {
+    border-left-color: #b94d47;
+  }
 
-.review-history-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
 
-.review-history-round {
-  font-size: var(--t-xs);
-  font-weight: 800;
-  color: var(--c-ink, #243447);
-}
+  &__round {
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    color: var(--color-ink, #243447);
+  }
 
-.review-history-badge {
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
+  &__badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
 
-.review-history-badge[data-result='APPROVED'] {
-  color: #21694f;
-  background: #e5f5ee;
-}
+  &__badge[data-result='APPROVED'] {
+    color: #21694f;
+    background: #e5f5ee;
+  }
 
-.review-history-badge[data-result='REJECTED'] {
-  color: #8d3733;
-  background: #fce8e6;
-}
+  &__badge[data-result='REJECTED'] {
+    color: #8d3733;
+    background: #fce8e6;
+  }
 
-.review-history-reviewer {
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
+  &__reviewer {
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 
-.review-history-date {
-  margin-left: auto;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
+  &__date {
+    margin-left: auto;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 
-.review-history-comment {
-  margin: 0.4rem 0 0;
-  color: #526677;
-  font-size: var(--t-xs);
-  line-height: 1.5;
+  &__comment {
+    margin: 0.4rem 0 0;
+    color: #526677;
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+  }
 }
 

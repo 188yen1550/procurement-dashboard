@@ -1,34 +1,34 @@
 <!-- 檔案用途：頂部列；按鈕的 aria-label 讓手機選單操作可被輔助科技辨識。 -->
 <header class="app-header">
-  <div class="header-leading">
-    <button type="button" class="menu-button" aria-label="開啟導覽選單" (click)="menuToggle.emit()">
+  <div class="app-header__brand">
+    <button type="button" class="app-header__menu-button" aria-label="開啟導覽選單" (click)="menuToggle.emit()">
       <span aria-hidden="true"></span>
       <span aria-hidden="true"></span>
       <span aria-hidden="true"></span>
     </button>
 
     <div>
-      <p class="eyebrow">團購選品決策輔助系統</p>
+      <p class="eyebrow app-header__title">團購選品決策輔助系統</p>
     </div>
   </div>
 
-  <div class="user-actions">
+  <div class="user-menu">
     <!--
       使用者名稱同時是個人資料的入口。做成連結而不是另外加一顆齒輪按鈕，
       是因為「點自己的名字看／改自己的資料」已經是使用者熟悉的慣例，
       不需要再教一次新的圖示代表什麼。
     -->
     <a
-      class="user-link"
+      class="user-menu__link"
       routerLink="/profile"
-      routerLinkActive="active"
+      routerLinkActive="is-active"
       [attr.aria-label]="userName ? userName + '，開啟個人資料' : '開啟個人資料'"
     >
       @if (userName) {
-        <span class="user-name">{{ userName }}</span>
+        <span class="user-menu__name">{{ userName }}</span>
       }
-      <span class="role-badge">{{ roleLabel }}</span>
+      <span class="user-menu__role">{{ roleLabel }}</span>
     </a>
-    <button type="button" class="logout-button" (click)="logoutRequested.emit()">登出</button>
+    <button type="button" class="user-menu__logout" (click)="logoutRequested.emit()">登出</button>
   </div>
 </header>

@@ -1,0 +1,235 @@
+/*
+ * 檔案用途：品項詳情頁 Gate 判定、供應與物流屬性、AI 摘要強調、主圖與摘要版面、評估指標、風險提示等區塊。
+ * 從 product-detail.scss 拆出：該檔已達元件樣式 12 kB 預算上限（比照 product-detail-google-trend.scss 的做法）。
+ * 在 styleUrls 中緊接 product-detail.scss 之後載入，規則順序與拆檔前相同。
+ */
+
+/* ===== Gate 判定結果 ===== */
+.gate-panel {
+  &__summary-badge {
+    padding: 0.3rem 0.6rem;
+    color: #21694f;
+    background: #e5f5ee;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+
+    &.has-failed {
+      color: #8a3f39;
+      background: #fff0ef;
+    }
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    align-items: start;
+
+    li {
+      padding: 0.65rem 0.75rem;
+      background: #f8fafc;
+      border-left: 4px solid #cbd9e3;
+      border-radius: 0.4rem;
+
+      &[data-gate-status='FAILED'] {
+        border-left-color: #b94d47;
+      }
+
+      &[data-gate-status='PASSED'] {
+        border-left-color: #2f8f66;
+      }
+
+      &[data-gate-status='INSUFFICIENT_DATA'] {
+        border-left-color: #c98a2c;
+      }
+
+      &[data-gate-status='NOT_APPLICABLE'] {
+        border-left-color: #9aa7b0;
+      }
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .gate-panel__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .gate-panel__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gate-panel {
+  &__name {
+    margin-right: 0.5rem;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    color: #243447;
+  }
+
+  &__status-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+
+    &[data-gate-status='PASSED'] {
+      color: #21694f;
+      background: #e5f5ee;
+    }
+
+    &[data-gate-status='FAILED'] {
+      color: #8a3f39;
+      background: #fff0ef;
+    }
+
+    &[data-gate-status='INSUFFICIENT_DATA'] {
+      color: #835f15;
+      background: #fff4ce;
+    }
+
+    &[data-gate-status='NOT_APPLICABLE'] {
+      color: #526677;
+      background: #eef1f3;
+    }
+  }
+
+  &__reason {
+    margin: 0.35rem 0 0;
+    color: #596d7e;
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+  }
+}
+
+/* ===== 供應與物流屬性：6 欄基準，一般欄位佔 2 欄（一列 3 欄，維持原視覺），col-half 佔 3 欄（一列 2 欄併排）。日後新增/調整欄位只需改個別項目的 span 數值。 ===== */
+.metrics--gate-attrs {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+
+  > div {
+    grid-column: span 2;
+  }
+
+  .metrics__item--half-row {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 460px) {
+  .metrics--gate-attrs {
+    grid-template-columns: 1fr;
+
+    > div,
+    .metrics__item--half-row {
+      grid-column: auto;
+    }
+  }
+}
+
+/* ===== AI 摘要／推薦原因：加強視覺存在感 ===== */
+.ai-panel {
+  &--prominent {
+    background: linear-gradient(135deg, #f3f0ff 0%, #ffffff 60%);
+    border: 1px solid #d9cdfb;
+  }
+
+  &--prominent header span {
+    padding: 0.2rem 0.5rem;
+    color: #6d4fc4;
+    background: #ece4ff;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+}
+
+/* 主圖獨立一整欄滿版呈現；摘要資訊改為主圖下方橫向排列的統計卡（沿用 .product-summary dl 預設 4 欄樣式），避免主圖與摘要對分造成左空右擠。 */
+.product-detail__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  .product-media,
+  .product-summary { margin-bottom: 0; }
+
+  .product-media > header { flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
+}
+
+.evaluation-panel__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.evaluation-item {
+  min-width: 0;
+  padding: .75rem;
+  background: #f8fafc;
+  border-radius: .5rem;
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  p {
+    margin-bottom: 0;
+  }
+
+  &--trend > button {
+    margin-top: .5rem;
+  }
+
+  &--trend .evaluation-item__sync-actions,&--trend .evaluation-item__sync-loading,&--trend .evaluation-item__error {
+    margin-top: .5rem;
+  }
+
+  &--trend .evaluation-item__source {
+    margin-top: .25rem;
+    font-size: .8125rem;
+    color: #64748b;
+
+    // 模擬資料要看得出來，不能跟真實資料長得一樣
+    strong {
+      color: #b45309;
+    }
+  }
+
+  /* ⚠️ 2026-09-25 新增：跟 dashboard.scss 的 .status-chart__canvas 同一套
+   做法——Chart.js 在 maintainAspectRatio:false 時，需要容器本身有
+   明確高度，圖表才不會塌陷成 0 高度或撐爆版面。 */
+  &__chart {
+    position: relative;
+    height: 160px;
+    margin-top: .5rem;
+  }
+}
+
+.panel.risk-panel {
+  margin-bottom: 1rem;
+  color: #991b1b;
+  background: #fff1f2;
+  border: 1px solid #f3b4b9;
+  border-left: 5px solid #dc2626;
+
+  h2 { color: #991b1b; font-weight: 800; }
+  ul, .no-data { color: #991b1b; font-weight: 600; }
+  .no-data { margin-top: .5rem; padding: .65rem .75rem; background: #ffe4e6; }
+  li::marker { color: #dc2626; }
+}
+
+.panel { overflow-wrap: anywhere; }
+
+@media (max-width: 800px) {
+  .evaluation-panel__metrics { grid-template-columns: minmax(0, 1fr); }
+}

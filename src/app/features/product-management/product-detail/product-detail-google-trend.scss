@@ -3,86 +3,128 @@
  * 獨立成第二個樣式檔：product-detail.scss 已接近元件樣式 12 kB 預算上限（比照 dashboard-actions.scss 的做法）。
  *
  * 2026-09-30：
- * - .evaluation-metrics 為 3 欄（見 product-detail.scss）：第一行核心客群／歷史銷售／預估購買；
+ * - .evaluation-panel__metrics 為 3 欄（見 product-detail.scss）：第一行核心客群／歷史銷售／預估購買；
  *   第二行左 1 格 Google 趨勢參考、右 2 格市場趨勢／熱門度。
  * - Google 趨勢改為與市場趨勢同層級的獨立 .evaluation-item 卡片（h2＋右側數值），
  *   卡片底色、padding、標題與數值字級直接沿用 .evaluation-item 與 .panel header > strong；
- *   這裡只補上原本掛在 .trend 底下、Google 卡片也需要的按鈕與次要文字樣式，數值與內文一致。
+ *   這裡只補上原本掛在 .evaluation-item--trend 底下、Google 卡片也需要的按鈕與次要文字樣式，數值與內文一致。
  * - 卡片高度依內容（align-self: start），不被市場趨勢的走勢圖撐高，避免下方大片空白。
  */
-.evaluation-metrics > .trend { grid-column: 2 / -1; }
-
-.evaluation-metrics > .google-trend { align-self: start; }
-
-.evaluation-item.google-trend {
-  // 與 product-detail.scss 的 `.trend button` 相同（該規則所在的選擇器清單不能再加，會超出樣式預算）
-  button {
-    padding: .5rem .7rem;
-    color: var(--c-brand);
-    background: #fff;
-    border: 1px solid #cbd9e3;
-    border-radius: .45rem;
-    font: inherit;
-    font-size: var(--t-xs);
-    font-weight: 700;
-    cursor: pointer;
+.evaluation-panel {
+  &__metrics > .evaluation-item--trend {
+    grid-column: 2 / -1;
   }
 
-  button:disabled { opacity: .55; cursor: not-allowed; }
-
-  > button,
-  .sync-loading,
-  .inline-error { margin-top: .5rem; }
-
-  // 與 .evaluation-item.trend .trend-source 相同
-  .trend-source {
-    margin-top: .25rem;
-    font-size: .8125rem;
-    color: #64748b;
+  &__metrics > .evaluation-item--google-trend {
+    align-self: start;
   }
-
-  // 2026-09-30：成長率的計算依據（近 7 天平均／前 4 週平均／資料點），三格並排
-  .google-trend-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .5rem;
-    margin: .75rem 0 0;
-
-    > div {
-      min-width: 0;
-      padding: .45rem .55rem;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: .4rem;
-    }
-
-    dt { font-size: var(--t-xs); color: #64748b; }
-    dd { margin: .15rem 0 0; font-size: var(--t-base); font-weight: 700; color: #1e293b; }
-  }
-
-  // 2026-09-30：與 PTT 方向比對。文字本身已說明結果，顏色只是輔助（不單靠顏色傳達）
-  .google-ptt-compare {
-    margin-top: .5rem;
-    padding: .4rem .6rem;
-    font-size: var(--t-xs);
-    color: #475569;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-left-width: 3px;
-    border-radius: .4rem;
-
-    &[data-state='MATCH'] { color: var(--c-ok); background: var(--c-ok-tint); border-color: var(--c-ok-border); }
-    &[data-state='OPPOSITE'] { color: var(--c-warn); background: var(--c-warn-tint); border-color: var(--c-warn-border); font-weight: 700; }
-  }
-
-  // 標題右側成長率：沿用 .panel header > strong 的字級，只依方向換色
-  header > strong[data-direction='UP'] { color: var(--c-ok); }
-  header > strong[data-direction='DOWN'] { color: var(--c-danger); }
 }
 
-.google-trend-result[data-direction='UP'] strong { color: var(--c-ok); }
-.google-trend-result[data-direction='DOWN'] strong { color: var(--c-danger); }
+.evaluation-item {
+  &--google-trend {
+    // 與 product-detail.scss 的 `.evaluation-item--trend button` 相同（該規則所在的選擇器清單不能再加，會超出樣式預算）
+    button {
+      padding: .5rem .7rem;
+      color: var(--color-brand);
+      background: #fff;
+      border: 1px solid #cbd9e3;
+      border-radius: .45rem;
+      font: inherit;
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    > button,
+    .evaluation-item__sync-loading,
+    .evaluation-item__error {
+      margin-top: .5rem;
+    }
+
+    // 與 .evaluation-item--trend .evaluation-item__source 相同
+    .evaluation-item__source {
+      margin-top: .25rem;
+      font-size: .8125rem;
+      color: #64748b;
+    }
+
+    // 2026-09-30：成長率的計算依據（近 7 天平均／前 4 週平均／資料點），三格並排
+    .evaluation-item__trend-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .5rem;
+      margin: .75rem 0 0;
+
+      > div {
+        min-width: 0;
+        padding: .45rem .55rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .4rem;
+      }
+
+      dt {
+        font-size: var(--font-size-xs);
+        color: #64748b;
+      }
+
+      dd {
+        margin: .15rem 0 0;
+        font-size: var(--font-size-base);
+        font-weight: 700;
+        color: #1e293b;
+      }
+    }
+
+    // 2026-09-30：與 PTT 方向比對。文字本身已說明結果，顏色只是輔助（不單靠顏色傳達）
+    .evaluation-item__ptt-compare {
+      margin-top: .5rem;
+      padding: .4rem .6rem;
+      font-size: var(--font-size-xs);
+      color: #475569;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-left-width: 3px;
+      border-radius: .4rem;
+
+      &[data-state='MATCH'] {
+        color: var(--color-ok);
+        background: var(--color-ok-tint);
+        border-color: var(--color-ok-border);
+      }
+
+      &[data-state='OPPOSITE'] {
+        color: var(--color-warn);
+        background: var(--color-warn-tint);
+        border-color: var(--color-warn-border);
+        font-weight: 700;
+      }
+    }
+
+    // 標題右側成長率：沿用 .panel header > strong 的字級，只依方向換色
+    header > strong[data-direction='UP'] {
+      color: var(--color-ok);
+    }
+
+    header > strong[data-direction='DOWN'] {
+      color: var(--color-danger);
+    }
+  }
+
+  &__trend-result[data-direction='UP'] strong {
+    color: var(--color-ok);
+  }
+
+  &__trend-result[data-direction='DOWN'] strong {
+    color: var(--color-danger);
+  }
+}
 
 @media (max-width: 800px) {
-  .evaluation-metrics > .trend { grid-column: auto; }
+  .evaluation-panel__metrics > .evaluation-item--trend { grid-column: auto; }
 }

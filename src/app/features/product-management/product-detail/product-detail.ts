@@ -241,6 +241,7 @@ const INCOMPLETE: DetailProduct = {
   templateUrl: './product-detail.html',
   styleUrls: [
     './product-detail.scss',
+    './product-detail-panels.scss',
     './product-detail-image.scss',
     './product-detail-history.scss',
     './product-detail-google-trend.scss',
@@ -374,8 +375,8 @@ export class ProductDetail implements OnInit, OnDestroy {
       datasets: [
         {
           data: history.map((point) => point.popularityScore),
-          borderColor: brandColor('--c-brand'),
-          backgroundColor: brandColor('--c-brand-tint'),
+          borderColor: brandColor('--color-brand'),
+          backgroundColor: brandColor('--color-brand-tint'),
           fill: true,
           tension: 0.25,
           pointRadius: 3,

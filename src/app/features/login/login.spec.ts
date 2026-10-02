@@ -42,7 +42,7 @@ describe('Login', () => {
   // 2026-09-27：密碼顯示／隱藏切換。
   it('toggles password visibility without submitting the form', () => {
     const input = fixture.nativeElement.querySelector('#password') as HTMLInputElement;
-    const toggle = fixture.nativeElement.querySelector('.password-toggle') as HTMLButtonElement;
+    const toggle = fixture.nativeElement.querySelector('.login-form__password-toggle') as HTMLButtonElement;
     expect(input.type).toBe('password');
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
     expect(toggle.getAttribute('aria-label')).toBe('顯示密碼');
@@ -116,7 +116,7 @@ describe('Login', () => {
     component.onSubmit();
     expect(auth.login).toHaveBeenCalledTimes(1);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.btn-primary').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('.btn--primary').disabled).toBe(true);
     expect(fixture.nativeElement.querySelector('#username').readOnly).toBe(true);
   });
 
@@ -128,14 +128,14 @@ describe('Login', () => {
       component.submitResetRequest();
       expect(auth.applyPasswordReset).toHaveBeenCalledWith('manager');
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('.reset-done').textContent).toContain('已送出申請');
+      expect(fixture.nativeElement.querySelector('.reset-dialog__success').textContent).toContain('已送出申請');
       expect(component.resetSubmitting()).toBe(false);
     });
 
     it('opens the request form in a modal dialog and closes it (2026-09-26)', async () => {
       const root = fixture.nativeElement as HTMLElement;
       expect(root.querySelector('dialog.reset-dialog-backdrop')).toBeNull();
-      root.querySelector<HTMLButtonElement>('.reset-link')!.click();
+      root.querySelector<HTMLButtonElement>('.reset-request__link')!.click();
       fixture.detectChanges();
       await fixture.whenStable();
       const dialog = root.querySelector('dialog.reset-dialog-backdrop')!;

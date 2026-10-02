@@ -21,8 +21,8 @@ describe('DialogRoot keyboard interaction', () => {
       trigger.blur();
       fixture.detectChanges();
       await fixture.whenStable();
-      const cancel = fixture.nativeElement.querySelector('.app-dialog-cancel') as HTMLButtonElement;
-      const confirm = fixture.nativeElement.querySelector('.app-dialog-confirm') as HTMLButtonElement;
+      const cancel = fixture.nativeElement.querySelector('.app-dialog__cancel') as HTMLButtonElement;
+      const confirm = fixture.nativeElement.querySelector('.app-dialog__confirm') as HTMLButtonElement;
       expect(document.activeElement).toBe(cancel);
       expect(document.body.style.overflow).toBe('hidden');
       expect(fixture.nativeElement.querySelector('dialog').open).toBe(true);
@@ -65,7 +65,7 @@ describe('DialogRoot keyboard interaction', () => {
       expect(answered).toBeNull();
 
       // 視窗內的取消按鈕仍然可以關閉
-      (fixture.nativeElement.querySelector('.app-dialog-cancel') as HTMLButtonElement).click();
+      (fixture.nativeElement.querySelector('.app-dialog__cancel') as HTMLButtonElement).click();
       fixture.detectChanges();
       await fixture.whenStable();
       expect(service.state()).toBeNull();

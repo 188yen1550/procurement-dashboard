@@ -51,6 +51,7 @@ export type CustomExtensionsNextTab = 'modes' | 'scoreBands';
 
 @Component({
   selector: 'app-custom-extensions',
+  host: { class: 'custom-extensions' },
   imports: [FormsModule],
   templateUrl: './custom-extensions.html',
   styleUrl: './custom-extensions.scss',

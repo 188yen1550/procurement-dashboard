@@ -2,7 +2,7 @@
   檔案用途：品項詳情模板。
   主圖失敗不遮蔽其他資料；分數來源、價格洞察、AI 輔助及生命週期限制皆在相鄰區塊呈現。
 -->
-<main class="detail-page" aria-labelledby="detail-title">
+<main class="product-detail" aria-labelledby="detail-title">
   <header class="page-header">
     <div>
       @if (returnTo() === 'review-records') {
@@ -18,7 +18,7 @@
       <p>{{ product()?.description ?? '查看候選品項的評估與決策資訊。' }}</p>
     </div>
     @if (product() && !readOnly) {
-    <div class="header-actions">
+    <div class="product-detail__header-actions">
       <!-- ⚠️ 修正：這顆按鈕之前沒有依 useMockData 判斷，在真實模式下點下去
              會直接用寫死的假資料蓋掉剛載入的真實商品，等於把畫面弄壞。
              純粹是 Mock 展示用，真實串接 API 時不需要、也不該出現。 -->
@@ -28,7 +28,7 @@
       @if (isLocked()) {
       <button type="button" disabled title="已封存或目前為鎖定預覽">編輯品項</button>
       } @else if (actions()?.canResubmit) {
-      <a class="resubmit-action" [routerLink]="['/products', product()!.id, 'edit']">重審品項</a>
+      <a class="product-detail__resubmit-action" [routerLink]="['/products', product()!.id, 'edit']">重審品項</a>
       } @else {
       <a [routerLink]="['/products', product()!.id, 'edit']">編輯品項</a>
       }
@@ -42,7 +42,7 @@
        review-detail.html 的 isResubmission 提示用同一套判斷條件
        （actions().canResubmit），三處文案風格保持一致。 -->
   @if (actions()?.canResubmit) {
-  <section class="notice rejected">
+  <section class="notice notice--rejected">
     <div>
       <strong>此品項上次審核拒絕</strong>
       <span>可點擊右上角「重審品項」修改後重新送審，歷史審核紀錄不會被覆蓋。</span>
@@ -54,7 +54,7 @@
     <div><strong>UI 狀態預覽</strong><span>本地 Mock 評估與趨勢資料</span></div>
     <div role="group" aria-label="切換詳情頁狀態">
       @for (state of stateOptions; track state) {
-      <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
+      <button type="button" [class.is-active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
         (click)="setState(state)">
         {{ state }}
       </button>
@@ -62,9 +62,9 @@
     </div>
   </section>
   }
-  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  <p class="u-sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (pageState() === 'error') {
-  <section class="empty error" role="alert">
+  <section class="empty empty--error" role="alert">
     <h2>無法載入品項詳情</h2>
     <p>{{ useMockData ? '這是本地錯誤狀態模擬，未呼叫 API。' : statusMessage() }}</p>
     <button type="button" (click)="restoreDemo()">重試</button>
@@ -72,7 +72,7 @@
   } @else if (pageState() === 'loading') {
   <section class="skeleton" role="status">
     正在載入品項詳情…
-    <span class="image-skeleton" aria-hidden="true"></span>
+    <span class="skeleton__image" aria-hidden="true"></span>
     @for (line of [1, 2, 3, 4, 5, 6]; track line) {
     <span></span>
     }
@@ -86,26 +86,26 @@
   } @else {
   @let p = product()!;
   @if (readOnly) {
-  <section class="notice read-only-notice" role="note">
+  <section class="notice notice--read-only" role="note">
     <strong><app-icon name="lock" size="sm" /> 唯讀檢視</strong>
     <span>選品資料由操作人員建立與維護，審核請至「選品審核」。</span>
   </section>
   }
   @if (p.reviewStatus === 'APPROVED') {
-  <section class="notice locked">
+  <section class="notice notice--locked">
     <strong><app-icon name="lock" size="sm" />
       核心選品資料已鎖定</strong><span>一般基本資料仍可編輯，選品核心資料禁止修改。審核通過不代表已上架、已銷售、已簽約或已產生營收。</span>
   </section>
   }
   @if (incomplete()) {
-  <section class="notice incomplete">
+  <section class="notice notice--incomplete">
     <strong>資料待補 · {{ p.completeness }}%</strong><span>未達 60% 門檻，不進入評估計分與 AI 推薦；缺少資料的區塊不會產生虛構內容。</span>
     @if (!readOnly) {
     <a [routerLink]="['/products', p.id, 'edit']">前往補齊資料</a>
     }
   </section>
   }
-  <div class="product-overview">
+  <div class="product-detail__overview">
     <section class="product-media panel" aria-labelledby="product-image-title">
       <header>
         <div>
@@ -114,14 +114,14 @@
       </header>
       @if (p.imageUrl && !imageLoadFailed()) { <img [src]="p.imageUrl" [alt]="p.name + ' 商品主圖'"
         (error)="handleImageError()" /> }
-      @else { <div class="image-fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><app-icon name="image" />
+      @else { <div class="product-media__fallback" [attr.role]="imageLoadFailed() ? 'alert' : null"><app-icon name="image" />
         <div><strong>{{ imageLoadFailed() ? '商品圖片載入失敗' : '尚無商品圖片' }}</strong>
         </div>
       </div> }
     </section>
-    <section class="summary panel">
+    <section class="product-summary panel">
       <div>
-        <span class="status" [attr.data-status]="p.reviewStatus">{{
+        <span class="product-summary__status" [attr.data-status]="p.reviewStatus">{{
           reviewLabel(p.reviewStatus)
           }}</span><span>{{ p.itemStatus === 'ACTIVE' ? '使用中' : '已封存' }}</span>
       </div>
@@ -147,21 +147,21 @@
   </div>
   <section class="score-grid" aria-label="評估分數">
     <article>
-      <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}@if (p.baseScore !== null) {<span class="unit">分</span>}</strong><small>綜合加權分數</small>
+      <span>基本分數</span><strong>{{ p.baseScore ?? '—' }}@if (p.baseScore !== null) {<span class="u-unit">分</span>}</strong><small>綜合加權分數</small>
     </article>
     <article>
-      <span>節慶分數</span><strong>+{{ p.festivalBoost }}<span class="unit">分</span></strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
+      <span>節慶分數</span><strong>+{{ p.festivalBoost }}<span class="u-unit">分</span></strong><small>{{ p.campaign ?? '未命中檔期' }}</small>
     </article>
     <article>
-      <span>天氣分數</span><strong>{{ p.weatherBoost === null ? '—' : '+' + p.weatherBoost }}@if (p.weatherBoost !== null) {<span class="unit">分</span>}</strong>
+      <span>天氣分數</span><strong>{{ p.weatherBoost === null ? '—' : '+' + p.weatherBoost }}@if (p.weatherBoost !== null) {<span class="u-unit">分</span>}</strong>
       <small>{{ p.weatherBoost === null ? '審核時尚無天氣加成' : weatherBoostCaption(p.weatherDetail) }}</small>
     </article>
-    <article class="final">
-      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}@if (p.finalScore !== null) {<span class="unit">分</span>}</strong><small>dataSource:
+    <article class="score-grid__final">
+      <span>最終分數</span><strong>{{ p.finalScore ?? '—' }}@if (p.finalScore !== null) {<span class="u-unit">分</span>}</strong><small>dataSource:
         {{ p.dataSource === 'SNAPSHOT' ? 'SNAPSHOT（審核凍結）' : 'LIVE（即時評估）' }}</small>
     </article>
   </section>
-  <section class="panel campaign">
+  <section class="panel campaign-boost">
     <header>
       <div>
 
@@ -173,7 +173,7 @@
     <small>參考項目：毛利、最低訂購量、供應穩定性、客群匹配、類別銷售趨勢與市場熱度。</small>
   </section>
   @if (p.campaign) {
-  <section class="panel campaign">
+  <section class="panel campaign-boost">
     <header>
       <div>
         <p class="eyebrow">節慶分數</p>
@@ -188,7 +188,7 @@
     <p>
       命中標籤：<strong>{{ p.matchedTags.join(' · ') }}</strong>
     </p>
-    <dl class="metrics boost-breakdown">
+    <dl class="metrics metrics--boost-breakdown">
       <div>
         <dt>標籤命中程度<app-info-tip text="商品標籤與檔期標籤的命中等級：核心 1.0、一般 0.6、弱相關 0.3；同一檔期命中多個標籤時取最高等級，不會疊加。" /></dt>
         <dd>{{ matchWeightLabel(p.matchWeight) }}</dd>
@@ -199,18 +199,18 @@
           {{ urgencyPercent(p.urgencyFactor) === null ? '—' : urgencyPercent(p.urgencyFactor) + '%' }}
         </dd>
       </div>
-      <div class="boost-result">
+      <div class="metrics__boost-result">
         <dt>本次節慶加成<app-info-tip text="標籤命中權重 × 檔期急迫係數 × 加成上限；同時命中多個檔期時取加成最高的一個，不會加總。" /></dt>
         <dd>+{{ p.festivalBoost }} 分</dd>
       </div>
     </dl>
-    <p class="boost-hint">
+    <p class="campaign-boost__hint">
       加成已計入最終分數，此項目每次最高加 {{ p.festivalBoostCap }} 分。標籤命中度越高、
       離檔期開始越近，加成分數越高。
     </p>
-    <details class="formula-detail">
+    <details class="campaign-boost__formula-detail">
       <summary>查看詳細計算方式</summary>
-      <div class="formula">
+      <div class="campaign-boost__formula">
         標籤命中係數 {{ p.matchWeight ?? '—' }} × 急迫係數 {{ p.urgencyFactor ?? '—' }} ×
         加成上限 {{ p.festivalBoostCap }} 分 =
         <strong>{{ p.festivalBoost }} 分</strong>
@@ -220,7 +220,7 @@
   }
   @if (p.weatherDetail; as w) {
   <!-- V26：天氣加成明細。與節慶加成並列，不屬於七項評分因子；SNAPSHOT 時為審核當時凍結的值。 -->
-  <section class="panel campaign weather-boost">
+  <section class="panel campaign-boost campaign-boost--weather">
     <header>
       <div>
         <p class="eyebrow">天氣分數</p>
@@ -228,7 +228,7 @@
       </div>
       <span>{{ w.matchedTags.length > 0 ? w.matchedTags.join(' · ') : '未命中天氣相關標籤' }}</span>
     </header>
-    <dl class="metrics boost-breakdown">
+    <dl class="metrics metrics--boost-breakdown">
       <div>
         <dt>歷史天氣分<app-info-tip text="過去一段期間（預設 30 天）四區每日天氣對應到商品標籤的命中分數平均（核心 1.0、一般 0.6、弱 0.3，同一天取最高），再依四區業務占比加權，換算成 0～100 分。沒有資料的日子不列入平均。" /></dt>
         <dd>{{ w.historyScore === null ? '無資料' : w.historyScore + ' 分' }}</dd>
@@ -237,17 +237,17 @@
         <dt>預測天氣分<app-info-tip text="今天起的預報期間（預設 14 天）以同樣方式計算的 0～100 分。" /></dt>
         <dd>{{ w.forecastScore === null ? '無資料' : w.forecastScore + ' 分' }}</dd>
       </div>
-      <div class="boost-result">
+      <div class="metrics__boost-result">
         <dt>本次天氣加成<app-info-tip text="天氣分 ÷ 100 × 加成上限；天氣分＝歷史天氣分 × 歷史比重 ＋ 預測天氣分 × 預測比重（只有一邊有資料時直接用那一邊）。" /></dt>
         <dd>+{{ w.weatherBoost }} 分</dd>
       </div>
     </dl>
-    <p class="boost-hint">
+    <p class="campaign-boost__hint">
       天氣資料更新時間：{{ w.dataUpdatedAt ? (w.dataUpdatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}
     </p>
-    <details class="formula-detail">
+    <details class="campaign-boost__formula-detail">
       <summary>查看詳細計算方式</summary>
-      <div class="formula">
+      <div class="campaign-boost__formula">
         (歷史 {{ w.historyScore ?? '—' }} × {{ w.historyWeightPercentage }}% ＋ 預測 {{ w.forecastScore ?? '—' }} ×
         {{ w.forecastWeightPercentage }}%) = 天氣分 {{ w.combinedScore ?? '—' }}；
         {{ w.combinedScore ?? 0 }} ÷ 100 × 加成上限 {{ w.boostCap }} 分 = <strong>{{ w.weatherBoost }} 分</strong>
@@ -255,7 +255,7 @@
     </details>
   </section>
   }
-  <div class="content-grid">
+  <div class="product-detail__content">
     <!-- Gate 判定：只問「做不做得到」，跟加權分數是完全獨立的兩套機制——
            分數再高，Gate 不通過一樣要被主管特別留意。四態刻意分開顯示，
            不通過(FAILED)、資料不足(INSUFFICIENT_DATA)、不適用(NOT_APPLICABLE)
@@ -264,7 +264,7 @@
       <header>
         <h2>可行性判定</h2>
         @if (p.gateResults; as gate) {
-        <span class="gate-summary-badge" [class.has-failed]="gate.failedCount > 0">
+        <span class="gate-panel__summary-badge" [class.has-failed]="gate.failedCount > 0">
           @if (gate.failedCount > 0) {
           {{ gate.failedCount }} 項不通過
           } @else {
@@ -274,14 +274,14 @@
         }
       </header>
       @if (p.gateResults; as gate) {
-      <ul class="gate-list">
+      <ul class="gate-panel__list">
         @for (result of gate.results; track result.gateCode) {
         <li [attr.data-gate-status]="result.status">
-          <span class="gate-name">{{ gateCodeLabel[result.gateCode] }}</span>
-          <span class="gate-status-badge" [attr.data-gate-status]="result.status">{{
+          <span class="gate-panel__name">{{ gateCodeLabel[result.gateCode] }}</span>
+          <span class="gate-panel__status-badge" [attr.data-gate-status]="result.status">{{
             gateStatusLabel[result.status]
             }}</span>
-          <p class="gate-reason">{{ result.reason }}</p>
+          <p class="gate-panel__reason">{{ result.reason }}</p>
         </li>
         }
       </ul>
@@ -296,7 +296,7 @@
            資訊之一，卻被埋在很後面。搬到 Gate 判定之後、其餘細節資料
            之前，並且加強視覺樣式（獨立底色、主要按鈕），讓它在原本一片
            素色面板裡明顯跳出來。 -->
-    <section class="panel ai ai-prominent">
+    <section class="panel ai-panel ai-panel--prominent">
       <header>
         <div>
           <h2>AI 摘要／推薦原因</h2>
@@ -311,11 +311,11 @@
         }
       </ul>
       @if (!useMockData && !readOnly) {
-      <button type="button" class="secondary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
+      <button type="button" class="ai-panel__secondary-action" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
         {{ isGeneratingAi() ? '產生中…（呼叫 LLM，請稍候）' : '重新產生 AI 分析' }}
       </button>
       @if (aiError()) {
-      <p class="form-error" role="alert">{{ aiError() }}</p>
+      <p class="ai-panel__error" role="alert">{{ aiError() }}</p>
       }
       }
       } @else {
@@ -323,7 +323,7 @@
                文案不應暗示是資料不足造成的，避免使用者誤以為補資料就會有內容。 -->
       <div class="no-data">尚未產生 AI 分析。</div>
       @if (!useMockData && !readOnly) {
-      <button type="button" class="btn-primary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
+      <button type="button" class="btn btn--primary" [disabled]="isGeneratingAi()" (click)="generateAiAnalysis()">
         @if (isGeneratingAi()) {
         產生中…（呼叫 LLM，請稍候）
         } @else {
@@ -331,7 +331,7 @@
         }
       </button>
       @if (aiError()) {
-      <p class="form-error" role="alert">{{ aiError() }}</p>
+      <p class="ai-panel__error" role="alert">{{ aiError() }}</p>
       }
       }
       }
@@ -344,7 +344,7 @@
       <header>
         <h2>供應與物流屬性</h2>
       </header>
-      <dl class="metrics gate-attr-metrics">
+      <dl class="metrics metrics--gate-attrs">
         <div>
           <dt>溫層</dt>
           <dd>{{ p.temperatureZone ? temperatureZoneLabel[p.temperatureZone] : '未設定（依品類繼承）' }}</dd>
@@ -369,11 +369,11 @@
           <dt>供應商產能上限</dt>
           <dd>{{ p.supplierMaxCapacity === null ? '不限制' : p.supplierMaxCapacity + ' 組' }}</dd>
         </div>
-        <div class="col-half">
+        <div class="metrics__item metrics__item--half-row">
           <dt>處理注意事項</dt>
           <dd>{{ p.handlingFlags || '—' }}</dd>
         </div>
-        <div class="col-half">
+        <div class="metrics__item metrics__item--half-row">
           <dt>認證狀態</dt>
           <dd>{{ p.certificationFlags || '—' }}</dd>
         </div>
@@ -402,26 +402,26 @@
         </div>
       </dl>
     </section>
-    <section class="panel evaluation-details" aria-label="客群、銷售與市場評估">
-      <div class="evaluation-metrics">
+    <section class="panel evaluation-panel" aria-label="客群、銷售與市場評估">
+      <div class="evaluation-panel__metrics">
         <section class="evaluation-item">
           <header>
             <h2>核心客群匹配<app-info-tip text="目前生效中的核心客群關鍵字，與「目標客群描述＋商品名稱」的命中比例（命中關鍵字數 ÷ 關鍵字總數）。" /></h2>
-            <strong>{{ p.audienceScore }}<span class="unit">分</span></strong>
+            <strong>{{ p.audienceScore }}<span class="u-unit">分</span></strong>
           </header>
           <p>{{ incomplete() ? '資料不足，尚無法建立匹配判斷。' : p.audience }}</p>
         </section>
         <section class="evaluation-item">
           <header>
             <h2>歷史銷售資料<app-info-tip text="歷史成團率的三層貝氏收縮：商品自己的成團率向所屬商品類型收斂，商品類型再向全體收斂；樣本越少越接近上一層。分母不含取消開團。" /></h2>
-            <strong>{{ p.historicalScore }}<span class="unit">分</span></strong>
+            <strong>{{ p.historicalScore }}<span class="u-unit">分</span></strong>
           </header>
           <p>{{ incomplete() ? '尚無足夠的類似商品資料。' : p.historicalNote }}</p>
         </section>
         <section class="evaluation-item">
           <header>
             <h2>預估購買<app-info-tip text="採購人工填寫的預估購買率（0～100%），直接換算為分數，非系統自動推算。" /></h2>
-            <strong>{{ p.purchaseScore }}<span class="unit">分</span></strong>
+            <strong>{{ p.purchaseScore }}<span class="u-unit">分</span></strong>
           </header>
           <p>
             {{ incomplete() ? '需補齊核心欄位後再評估。' : '預估購買潛力屬中高水準，僅供決策參考。' }}
@@ -431,7 +431,7 @@
              Google 趨勢改為與市場趨勢同層級的獨立卡片（h2＋右側數值），樣式一致；窄螢幕全部改為一欄堆疊。 -->
         <!-- 2026-09-28：Google 趨勢參考（SerpApi）。獨立參考資訊，只有方向與成長率，
              不併入右側市場趨勢的熱度分數（Google 的 0～100 是相對值，不同商品之間不可比）。 -->
-        <section class="evaluation-item google-trend" aria-labelledby="google-trend-title">
+        <section class="evaluation-item evaluation-item--google-trend" aria-labelledby="google-trend-title">
           <header>
             <h2 id="google-trend-title">Google 趨勢參考<app-info-tip text="台灣近 3 個月的 Google 搜尋趨勢，比較近 7 天與前 4 週的平均搜尋量。Google 的數字是相對於自己高峰的比例，只能看同一個商品的升降，不能跟其他商品比，所以只當參考、不併入熱度分數。每週一 04:00 自動查詢：待審商品優先，剩餘名額依 PTT 熱度補滿，最多 40 個；7 天內查過的略過。" /></h2>
             <!-- 成長率（近 7 天比前 4 週）；沒查過、查無資料、基準期為 0 都顯示「—」，詳細文字見下方。 -->
@@ -441,7 +441,7 @@
           @if (g.status === 'NO_DATA') {
           <p>Google 搜尋量不足，無法判斷趨勢・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
           } @else {
-          <p class="google-trend-result" [attr.data-direction]="g.direction">
+          <p class="evaluation-item__trend-result" [attr.data-direction]="g.direction">
             @if (g.direction === 'UP') {
             <app-icon name="trending-up" size="sm" /> <strong>上升</strong>
             } @else if (g.direction === 'DOWN') {
@@ -453,10 +453,10 @@
           </p>
           <!-- 2026-09-30：與 PTT 熱度的方向比對（交叉驗證提示，不影響分數）。 -->
           @if (googlePttComparison(); as cmp) {
-          <p class="google-ptt-compare" [attr.data-state]="cmp.state">{{ cmp.text }}</p>
+          <p class="evaluation-item__ptt-compare" [attr.data-state]="cmp.state">{{ cmp.text }}</p>
           }
           <!-- 2026-09-30：成長率的計算依據。Google 搜尋指數是相對於自己高峰的 0～100，只能跟自己比。 -->
-          <dl class="google-trend-metrics" aria-label="Google 搜尋指數（相對值 0～100）">
+          <dl class="evaluation-item__trend-metrics" aria-label="Google 搜尋指數（相對值 0～100）">
             <div>
               <dt>近 7 天平均</dt>
               <dd>{{ g.recentAvg === null ? '—' : (g.recentAvg | number: '1.0-1') }}</dd>
@@ -470,17 +470,17 @@
               <dd>{{ g.pointCount }} 筆</dd>
             </div>
           </dl>
-          <p class="trend-source">搜尋指數為 Google 相對值（0～100），只能看同一商品的升降</p>
-          <p class="trend-source">搜尋關鍵字「{{ g.keyword }}」・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+          <p class="evaluation-item__source">搜尋指數為 Google 相對值（0～100），只能看同一商品的升降</p>
+          <p class="evaluation-item__source">搜尋關鍵字「{{ g.keyword }}」・查詢於 {{ g.collectedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
           }
           } @else {
           <!-- 2026-09-30：依後端批次涵蓋說明顯示實際原因，不再一律承諾「每週一會自動查詢」。 -->
           @if (googleCoverage(); as c) {
-          <p class="hint" [attr.data-coverage]="c.reason">
+          <p class="evaluation-item__hint" [attr.data-coverage]="c.reason">
             尚未查詢。{{ c.message }}{{ isManager ? (c.willBeQueried ? '也可以按下方按鈕立即查詢。' : '可以按下方按鈕單獨查詢。') : '' }}
           </p>
           } @else {
-          <p class="hint">尚未查詢。每週一 04:00 會自動查詢，待審商品優先{{ isManager ? '；也可以按下方按鈕立即查詢' : '' }}。</p>
+          <p class="evaluation-item__hint">尚未查詢。每週一 04:00 會自動查詢，待審商品優先{{ isManager ? '；也可以按下方按鈕立即查詢' : '' }}。</p>
           }
           }
           @if (isManager) {
@@ -488,17 +488,17 @@
             {{ googleTrendState() === 'syncing' ? '查詢中…' : '查詢 Google 趨勢' }}
           </button>
           @if (googleTrendState() === 'syncing') {
-          <p class="sync-loading" role="status"><span class="spinner" aria-hidden="true"></span>正在查詢 Google 趨勢，約需 10 秒…</p>
+          <p class="evaluation-item__sync-loading" role="status"><span class="product-detail__spinner" aria-hidden="true"></span>正在查詢 Google 趨勢，約需 10 秒…</p>
           }
           @if (googleTrendState() === 'error') {
-          <p class="inline-error" role="alert">{{ googleTrendError() }}</p>
+          <p class="evaluation-item__error" role="alert">{{ googleTrendError() }}</p>
           }
           }
         </section>
-        <section class="evaluation-item trend">
+        <section class="evaluation-item evaluation-item--trend">
           <header>
             <h2>市場趨勢／熱門度<app-info-tip text="依 PTT 公開看板近 90 天的討論量（貼文＋推文）換算，是相對熱度，不等於銷售量。熱度：一般商品約 40–60 分，最近 3 次同步都上升時品項清單會標示「連續上升」。趨勢：比較近 7 天與 90 天平均的討論速度，50 分為持平。計分時取趨勢分與熱度的平均，並依距採集日天數做指數衰減、收斂到中性基準分。" /></h2>
-            <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}@if (p.lastSyncedAt) {<span class="unit">分</span>}</strong>
+            <strong>{{ p.lastSyncedAt ? p.trendScore : '—' }}@if (p.lastSyncedAt) {<span class="u-unit">分</span>}</strong>
           </header>
           <p>
             @if (!p.lastSyncedAt) {
@@ -516,7 +516,7 @@
             ・最後同步：{{ p.lastSyncedAt ? (p.lastSyncedAt | date: 'yyyy/MM/dd HH:mm') : '尚未同步' }}
           </p>
           @if (p.lastSyncedAt) {
-          <p class="trend-source">
+          <p class="evaluation-item__source">
             @if (p.trendSource === 'PTT') {
             資料來源：PTT 討論量
             } @else if (p.trendSource === 'SIMULATED') {
@@ -533,11 +533,11 @@
                少於 2 個點時折線圖畫不出有意義的走勢（見 product-detail.ts
                renderTrendChartEffect 判斷），改顯示文字提示。 -->
           @if (trendHistory().length >= 2) {
-          <div class="trend-chart-wrap">
+          <div class="evaluation-item__chart">
             <canvas #trendChartCanvas></canvas>
           </div>
           } @else if (p.lastSyncedAt) {
-          <p class="hint">歷史資料筆數還不夠（少於 2 筆），累積更多次同步後才能畫出走勢圖。</p>
+          <p class="evaluation-item__hint">歷史資料筆數還不夠（少於 2 筆），累積更多次同步後才能畫出走勢圖。</p>
           }
           @if (!readOnly) {
           <button type="button" (click)="syncTrend()" [disabled]="syncState() === 'syncing' || incomplete()">
@@ -546,18 +546,18 @@
           }
           @if (syncState() === 'syncing') {
           @if (useMockData) {
-          <div class="sync-actions">
+          <div class="evaluation-item__sync-actions">
             <button type="button" (click)="completeSync(true)">模擬成功</button><button type="button"
               (click)="completeSync(false)">模擬失敗</button>
           </div>
           } @else {
-          <p class="sync-loading" role="status">
-            <span class="spinner" aria-hidden="true"></span>正在搜尋 PTT 各看板的討論，約需 10 秒…
+          <p class="evaluation-item__sync-loading" role="status">
+            <span class="product-detail__spinner" aria-hidden="true"></span>正在搜尋 PTT 各看板的討論，約需 10 秒…
           </p>
           }
           }
           @if (syncState() === 'error') {
-          <p class="inline-error" role="alert">
+          <p class="evaluation-item__error" role="alert">
             {{ useMockData ? '同步失敗，請確認網路後重試（Mock）。' : syncError() }}
           </p>
           }
@@ -577,7 +577,7 @@
     <small>價格洞察僅用於呈現，不重複疊加進總分。</small>
   </section>
   }
-  <section class="panel risks">
+  <section class="panel risk-panel">
     <header>
       <h2>風險提示</h2>
     </header>
@@ -602,8 +602,8 @@
     <!-- 2026-09：審核結果、審核時間改為篩選（不做排序），審核留言不排序；
          與選品審核頁「歷次決策紀錄」的規則一致。
          2026-09-26：篩選、排序、清除篩選合併為單行工具列（樣式見 product-detail-history.scss）。 -->
-    <div class="review-history-filters" role="group" aria-label="篩選歷次審核紀錄">
-      <label class="review-history-field">
+    <div class="review-history__filters" role="group" aria-label="篩選歷次審核紀錄">
+      <label class="review-history__field">
         <span>審核結果</span>
         <select [value]="historyResultFilter()" (change)="updateHistoryResultFilter($event)">
           <option value="ALL">全部</option>
@@ -611,9 +611,9 @@
           <option value="REJECTED">審核拒絕</option>
         </select>
       </label>
-      <div class="review-history-field" role="group" aria-labelledby="history-date-label">
+      <div class="review-history__field" role="group" aria-labelledby="history-date-label">
         <span id="history-date-label">審核日期</span>
-        <span class="review-history-date-range">
+        <span class="review-history__date-range">
           <input type="date" aria-label="審核日期（起）" [value]="historyReviewedFrom()"
             [attr.max]="historyReviewedTo() || null" [attr.aria-invalid]="historyDateRangeInvalid()"
             (change)="updateHistoryReviewedFrom($event)" />
@@ -624,32 +624,32 @@
         </span>
       </div>
       <app-list-sort [sort]="historySort" [choices]="historySortChoices" label="歷次審核紀錄" />
-      <button type="button" class="btn review-history-clear" [disabled]="!hasHistoryFilters()"
+      <button type="button" class="btn review-history__clear" [disabled]="!hasHistoryFilters()"
         (click)="clearHistoryFilters()">清除篩選</button>
     </div>
     @if (historyDateRangeInvalid()) {
-    <p class="review-history-hint" role="alert">起日晚於迄日，暫不套用日期篩選。</p>
+    <p class="review-history__hint" role="alert">起日晚於迄日，暫不套用日期篩選。</p>
     }
     @if (filteredReviewHistory().length === 0) {
-    <p class="review-history-hint">沒有符合篩選條件的審核紀錄。</p>
+    <p class="review-history__hint">沒有符合篩選條件的審核紀錄。</p>
     }
-    <ul class="review-history-list">
+    <ul class="review-history__list">
       @for (record of filteredReviewHistory() | sortRows: historySort.state(); track record.id) {
       <li [attr.data-result]="record.reviewStatus">
-        <div class="review-history-head">
-          <span class="review-history-round">第 {{ record.submissionCount ?? 1 }} 次送審</span>
-          <span class="review-history-badge" [attr.data-result]="record.reviewStatus">{{
+        <div class="review-history__header">
+          <span class="review-history__round">第 {{ record.submissionCount ?? 1 }} 次送審</span>
+          <span class="review-history__badge" [attr.data-result]="record.reviewStatus">{{
             record.reviewStatus === 'APPROVED' ? '通過' : '未通過'
             }}</span>
           @if (record.reviewerName) {
-          <span class="review-history-reviewer">審核人：{{ record.reviewerName }}</span>
+          <span class="review-history__reviewer">審核人：{{ record.reviewerName }}</span>
           }
           @if (record.reviewedAt) {
-          <span class="review-history-date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+          <span class="review-history__date">{{ record.reviewedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           }
         </div>
         @if (record.reviewComment) {
-        <p class="review-history-comment">{{ record.reviewComment }}</p>
+        <p class="review-history__comment">{{ record.reviewComment }}</p>
         }
       </li>
       }
@@ -658,7 +658,7 @@
   }
 
   @if (!readOnly) {
-  <section class="panel lifecycle">
+  <section class="panel lifecycle-panel">
     <div>
       <h2>品項狀態操作</h2>
       <p>封存不等於刪除；審核通過或審核拒絕皆可封存，但僅審核通過且已封存者可復用。</p>

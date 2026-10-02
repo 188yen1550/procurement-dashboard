@@ -47,7 +47,7 @@ describe('Dashboard', () => {
 
   it('marks simulated trend data with the is-simulated class, not real PTT data', () => {
     fixture.detectChanges();
-    const rows = fixture.nativeElement.querySelectorAll('.trend-leaderboard .score');
+    const rows = fixture.nativeElement.querySelectorAll('.trend-leaderboard .rankings-panel__score');
     // Mock 資料第 4 筆（機能防曬外套）isRealSource 為 false，其餘為 true。
     const simulatedRows = Array.from(rows).filter((el) =>
       (el as HTMLElement).classList.contains('is-simulated'),
@@ -56,22 +56,22 @@ describe('Dashboard', () => {
   });
 
   // 2026-09-29：推薦 Top 10 與熱度排行改成同一張卡片的兩個頁籤（取代 2026-09-28 的「排行榜獨立一列」）。
-  // 熱度排行放在排行卡片「裡面」，不是 .content-grid 的另一個 flex 成員（避免 09-28 那次把 Top 10 擠成 0 寬的問題）。
+  // 熱度排行放在排行卡片「裡面」，不是 .dashboard__content 的另一個 flex 成員（避免 09-28 那次把 Top 10 擠成 0 寬的問題）。
   it('puts Top 10 and the trend leaderboard in one tabbed card, Top 10 selected by default', () => {
     const root = fixture.nativeElement as HTMLElement;
-    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('.ranking-tabs [role="tab"]'));
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('.rankings-panel__tabs [role="tab"]'));
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['推薦 Top 10', '熱度排行']);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
     expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1']);
     expect(root.querySelector('.rankings-panel .trend-leaderboard')).not.toBeNull();
-    expect(root.querySelector('.content-grid > .trend-leaderboard')).toBeNull();
+    expect(root.querySelector('.dashboard__content > .trend-leaderboard')).toBeNull();
     expect(root.querySelector('#ranking-panel-trend')?.classList).toContain('is-inactive');
     expect(root.querySelector('#ranking-panel-recommendations')?.classList).not.toContain('is-inactive');
   });
 
   it('switches ranking tabs by click and by arrow keys, moving focus to the new tab', () => {
     const root = fixture.nativeElement as HTMLElement;
-    const [top10Tab, trendTab] = Array.from(root.querySelectorAll<HTMLButtonElement>('.ranking-tabs [role="tab"]'));
+    const [top10Tab, trendTab] = Array.from(root.querySelectorAll<HTMLButtonElement>('.rankings-panel__tabs [role="tab"]'));
 
     trendTab.click();
     fixture.detectChanges();
@@ -92,7 +92,7 @@ describe('Dashboard', () => {
   });
 
   it('shows the consecutive-rise badge only for entries the backend marked', () => {
-    const badges = (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard .badge-rise');
+    const badges = (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard .badge--rise');
     // Mock：只有第 1 筆（磁吸快充行動電源）consecutiveRise 為 true
     expect(badges).toHaveLength(1);
     expect(badges[0].textContent).toContain('連續上升');
@@ -101,7 +101,7 @@ describe('Dashboard', () => {
   it('shows a Google trend column in the leaderboard, with explicit text for missing data', () => {
     fixture.detectChanges();
     const cells = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard td.lb-google'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.trend-leaderboard td.trend-leaderboard__google'),
       (td) => td.textContent?.trim().replace(/\s+/g, ' '),
     );
     // Mock：持平 -8.6%、上升 +25.7%、下降 -18.2%、尚未查詢、查無資料，第 6～10 筆都尚未查詢
@@ -113,15 +113,15 @@ describe('Dashboard', () => {
   it('shows three review states in the chart breakdown and exposes inconsistent totals', () => {
     expect(component.statusBreakdown().map((item) => item.count)).toEqual([18, 72, 14]);
     expect(component.statusTotal()).toBe(104);
-    const rows = fixture.nativeElement.querySelectorAll('.status-breakdown li');
+    const rows = fixture.nativeElement.querySelectorAll('.status-chart__breakdown li');
     expect(rows).toHaveLength(3);
     expect(fixture.nativeElement.textContent).not.toContain('熱度建議');
-    expect(fixture.nativeElement.querySelector('.status-note').textContent).toContain('128');
+    expect(fixture.nativeElement.querySelector('.status-chart__note').textContent).toContain('128');
   });
 
   // 2026-09-27：統計卡帶上審核狀態，品項管理依卡片語意預先篩選（候選商品總數＝全部）。
   it('links the four product cards to management with the matching review filter', () => {
-    const links = fixture.nativeElement.querySelectorAll('.stat-card-link');
+    const links = fixture.nativeElement.querySelectorAll('.stat-card__link');
     expect(Array.from(links, (link) => (link as HTMLAnchorElement).getAttribute('href'))).toEqual([
       '/products?reviewStatus=ALL',
       '/products?reviewStatus=PENDING',
@@ -170,7 +170,7 @@ describe('Dashboard', () => {
     component.realLoadState.set('loaded');
     fixture.detectChanges();
     const links = Array.from(
-      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      fixture.nativeElement.querySelectorAll('a.stat-card__link'),
       (link) => (link as HTMLAnchorElement).getAttribute('href'),
     );
     expect(links).toEqual([
@@ -184,7 +184,7 @@ describe('Dashboard', () => {
 
   it('keeps operator stat card links unfiltered when scope is COMPANY (mock)', () => {
     const links = Array.from(
-      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      fixture.nativeElement.querySelectorAll('a.stat-card__link'),
       (link) => (link as HTMLAnchorElement).getAttribute('href'),
     );
     expect(links[0]).toBe('/products?reviewStatus=ALL');
@@ -212,8 +212,7 @@ describe('Dashboard', () => {
     component.setUiState('edge');
     fixture.detectChanges();
 
-    const selectedButton = fixture.nativeElement.querySelector(
-      '[aria-label="切換至例外狀態"]',
+    const selectedButton = fixture.nativeElement.querySelector('[aria-label="切換至例外狀態"]',
     ) as HTMLButtonElement;
 
     expect(selectedButton.getAttribute('aria-pressed')).toBe('true');
@@ -222,22 +221,21 @@ describe('Dashboard', () => {
   it('keeps a sticky action structure and the correct action type for every Top 10 row', () => {
     // 2026-09-29：Top 10 與熱度排行同在一張卡片，限定在 Top 10 的頁籤面板內計算
     const rows = fixture.nativeElement.querySelectorAll('#ranking-panel-recommendations tbody tr');
-    const actions = fixture.nativeElement.querySelectorAll(
-      '#ranking-panel-recommendations tbody .actions-column',
+    const actions = fixture.nativeElement.querySelectorAll('#ranking-panel-recommendations tbody .rankings-panel__actions-col',
     );
-    expect(fixture.nativeElement.querySelector('thead .actions-column')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('thead .rankings-panel__actions-col')).toBeTruthy();
     expect(rows.length).toBe(10);
     expect(actions.length).toBe(rows.length);
     actions.forEach((cell: HTMLElement) => {
-      expect(cell.querySelector('a.table-action, button.table-action:disabled')).toBeTruthy();
+      expect(cell.querySelector('a.rankings-panel__action, button.rankings-panel__action:disabled')).toBeTruthy();
     });
-    expect(fixture.nativeElement.querySelector('a.table-action')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('button.table-action:disabled')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('a.rankings-panel__action')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('button.rankings-panel__action:disabled')).toBeTruthy();
   });
 
   it('lets the Top 10 panel take the full row for operators (no empty side column)', () => {
-    expect(fixture.nativeElement.querySelector('.side-column')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.content-grid.operator-view .recommendations-panel')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dashboard__aside')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.dashboard__content--operator .recommendations-panel')).toBeTruthy();
   });
 });
 
@@ -269,7 +267,7 @@ describe('Dashboard (manager view)', () => {
   // 2026-09-27：高風險提示的商品名稱可點擊，前往品項詳情（管理層進入為唯讀模式）。
   it('links each risk alert to the product detail page', () => {
     const links = Array.from(
-      fixture.nativeElement.querySelectorAll('.risk-item strong a'),
+      fixture.nativeElement.querySelectorAll('.risk-panel__item strong a'),
       (link) => (link as HTMLAnchorElement).getAttribute('href'),
     );
     expect(links.length).toBeGreaterThan(0);
@@ -284,13 +282,13 @@ describe('Dashboard (manager view)', () => {
 
   it('keeps the risk side column next to the tabbed ranking card', () => {
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.content-grid > .rankings-panel')).toBeTruthy();
-    expect(root.querySelector('.content-grid > .side-column .risk-panel')).toBeTruthy();
+    expect(root.querySelector('.dashboard__content > .rankings-panel')).toBeTruthy();
+    expect(root.querySelector('.dashboard__content > .dashboard__aside .risk-panel')).toBeTruthy();
   });
 
   it('links stat cards to the review page instead of product management', () => {
     const links = Array.from(
-      fixture.nativeElement.querySelectorAll('a.stat-card-link'),
+      fixture.nativeElement.querySelectorAll('a.stat-card__link'),
       (link) => (link as HTMLAnchorElement).getAttribute('href'),
     );
     expect(links).toEqual([
@@ -298,11 +296,11 @@ describe('Dashboard (manager view)', () => {
       '/review?tab=records&reviewStatus=APPROVED',
       '/review?tab=records&reviewStatus=REJECTED',
     ]);
-    expect(fixture.nativeElement.querySelector('a[href^="/products"].stat-card-link')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href^="/products"].stat-card__link')).toBeNull();
   });
 
   it('keeps the risk side column for managers', () => {
-    expect(fixture.nativeElement.querySelector('.side-column .risk-panel')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dashboard__aside .risk-panel')).toBeTruthy();
   });
 
   it('sends pending Top 10 items straight to the review detail', () => {

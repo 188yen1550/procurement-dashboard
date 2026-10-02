@@ -6,8 +6,8 @@
      突兀，維持原本的填色 SVG）跟關閉按鈕（純裝飾用的 X，沒有共用需求）。
 -->
 <aside class="sidebar" [class.is-open]="isOpen" aria-label="主要導覽">
-  <div class="brand">
-    <span class="brand-mark" aria-hidden="true">
+  <div class="sidebar__brand">
+    <span class="sidebar__brand-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path
           d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"
@@ -20,7 +20,7 @@
 
     <button
       type="button"
-      class="close-button"
+      class="sidebar__close-button"
       aria-label="關閉導覽選單"
       (click)="closeRequested.emit()"
     >
@@ -33,19 +33,19 @@
 
   <!-- 2026-09-26：必須先修改密碼時整個導覽鎖定（淡灰色、不可點取），見 sidebar.ts 的 locked。 -->
   @if (locked) {
-    <p class="locked-notice" role="status">請先修改密碼，完成後即可使用其他功能。</p>
+    <p class="sidebar__locked-notice" role="status">請先修改密碼，完成後即可使用其他功能。</p>
   }
-  <nav class="navigation" aria-label="後台功能" [class.is-locked]="locked" [attr.inert]="locked ? '' : null"
+  <nav class="sidebar__nav" aria-label="後台功能" [class.is-locked]="locked" [attr.inert]="locked ? '' : null"
     [attr.aria-disabled]="locked ? 'true' : null">
-    <p class="nav-label">工作區</p>
+    <p class="sidebar__nav-label">工作區</p>
 
     <a
       routerLink="/dashboard"
-      routerLinkActive="active"
+      routerLinkActive="is-active"
       [routerLinkActiveOptions]="{ exact: true }"
       (click)="closeRequested.emit()"
     >
-      <span class="nav-icon"><app-icon name="layout-dashboard" size="md" /></span>
+      <span class="sidebar__nav-icon"><app-icon name="layout-dashboard" size="md" /></span>
       儀表板
     </a>
 
@@ -54,61 +54,61 @@
     @if (!isManager) {
       <a
         routerLink="/products"
-        routerLinkActive="active"
+        routerLinkActive="is-active"
         [routerLinkActiveOptions]="{ exact: true }"
         (click)="closeRequested.emit()"
       >
-        <span class="nav-icon"><app-icon name="list" size="md" /></span>
+        <span class="sidebar__nav-icon"><app-icon name="list" size="md" /></span>
         品項管理
       </a>
 
       <!-- 2026-09-29：AI 商品雷達——系統裡還沒有、社群上正在被討論的商品線索。 -->
       <a
         routerLink="/products/discoveries"
-        routerLinkActive="active"
+        routerLinkActive="is-active"
         (click)="closeRequested.emit()"
       >
-        <span class="nav-icon"><app-icon name="search" size="md" /></span>
+        <span class="sidebar__nav-icon"><app-icon name="search" size="md" /></span>
         AI 商品雷達
       </a>
     }
 
-    <a routerLink="/group-buy" routerLinkActive="active" (click)="closeRequested.emit()">
-      <span class="nav-icon"><app-icon name="clipboard-list" size="md" /></span>
+    <a routerLink="/group-buy" routerLinkActive="is-active" (click)="closeRequested.emit()">
+      <span class="sidebar__nav-icon"><app-icon name="clipboard-list" size="md" /></span>
       歷史銷售紀錄
     </a>
 
     @if (isManager) {
-      <a routerLink="/review" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon"><app-icon name="check-circle" size="md" /></span>
+      <a routerLink="/review" routerLinkActive="is-active" (click)="closeRequested.emit()">
+        <span class="sidebar__nav-icon"><app-icon name="check-circle" size="md" /></span>
         選品審核
       </a>
 
-      <p class="nav-label nav-label-spaced">管理</p>
+      <p class="sidebar__nav-label sidebar__nav-label--management">管理</p>
 
       <!-- 2026-09-29 依用途分三組（原本依異動頻率分兩組）：規則、資料、系統各回答一個問題，
            分組定義見 features/settings/settings-groups.ts。舊的 /settings?tab= 與
            /settings/operations 連結會依分頁自動轉到所屬的組。 -->
-      <a routerLink="/settings/scoring" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon"><app-icon name="sliders-horizontal" size="md" /></span>
+      <a routerLink="/settings/scoring" routerLinkActive="is-active" (click)="closeRequested.emit()">
+        <span class="sidebar__nav-icon"><app-icon name="sliders-horizontal" size="md" /></span>
         評分與審核規則
       </a>
 
-      <a routerLink="/settings/data" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon"><app-icon name="database" size="md" /></span>
+      <a routerLink="/settings/data" routerLinkActive="is-active" (click)="closeRequested.emit()">
+        <span class="sidebar__nav-icon"><app-icon name="database" size="md" /></span>
         選品基礎資料
       </a>
 
-      <a routerLink="/settings/system" routerLinkActive="active" (click)="closeRequested.emit()">
-        <span class="nav-icon"><app-icon name="settings" size="md" /></span>
+      <a routerLink="/settings/system" routerLinkActive="is-active" (click)="closeRequested.emit()">
+        <span class="sidebar__nav-icon"><app-icon name="settings" size="md" /></span>
         系統管理
       </a>
     }
   </nav>
 
   @if (useMockData) {
-    <div class="sidebar-footer">
-      <span class="status-dot" aria-hidden="true"></span>
+    <div class="sidebar__footer">
+      <span class="sidebar__status-dot" aria-hidden="true"></span>
       Demo 模式 · 目前顯示示範資料
     </div>
   }

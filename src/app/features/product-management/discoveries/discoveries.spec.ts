@@ -87,14 +87,14 @@ describe('Discoveries', () => {
     expect(text).toContain('義美小泡芙');
     expect(text).toContain('近 7 天提及');
     expect(text).toContain('71.5');
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.evidence a');
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.discovery-card__evidence a');
     expect(link.getAttribute('href')).toBe('https://www.ptt.cc/bbs/Lifeismoney/M.1790000000.A.1AB.html');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toContain('noopener');
   });
 
   it('links 建立商品 to the product form with discoveryId, name and productTypeId', () => {
-    const create: HTMLAnchorElement = fixture.nativeElement.querySelector('.actions a.btn-primary');
+    const create: HTMLAnchorElement = fixture.nativeElement.querySelector('.discovery-card__actions a.btn--primary');
     const href = create.getAttribute('href') ?? '';
     expect(href).toContain('/products/new');
     expect(href).toContain('discoveryId=7');
@@ -118,9 +118,9 @@ describe('Discoveries', () => {
 
   it('shows the AI fit score with its reason and concerns, and Google trend growth', () => {
     const card: HTMLElement = fixture.nativeElement.querySelector('.discovery-card');
-    expect(card.querySelector('.fit strong')?.textContent).toContain('82');
+    expect(card.querySelector('.discovery-card__fit strong')?.textContent).toContain('82');
     expect(card.textContent).toContain('小家庭常備零食');
-    const concerns = Array.from(card.querySelectorAll('.concerns li')).map((li) => li.textContent?.trim());
+    const concerns = Array.from(card.querySelectorAll('.discovery-card__concerns li')).map((li) => li.textContent?.trim());
     expect(concerns).toEqual(['同類競品多', '保存期限需確認']);
     expect(card.textContent).toContain('上升 +35%');
   });
@@ -146,7 +146,7 @@ describe('Discoveries', () => {
     expect(text).toContain('未評適配度');
     expect(text).not.toContain('AI 評估');
     expect(component.googleText(component.items()[0])).toBe('未查');
-    expect(fixture.nativeElement.querySelectorAll('dd.unchecked')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('dd.is-unchecked')).toHaveLength(2);
   });
 
   it('distinguishes Google 查無資料 from 未查', () => {

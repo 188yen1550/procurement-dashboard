@@ -102,6 +102,7 @@ const MATCH_TIER_OPTIONS: readonly { value: TagMatchTier; label: string }[] = [
 
 @Component({
   selector: 'app-weather-linkage',
+  host: { class: 'weather-linkage' },
   imports: [FormsModule, DatePipe],
   templateUrl: './weather-linkage.html',
   styleUrl: './weather-linkage.scss',

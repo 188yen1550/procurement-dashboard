@@ -126,7 +126,7 @@ describe('CrawlerStatusCard', () => {
     const el = await create();
     expect(el.textContent).toContain('09/28 02:01');
     expect(el.textContent).toContain('7 / 7 筆取得 PTT 資料');
-    const link = el.querySelector('a.crawler-manage') as HTMLAnchorElement;
+    const link = el.querySelector('a.crawler-card__manage-link') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/settings/system?tab=jobs#trend-crawler');
   });
 

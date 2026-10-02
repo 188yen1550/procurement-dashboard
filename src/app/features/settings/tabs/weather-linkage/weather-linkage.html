@@ -4,7 +4,7 @@
   表格與表單樣式用全域 .config-*（見 _components.scss），這裡只保留本分頁專屬的少量樣式。
 -->
 <section class="config-panel" aria-labelledby="weather-data-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="weather-data-title">天氣資料</h3>
       <p>
@@ -13,8 +13,8 @@
         下次同步會自動補齊過去 30 天。
       </p>
     </div>
-    <div class="config-panel-actions">
-      <button type="button" class="btn-primary" [disabled]="disabled() || weatherSyncing()" (click)="syncWeatherData()">
+    <div class="config-panel__actions">
+      <button type="button" class="btn btn--primary" [disabled]="disabled() || weatherSyncing()" (click)="syncWeatherData()">
         {{ weatherSyncing() ? '同步中…' : '立即同步天氣資料' }}
       </button>
     </div>
@@ -23,45 +23,45 @@
   @if (useMockData) {
   <p class="helper">Mock 模式沒有真實天氣資料。</p>
   } @else if (weatherStatusError()) {
-  <p class="load-error" role="alert">{{ weatherStatusError() }}
+  <p class="weather-linkage__load-error" role="alert">{{ weatherStatusError() }}
     <button type="button" class="btn" (click)="loadWeatherStatus()">重新載入</button>
   </p>
   } @else {
-  <p class="weather-updated-at" role="status">
+  <p class="weather-linkage__updated-at" role="status">
     資料更新時間：
     <strong>{{ weatherStatus()?.lastFetchedAt ? (weatherStatus()!.lastFetchedAt | date: 'yyyy-MM-dd HH:mm') : '尚未同步' }}</strong>
   </p>
   <!-- 2026-09-27：各區明細預設摺疊（資料來自資料庫，不是即時查詢），不用另外按按鈕才看得到；
        「立即同步天氣資料」完成後會重新載入這份資料（見 syncWeatherData()）。 -->
-  <details class="weather-status-details">
+  <details class="weather-linkage__status-details">
     <summary>各區天氣資料涵蓋天數</summary>
-  <div class="config-table-wrap">
-    <table class="config-table weather-status-table">
-      <caption class="sr-only">各區天氣資料涵蓋天數</caption>
+  <div class="config-panel__table-scroll">
+    <table class="config-table config-table--weather-status">
+      <caption class="u-sr-only">各區天氣資料涵蓋天數</caption>
       <thead>
         <tr>
           <th scope="col">區域</th>
-          <th scope="col" class="num">歷史天數（近 {{ weatherStatus()?.historyDays ?? 30 }} 天）</th>
-          <th scope="col" class="num">預報天數</th>
+          <th scope="col" class="u-numeric">歷史天數（近 {{ weatherStatus()?.historyDays ?? 30 }} 天）</th>
+          <th scope="col" class="u-numeric">預報天數</th>
           <th scope="col">最後取得</th>
         </tr>
       </thead>
       <tbody>
         @if (weatherStatusLoading() && !weatherStatus()) {
         <tr>
-          <td colspan="4" class="config-table-empty" role="status">載入中…</td>
+          <td colspan="4" class="config-table__empty" role="status">載入中…</td>
         </tr>
         } @else {
         @for (region of weatherStatus()?.regions ?? []; track region.region) {
         <tr>
-          <td>{{ region.regionLabel }} <small class="region-cities">（{{ regionCities(region.region) }}）</small></td>
-          <td class="num" [class.is-incomplete]="isHistoryIncomplete(region.historyDayCount)">
+          <td>{{ region.regionLabel }} <small class="weather-linkage__region-cities">（{{ regionCities(region.region) }}）</small></td>
+          <td class="u-numeric" [class.is-incomplete]="isHistoryIncomplete(region.historyDayCount)">
             {{ region.historyDayCount }}
             @if (isHistoryIncomplete(region.historyDayCount)) {
             <span class="helper">（資料不足，下次同步補齊）</span>
             }
           </td>
-          <td class="num">{{ region.forecastDayCount }}</td>
+          <td class="u-numeric">{{ region.forecastDayCount }}</td>
           <td>{{ region.lastFetchedAt ? (region.lastFetchedAt | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
         </tr>
         }
@@ -74,7 +74,7 @@
 </section>
 
 <section class="config-panel" aria-labelledby="weather-boost-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="weather-boost-title">天氣加成設定</h3>
       <p>
@@ -85,35 +85,35 @@
     </div>
   </div>
 
-  <form class="boost-settings-form" (ngSubmit)="saveBoostSettings()">
-    <label class="boost-field">
+  <form class="boost-settings" (ngSubmit)="saveBoostSettings()">
+    <label class="boost-settings__field">
       <span>歷史比重（近 {{ boostSettings()?.historyDays ?? 30 }} 天）</span>
       <span class="percent-field" [class.is-disabled]="disabled()">
         <input type="number" min="0" max="100" step="1" inputmode="decimal" name="historyWeight"
           [ngModel]="draftHistoryWeight()" (ngModelChange)="draftHistoryWeight.set(($event ?? '') + '')"
           [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
-        <span class="percent-suffix">%</span>
+        <span class="percent-field__suffix">%</span>
       </span>
     </label>
-    <label class="boost-field">
+    <label class="boost-settings__field">
       <span>預測比重（未來 {{ boostSettings()?.forecastDays ?? 14 }} 天）</span>
       <span class="percent-field" [class.is-disabled]="disabled()">
         <input type="number" min="0" max="100" step="1" inputmode="decimal" name="forecastWeight"
           [ngModel]="draftForecastWeight()" (ngModelChange)="draftForecastWeight.set(($event ?? '') + '')"
           [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
-        <span class="percent-suffix">%</span>
+        <span class="percent-field__suffix">%</span>
       </span>
     </label>
-    <label class="boost-field">
+    <label class="boost-settings__field">
       <span>加成上限（分）</span>
       <span class="percent-field" [class.is-disabled]="disabled()">
         <input type="number" min="0" max="10" step="0.5" inputmode="decimal" name="boostCap"
           [ngModel]="draftBoostCap()" (ngModelChange)="draftBoostCap.set(($event ?? '') + '')"
           [disabled]="disabled() || boostSettingsLoading()" [attr.aria-invalid]="!!boostSettingsError()" />
-        <span class="percent-suffix">分</span>
+        <span class="percent-field__suffix">分</span>
       </span>
     </label>
-    <div class="config-form-row boost-settings-footer">
+    <div class="config-form-row boost-settings__footer">
       <span class="config-sum" [attr.data-state]="boostSettingsError() ? 'error' : 'ok'" role="status" aria-live="polite">
         @if (boostSettingsError()) {
         {{ boostSettingsError() }}
@@ -121,7 +121,7 @@
         比重加總 100；整段期間每天都命中核心標籤時，加成為 {{ boostExample() }} 分。
         }
       </span>
-      <button type="submit" class="btn-primary" [disabled]="disabled() || boostSettingsSaving() || !!boostSettingsError()">
+      <button type="submit" class="btn btn--primary" [disabled]="disabled() || boostSettingsSaving() || !!boostSettingsError()">
         {{ boostSettingsSaving() ? '儲存中…' : '儲存加成設定' }}
       </button>
     </div>
@@ -129,7 +129,7 @@
 </section>
 
 <section class="config-panel" aria-labelledby="weather-mapping-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="weather-mapping-title">天氣訊號標籤對照</h3>
       <p>
@@ -139,23 +139,23 @@
     </div>
   </div>
 
-  <div class="config-table-wrap">
-    <table class="config-table weather-mapping-table">
-      <caption class="sr-only">天氣訊號標籤對照</caption>
+  <div class="config-panel__table-scroll">
+    <table class="config-table config-table--weather-mapping">
+      <caption class="u-sr-only">天氣訊號標籤對照</caption>
       <thead>
         <tr>
-          <th scope="col" class="col-signal">天氣訊號</th>
-          <th scope="col" class="col-tag">對應標籤</th>
-          <th scope="col" class="col-tier">命中等級</th>
-          <th scope="col" class="col-source">來源</th>
-          <th scope="col" class="col-status">狀態</th>
-          <th scope="col" class="col-actions"><span class="sr-only">操作</span></th>
+          <th scope="col" class="config-table__col config-table__col--signal">天氣訊號</th>
+          <th scope="col" class="config-table__col config-table__col--tag">對應標籤</th>
+          <th scope="col" class="config-table__col config-table__col--tier">命中等級</th>
+          <th scope="col" class="config-table__col config-table__col--source">來源</th>
+          <th scope="col" class="config-table__col config-table__col--status">狀態</th>
+          <th scope="col" class="config-table__col config-table__col--actions"><span class="u-sr-only">操作</span></th>
         </tr>
       </thead>
       <tbody>
         @if (weatherSignalTagMappingsLoading()) {
         <tr>
-          <td colspan="6" class="config-table-empty" role="status">載入中…</td>
+          <td colspan="6" class="config-table__empty" role="status">載入中…</td>
         </tr>
         } @else {
         @for (item of weatherSignalTagMappings(); track item.id) {
@@ -179,7 +179,7 @@
             </span>
           </td>
           <td class="row-actions">
-            <button type="button" class="btn" [class.is-restore]="!item.isActive" [disabled]="disabled()"
+            <button type="button" class="btn" [class.btn--restore]="!item.isActive" [disabled]="disabled()"
               (click)="toggleWeatherSignalTagMappingActive(item)">
               {{ item.isActive ? '停用' : '啟用' }}
             </button>
@@ -187,7 +187,7 @@
         </tr>
         } @empty {
         <tr>
-          <td colspan="6" class="config-table-empty">目前沒有任何對照，天氣同步不會產生檔期。請在下方新增第一筆。</td>
+          <td colspan="6" class="config-table__empty">目前沒有任何對照，天氣同步不會產生檔期。請在下方新增第一筆。</td>
         </tr>
         }
         }
@@ -205,7 +205,7 @@
         }
       </select>
     </label>
-    <label class="is-grow">對應標籤
+    <label class="config-form-row__field config-form-row__field--grow">對應標籤
       <input type="text" placeholder="例如：雨具" [ngModel]="draftWeatherSignalTag()"
         (ngModelChange)="draftWeatherSignalTag.set($event)" name="draftWeatherSignalTag" [disabled]="disabled()"
         maxlength="50" />
@@ -219,22 +219,22 @@
         }
       </select>
     </label>
-    <button type="submit" class="btn-primary" [disabled]="disabled() || weatherSignalTagMappingSaving()">
+    <button type="submit" class="btn btn--primary" [disabled]="disabled() || weatherSignalTagMappingSaving()">
       {{ weatherSignalTagMappingSaving() ? '新增中…' : '＋ 新增對照' }}
     </button>
   </form>
 </section>
 
 <section class="config-panel" aria-labelledby="region-weight-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="region-weight-title">地域占比設定</h3>
       <!-- full-width：這個面板右側沒有動作按鈕，不需要共用樣式的 62ch 限寬。 -->
-      <p class="full-width">
+      <p class="weather-linkage__region-intro">
         同一種天氣訊號命中的區域（北／中／南／東）占比加總，就是這次加成的地域覆蓋率。
         只有單一區域命中、且該區占比低時，加成會依比例打折。四區加總須為 100。
       </p>
-      <p class="full-width helper">{{ regionCoverageNote }}</p>
+      <p class="weather-linkage__region-intro helper">{{ regionCoverageNote }}</p>
     </div>
   </div>
 
@@ -243,36 +243,36 @@
   <div class="region-bar" aria-hidden="true">
     @for (segment of regionWeightBar(); track segment.region) {
     @if (segment.share > 0) {
-    <span class="region-bar-segment" [attr.data-region]="segment.region" [style.flex-basis.%]="segment.share">
+    <span class="region-bar__segment" [attr.data-region]="segment.region" [style.flex-basis.%]="segment.share">
       {{ segment.label }} {{ segment.value }}%
     </span>
     }
     }
   </div>
 
-  <div class="config-table-wrap">
-    <table class="config-table region-weight-table">
-      <caption class="sr-only">地域占比</caption>
+  <div class="config-panel__table-scroll">
+    <table class="config-table config-table--region-weight">
+      <caption class="u-sr-only">地域占比</caption>
       <thead>
         <tr>
           <th scope="col">區域</th>
-          <th scope="col" class="num col-weight">業務占比</th>
-          <th scope="col" class="num">最後更新</th>
+          <th scope="col" class="u-numeric config-table__col config-table__col--weight">業務占比</th>
+          <th scope="col" class="u-numeric">最後更新</th>
         </tr>
       </thead>
       <tbody>
         @if (regionWeightsLoading()) {
         <tr>
-          <td colspan="3" class="config-table-empty" role="status">載入中…</td>
+          <td colspan="3" class="config-table__empty" role="status">載入中…</td>
         </tr>
         } @else {
         @for (item of regionWeights(); track item.region) {
         <tr>
           <td>
             <label [for]="'region-weight-' + item.region">{{ weatherRegionLabel[item.region] ?? item.region }}</label>
-            <small class="region-cities">（{{ regionCities(item.region) }}）</small>
+            <small class="weather-linkage__region-cities">（{{ regionCities(item.region) }}）</small>
           </td>
-          <td class="num">
+          <td class="u-numeric">
             <!-- 單位「%」放在欄位內右側，不再寫在表頭括號裡：數字與單位一起讀，
                  表頭也不會因為括號變寬而換行。超出 0～100 時欄位本身標紅。 -->
             <span class="percent-field" [class.is-disabled]="disabled()">
@@ -281,10 +281,10 @@
                 (ngModelChange)="updateRegionWeightDraft(item.region, $event)" [name]="'region-weight-' + item.region"
                 [attr.aria-invalid]="isRegionWeightOutOfRange(item.region)"
                 [attr.aria-describedby]="'region-weight-unit-' + item.region" [disabled]="disabled()" />
-              <span class="percent-suffix" [id]="'region-weight-unit-' + item.region">%</span>
+              <span class="percent-field__suffix" [id]="'region-weight-unit-' + item.region">%</span>
             </span>
           </td>
-          <td class="num">{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未調整' }}</td>
+          <td class="u-numeric">{{ item.updatedAt ? (item.updatedAt | date: 'yyyy-MM-dd HH:mm') : '尚未調整' }}</td>
         </tr>
         }
         }
@@ -292,14 +292,14 @@
     </table>
   </div>
 
-  <div class="config-form-row region-weight-footer">
+  <div class="config-form-row weather-linkage__region-weight-footer">
     <span class="config-sum" [attr.data-state]="regionWeightSumState()" role="status" aria-live="polite">
       目前加總 {{ regionWeightDraftSum() }}
       @if (regionWeightSumState() === 'error') {
       ，須為 100
       }
     </span>
-    <button type="button" class="btn-primary"
+    <button type="button" class="btn btn--primary"
       [disabled]="disabled() || regionWeightSaving() || regionWeightSumState() === 'error'"
       (click)="saveRegionWeights()">
       {{ regionWeightSaving() ? '儲存中…' : '儲存占比設定' }}

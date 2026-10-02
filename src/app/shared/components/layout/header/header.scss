@@ -18,47 +18,44 @@
   backdrop-filter: blur(10px);
 }
 
-.header-leading,
-.user-actions {
+.app-header__brand,
+.user-menu {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.eyebrow,
-.system-note {
-  margin: 0;
+.app-header {
+  &__title {
+    margin: 0;
+  }
+
+  &__title {
+    color: #1f3348;
+    font-size: var(--font-size-base);
+    font-weight: 700;
+  }
 }
 
-.eyebrow {
-  color: #1f3348;
-  font-size: var(--t-base);
-  font-weight: 700;
+.user-menu {
+  &__name {
+    color: #243447;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
+  &__role {
+    padding: 0.35rem 0.7rem;
+    color: var(--color-brand);
+    background: var(--color-brand-tint);
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 }
 
-.system-note {
-  margin-top: 0.15rem;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-
-.user-name {
-  color: #243447;
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
-
-.role-badge {
-  padding: 0.35rem 0.7rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
-
-.logout-button,
-.menu-button {
+.user-menu__logout,
+.app-header__menu-button {
   color: #32475b;
   background: #fff;
   border: 1px solid #d7e0e8;
@@ -66,17 +63,17 @@
   cursor: pointer;
 }
 
-.logout-button {
+.user-menu__logout {
   padding: 0.5rem 0.85rem;
 
   &:hover {
     color: #fff;
-    background: var(--c-brand);
-    border-color: var(--c-brand);
+    background: var(--color-brand);
+    border-color: var(--color-brand);
   }
 }
 
-.menu-button {
+.app-header__menu-button {
   display: none;
   width: 42px;
   height: 42px;
@@ -99,31 +96,29 @@ button:focus-visible {
   .app-header {
     min-height: 68px;
     padding: 0.65rem 1rem;
-  }
 
-  .menu-button {
-    display: block;
-    flex: 0 0 auto;
-  }
-
-  .system-note {
-    display: none;
+    &__menu-button {
+      display: block;
+      flex: 0 0 auto;
+    }
   }
 }
 
 @media (max-width: 520px) {
-  .eyebrow {
+  .app-header__title {
     max-width: 9rem;
-    font-size: var(--t-sm);
+    font-size: var(--font-size-sm);
     line-height: 1.25;
   }
 
-  .role-badge {
-    display: none;
-  }
+  .user-menu {
+    &__role {
+      display: none;
+    }
 
-  .user-name {
-    display: none;
+    &__name {
+      display: none;
+    }
   }
 }
 
@@ -132,28 +127,30 @@ button:focus-visible {
  * hover／focus 時給一個淡底色，讓它看起來可點——沒有這個回饋的話，
  * 使用者不會發現自己的名字是連結。
  */
-.user-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
-  border-radius: var(--r-sm);
-  color: inherit;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
+.user-menu {
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--radius-sm);
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
 
-.user-link:hover,
-.user-link:focus-visible,
-.user-link.active {
-  background: rgba(255, 255, 255, 0.12);
-}
+  &__link:hover,
+  &__link:focus-visible,
+  &__link.is-active {
+    background: rgba(255, 255, 255, 0.12);
+  }
 
-/* 跟側邊選單一致：滑鼠 hover 用淡底色，鍵盤 focus 額外加一圈外框——
+  /* 跟側邊選單一致：滑鼠 hover 用淡底色，鍵盤 focus 額外加一圈外框——
    兩者共用同一種底色變化的話，鍵盤使用者跟滑鼠使用者看到的視覺回饋
    會一模一樣，沒辦法從畫面上分辨「這是我剛剛用 Tab 移過來的」還是
    「滑鼠剛好經過」，這裡跟全站其他導覽項目的處理方式統一。 */
-.user-link:focus-visible {
-  outline: 3px solid rgba(28, 82, 134, 0.35);
-  outline-offset: 2px;
+  &__link:focus-visible {
+    outline: 3px solid rgba(28, 82, 134, 0.35);
+    outline-offset: 2px;
+  }
 }

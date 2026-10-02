@@ -273,7 +273,7 @@ describe('Settings', () => {
     // 分頁按鈕跟內容都不應該渲染出來，不是「顯示但disabled」。
     expect(fixture.nativeElement.textContent).not.toContain('核心客群設定');
     expect(
-      Array.from(fixture.nativeElement.querySelectorAll('.tabs button')).some(
+      Array.from(fixture.nativeElement.querySelectorAll('.settings__tabs button')).some(
         (button: unknown) => (button as HTMLButtonElement).textContent?.includes('核心客群'),
       ),
     ).toBe(false);
@@ -459,7 +459,7 @@ describe('Settings', () => {
       fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
     ).find((el) => (el as HTMLElement).textContent?.includes('buyer01'))?.querySelector('button') as HTMLButtonElement;
     expect(toggleButton?.textContent).toContain('復用帳號');
-    expect(toggleButton?.classList.contains('is-restore')).toBe(true);
+    expect(toggleButton?.classList.contains('btn--restore')).toBe(true);
 
     // 復用：同一個方法，狀態反過來時改呼叫 restore；復用不需要確認。
     confirm.mockClear();
@@ -590,7 +590,7 @@ describe('Settings', () => {
     fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
     fixture.detectChanges();
     return Array.from(
-      fixture.nativeElement.querySelectorAll('nav.tabs button') as NodeListOf<HTMLButtonElement>,
+      fixture.nativeElement.querySelectorAll('nav.settings__tabs button') as NodeListOf<HTMLButtonElement>,
     ).map((b) => b.textContent?.trim());
   };
 
@@ -603,7 +603,7 @@ describe('Settings', () => {
       '審核風險選項',
     ]);
     expect(fixture.nativeElement.querySelector('#settings-title')?.textContent).toContain('評分與審核規則');
-    expect(fixture.nativeElement.querySelector('.tab-divider')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.settings__tab-divider')).toBeNull();
   });
 
   it('shows only the data tabs under 選品基礎資料 (核心客群 stays hidden while locked)', () => {
@@ -709,7 +709,7 @@ describe('Settings', () => {
     expect(host.querySelector('app-trend-crawler-panel')).toBeNull();
     expect(host.querySelector('app-google-trends-panel')).toBeNull();
     // 天氣加成上限與比重留在天氣連動元件，這裡只放前往連結
-    const link = host.querySelector('.settings-cross-link a') as HTMLAnchorElement;
+    const link = host.querySelector('.settings__cross-link a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/settings/data?tab=weather');
 
     component.setTab('jobs');
@@ -794,7 +794,7 @@ describe('Settings', () => {
     it('唯讀權重明細把已停用的自訂因子標示為不計分', () => {
       recreateWithCustomMode();
       fixture.detectChanges();
-      const inactiveRows = fixture.nativeElement.querySelectorAll('.factor-breakdown .is-inactive');
+      const inactiveRows = fixture.nativeElement.querySelectorAll('.mode-grid__breakdown .is-inactive');
       expect(inactiveRows.length).toBe(1);
       expect(inactiveRows[0].textContent).toContain('環保包裝評級');
       expect(inactiveRows[0].textContent).toContain('已停用，不計分');
@@ -803,7 +803,7 @@ describe('Settings', () => {
     it('按「編輯權重」不會連帶把系統生效模式切到自訂模式', () => {
       recreateWithCustomMode();
       fixture.detectChanges();
-      const button = fixture.nativeElement.querySelector('.edit-weights-button') as HTMLButtonElement;
+      const button = fixture.nativeElement.querySelector('.mode-grid__edit-weights') as HTMLButtonElement;
       button.click();
       fixture.detectChanges();
 

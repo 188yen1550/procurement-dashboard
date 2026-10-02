@@ -58,7 +58,7 @@ type RankingTab = 'recommendations' | 'trend';
   selector: 'app-dashboard',
   imports: [ListSortControls, SortHeader, SortRowsPipe, RouterLink, Icon, CrawlerStatusCard, DatePipe],
   templateUrl: './dashboard.html',
-  styleUrls: ['./dashboard.scss', './dashboard-actions.scss'],
+  styleUrls: ['./dashboard.scss', './dashboard-rankings.scss', './dashboard-actions.scss'],
 })
 export class Dashboard implements OnInit, OnDestroy {
   readonly riskListSort = new ListSort();
@@ -229,11 +229,11 @@ export class Dashboard implements OnInit, OnDestroy {
       data: chartData,
       options: {
         // ⚠️ maintainAspectRatio 預設是 true，會強迫 canvas 維持固定長寬比，
-        // 跟 .status-chart-wrap 用 CSS 明確指定 height: 260px、寬度卻吃滿
+        // 跟 .status-chart__canvas 用 CSS 明確指定 height: 260px、寬度卻吃滿
         // 較寬的 grid 欄位互相打架——結果是圖只長到跟高度一樣的正方形，
         // 卡在容器左側，右邊留一大塊空白（「明顯偏左」的成因）。容器已經
         // 用 CSS 決定好寬高時，這裡要關掉 maintainAspectRatio，讓 Chart.js
-        // 直接吃滿 .status-chart-wrap 的實際框，甜甜圈才會置中。
+        // 直接吃滿 .status-chart__canvas 的實際框，甜甜圈才會置中。
         responsive: true,
         maintainAspectRatio: false,
         cutout: '68%',

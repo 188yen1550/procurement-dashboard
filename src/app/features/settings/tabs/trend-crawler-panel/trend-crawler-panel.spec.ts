@@ -102,7 +102,7 @@ describe('TrendCrawlerPanel', () => {
   // 2026-09-29：說明文字可收合，預設收合；摘要與狀態訊息永遠看得到
   it('collapses the long description by default and keeps the one-line summary visible', async () => {
     await create();
-    const details = (fixture.nativeElement as HTMLElement).querySelector('details.config-panel-details') as HTMLDetailsElement;
+    const details = (fixture.nativeElement as HTMLElement).querySelector('details.config-panel__details') as HTMLDetailsElement;
     expect(details).toBeTruthy();
     expect(details.open).toBe(false);
     expect(details.querySelector('summary')?.textContent).toContain('運作方式');
@@ -158,7 +158,7 @@ describe('TrendCrawlerPanel', () => {
     button('下一頁').click();
     fixture.detectChanges();
     expect(text()).toContain('第 1 / 3 頁');
-    expect((fixture.nativeElement as HTMLElement).querySelector('.run-history-pager-error')).toBeTruthy();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.run-history-pager__error')).toBeTruthy();
   });
 
   it('shows the source switch state and recent runs', async () => {

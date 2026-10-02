@@ -2,7 +2,7 @@
   檔案用途：設定分頁與 Modal。
   評估權重唯讀；檔期編輯／手動狀態分開；帳號只停用。aria-modal 與標題關聯協助輔助科技理解對話框。
 -->
-<main class="page-shell settings-page" aria-labelledby="settings-title">
+<main class="page-shell settings" aria-labelledby="settings-title">
   <header class="page-header">
     <div>
 
@@ -14,7 +14,7 @@
     <div><strong>UI 狀態</strong><span>managerGuard 持續保護此路由</span></div>
     <div role="group" aria-label="切換設定頁狀態">
       @for (state of stateOptions; track state) {
-      <button type="button" [class.active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
+      <button type="button" [class.is-active]="pageState() === state" [attr.aria-pressed]="pageState() === state"
         (click)="setState(state)">
         {{ state }}
       </button>
@@ -23,9 +23,9 @@
   </section>
   }
   <!-- 同時提供螢幕閱讀器通知與可見的操作結果。 -->
-  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  <p class="u-sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  <p class="notice settings__toast" role="status">{{ statusMessage() }}</p>
   }
   <!--
     2026-09-29 依用途分三組（分組定義在 settings-groups.ts）：
@@ -35,39 +35,39 @@
     每個側邊欄項目只顯示自己那一組；沒有分組（settingsGroup 為 null，例如單元測試直接建立元件）
     時顯示全部，組與組之間用細分隔線區隔（純視覺，對輔助科技隱藏）。
   -->
-  <nav class="tabs" aria-label="設定分類">
+  <nav class="settings__tabs" aria-label="設定分類">
     @if (isTabInGroup('modes')) {
-    <button type="button" [class.active]="activeTab() === 'modes'" (click)="setTab('modes')">評估模式</button>
-    <button type="button" [class.active]="activeTab() === 'extensions'" (click)="setTab('extensions')">
+    <button type="button" [class.is-active]="activeTab() === 'modes'" (click)="setTab('modes')">評估模式</button>
+    <button type="button" [class.is-active]="activeTab() === 'extensions'" (click)="setTab('extensions')">
       自訂屬性與因子
     </button>
-    <button type="button" [class.active]="activeTab() === 'scoreBands'" (click)="setTab('scoreBands')">目標區間</button>
-    <button type="button" [class.active]="activeTab() === 'systemSettings'" (click)="setTab('systemSettings')">
+    <button type="button" [class.is-active]="activeTab() === 'scoreBands'" (click)="setTab('scoreBands')">目標區間</button>
+    <button type="button" [class.is-active]="activeTab() === 'systemSettings'" (click)="setTab('systemSettings')">
       計分與判定參數
     </button>
-    <button type="button" [class.active]="activeTab() === 'risks'" (click)="setTab('risks')">審核風險選項</button>
+    <button type="button" [class.is-active]="activeTab() === 'risks'" (click)="setTab('risks')">審核風險選項</button>
     }
     @if (settingsGroup === null) {
-    <span class="tab-divider" aria-hidden="true"></span>
+    <span class="settings__tab-divider" aria-hidden="true"></span>
     }
     @if (isTabInGroup('productTypes')) {
-    <button type="button" [class.active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">商品類型</button>
+    <button type="button" [class.is-active]="activeTab() === 'productTypes'" (click)="setTab('productTypes')">商品類型</button>
     @if (audienceSettingsVisible) {
-    <button type="button" [class.active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
+    <button type="button" [class.is-active]="activeTab() === 'audience'" (click)="setTab('audience')">核心客群</button>
     }
-    <button type="button" [class.active]="activeTab() === 'campaigns'" (click)="setTab('campaigns')">節慶檔期</button>
-    <button type="button" [class.active]="activeTab() === 'weather'" (click)="setTab('weather')">天氣連動</button>
+    <button type="button" [class.is-active]="activeTab() === 'campaigns'" (click)="setTab('campaigns')">節慶檔期</button>
+    <button type="button" [class.is-active]="activeTab() === 'weather'" (click)="setTab('weather')">天氣連動</button>
     }
     @if (settingsGroup === null) {
-    <span class="tab-divider" aria-hidden="true"></span>
+    <span class="settings__tab-divider" aria-hidden="true"></span>
     }
     @if (isTabInGroup('accounts')) {
-    <button type="button" [class.active]="activeTab() === 'accounts'" (click)="setTab('accounts')">帳號管理</button>
-    <button type="button" [class.active]="activeTab() === 'jobs'" (click)="setTab('jobs')">排程與同步</button>
+    <button type="button" [class.is-active]="activeTab() === 'accounts'" (click)="setTab('accounts')">帳號管理</button>
+    <button type="button" [class.is-active]="activeTab() === 'jobs'" (click)="setTab('jobs')">排程與同步</button>
     }
   </nav>
   @if (pageState() === 'error') {
-  <section class="empty error" role="alert">
+  <section class="empty empty--error" role="alert">
     <h2>無法載入設定</h2>
     <p>{{ useMockData ? '這是本地錯誤模擬，不會呼叫後端。' : statusMessage() }}</p>
     <button type="button" class="btn" (click)="retry()">重試</button>
@@ -88,7 +88,7 @@
   </section>
   }
   @if (saved()) {
-  <section class="success" role="status">
+  <section class="notice notice--success" role="status">
     <div>
       <strong>儲存成功</strong><span>{{ useMockData ? '已更新本地 Mock 核心客群。' : '已更新核心客群設定。' }}</span>
     </div>
@@ -103,7 +103,7 @@
       <span>Version 1 · 使用中</span>
     </header>
     <div class="form-grid">
-      <label class="wide">客群名稱 <em>*</em><input formControlName="name" [attr.aria-invalid]="fieldInvalid('name')" />
+      <label class="form-grid__full-row">客群名稱 <em>*</em><input formControlName="name" [attr.aria-invalid]="fieldInvalid('name')" />
         @if (fieldInvalid('name')) {
         <small role="alert">請輸入 100 字內的名稱。</small>
         }
@@ -119,17 +119,17 @@
           <option value="MEDIUM">中－價格與品質平衡</option>
           <option value="HIGH">高－優先考量折扣</option>
         </select></label>
-      <label class="wide">消費偏好描述 <em>*</em><textarea rows="4" formControlName="preferenceDescription"></textarea>
+      <label class="form-grid__full-row">消費偏好描述 <em>*</em><textarea rows="4" formControlName="preferenceDescription"></textarea>
         @if (fieldInvalid('preferenceDescription')) {
         <small role="alert">請輸入消費偏好。</small>
         }
       </label>
-      <label class="wide">匹配關鍵字 <em>*</em><input formControlName="keywords" placeholder="使用逗號分隔" /><span
+      <label class="form-grid__full-row">匹配關鍵字 <em>*</em><input formControlName="keywords" placeholder="使用逗號分隔" /><span
           class="helper">例：家庭、親子、實用、團購優惠</span></label>
     </div>
     <footer>
       <p>儲存後只更新當前元件狀態，不會寫入資料庫。</p>
-      <button type="submit" class="btn-primary" [disabled]="pageState() === 'disabled'">儲存客群設定</button>
+      <button type="submit" class="btn btn--primary" [disabled]="pageState() === 'disabled'">儲存客群設定</button>
     </footer>
   </form>
   } @else if (activeTab() === 'risks') {
@@ -137,7 +137,7 @@
     <div>
       <h2>審核風險選項</h2>
     </div>
-    <button type="button" class="btn-primary" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
+    <button type="button" class="btn btn--primary" (click)="openModal('risk')" [disabled]="pageState() === 'disabled'">
       ＋ 新增風險選項
     </button>
   </section>
@@ -145,10 +145,10 @@
     <table>
       <thead>
         <tr>
-          <th class="risk-col-name">選項名稱</th>
-          <th class="risk-col-keywords">AI 風險關鍵字</th>
-          <th class="risk-col-status">狀態</th>
-          <th class="risk-col-actions"></th>
+          <th class="data-table__col data-table__col--risk-name">選項名稱</th>
+          <th class="data-table__col data-table__col--risk-keywords">AI 風險關鍵字</th>
+          <th class="data-table__col data-table__col--risk-status">狀態</th>
+          <th class="data-table__col data-table__col--risk-actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -159,9 +159,9 @@
           </td>
           <td>
             @if (item.keywords) {
-            <div class="keyword-chip-list readonly">
+            <div class="keyword-chip-list keyword-chip-list--readonly">
               @for (kw of splitKeywords(item.keywords); track kw) {
-              <span class="keyword-chip readonly">{{ kw }}</span>
+              <span class="keyword-chip-list__chip keyword-chip-list__chip--readonly">{{ kw }}</span>
               }
             </div>
             } @else {
@@ -172,7 +172,7 @@
           <td class="row-actions">
             <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
               (click)="openRiskEditModal(item)">編輯</button>
-            <button type="button" class="btn" [class.danger]="item.active" [class.is-restore]="!item.active"
+            <button type="button" class="btn" [class.btn--danger]="item.active" [class.btn--restore]="!item.active"
               [disabled]="pageState() === 'disabled' || item.id === null"
               [attr.title]="item.id === null ? '資料尚未就緒，請稍後再試' : null" (click)="toggleRiskOptionActive(item)">{{
               item.active ? '停用' : '重新啟用' }}</button>
@@ -194,7 +194,7 @@
              拿掉這句提前告知，讓「嘗試刪除時的錯誤訊息」自己承擔說明
              這件事的責任即可，不需要在標題底下再講一次。 -->
     </div>
-    <button type="button" class="btn-primary" (click)="openModal('productType')"
+    <button type="button" class="btn btn--primary" (click)="openModal('productType')"
       [disabled]="pageState() === 'disabled'">
       ＋ 新增自訂類型
     </button>
@@ -203,45 +203,45 @@
     <table>
       <thead>
         <tr>
-          <th class="type-col-name" appSortHeader="name" [sort]="typeSort">類型名稱</th>
-          <th class="type-col-status-actions">狀態／操作</th>
+          <th class="data-table__col data-table__col--type-name" appSortHeader="name" [sort]="typeSort">類型名稱</th>
+          <th class="data-table__col data-table__col--type-actions">狀態／操作</th>
         </tr>
       </thead>
       <tbody>
         @for (group of productTypeGroups() | sortRows: typeSort.state(): 'major.'; track group.major.id) {
-        <tr class="type-major-row">
+        <tr class="data-table__row data-table__row--major">
           <td>
             <button type="button" class="type-toggle" [class.is-expanded]="isProductTypeGroupExpanded(group.major.id)"
               [attr.aria-expanded]="isProductTypeGroupExpanded(group.major.id)" [disabled]="group.minors.length === 0"
               (click)="toggleProductTypeGroup(group.major.id)">
-              <span class="type-toggle-caret" aria-hidden="true">▶</span>
+              <span class="type-toggle__caret" aria-hidden="true">▶</span>
               <strong>{{ group.major.name }}</strong>
               @if (group.minors.length > 0) {
-              <span class="type-toggle-count">（{{ group.minors.length }}）</span>
+              <span class="type-toggle__count">（{{ group.minors.length }}）</span>
               }
             </button>
           </td>
           <td class="row-actions">
-            <span class="status-text">{{ group.major.active ? '啟用' : '已停用' }}</span>
+            <span class="row-actions__status">{{ group.major.active ? '啟用' : '已停用' }}</span>
             <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
               (click)="openProductTypeEditModal(group.major)">
               編輯
             </button>
-            <button type="button" class="btn" [class.is-restore]="!group.major.active"
+            <button type="button" class="btn" [class.btn--restore]="!group.major.active"
               (click)="toggleProductTypeActive(group.major.name)">
               {{ group.major.active ? '停用' : '復用' }}
             </button>
-            <button type="button" class="btn danger" (click)="removeProductType(group.major.name)">
+            <button type="button" class="btn btn--danger" (click)="removeProductType(group.major.name)">
               刪除
             </button>
           </td>
         </tr>
         @if (isProductTypeGroupExpanded(group.major.id)) {
         @for (item of group.minors | sortRows: typeSort.state(); track item.name) {
-        <tr class="type-minor-row">
-          <td class="type-minor-name">{{ item.name }}</td>
+        <tr class="data-table__row data-table__row--minor">
+          <td class="data-table__minor-name">{{ item.name }}</td>
           <td class="row-actions">
-            <span class="status-text">{{ item.active ? '啟用' : '已停用' }}</span>
+            <span class="row-actions__status">{{ item.active ? '啟用' : '已停用' }}</span>
             <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
               (click)="openProductTypeEditModal(item)">
               編輯
@@ -252,11 +252,11 @@
                  點了「復用」小類就能繞過大類停用的狀態，實際上一放開
                  手就會發現大類還是停用中、小類看起來能用但其實不該用。
                  大類本身是啟用狀態時，小類維持原本可以獨立停用/復用。 -->
-            <button type="button" class="btn" [class.is-restore]="!item.active" [disabled]="!group.major.active"
+            <button type="button" class="btn" [class.btn--restore]="!item.active" [disabled]="!group.major.active"
               [title]="!group.major.active ? '大類已停用，請先復用大類' : ''" (click)="toggleProductTypeActive(item.name)">
               {{ item.active ? '停用' : '復用' }}
             </button>
-            <button type="button" class="btn danger" (click)="removeProductType(item.name)">
+            <button type="button" class="btn btn--danger" (click)="removeProductType(item.name)">
               刪除
             </button>
           </td>
@@ -296,15 +296,15 @@
 
   <!-- ===== 全域預設 ===== -->
   <section class="score-band-group">
-    <h3 class="score-band-group-title">全域預設</h3>
+    <h3 class="score-band-group__title">全域預設</h3>
     <div class="data-table">
       <table>
         <thead>
           <tr>
-            <th class="band-global-col-factor">因子</th>
-            <th class="num band-global-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
-            <th class="num band-global-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
-            <th class="band-global-col-actions"></th>
+            <th class="data-table__col data-table__col--global-factor">因子</th>
+            <th class="u-numeric data-table__col data-table__col--global-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
+            <th class="u-numeric data-table__col data-table__col--global-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
+            <th class="data-table__col data-table__col--global-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -314,7 +314,7 @@
             <td>{{ band.factorLabel }}<app-info-tip
                 [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td colspan="2">
-              <div class="score-band-edit-grid">
+              <div class="score-band-group__edit-grid">
                 <label>下界
                   <input type="number" step="0.0001"
                     [ngModel]="scoreBandDraftLower()" (ngModelChange)="scoreBandDraftLower.set($event)" />
@@ -329,7 +329,7 @@
               <button type="button" class="btn" [disabled]="isSavingScoreBand()" (click)="cancelScoreBandEdit()">
                 取消
               </button>
-              <button type="button" class="btn-primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
+              <button type="button" class="btn btn--primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
                 {{ isSavingScoreBand() ? '儲存中…' : '儲存' }}
               </button>
             </td>
@@ -338,8 +338,8 @@
           <tr>
             <td>{{ band.factorLabel }}<app-info-tip
                 [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
-            <td class="num">{{ band.lowerBound }}</td>
-            <td class="num">{{ band.upperBound }}</td>
+            <td class="u-numeric">{{ band.lowerBound }}</td>
+            <td class="u-numeric">{{ band.upperBound }}</td>
             <td class="row-actions">
               <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
                 (click)="openScoreBandEditor(band)">
@@ -356,17 +356,17 @@
 
   <!-- ===== 各商品類型覆寫 ===== -->
   <section class="score-band-group">
-    <div class="score-band-group-header">
-      <h3 class="score-band-group-title">各商品類型覆寫</h3>
+    <div class="score-band-group__header">
+      <h3 class="score-band-group__title">各商品類型覆寫</h3>
       @if (!isCreatingScoreBand()) {
-      <button type="button" class="btn-primary" [disabled]="pageState() === 'disabled'" (click)="openCreateScoreBand()">
+      <button type="button" class="btn btn--primary" [disabled]="pageState() === 'disabled'" (click)="openCreateScoreBand()">
         ＋ 新增覆寫
       </button>
       }
     </div>
 
     @if (isCreatingScoreBand()) {
-    <div class="panel score-band-create-form">
+    <div class="panel score-band-group__create-form">
       <div class="form-grid">
         <label>商品類型 <em>*</em>
           <select [ngModel]="newScoreBandProductTypeId()" (ngModelChange)="newScoreBandProductTypeId.set($event)">
@@ -394,11 +394,11 @@
       </div>
       <footer>
         <p>同一商品類型的同一因子只能有一筆生效中的區間，重複新增會被拒絕。</p>
-        <div class="footer-actions">
+        <div class="score-band-group__form-actions">
           <button type="button" class="btn" [disabled]="isSavingNewScoreBand()" (click)="cancelCreateScoreBand()">
             取消
           </button>
-          <button type="button" class="btn-primary" [disabled]="isSavingNewScoreBand()" (click)="createScoreBand()">
+          <button type="button" class="btn btn--primary" [disabled]="isSavingNewScoreBand()" (click)="createScoreBand()">
             {{ isSavingNewScoreBand() ? '新增中…' : '新增' }}
           </button>
         </div>
@@ -415,11 +415,11 @@
       <table>
         <thead>
           <tr>
-            <th class="band-override-col-type">商品類型</th>
-            <th class="band-override-col-factor">因子</th>
-            <th class="num band-override-col-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
-            <th class="num band-override-col-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
-            <th class="band-override-col-actions"></th>
+            <th class="data-table__col data-table__col--override-type">商品類型</th>
+            <th class="data-table__col data-table__col--override-factor">因子</th>
+            <th class="u-numeric data-table__col data-table__col--override-bound">下界<app-info-tip text="這個因子的原始數值等於下界時記 0 分，低於下界一律以 0 分計。" /></th>
+            <th class="u-numeric data-table__col data-table__col--override-bound">上界<app-info-tip text="這個因子的原始數值等於上界時記 100 分，高於上界一律以滿分計。上界以下預設依比例（線性）給分；設定為對數換算的因子（例如社群聲量熱度）改以對數壓縮長尾，一般數值不會全部擠在 0 分附近，上界不必為了讓一般商品有分數而刻意壓低。" /></th>
+            <th class="data-table__col data-table__col--override-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -430,7 +430,7 @@
             <td>{{ band.factorLabel }}<app-info-tip
                 [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
             <td colspan="2">
-              <div class="score-band-edit-grid">
+              <div class="score-band-group__edit-grid">
                 <label>下界
                   <input type="number" step="0.0001"
                     [ngModel]="scoreBandDraftLower()" (ngModelChange)="scoreBandDraftLower.set($event)" />
@@ -445,7 +445,7 @@
               <button type="button" class="btn" [disabled]="isSavingScoreBand()" (click)="cancelScoreBandEdit()">
                 取消
               </button>
-              <button type="button" class="btn-primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
+              <button type="button" class="btn btn--primary" [disabled]="isSavingScoreBand()" (click)="saveScoreBand()">
                 {{ isSavingScoreBand() ? '儲存中…' : '儲存' }}
               </button>
             </td>
@@ -455,8 +455,8 @@
             <td>{{ band.productTypeName }}</td>
             <td>{{ band.factorLabel }}<app-info-tip
                 [text]="factorHelp[band.factorCode] ?? '此為自訂因子，實際計算方式與資料來源請見「自訂計分因子」分頁的設定。'" /></td>
-            <td class="num">{{ band.lowerBound }}</td>
-            <td class="num">{{ band.upperBound }}</td>
+            <td class="u-numeric">{{ band.lowerBound }}</td>
+            <td class="u-numeric">{{ band.upperBound }}</td>
             <td class="row-actions">
               <button type="button" class="btn" [disabled]="pageState() === 'disabled'"
                 (click)="openScoreBandEditor(band)">
@@ -478,7 +478,7 @@
     </div>
   </section>
   <!-- 天氣加成上限與歷史／預報比重是評分規則，但和天氣資料共用天氣連動元件，不拆過來（見 settings-groups.ts）。 -->
-  <p class="helper settings-cross-link">
+  <p class="helper settings__cross-link">
     天氣加成上限與歷史／預報比重，請到
     <a routerLink="/settings/data" [queryParams]="{ tab: 'weather' }">選品基礎資料 › 天氣連動</a>
     調整。
@@ -486,15 +486,15 @@
 
   @for (group of systemSettingsByCategory(); track group.category) {
   <section class="score-band-group">
-    <h3 class="score-band-group-title">{{ group.category }}</h3>
+    <h3 class="score-band-group__title">{{ group.category }}</h3>
     <div class="data-table">
       <table>
         <thead>
           <tr>
-            <th class="setting-col-param">參數</th>
-            <th class="num setting-col-value">目前值</th>
-            <th class="setting-col-updated">最後異動</th>
-            <th class="setting-col-actions"></th>
+            <th class="data-table__col data-table__col--setting-param">參數</th>
+            <th class="u-numeric data-table__col data-table__col--setting-value">目前值</th>
+            <th class="data-table__col data-table__col--setting-updated">最後異動</th>
+            <th class="data-table__col data-table__col--setting-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -507,7 +507,7 @@
             </td>
             <td colspan="2">
               @if (setting.key === 'supported_temperature_zones') {
-              <div class="temperature-zone-checkboxes">
+              <div class="zone-checkboxes">
                 @for (zone of temperatureZoneOptions; track zone) {
                 <label class="checkbox-chip">
                   <input type="checkbox" [checked]="isTemperatureZoneSelected(zone)"
@@ -518,27 +518,27 @@
               </div>
               <span class="helper">至少需勾選一項；未勾選的溫層視為此通路不支援。</span>
               } @else if (sliderCategories.has(group.category)) {
-              <div class="system-setting-slider-field">
+              <div class="setting-slider">
                 <input type="range" [min]="setting.minValue" [max]="setting.maxValue" [step]="nativeSliderStep(setting)"
                   [ngModel]="systemSettingDraftValue()" (ngModelChange)="onSliderDrag(setting, $event)" />
                 <!-- 手動輸入（2026-09-23 分支整併，決策 E）：滑桿拖曳維持業務顆粒度，
                      這裡可以直接打格線以外的精確數字，兩者共用同一個草稿值。 -->
-                <input type="number" class="system-setting-slider-manual" [min]="setting.minValue"
+                <input type="number" class="setting-slider__input" [min]="setting.minValue"
                   [max]="setting.maxValue" [step]="nativeSliderStep(setting)" [ngModel]="systemSettingDraftValue()"
                   (ngModelChange)="onSliderManualInput($event)" [attr.aria-label]="setting.displayName + '（手動輸入）'" />
-                @if (setting.unit) {<span class="unit">{{ setting.unit }}</span>}
+                @if (setting.unit) {<span class="u-unit">{{ setting.unit }}</span>}
               </div>
               @if (setting.minValue !== null && setting.maxValue !== null) {
               <span class="helper">合法範圍：{{ setting.minValue }} ~ {{ setting.maxValue }}@if (sliderStep(setting) >
                 nativeSliderStep(setting)) {；滑桿每格 {{ sliderStep(setting) }}，其他數值可直接輸入}</span>
               }
               } @else {
-              <label class="system-setting-edit-field">
+              <label class="setting-edit-field">
                 <input [type]="setting.dataType === 'STRING' ? 'text' : 'number'"
                   [step]="setting.dataType === 'INTEGER' ? 1 : 0.01" [ngModel]="systemSettingDraftValue()"
                   (ngModelChange)="systemSettingDraftValue.set(toDraftValue($event))" />
                 @if (setting.unit) {
-                <span class="unit">{{ setting.unit }}</span>
+                <span class="u-unit">{{ setting.unit }}</span>
                 }
               </label>
               @if (setting.minValue !== null && setting.maxValue !== null) {
@@ -551,7 +551,7 @@
                 (click)="cancelSystemSettingEdit()">
                 取消
               </button>
-              <button type="button" class="btn-primary" [disabled]="isSavingSystemSetting()"
+              <button type="button" class="btn btn--primary" [disabled]="isSavingSystemSetting()"
                 (click)="saveSystemSetting()">
                 {{ isSavingSystemSetting() ? '儲存中…' : '儲存' }}
               </button>
@@ -570,14 +570,14 @@
               <app-info-tip [text]="setting.description" />
               }
               @if (!setting.hasStoredValue) {
-              <span class="badge badge-muted">預設值，尚未手動調整過</span>
+              <span class="badge badge--neutral">預設值，尚未手動調整過</span>
               }
             </td>
-            <td class="num">
-              <span class="system-setting-value" [class.is-text-value]="setting.dataType === 'STRING'">{{
+            <td class="u-numeric">
+              <span class="setting-value" [class.is-text-value]="setting.dataType === 'STRING'">{{
                 formatSystemSettingValue(setting) }}</span>
               @if (setting.unit) {
-              <span class="unit">{{ setting.unit }}</span>
+              <span class="u-unit">{{ setting.unit }}</span>
               }
             </td>
             <td>
@@ -624,7 +624,7 @@
     <div>
       <h2>帳號管理</h2>
     </div>
-    <button type="button" class="btn-primary" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
+    <button type="button" class="btn btn--primary" (click)="openModal('account')" [disabled]="pageState() === 'disabled'">
       ＋ 新增帳號
     </button>
   </section>
@@ -632,11 +632,11 @@
     <table>
       <thead>
         <tr>
-          <th class="account-col-username" appSortHeader="username" [sort]="accountSort">使用者帳號</th>
-          <th class="account-col-name" appSortHeader="name" [sort]="accountSort">姓名</th>
-          <th class="account-col-role" appSortHeader="role" [sort]="accountSort">角色權限</th>
-          <th class="account-col-status" appSortHeader="active" [sort]="accountSort">狀態</th>
-          <th class="account-col-actions">帳號操作</th>
+          <th class="data-table__col data-table__col--account-username" appSortHeader="username" [sort]="accountSort">使用者帳號</th>
+          <th class="data-table__col data-table__col--account-name" appSortHeader="name" [sort]="accountSort">姓名</th>
+          <th class="data-table__col data-table__col--account-role" appSortHeader="role" [sort]="accountSort">角色權限</th>
+          <th class="data-table__col data-table__col--account-status" appSortHeader="active" [sort]="accountSort">狀態</th>
+          <th class="data-table__col data-table__col--account-actions">帳號操作</th>
         </tr>
       </thead>
       <tbody>
@@ -654,15 +654,15 @@
             }
             @if (item.passwordResetRequestedAt) {
             <!-- V27：使用者在登入頁申請重設密碼；只有這種帳號可以被重設。 -->
-            <span class="helper reset-requested">・申請重設密碼（{{ item.passwordResetRequestedAt | date: 'MM-dd HH:mm' }}）</span>
+            <span class="helper helper--reset-requested">・申請重設密碼（{{ item.passwordResetRequestedAt | date: 'MM-dd HH:mm' }}）</span>
             }
           </td>
-          <td class="account-col-actions">
-            <div class="row-actions account-actions">
+          <td class="data-table__col data-table__col--account-actions">
+            <div class="row-actions row-actions--account">
               @if (item.active && isSelfAccount(item)) {
               <span class="helper">（本人）</span>
               }
-              <button type="button" class="btn" [class.is-restore]="!item.active"
+              <button type="button" class="btn" [class.btn--restore]="!item.active"
                 [disabled]="pageState() === 'disabled' || (item.active && isSelfAccount(item))"
                 [attr.title]="item.active && isSelfAccount(item) ? '不能停用自己的帳號' : null"
                 (click)="toggleAccountActive(item.username)">
@@ -693,7 +693,7 @@
   </section>
   <div class="mode-grid">
     @for (mode of modes(); track mode.code) {
-    <article [class.active]="activeMode() === mode.code" [class.is-selectable]="activeMode() !== mode.code"
+    <article [class.is-active]="activeMode() === mode.code" [class.is-selectable]="activeMode() !== mode.code"
       (click)="activeMode() !== mode.code && selectMode(mode.code)">
       <header>
         <div>
@@ -727,8 +727,8 @@
           輸入框、按鈕）都不會再冒泡上去。
         -->
         @for (factorCode of factorOrder(); track factorCode) {
-        <div class="weight-editor-row">
-          <label class="weight-editor-row-label">
+        <div class="weight-editor__row">
+          <label class="weight-editor__label">
             <!--
               checkbox 改用 (click)+preventDefault()，不用 (change)：改成
               完全由 Angular 的 [checked] 綁定決定畫面上的勾選狀態，不讓
@@ -745,19 +745,19 @@
             <app-info-tip [text]="help" (click)="$event.preventDefault()" />
             }
           </label>
-          <input type="number" step="0.01" min="0" max="100" class="weight-editor-row-value"
+          <input type="number" step="0.01" min="0" max="100" class="weight-editor__value"
             [ngModel]="weightDrafts()[factorCode]" [disabled]="!enabledFactorCodes().has(factorCode)"
             (ngModelChange)="updateWeightDraft(factorCode, $event)" />
         </div>
         }
-        <div class="weight-editor-total" [class.is-invalid]="weightDraftTotal() !== 100">
+        <div class="weight-editor__total" [class.is-invalid]="weightDraftTotal() !== 100">
           目前加總：{{ weightDraftTotal() }} / 100（僅計入已勾選的因子）
         </div>
-        <div class="weight-editor-actions">
+        <div class="weight-editor__actions">
           <button type="button" class="btn" [disabled]="isSavingWeights()" (click)="cancelEditWeights()">
             取消
           </button>
-          <button type="button" class="btn-primary" [disabled]="isSavingWeights()" (click)="saveWeights()">
+          <button type="button" class="btn btn--primary" [disabled]="isSavingWeights()" (click)="saveWeights()">
             {{ isSavingWeights() ? '儲存中…' : '儲存權重' }}
           </button>
         </div>
@@ -768,7 +768,7 @@
            預測人氣四象限彙總——四個固定模式跟自訂模式都改，理由：自訂因子
            本來就不屬於任何一個既有象限分組，彙總會漏掉它們；四個模式統一
            呈現方式，畫面邏輯也比較一致。唯讀展示，樣式沿用既有 dt/dd 排版。 -->
-      <dl class="factor-breakdown">
+      <dl class="mode-grid__breakdown">
         @for (factor of mode.rawFactors; track factor.factorCode) {
         <!-- 已停用的自訂因子仍留在模式的權重表，但不參與計分，標示出來避免誤會。 -->
         <div [class.is-inactive]="inactiveCustomFactorCodes().has(factor.factorCode)">
@@ -780,14 +780,14 @@
       @if (mode.isEditable) {
       <!-- 2026-09-29：按鈕在可點選切換模式的 <article> 裡，要擋掉冒泡——否則自訂模式
            不是目前生效模式時，按「編輯權重」會連帶把系統生效模式切到自訂模式。 -->
-      <button type="button" class="btn edit-weights-button" [disabled]="pageState() === 'disabled'"
+      <button type="button" class="btn mode-grid__edit-weights" [disabled]="pageState() === 'disabled'"
         (click)="$event.stopPropagation(); startEditWeights(mode)">
         編輯權重
       </button>
       }
       }
       @if (activeMode() === mode.code) {
-      <strong class="current">目前生效</strong>
+      <strong class="mode-grid__current">目前生效</strong>
       }
     </article>
     }
@@ -810,7 +810,7 @@
           : '新增帳號'
           }}
         </h2>
-        <button type="button" class="modal-close" (click)="closeModal()" aria-label="關閉"><app-icon name="x" /></button>
+        <button type="button" class="modal-card__close" (click)="closeModal()" aria-label="關閉"><app-icon name="x" /></button>
       </header>
       @if (modal() === 'risk') {
       <label>選項名稱
@@ -825,8 +825,8 @@
         <div class="keyword-chip-input">
           <div class="keyword-chip-list">
             @for (kw of draftKeywordChips(); track kw; let i = $index) {
-            <span class="keyword-chip">{{ kw }}
-              <button type="button" class="keyword-chip-remove" (click)="removeDraftKeyword(i)"
+            <span class="keyword-chip-list__chip">{{ kw }}
+              <button type="button" class="keyword-chip-list__remove" (click)="removeDraftKeyword(i)"
                 [attr.aria-label]="'刪除關鍵字 ' + kw">
                 <app-icon name="x" size="sm" />
               </button></span>
@@ -847,14 +847,14 @@
            也沒有選上層大類的地方——送出的類型永遠是「無層級」的孤兒分類，
            跟系統既有的兩層分類體系（大類/小類）脫節。編輯既有類型（改名）
            不show這組欄位，層級與上層大類只在新增當下決定，之後不能再改。 -->
-      <fieldset class="product-type-level">
+      <fieldset class="settings-modal__type-level">
         <legend>類型層級</legend>
-        <label class="radio-option">
+        <label class="settings-modal__radio">
           <input type="radio" name="productTypeLevel" [checked]="draftProductTypeLevel() === 1"
             (change)="draftProductTypeLevel.set(1)" />
           大類
         </label>
-        <label class="radio-option">
+        <label class="settings-modal__radio">
           <input type="radio" name="productTypeLevel" [checked]="draftProductTypeLevel() === 2"
             (change)="draftProductTypeLevel.set(2)" [disabled]="availableMajorTypes().length === 0" />
           小類
@@ -902,7 +902,7 @@
       <small class="helper">至少 8 碼。送出後對方目前的登入會立即失效，下次登入需先把這組密碼改掉。</small>
       }
       <footer>
-        <button type="button" class="btn" (click)="closeModal()">取消</button><button type="submit" class="btn-primary"
+        <button type="button" class="btn" (click)="closeModal()">取消</button><button type="submit" class="btn btn--primary"
           [disabled]="isSavingModal()">{{ isSavingModal() ? '儲存中…' : (useMockData ? '儲存 Mock' : '儲存') }}</button>
       </footer>
     </form>

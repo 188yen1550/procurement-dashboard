@@ -41,10 +41,10 @@ const STATUS_LABEL: Record<TrendSyncRunStatus, string> = {
 };
 
 const STATUS_BADGE: Record<TrendSyncRunStatus, string> = {
-  RUNNING: 'badge-muted',
-  COMPLETED: 'badge-success',
-  FAILED: 'badge-error',
-  SKIPPED: 'badge-muted',
+  RUNNING: 'badge--neutral',
+  COMPLETED: 'badge--success',
+  FAILED: 'badge--error',
+  SKIPPED: 'badge--neutral',
 };
 
 const TRIGGER_LABEL: Record<TrendSyncTrigger, string> = {
@@ -105,7 +105,7 @@ export class TrendCrawlerPanel implements OnInit {
   }
 
   statusBadge(status: TrendSyncRunStatus): string {
-    return STATUS_BADGE[status] ?? 'badge-muted';
+    return STATUS_BADGE[status] ?? 'badge--neutral';
   }
 
   triggerLabel(run: TrendSyncRun): string {

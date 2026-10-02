@@ -8,18 +8,18 @@
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #e3e8ee;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   text-align: center;
-}
 
-.reset-link {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #1f5f9e;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+  &__link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #1f5f9e;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
 }
 
 /* dialog 元素本身是全螢幕透明容器，負責置中；遮罩用 ::backdrop。 */
@@ -34,15 +34,15 @@
   overflow: auto;
   background: transparent;
   border: 0;
-}
 
-.reset-dialog-backdrop[open] {
-  display: grid;
-  place-items: center;
-}
+  &[open] {
+    display: grid;
+    place-items: center;
+  }
 
-.reset-dialog-backdrop::backdrop {
-  background: rgba(15, 35, 55, 0.58);
+  &::backdrop {
+    background: rgba(15, 35, 55, 0.58);
+  }
 }
 
 .reset-dialog {
@@ -53,78 +53,78 @@
   background: #fff;
   border-radius: 0.8rem;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   text-align: center;
-}
 
-.reset-title {
-  margin: 0 0 0.5rem;
-  font-size: var(--t-lg, 1.15rem);
-}
+  &__title {
+    margin: 0 0 0.5rem;
+    font-size: var(--font-size-lg, 1.15rem);
+  }
 
-.reset-hint,
-.reset-done {
-  margin: 0 0 1rem;
-  color: #526677;
-  line-height: 1.5;
-}
+  &__hint,
+  &__success {
+    margin: 0 0 1rem;
+    color: #526677;
+    line-height: 1.5;
+  }
 
-.reset-done {
-  padding: 0.65rem 0.8rem;
-  border: 1px solid #b9dcc4;
-  border-radius: 0.5rem;
-  background: #f0faf3;
-  color: #245c35;
-}
+  &__success {
+    padding: 0.65rem 0.8rem;
+    border: 1px solid #b9dcc4;
+    border-radius: 0.5rem;
+    background: #f0faf3;
+    color: #245c35;
+  }
 
-.reset-form {
-  display: grid;
-  gap: 0.4rem;
-  text-align: left;
-}
+  &__form {
+    display: grid;
+    gap: 0.4rem;
+    text-align: left;
+  }
 
-.reset-form label {
-  font-weight: 600;
-}
+  &__form label {
+    font-weight: 600;
+  }
 
-.reset-form input {
-  padding: 0.6rem 0.75rem;
-  border: 1px solid #c9d4de;
-  border-radius: 6px;
-  font: inherit;
-}
+  &__form input {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #c9d4de;
+    border-radius: 6px;
+    font: inherit;
+  }
 
-.reset-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
 
-.reset-cancel,
-.reset-submit {
-  min-width: 6.5rem;
-  padding: 0.55rem 1rem;
-  border-radius: 6px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
+  &__cancel,
+  &__submit {
+    min-width: 6.5rem;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
 
-.reset-cancel {
-  color: #38536a;
-  background: #fff;
-  border: 1px solid #aebfc9;
-}
+  &__cancel {
+    color: #38536a;
+    background: #fff;
+    border: 1px solid #aebfc9;
+  }
 
-.reset-submit {
-  color: #fff;
-  background: #1f5f9e;
-  border: 1px solid #1f5f9e;
-}
+  &__submit {
+    color: #fff;
+    background: #1f5f9e;
+    border: 1px solid #1f5f9e;
+  }
 
-.reset-cancel:disabled,
-.reset-submit:disabled {
-  opacity: 0.6;
-  cursor: wait;
+  &__cancel:disabled,
+  &__submit:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
 }

@@ -1,5 +1,5 @@
 /* 檔案用途：品項表單、鎖定／成功／錯誤、Modal、骨架、focus-visible 與 700px 單欄響應式樣式。 */
-.feedback-toast {
+.product-form__toast {
   position: fixed;
   right: 1rem;
   bottom: 1rem;
@@ -10,7 +10,7 @@
   background: #2f5d22;
   border-radius: .6rem;
   box-shadow: 0 10px 30px rgba(20, 45, 25, .25);
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700
 }
 
@@ -18,88 +18,90 @@
   display: flex;
   flex-wrap: wrap;
   gap: .4rem;
-  margin-top: .4rem
-}
-
-.tag-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  padding: .35rem .65rem;
-  color: #455b6e;
-  background: #f8fafc;
-  border: 1px solid #d4dee6;
-  border-radius: 999px;
-  font: inherit;
-  font-size: var(--t-xs);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease, color .15s ease
-}
-
-.tag-toggle:hover {
-  background: #eef1f3
-}
-
-.tag-toggle.is-selected {
-  color: #fff;
-  background: #4b7a2f;
-  border-color: #3f6626
-}
-
-.tag-toggle.is-selected:hover {
-  background: #3f6626
-}
-
-.tag-toggle.is-selected app-icon {
-  color: #fff
-}
-
-.tag-toggle:focus-visible {
-  outline: 3px solid rgba(127, 163, 74, .4);
-  outline-offset: 2px
-}
-
-.tag-toggle.is-readonly {
-  color: #8a969f;
-  background: #eef1f3;
-  border-color: #e0e6ea;
-  cursor: not-allowed;
-}
-
-.tag-toggle.is-readonly:hover {
-  background: #eef1f3;
-}
-
-.tag-toggle.is-readonly app-icon {
-  color: #8a969f;
-}
-
-.tag-empty-hint {
   margin-top: .4rem;
-  color: #8a969f;
-  font-size: var(--t-xs);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .35rem .65rem;
+    color: #455b6e;
+    background: #f8fafc;
+    border: 1px solid #d4dee6;
+    border-radius: 999px;
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, color .15s ease
+  }
+
+  &__item:hover {
+    background: #eef1f3
+  }
+
+  &__item.is-selected {
+    color: #fff;
+    background: #4b7a2f;
+    border-color: #3f6626
+  }
+
+  &__item.is-selected:hover {
+    background: #3f6626
+  }
+
+  &__item.is-selected app-icon {
+    color: #fff
+  }
+
+  &__item:focus-visible {
+    outline: 3px solid rgba(127, 163, 74, .4);
+    outline-offset: 2px
+  }
+
+  &__item.is-readonly {
+    color: #8a969f;
+    background: #eef1f3;
+    border-color: #e0e6ea;
+    cursor: not-allowed;
+  }
+
+  &__item.is-readonly:hover {
+    background: #eef1f3;
+  }
+
+  &__item.is-readonly app-icon {
+    color: #8a969f;
+  }
 }
 
-.tag-help {
-  margin-top: .4rem;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
+.product-form {
+  &__tag-empty-hint {
+    margin-top: .4rem;
+    color: #8a969f;
+    font-size: var(--font-size-xs);
+  }
 
-.tag-help summary {
-  color: var(--c-brand);
-  font-weight: 700;
-  cursor: pointer
-}
+  &__tag-help {
+    margin-top: .4rem;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 
-.tag-help summary:focus-visible {
-  outline: 3px solid rgba(28, 82, 134, .24);
-  outline-offset: 2px
-}
+  &__tag-help summary {
+    color: var(--color-brand);
+    font-weight: 700;
+    cursor: pointer
+  }
 
-.tag-help p {
-  margin: .4rem 0 0
+  &__tag-help summary:focus-visible {
+    outline: 3px solid rgba(28, 82, 134, .24);
+    outline-offset: 2px
+  }
+
+  &__tag-help p {
+    margin: .4rem 0 0
+  }
 }
 
 @media(max-width:600px) {
@@ -108,7 +110,7 @@
     justify-content: center
   }
 
-  .feedback-toast {
+  .product-form__toast {
     right: .75rem;
     bottom: .75rem;
     left: .75rem;
@@ -122,7 +124,7 @@
   color: #243447
 }
 
-.form-page {
+.product-form {
   max-width: 1100px;
   margin: auto
 }
@@ -138,34 +140,25 @@
 }
 
 .page-header {
-  margin-bottom: 1rem
+  margin-bottom: 1rem;
+
+  h1 {
+    margin: .15rem 0 .3rem;
+    font-size: clamp(1.5rem, 3vw, 2rem)
+  }
+
+  p {
+    margin: 0;
+    color: #6c7a89
+  }
 }
 
-.page-header h1 {
-  margin: .15rem 0 .3rem;
-  font-size: clamp(1.5rem, 3vw, 2rem)
-}
-
-.page-header p {
-  margin: 0;
-  color: #6c7a89
-}
-
-.eyebrow {
-  margin: 0 !important;
-  color: #39735c !important;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase
-}
-
-.mode-badge {
+.product-form__mode-badge {
   padding: .4rem .65rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
+  color: var(--color-brand);
+  background: var(--color-brand-tint);
   border-radius: 999px;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 800
 }
 
@@ -174,192 +167,195 @@
   padding: .7rem .9rem;
   background: #eef4f8;
   border: 1px solid #dce6ed;
-  border-radius: .7rem
-}
+  border-radius: .7rem;
 
-.state-bar span {
-  display: block;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
+  span {
+    display: block;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 
-.state-bar>div:last-child {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem
+  >div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem
+  }
 }
 
 .state-bar button,
 .notice button,
-.notice a,
-.secondary,
-.primary {
+.product-form__secondary-action,
+.product-form__primary-action {
   padding: .45rem .65rem;
   color: #38536a;
   background: #fff;
   border: 1px solid #cbd9e3;
   border-radius: .4rem;
   font: inherit;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
   text-decoration: none
 }
 
-.state-bar button.active,
-.primary {
+.state-bar button.is-active,
+.product-form__primary-action {
   color: #fff;
-  background: var(--c-brand);
-  border-color: var(--c-brand)
+  background: var(--color-brand);
+  border-color: var(--color-brand)
 }
 
 .notice {
   margin-bottom: 1rem;
   padding: .85rem 1rem;
-  border-radius: .65rem
-}
+  border-radius: .65rem;
 
-.notice strong,
-.notice span {
-  display: block
-}
+  strong,
+  span {
+    display: block
+  }
 
-.notice strong {
-  display: flex;
-  align-items: center;
-  gap: .4rem
-}
+  strong {
+    display: flex;
+    align-items: center;
+    gap: .4rem
+  }
 
-.notice span {
-  margin-top: .2rem;
-  font-size: var(--t-xs);
-}
+  span {
+    margin-top: .2rem;
+    font-size: var(--font-size-xs);
+  }
 
-.notice.locked {
-  color: #725510;
-  background: #fff8dc;
-  border: 1px solid #ead895
-}
+  &--locked {
+    color: #725510;
+    background: #fff8dc;
+    border: 1px solid #ead895
+  }
 
-.notice.rejected {
-  color: #8a3f39;
-  background: #fff0ef;
-  border: 1px solid #efc1be
-}
+  &--rejected {
+    color: #8a3f39;
+    background: #fff0ef;
+    border: 1px solid #efc1be
+  }
 
-.notice.success {
-  color: #21694f;
-  background: #e5f5ee;
-  border: 1px solid #add9c7
-}
+  &--success {
+    color: #21694f;
+    background: #e5f5ee;
+    border: 1px solid #add9c7
+  }
 
-.notice.error {
-  color: #7a2927;
-  background: #fff0ef;
-  border: 1px solid #efc1be
+  &--error {
+    color: #7a2927;
+    background: #fff0ef;
+    border: 1px solid #efc1be
+  }
 }
 
 .form-card {
   background: #fff;
   border: 1px solid #e0e8ee;
   border-radius: .8rem;
-  box-shadow: 0 8px 24px rgba(29, 54, 78, .05)
-}
+  box-shadow: 0 8px 24px rgba(29, 54, 78, .05);
 
-.form-card section {
-  padding: 1.2rem
-}
+  section {
+    padding: 1.2rem
+  }
 
-.form-card section+section {
-  border-top: 1px solid #e8eef2
-}
+  section+section {
+    border-top: 1px solid #e8eef2
+  }
 
-.form-card section>header {
-  display: flex;
-  gap: .75rem;
-  margin-bottom: 1rem
-}
+  section>header {
+    display: flex;
+    gap: .75rem;
+    margin-bottom: 1rem
+  }
 
-.form-card section>header>span {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  color: #fff;
-  background: #39735c;
-  border-radius: 50%;
-  font-size: var(--t-xs);
-  font-weight: 800
-}
+  section>header>span {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    color: #fff;
+    background: #39735c;
+    border-radius: 50%;
+    font-size: var(--font-size-xs);
+    font-weight: 800
+  }
 
-.form-card h2 {
-  margin: 0;
-  font-size: var(--t-base);
-}
+  h2 {
+    margin: 0;
+    font-size: var(--font-size-base);
+  }
 
-.form-card header p {
-  margin: .2rem 0 0;
-  color: #6c7a89;
-  font-size: var(--t-xs);
+  header p {
+    margin: .2rem 0 0;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem
-}
+  gap: 1rem;
 
-.form-grid label,
-.form-grid fieldset {
-  min-width: 0;
-  margin: 0;
-  color: #40576a;
-  font-size: var(--t-xs);
-  font-weight: 700
-}
+  label,
+  fieldset {
+    min-width: 0;
+    margin: 0;
+    color: #40576a;
+    font-size: var(--font-size-xs);
+    font-weight: 700
+  }
 
-.wide {
-  grid-column: 1/-1
+  &__full-row {
+    grid-column: 1/-1
+  }
 }
 
 /* 再販售且已選分類、該分類下有既有供應商可選時，商品基本資料這裡改顯示
    唯讀摘要（見 product-form.html 的說明），樣式沿用 .form-grid label 的
    字級但拿掉輸入框的視覺樣式，避免看起來像可以直接點擊編輯。 */
-.resale-supplier-readonly {
-  display: flex;
-  flex-direction: column;
-  gap: .2rem;
-  padding: .5rem .65rem;
-  color: #40576a;
-  font-size: var(--t-xs);
-  font-weight: 700;
-  background: #f1f4f6;
-  border: 1px dashed #cbd9e3;
-  border-radius: .45rem;
+.product-form {
+  &__resale-supplier {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    padding: .5rem .65rem;
+    color: #40576a;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    background: #f1f4f6;
+    border: 1px dashed #cbd9e3;
+    border-radius: .45rem;
+  }
+
+  &__resale-supplier .helper {
+    color: #6c7a89;
+    font-weight: 600;
+  }
 }
 
-.resale-supplier-readonly .helper {
-  color: #6c7a89;
-  font-weight: 600;
-}
+.form-grid {
+  input:not([type=radio]),
+  select,
+  textarea {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin-top: .35rem;
+    padding: .65rem;
+    color: #243447;
+    background: #f8fafc;
+    border: 1px solid #d4dee6;
+    border-radius: .45rem;
+    font: inherit
+  }
 
-.form-grid input:not([type=radio]),
-.form-grid select,
-.form-grid textarea {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  margin-top: .35rem;
-  padding: .65rem;
-  color: #243447;
-  background: #f8fafc;
-  border: 1px solid #d4dee6;
-  border-radius: .45rem;
-  font: inherit
-}
-
-.form-grid textarea {
-  resize: vertical
+  textarea {
+    resize: vertical
+  }
 }
 
 .form-grid input:focus,
@@ -371,45 +367,49 @@ a:focus-visible {
   outline-offset: 2px
 }
 
-.form-grid input[aria-invalid=true] {
-  border-color: #b94d47
+.form-grid {
+  input[aria-invalid=true] {
+    border-color: #b94d47
+  }
+
+  small {
+    display: block;
+    margin-top: .28rem;
+    color: #8d3733;
+    font-size: var(--font-size-xs);
+    line-height: 1.4
+  }
+
+  /* 2026-09-30：欄位說明（.helper）維持中性色；上面的紅字只給驗證錯誤用。 */
+  small.helper {
+    color: var(--color-ink-muted)
+  }
+
+  em {
+    color: #a43d36;
+    font-style: normal
+  }
+
+  fieldset {
+    padding: .7rem;
+    border: 1px solid #d4dee6;
+    border-radius: .5rem
+  }
 }
 
-.form-grid small {
-  display: block;
-  margin-top: .28rem;
-  color: #8d3733;
-  font-size: var(--t-xs);
-  line-height: 1.4
-}
+.product-form {
+  &__choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: .35rem
+  }
 
-/* 2026-09-30：欄位說明（.helper）維持中性色；上面的紅字只給驗證錯誤用。 */
-.form-grid small.helper {
-  color: var(--c-ink-muted)
-}
-
-.form-grid em {
-  color: #a43d36;
-  font-style: normal
-}
-
-.form-grid fieldset {
-  padding: .7rem;
-  border: 1px solid #d4dee6;
-  border-radius: .5rem
-}
-
-.choice-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: .35rem
-}
-
-.choice-row label {
-  display: flex;
-  align-items: center;
-  gap: .3rem
+  &__choice-row label {
+    display: flex;
+    align-items: center;
+    gap: .3rem
+  }
 }
 
 .price-grid {
@@ -418,83 +418,81 @@ a:focus-visible {
   gap: .75rem;
   padding: .8rem;
   background: #f5f8fa;
-  border-radius: .55rem
+  border-radius: .55rem;
+
+  &__margin {
+    display: grid;
+    align-content: center;
+    padding: .6rem;
+    text-align: center;
+    background: var(--color-brand-tint);
+    border-radius: .45rem
+  }
+
+  &__margin span {
+    font-size: var(--font-size-xs);
+  }
+
+  &__margin strong {
+    color: var(--color-brand);
+    font-size: var(--font-size-lg);
+  }
 }
 
-.margin-card {
-  display: grid;
-  align-content: center;
-  padding: .6rem;
-  text-align: center;
-  background: var(--c-brand-tint);
-  border-radius: .45rem
+.product-form {
+  &__pending-pricing {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .8rem;
+    color: #70531a;
+    background: #fff8dc;
+    border-radius: .55rem
+  }
+
+  &__pending-pricing span {
+    font-size: var(--font-size-xs);
+  }
 }
 
-.margin-card span {
-  font-size: var(--t-xs);
-}
+.form-card {
+  footer {
+    padding: 1rem 1.2rem;
+    background: #f8fafc;
+    border-top: 1px solid #e8eef2
+  }
 
-.margin-card strong {
-  color: var(--c-brand);
-  font-size: var(--t-lg);
-}
-
-.pending-pricing {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .8rem;
-  color: #70531a;
-  background: #fff8dc;
-  border-radius: .55rem
-}
-
-.pending-pricing span {
-  font-size: var(--t-xs);
-}
-
-.form-card footer {
-  padding: 1rem 1.2rem;
-  background: #f8fafc;
-  border-top: 1px solid #e8eef2
-}
-
-.form-card footer p {
-  margin: 0;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-
-.form-card footer>div {
-  display: flex;
-  gap: .5rem
+  footer>div {
+    display: flex;
+    gap: .5rem
+  }
 }
 
 .skeleton {
   min-height: 480px;
   padding: 1rem;
-  color: #526677
+  color: #526677;
+
+  i {
+    display: block;
+    height: 1rem;
+    margin: 1.2rem 0;
+    background: #edf1f4;
+    border-radius: .3rem
+  }
 }
 
-.skeleton i {
-  display: block;
-  height: 1rem;
-  margin: 1.2rem 0;
-  background: #edf1f4;
-  border-radius: .3rem
-}
-
-.spinner {
+.product-form__spinner {
   display: inline-block;
   width: 1rem;
   height: 1rem;
   margin-right: .4rem;
   border: 2px solid #ccd8e1;
-  border-top-color: var(--c-brand);
+  border-top-color: var(--color-brand);
   border-radius: 50%
 }
 
-.sr-only {
+.u-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -522,59 +520,63 @@ a:focus-visible {
     grid-template-columns: 1fr
   }
 
-  .wide {
+  .form-grid__full-row {
     grid-column: auto
   }
 
-  .pending-pricing {
+  .product-form__pending-pricing {
     flex-direction: column
   }
 
-  .form-card footer>div {
-    display: grid;
-    grid-template-columns: 1fr
+  .form-card {
+    footer>div {
+      display: grid;
+      grid-template-columns: 1fr
+    }
+
+    footer button {
+      width: 100%
+    }
+  }
+}
+
+.form-card {
+  section.is-core-locked {
+    position: relative;
+    background: #f8f9fb
   }
 
-  .form-card footer button {
-    width: 100%
+  section.is-core-locked>header>span {
+    background: #8a969f
+  }
+
+  section.is-core-locked h2::after {
+    content: "🔒 已鎖定";
+    margin-left: .5rem;
+    padding: .15rem .5rem;
+    color: #455b6e;
+    background: #eef1f3;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    vertical-align: middle
+  }
+
+  section.is-core-locked .form-grid label,
+  section.is-core-locked .form-grid fieldset legend {
+    color: #8a969f
+  }
+
+  section.is-core-locked input:disabled,
+  section.is-core-locked select:disabled,
+  section.is-core-locked textarea:disabled {
+    color: #8a969f;
+    background: #eef1f3;
+    cursor: not-allowed
   }
 }
 
-.form-card section.is-core-locked {
-  position: relative;
-  background: #f8f9fb
-}
-
-.form-card section.is-core-locked>header>span {
-  background: #8a969f
-}
-
-.form-card section.is-core-locked h2::after {
-  content: "🔒 已鎖定";
-  margin-left: .5rem;
-  padding: .15rem .5rem;
-  color: #455b6e;
-  background: #eef1f3;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  vertical-align: middle
-}
-
-.form-card section.is-core-locked .form-grid label,
-.form-card section.is-core-locked .form-grid fieldset legend {
-  color: #8a969f
-}
-
-.form-card section.is-core-locked input:disabled,
-.form-card section.is-core-locked select:disabled,
-.form-card section.is-core-locked textarea:disabled {
-  color: #8a969f;
-  background: #eef1f3;
-  cursor: not-allowed
-}
-
-.gate-attr-grid {
+.product-form__gate-attrs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
@@ -584,7 +586,7 @@ a:focus-visible {
     margin: 0;
   }
 
-  .wide {
+  .form-grid__full-row {
     grid-column: 1 / -1;
   }
 
@@ -594,19 +596,19 @@ a:focus-visible {
 }
 
 @media (max-width: 700px) {
-  .gate-attr-grid {
+  .product-form__gate-attrs {
     grid-template-columns: 1fr;
   }
 }
 
-.price-warning {
+.product-form__price-warning {
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.75rem;
   color: #8a5a1f;
   background: #fff4e0;
   border: 1px solid #f0d9ad;
   border-radius: 0.4rem;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
 }
 
 /* ===== 「認領歷史紀錄」清單（claim-candidate-list）=====
@@ -615,49 +617,48 @@ a:focus-visible {
    改成跟 .form-card 其他區塊一致的卡片式列表：整列可點擊勾選、
    名稱最顯眼、相似度／日期等次要資訊收成一排小標籤、結果依成團/
    未成團/取消開團上色，一眼就能分辨。 */
-.claim-card .helper {
-  margin: 0 0 .8rem;
-}
 
 /* 認領面板正上方的「目前新增的商品」比對基準列——跟 .claim-card 其他
    區塊拉開一點視覺重量，用淺色底色框起來，讓使用者掃視候選清單前，
    先看一眼現在是在核對哪件商品。 */
-.claim-target-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: .3rem .6rem;
-  margin: 0 0 .8rem;
-  padding: .65rem .9rem;
-  background: #eef4f8;
-  border: 1px solid #dce6ed;
-  border-radius: .6rem;
-}
+.claim-card {
+  &__target {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .3rem .6rem;
+    margin: 0 0 .8rem;
+    padding: .65rem .9rem;
+    background: #eef4f8;
+    border: 1px solid #dce6ed;
+    border-radius: .6rem;
+  }
 
-.claim-target-label {
-  color: #526677;
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
+  &__target-label {
+    color: #526677;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 
-.claim-target-name {
-  color: var(--c-brand);
-  font-size: var(--t-base);
-  font-weight: 800;
-}
+  &__target-name {
+    color: var(--color-brand);
+    font-size: var(--font-size-base);
+    font-weight: 800;
+  }
 
-.claim-target-supplier {
-  color: #40576a;
-  font-size: var(--t-xs);
-}
+  &__target-supplier {
+    color: #40576a;
+    font-size: var(--font-size-xs);
+  }
 
-.claim-candidate-list {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  &__candidates {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 }
 
 .claim-candidate {
@@ -670,90 +671,90 @@ a:focus-visible {
   border-radius: .6rem;
   cursor: pointer;
   transition: border-color .15s ease, background-color .15s ease;
-}
 
-.claim-candidate:hover {
-  border-color: #b9c9d6;
-}
+  &:hover {
+    border-color: #b9c9d6;
+  }
 
-.claim-candidate.is-checked {
-  background: #eef6f1;
-  border-color: #7fa34a;
-}
+  &.is-checked {
+    background: #eef6f1;
+    border-color: #7fa34a;
+  }
 
-.claim-candidate input[type='checkbox'] {
-  flex: 0 0 auto;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-top: .15rem;
-  accent-color: #39735c;
-}
+  input[type='checkbox'] {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: .15rem;
+    accent-color: #39735c;
+  }
 
-.claim-candidate-body {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-  min-width: 0;
-}
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    min-width: 0;
+  }
 
-.claim-candidate-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
-}
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+  }
 
-.claim-candidate-name {
-  color: #23364a;
-  font-size: var(--t-sm);
-  font-weight: 700;
-}
+  &__name {
+    color: #23364a;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
 
-.claim-result-badge {
-  padding: .15rem .55rem;
-  color: #526677;
-  background: #eef1f3;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 700;
-  white-space: nowrap;
-}
+  &__result {
+    padding: .15rem .55rem;
+    color: #526677;
+    background: #eef1f3;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    white-space: nowrap;
+  }
 
-/* FULFILLED＝成團（綠）、FAILED＝未成團（紅）、CANCELLED＝取消開團（灰），
+  /* FULFILLED＝成團（綠）、FAILED＝未成團（紅）、CANCELLED＝取消開團（灰），
    對應 GROUP_BUY_RESULT_LABEL 的三種代碼。 */
-.claim-result-badge[data-result='FULFILLED'] {
-  color: #21694f;
-  background: #e5f5ee;
-}
+  &__result[data-result='FULFILLED'] {
+    color: #21694f;
+    background: #e5f5ee;
+  }
 
-.claim-result-badge[data-result='FAILED'] {
-  color: #8a3f39;
-  background: #fff0ef;
-}
+  &__result[data-result='FAILED'] {
+    color: #8a3f39;
+    background: #fff0ef;
+  }
 
-.claim-result-badge[data-result='CANCELLED'] {
-  color: #6c7a89;
-  background: #eef1f3;
-}
+  &__result[data-result='CANCELLED'] {
+    color: #6c7a89;
+    background: #eef1f3;
+  }
 
-.claim-candidate-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem .75rem;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .75rem;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 
-.claim-meta-item {
-  white-space: nowrap;
+  &__meta-item {
+    white-space: nowrap;
+  }
 }
 
 /* 2026-09-29：從 AI 商品雷達建立商品時的提示。 */
-.discovery-source {
-  margin: 0 0 var(--s-4);
-  padding: var(--s-3) var(--s-4);
-  color: var(--c-ink-soft);
-  background: var(--c-brand-tint);
-  border-radius: var(--r-md);
-  font-size: var(--t-sm);
+.product-form__discovery-source {
+  margin: 0 0 var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  color: var(--color-ink-soft);
+  background: var(--color-brand-tint);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }

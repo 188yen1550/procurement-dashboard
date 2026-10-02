@@ -4,13 +4,13 @@
   核准文案刻意排除上架與營收語意。
   真實模式：走 realLoadState，四支 API 任一失敗只影響對應卡片，不讓整頁空白。
 -->
-<div class="dashboard-page">
+<div class="dashboard">
   <header class="page-header">
     <div>
 
       <h1>選品決策儀表板</h1>
     </div>
-    <div class="data-time">
+    <div class="dashboard__data-time">
       <span aria-hidden="true">●</span>
       @if (useMockData) {
       Mock 資料更新：{{ data().generatedAt }}
@@ -27,21 +27,21 @@
     <div>
       <strong id="state-preview-title">UI 狀態預覽</strong><span>純前端展示，不呼叫 API</span>
     </div>
-    <div class="state-actions">
+    <div class="state-preview__actions">
       <button type="button" aria-label="切換至一般狀態" [attr.aria-pressed]="uiState() === 'default'"
-        [class.active]="uiState() === 'default'" (click)="setUiState('default')">
+        [class.is-active]="uiState() === 'default'" (click)="setUiState('default')">
         一般
       </button>
       <button type="button" aria-label="切換至鎖定狀態" [attr.aria-pressed]="uiState() === 'locked'"
-        [class.active]="uiState() === 'locked'" (click)="setUiState('locked')">
+        [class.is-active]="uiState() === 'locked'" (click)="setUiState('locked')">
         鎖定
       </button>
       <button type="button" aria-label="切換至載入狀態" [attr.aria-pressed]="uiState() === 'loading'"
-        [class.active]="uiState() === 'loading'" (click)="setUiState('loading')">
+        [class.is-active]="uiState() === 'loading'" (click)="setUiState('loading')">
         載入
       </button>
       <button type="button" aria-label="切換至例外狀態" [attr.aria-pressed]="uiState() === 'edge'"
-        [class.active]="uiState() === 'edge'" (click)="setUiState('edge')">
+        [class.is-active]="uiState() === 'edge'" (click)="setUiState('edge')">
         例外
       </button>
     </div>
@@ -49,49 +49,49 @@
   }
 
   @if (useMockData && uiState() === 'loading') {
-  <div class="loading-status" role="status" aria-live="polite">
-    <span class="spinner" aria-hidden="true"></span>正在整理統計與 AI 評分結果…
+  <div class="dashboard__loading" role="status" aria-live="polite">
+    <span class="dashboard__spinner" aria-hidden="true"></span>正在整理統計與 AI 評分結果…
   </div>
-  <section class="stats-grid" aria-label="統計資料載入中">
+  <section class="dashboard__stats" aria-label="統計資料載入中">
     @for (item of [1, 2, 3, 4]; track item) {
     <div class="skeleton-card"><span></span><strong></strong><small></small></div>
     }
   </section>
-  <section class="chart-row" aria-label="圖表載入中">
-    <div class="panel skeleton-panel chart-skeleton"></div>
-    <div class="panel skeleton-panel chart-skeleton"></div>
+  <section class="dashboard__charts" aria-label="圖表載入中">
+    <div class="panel panel--skeleton panel--chart-skeleton"></div>
+    <div class="panel panel--skeleton panel--chart-skeleton"></div>
   </section>
-  <div class="content-grid">
-    <section class="panel skeleton-panel" aria-label="推薦清單載入中">
+  <div class="dashboard__content">
+    <section class="panel panel--skeleton" aria-label="推薦清單載入中">
       <span></span><span></span><span></span><span></span>
     </section>
-    <section class="panel skeleton-panel short" aria-label="風險資料載入中">
+    <section class="panel panel--skeleton panel--skeleton-aside" aria-label="風險資料載入中">
       <span></span><span></span><span></span>
     </section>
   </div>
   } @else if (!useMockData && realLoadState() === 'loading') {
-  <div class="loading-status" role="status" aria-live="polite">
-    <span class="spinner" aria-hidden="true"></span>正在載入儀表板資料…
+  <div class="dashboard__loading" role="status" aria-live="polite">
+    <span class="dashboard__spinner" aria-hidden="true"></span>正在載入儀表板資料…
   </div>
-  <section class="stats-grid" aria-label="統計資料載入中">
+  <section class="dashboard__stats" aria-label="統計資料載入中">
     @for (item of [1, 2, 3, 4]; track item) {
     <div class="skeleton-card"><span></span><strong></strong><small></small></div>
     }
   </section>
-  <section class="chart-row" aria-label="圖表載入中">
-    <div class="panel skeleton-panel chart-skeleton"></div>
-    <div class="panel skeleton-panel chart-skeleton"></div>
+  <section class="dashboard__charts" aria-label="圖表載入中">
+    <div class="panel panel--skeleton panel--chart-skeleton"></div>
+    <div class="panel panel--skeleton panel--chart-skeleton"></div>
   </section>
-  <div class="content-grid">
-    <section class="panel skeleton-panel" aria-label="推薦清單載入中">
+  <div class="dashboard__content">
+    <section class="panel panel--skeleton" aria-label="推薦清單載入中">
       <span></span><span></span><span></span><span></span>
     </section>
-    <section class="panel skeleton-panel short" aria-label="風險資料載入中">
+    <section class="panel panel--skeleton panel--skeleton-aside" aria-label="風險資料載入中">
       <span></span><span></span><span></span>
     </section>
   </div>
   } @else if (!useMockData && realLoadState() === 'error') {
-  <div class="notice error-notice" role="alert">
+  <div class="notice notice--error" role="alert">
     <div>
       <strong>儀表板載入失敗</strong>{{ errorMessage() }}
     </div>
@@ -99,13 +99,13 @@
   </div>
   } @else {
   @if (useMockData && uiState() === 'locked') {
-  <div class="notice locked-notice" role="status">
+  <div class="notice notice--locked" role="status">
     <strong>已審核資料鎖定示範</strong> 審核通過的核心條件為唯讀，相關操作按鈕已停用。
   </div>
   }
 
   @if (useMockData && uiState() === 'edge') {
-  <div class="notice error-notice" role="alert">
+  <div class="notice notice--error" role="alert">
     <div>
       <strong>部分資料無法更新</strong>模擬 409
       Conflict：此品項已由另一位管理人員完成審核，請重新載入最新狀態。
@@ -113,9 +113,9 @@
     <button type="button" (click)="retry()">重新載入</button>
   </div>
   <section class="incomplete-card" aria-labelledby="incomplete-title">
-    <div class="completeness" aria-label="資料完整度 48%">48%</div>
+    <div class="incomplete-card__completeness" aria-label="資料完整度 48%">48%</div>
     <div>
-      <span class="warning-badge">資料待補</span>
+      <span class="incomplete-card__warning">資料待補</span>
       <h2 id="incomplete-title">{{ incompleteRecommendation.name }}</h2>
       <p>{{ incompleteRecommendation.aiReason }}</p>
     </div>
@@ -125,7 +125,7 @@
 
   <!-- 真實模式下，若四支 API 有任一支失敗，仍顯示其餘已載入的資料，並在頂端提示。 -->
   @if (!useMockData && errorMessage()) {
-  <div class="notice error-notice" role="alert">
+  <div class="notice notice--error" role="alert">
     <div>{{ errorMessage() }}</div>
   </div>
   }
@@ -136,57 +136,57 @@
       操作層：連到品項管理。2026-09-29：「熱度建議待確認」卡隨熱度建議清單移除，兩種角色都是四張卡。
     -->
   @if (data().statistics.statisticsScope === 'PERSONAL') {
-  <p class="stats-scope-note">以下統計只計算你建立的商品。</p>
+  <p class="dashboard__stats-note">以下統計只計算你建立的商品。</p>
   }
-  <section class="stats-grid" [attr.aria-label]="data().statistics.statisticsScope === 'PERSONAL' ? '我的選品統計' : '選品統計'">
+  <section class="dashboard__stats" [attr.aria-label]="data().statistics.statisticsScope === 'PERSONAL' ? '我的選品統計' : '選品統計'">
     @if (isManager()) {
-    <article class="stat-card total">
-      <div class="stat-card-link">
-        <span>候選商品總數</span><strong>{{ scopeTotal() }}<span class="unit">筆</span></strong>
+    <article class="stat-card stat-card--total">
+      <div class="stat-card__link">
+        <span>候選商品總數</span><strong>{{ scopeTotal() }}<span class="u-unit">筆</span></strong>
       </div>
     </article>
-    <article class="stat-card pending">
-      <a class="stat-card-link" routerLink="/review" aria-label="待人工審核：前往選品審核">
-        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="unit">筆</span></strong>
+    <article class="stat-card stat-card--pending">
+      <a class="stat-card__link" routerLink="/review" aria-label="待人工審核：前往選品審核">
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
-    <article class="stat-card approved">
-      <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'APPROVED' }"
+    <article class="stat-card stat-card--approved">
+      <a class="stat-card__link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'APPROVED' }"
         aria-label="審核通過：前往決策紀錄">
-        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="unit">筆</span></strong>
+        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
-    <article class="stat-card rejected">
-      <a class="stat-card-link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'REJECTED' }"
+    <article class="stat-card stat-card--rejected">
+      <a class="stat-card__link" routerLink="/review" [queryParams]="{ tab: 'records', reviewStatus: 'REJECTED' }"
         aria-label="審核拒絕：前往決策紀錄">
-        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="unit">筆</span></strong>
+        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
     } @else {
     <!-- 2026-09-29：操作層統計卡改為個人口徑（後端 scope=PERSONAL，只算自己建立的商品），
            連結帶 createdByMe=true，點進去的清單筆數才會與卡片一致。 -->
-    <article class="stat-card total">
-      <a class="stat-card-link" routerLink="/products"
+    <article class="stat-card stat-card--total">
+      <a class="stat-card__link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'ALL', createdByMe: createdByMeParam() }" aria-label="候選商品總數：前往品項管理">
-        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}<span class="unit">筆</span></strong>
+        <span>候選商品總數</span><strong>{{ data().statistics.totalProducts }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
-    <article class="stat-card pending">
-      <a class="stat-card-link" routerLink="/products"
+    <article class="stat-card stat-card--pending">
+      <a class="stat-card__link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'PENDING', createdByMe: createdByMeParam() }" aria-label="待人工審核：前往品項管理">
-        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="unit">筆</span></strong>
+        <span>待人工審核</span><strong>{{ data().statistics.pendingReviews }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
-    <article class="stat-card approved">
-      <a class="stat-card-link" routerLink="/products"
+    <article class="stat-card stat-card--approved">
+      <a class="stat-card__link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'APPROVED', createdByMe: createdByMeParam() }" aria-label="審核通過：前往品項管理">
-        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="unit">筆</span></strong>
+        <span>審核通過</span><strong>{{ data().statistics.approvedProducts }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
-    <article class="stat-card rejected">
-      <a class="stat-card-link" routerLink="/products"
+    <article class="stat-card stat-card--rejected">
+      <a class="stat-card__link" routerLink="/products"
         [queryParams]="{ reviewStatus: 'REJECTED', createdByMe: createdByMeParam() }" aria-label="審核拒絕：前往品項管理">
-        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="unit">筆</span></strong>
+        <span>審核拒絕</span><strong>{{ data().statistics.rejectedProducts }}<span class="u-unit">筆</span></strong>
       </a>
     </article>
     }
@@ -199,42 +199,42 @@
   }
 
   <!-- 審核狀態與核准率共同呈現整體選品概況。 -->
-  <section class="chart-row">
-    <section class="panel status-chart-panel" aria-labelledby="status-chart-title">
-      <header class="panel-header">
+  <section class="dashboard__charts">
+    <section class="panel status-chart" aria-labelledby="status-chart-title">
+      <header class="panel__header">
         <div>
           <h2 id="status-chart-title">{{ data().statistics.statisticsScope === 'PERSONAL' ? '我的商品狀態分布' : '商品狀態分布' }}
           </h2>
         </div>
       </header>
-      <div class="status-overview">
-        <div class="status-chart-wrap">
+      <div class="status-chart__overview">
+        <div class="status-chart__canvas">
           <canvas #statusChartCanvas [attr.aria-label]="statusChartLabel()" role="img"></canvas>
-          <div class="chart-center" aria-hidden="true"><strong>{{ statusTotal() }}<span class="unit">筆</span></strong><span>狀態合計</span></div>
+          <div class="status-chart__total" aria-hidden="true"><strong>{{ statusTotal() }}<span class="u-unit">筆</span></strong><span>狀態合計</span></div>
         </div>
-        <ul class="status-breakdown" aria-label="商品狀態筆數與占總數比例">
+        <ul class="status-chart__breakdown" aria-label="商品狀態筆數與占總數比例">
           @for (item of statusBreakdown(); track item.label) {
           <li>
-            <span class="status-label"><i [style.background-color]="item.color" aria-hidden="true"></i>{{ item.label
+            <span class="status-chart__label"><i [style.background-color]="item.color" aria-hidden="true"></i>{{ item.label
               }}</span>
             <strong>{{ item.count }} <small>筆</small></strong>
-            <span class="status-percentage">{{ item.percentage }}%</span>
+            <span class="status-chart__percentage">{{ item.percentage }}%</span>
           </li>
           }
         </ul>
       </div>
       @if (statusTotal() !== scopeTotal()) {
-      <p class="status-note">狀態合計 {{ statusTotal() }} 筆，與候選商品總數 {{ scopeTotal() }} 筆不一致，請確認統計資料。</p>
+      <p class="status-chart__note">狀態合計 {{ statusTotal() }} 筆，與候選商品總數 {{ scopeTotal() }} 筆不一致，請確認統計資料。</p>
       }
     </section>
 
     <section class="panel conversion-panel" aria-labelledby="conversion-title">
       @if (data().statistics.conversionRate === null) {
-      <div class="conversion-ring" [style.--rate]="'0%'">
+      <div class="conversion-panel__ring" [style.--conversion-rate]="'0%'">
         <strong>—</strong><span>尚無資料</span>
       </div>
       } @else {
-      <div class="conversion-ring" [style.--rate]="data().statistics.conversionRate + '%'">
+      <div class="conversion-panel__ring" [style.--conversion-rate]="data().statistics.conversionRate + '%'">
         <strong>{{ data().statistics.conversionRate }}%</strong><span>核准率</span>
       </div>
       }
@@ -250,11 +250,11 @@
         <p>{{ data().statistics.conversionScope === 'COMPANY' ? '全公司口徑：' : '' }}以曾送審的不重複商品為分母，目前最終狀態為審核通過者為分子。</p>
         }
         @if (data().statistics.conversionRate === null) {
-        <p class="hint">{{ data().statistics.conversionScope === 'PERSONAL' ? '你建立的選品目前尚未送審過' : '目前尚無商品送審過'
+        <p class="conversion-panel__hint">{{ data().statistics.conversionScope === 'PERSONAL' ? '你建立的選品目前尚未送審過' : '目前尚無商品送審過'
           }}，因此無法計算轉換率。</p>
         } @else {
         <!-- 只顯示百分比看不出樣本大小，把原始筆數一起列出，不要讓使用者自己猜分母。 -->
-        <p class="hint conversion-sample">
+        <p class="conversion-panel__hint conversion-panel__sample">
           送審過的 {{ data().statistics.conversionSubmittedCount }} 件商品中，{{ data().statistics.conversionApprovedCount }}
           件審核通過。
         </p>
@@ -263,15 +263,15 @@
     </section>
   </section>
 
-  <div class="content-grid" [class.operator-view]="!isManager()">
+  <div class="dashboard__content" [class.dashboard__content--operator]="!isManager()">
     <!-- 2026-09-29：「推薦 Top 10」與「熱度排行」改成同一張卡片的兩個頁籤（兩者都是商品排行、欄位結構相近）；
            高風險提示是需要處理的警示，維持右側欄，不收進頁籤。
            兩個頁籤面板疊在同一個 grid 格子裡、未選的用 visibility:hidden 隱藏：卡片高度取兩者較高者，
            切換頁籤時高度不會跳動，右側（高度跟著這張卡片）的高風險提示也就不會忽長忽短。 -->
     <section class="panel recommendations-panel rankings-panel" aria-labelledby="rankings-title">
-      <header class="panel-header rankings-header">
-        <h2 id="rankings-title" class="sr-only">商品排行</h2>
-        <div class="ranking-tabs" role="tablist" aria-labelledby="rankings-title">
+      <header class="panel__header rankings-panel__header">
+        <h2 id="rankings-title" class="u-sr-only">商品排行</h2>
+        <div class="rankings-panel__tabs" role="tablist" aria-labelledby="rankings-title">
           <button type="button" role="tab" id="ranking-tab-recommendations" data-ranking-tab="recommendations"
             aria-controls="ranking-panel-recommendations" [attr.aria-selected]="rankingTab() === 'recommendations'"
             [attr.tabindex]="rankingTab() === 'recommendations' ? 0 : -1" (click)="selectRankingTab('recommendations')"
@@ -286,66 +286,66 @@
           </button>
         </div>
       </header>
-      <div class="ranking-panels">
-        <div class="ranking-panel" role="tabpanel" id="ranking-panel-recommendations"
+      <div class="rankings-panel__views">
+        <div class="rankings-panel__view" role="tabpanel" id="ranking-panel-recommendations"
           aria-labelledby="ranking-tab-recommendations" [class.is-inactive]="rankingTab() !== 'recommendations'">
-          <p class="panel-subtitle ranking-subtitle">
+          <p class="panel__subtitle rankings-panel__subtitle">
             依「最終分數」即時排序目前待審核的前 10 名候選商品；推薦理由取自該商品最近一次 AI
             分析的結果，只有重新產生 AI 分析才會更新，不會隨排名自動重算。
           </p>
-          <app-list-sort class="mobile-table-sort" [sort]="recommendationSort" [choices]="recommendationSortChoices"
+          <app-list-sort class="list-sort--mobile-only" [sort]="recommendationSort" [choices]="recommendationSortChoices"
             label="AI 推薦" />
-          <div class="table-wrap">
+          <div class="rankings-panel__table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th class="col-rank" appSortHeader="rank" [sort]="recommendationSort">排名</th>
-                  <th class="col-reason" appSortHeader="name|aiReason" [sort]="recommendationSort">商品與推薦理由</th>
-                  <th class="col-completeness" appSortHeader="completeness" [sort]="recommendationSort">完整度</th>
-                  <th class="col-score" appSortHeader="finalScore" [sort]="recommendationSort">最終分數</th>
-                  <th class="col-actions actions-column">操作</th>
+                  <th class="rankings-panel__col rankings-panel__col--rank" appSortHeader="rank" [sort]="recommendationSort">排名</th>
+                  <th class="rankings-panel__col rankings-panel__col--reason" appSortHeader="name|aiReason" [sort]="recommendationSort">商品與推薦理由</th>
+                  <th class="rankings-panel__col rankings-panel__col--completeness" appSortHeader="completeness" [sort]="recommendationSort">完整度</th>
+                  <th class="rankings-panel__col rankings-panel__col--score" appSortHeader="finalScore" [sort]="recommendationSort">最終分數</th>
+                  <th class="rankings-panel__col rankings-panel__col--actions rankings-panel__actions-col">操作</th>
                 </tr>
               </thead>
               <tbody>
                 @for (item of recommendations() | sortRows: recommendationSort.state(); track item.id) {
                 <tr>
                   <td>
-                    <span class="rank">{{ item.rank }}</span>
+                    <span class="rankings-panel__rank">{{ item.rank }}</span>
                   </td>
                   <td class="product-cell">
                     <strong>{{ item.name }}</strong><span>{{ item.category }}</span>
                     <p>{{ item.aiReason }}</p>
                     @if (item.submissionCount > 1) {
-                    <span class="resubmission">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</span>
+                    <span class="product-cell__resubmission">曾被拒絕 · 第 {{ item.submissionCount }} 次送審</span>
                     <small>{{ item.previousRejectionSummary }}</small>
                     }
                   </td>
                   <td>
                     <!-- 尚無評估紀錄時完整度為 null，需先判斷再套用門檻。 -->
                     @if (!hasCompleteness(item)) {
-                    <span class="unavailable">—</span>
+                    <span class="is-unavailable">—</span>
                     } @else {
-                    <span [class.incomplete]="item.completeness! < 60">{{ item.completeness }}%</span>
+                    <span [class.is-incomplete]="item.completeness! < 60">{{ item.completeness }}%</span>
                     }
                   </td>
                   <td>
                     @if (!hasFinalScore(item)) {
-                    <span class="unavailable">—</span>
+                    <span class="is-unavailable">—</span>
                     } @else {
-                    <strong class="score">{{ item.finalScore }}<span class="unit">分</span></strong>
+                    <strong class="rankings-panel__score">{{ item.finalScore }}<span class="u-unit">分</span></strong>
                     }
                   </td>
-                  <td class="actions-column">
+                  <td class="rankings-panel__actions-col">
                     @if (item.reviewStatus === 'APPROVED') {
-                    <button type="button" class="table-action" disabled title="審核通過，核心資料鎖定">
+                    <button type="button" class="rankings-panel__action" disabled title="審核通過，核心資料鎖定">
                       已鎖定
                     </button>
                     } @else if (isManager() && item.reviewStatus === 'PENDING') {
                     <!-- 管理層：待審商品直接進審核詳情，不繞品項頁。 -->
-                    <a class="table-action" [routerLink]="['/review', item.id]">開始審核</a>
+                    <a class="rankings-panel__action" [routerLink]="['/review', item.id]">開始審核</a>
                     } @else {
                     <!-- 管理層進入的是品項詳情的唯讀模式（見 product-detail.ts readOnly）。 -->
-                    <a class="table-action" [routerLink]="['/products', item.id]">查看評估</a>
+                    <a class="rankings-panel__action" [routerLink]="['/products', item.id]">查看評估</a>
                     }
                   </td>
                 </tr>
@@ -354,10 +354,10 @@
             </table>
           </div>
         </div>
-        <div class="ranking-panel trend-leaderboard" role="tabpanel" id="ranking-panel-trend"
+        <div class="rankings-panel__view trend-leaderboard" role="tabpanel" id="ranking-panel-trend"
           aria-labelledby="ranking-tab-trend" [class.is-inactive]="rankingTab() !== 'trend'">
           <!-- 2026-09-30：標明資料來源是「PTT 熱度同步」（不是 AI 商品雷達），只列有討論的使用中商品。 -->
-          <p class="panel-subtitle ranking-subtitle">
+          <p class="panel__subtitle rankings-panel__subtitle">
             資料來自排程作業「PTT 熱度同步」（每天 02:00），依近 90 天 PTT 討論量換算的熱度分數排序前 10 名，
             只列系統中使用中、且 PTT 上有討論的商品；系統還沒有的商品請看「AI 商品雷達」。
             只看熱度單一因子，不是綜合分數——總分被其他因子拉低、但熱度正在上升的商品也看得到。
@@ -365,24 +365,24 @@
             「Google 趨勢」是同一商品在台灣近 7 天比前 4 週的搜尋量變化，只作對照參考、不參與排序。
           </p>
           @if (trendLeaderboardSyncedAt(); as syncedAt) {
-          <p class="panel-subtitle ranking-subtitle">最近一次同步：{{ syncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
+          <p class="panel__subtitle rankings-panel__subtitle">最近一次同步：{{ syncedAt | date: 'yyyy/MM/dd HH:mm' }}</p>
           }
-          <div class="table-wrap">
+          <div class="rankings-panel__table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th class="col-lb-rank">排名</th>
-                  <th class="col-lb-product">商品／搜尋關鍵字</th>
-                  <th class="col-lb-score">熱度分數</th>
-                  <th class="col-lb-trend">PTT 趨勢</th>
-                  <th class="col-lb-google">Google 趨勢</th>
+                  <th class="trend-leaderboard__col trend-leaderboard__col--rank">排名</th>
+                  <th class="trend-leaderboard__col trend-leaderboard__col--product">商品／搜尋關鍵字</th>
+                  <th class="trend-leaderboard__col trend-leaderboard__col--score">熱度分數</th>
+                  <th class="trend-leaderboard__col trend-leaderboard__col--trend">PTT 趨勢</th>
+                  <th class="trend-leaderboard__col trend-leaderboard__col--google">Google 趨勢</th>
                 </tr>
               </thead>
               <tbody>
                 @for (item of data().trendLeaderboard; track item.id) {
                 <tr>
                   <td>
-                    <span class="rank">{{ item.rank }}</span>
+                    <span class="rankings-panel__rank">{{ item.rank }}</span>
                   </td>
                   <td class="product-cell">
                     <strong>{{ item.name }}</strong>
@@ -394,10 +394,10 @@
                   </td>
                   <td>
                     @if (item.popularityScore === null) {
-                    <span class="unavailable">—</span>
+                    <span class="is-unavailable">—</span>
                     } @else {
-                    <strong class="score" [class.is-simulated]="!item.isRealSource">
-                      {{ item.popularityScore }}<span class="unit">分</span>@if (!item.isRealSource) {（模擬）}
+                    <strong class="rankings-panel__score" [class.is-simulated]="!item.isRealSource">
+                      {{ item.popularityScore }}<span class="u-unit">分</span>@if (!item.isRealSource) {（模擬）}
                     </strong>
                     }
                   </td>
@@ -411,32 +411,32 @@
                     }
                     <!-- 2026-09-29：原熱度規則選品的「連續 3 次上升」條件，改成唯讀提醒標記 -->
                     @if (item.consecutiveRise) {
-                    <span class="badge badge-rise lb-rise" title="最近 3 次熱度同步都上升；僅提醒，不影響評分與審核">連續上升</span>
+                    <span class="badge badge--rise trend-leaderboard__rise" title="最近 3 次熱度同步都上升；僅提醒，不影響評分與審核">連續上升</span>
                     }
                   </td>
                   <!-- 2026-09-28：Google 趨勢參考。沒查過、查無資料都明講，不顯示成「持平」。 -->
-                  <td class="lb-google">
+                  <td class="trend-leaderboard__google">
                     @if (googleSummary(item.googleTrend); as g) {
                     @if (g.direction === 'UP') {
-                    <span class="google-up"><app-icon name="trending-up" size="sm" /> 上升 {{ g.text }}</span>
+                    <span class="trend-leaderboard__direction trend-leaderboard__direction--up"><app-icon name="trending-up" size="sm" /> 上升 {{ g.text }}</span>
                     } @else if (g.direction === 'DOWN') {
-                    <span class="google-down"><app-icon name="trending-down" size="sm" /> 下降 {{ g.text }}</span>
+                    <span class="trend-leaderboard__direction trend-leaderboard__direction--down"><app-icon name="trending-down" size="sm" /> 下降 {{ g.text }}</span>
                     } @else if (g.direction === 'STABLE') {
                     <span><app-icon name="trending-flat" size="sm" /> 持平 {{ g.text }}</span>
                     } @else {
-                    <span class="unavailable">{{ g.text }}</span>
+                    <span class="is-unavailable">{{ g.text }}</span>
                     }
                     }
                   </td>
                 </tr>
                 } @empty {
                 <tr>
-                  <td colspan="5" class="unavailable">目前沒有商品在 PTT 近 90 天有討論，或尚未執行 PTT 熱度同步。</td>
+                  <td colspan="5" class="is-unavailable">目前沒有商品在 PTT 近 90 天有討論，或尚未執行 PTT 熱度同步。</td>
                 </tr>
                 }
                 <!-- 2026-09-30：熱度 0（PTT 搜不到討論）的商品不再補滿名額，不足 10 名時說明原因。 -->
                 @if (data().trendLeaderboard.length > 0 && data().trendLeaderboard.length < 10) { <tr>
-                  <td colspan="5" class="unavailable">其餘商品在 PTT 近 90 天沒有討論或尚未同步熱度，未列入排行。可在品項的「搜尋關鍵字」改用較常見的名稱。</td>
+                  <td colspan="5" class="is-unavailable">其餘商品在 PTT 近 90 天沒有討論或尚未同步熱度，未列入排行。可在品項的「搜尋關鍵字」改用較常見的名稱。</td>
                   </tr>
                   }
               </tbody>
@@ -452,22 +452,22 @@
            無條件存在、只有裡面的面板被 @if 擋掉，操作層畫面會留下一欄
            空白的 flex 項目，Top 10 只能佔六成寬。 -->
     @if (isManager()) {
-    <aside class="side-column">
+    <aside class="dashboard__aside">
       <section class="panel risk-panel" aria-labelledby="risk-title">
-        <header class="panel-header">
+        <header class="panel__header">
           <div>
 
             <h2 id="risk-title">高風險提示</h2>
           </div>
-          <span class="risk-count">{{ data().riskAlerts.length }}</span>
+          <span class="risk-panel__count">{{ data().riskAlerts.length }}</span>
         </header>
         <app-list-sort [sort]="riskListSort" [choices]="riskListSortChoices" label="高風險提示" />
-        <div class="risk-list">
+        <div class="risk-panel__list">
           @for (risk of data().riskAlerts | sortRows: riskListSort.state(); track risk.id) {
-          <article class="risk-item">
+          <article class="risk-panel__item">
             <!-- 2026-09-27：商品名稱可點擊，直接前往品項詳情（管理層進入為唯讀模式）。risk.id 就是商品 id，見 dashboard.ts 的 toDashboardData()。 -->
             <strong><a [routerLink]="['/products', risk.id]">{{ risk.productName }}</a></strong>
-            <ul class="risk-message-list">
+            <ul class="risk-panel__messages">
               @for (point of riskMessagePoints(risk.message); track $index) {
               <li>{{ point }}</li>
               }
@@ -490,7 +490,7 @@
   @if (conflictDialogOpen()) {
   <div class="dialog-backdrop" role="presentation">
     <section class="alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
-      <span class="dialog-icon" aria-hidden="true">!</span>
+      <span class="alert-dialog__icon" aria-hidden="true">!</span>
       <h2 id="conflict-title">審核狀態已變更</h2>
       <p>此商品已被其他管理人員完成審核（409 Conflict）。請關閉視窗並重新載入最新資料。</p>
       <button type="button" (click)="closeConflictDialog()">我知道了</button>

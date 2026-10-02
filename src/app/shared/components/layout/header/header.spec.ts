@@ -29,12 +29,12 @@ describe('Header', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('王小明');
     expect(fixture.nativeElement.textContent).toContain('操作人員');
-    expect(fixture.nativeElement.querySelector('.user-name').textContent.trim()).toBe('王小明');
+    expect(fixture.nativeElement.querySelector('.user-menu__name').textContent.trim()).toBe('王小明');
   });
 
   it('hides the user name element entirely when there is no name (not an empty badge)', () => {
     fixture.componentRef.setInput('userName', '');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.user-name')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.user-menu__name')).toBeNull();
   });
 });

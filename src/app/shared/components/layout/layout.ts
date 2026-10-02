@@ -6,6 +6,7 @@ import { SidebarComponent } from './sidebar/sidebar';
 
 @Component({
   selector: 'app-layout',
+  host: { class: 'layout' },
   standalone: true,
   imports: [RouterOutlet, HeaderComponent, SidebarComponent],
   templateUrl: './layout.html',

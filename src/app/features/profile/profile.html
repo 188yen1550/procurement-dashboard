@@ -5,7 +5,7 @@
   name，username 與 role 都不開放自行修改（role 可改的話 PURCHASER
   就能把自己升成 MANAGER）。做成看起來可編輯但送不出去的欄位是誤導。
 -->
-<main class="page-shell profile-page" aria-labelledby="profile-title">
+<main class="page-shell profile" aria-labelledby="profile-title">
   <header class="page-header">
     <div>
       
@@ -18,25 +18,25 @@
     @if (mustChangePassword()) {
       <!-- V24：管理者建立帳號或代重設密碼後的第一次登入。其他頁面都會被導回這裡，
            直到密碼修改完成（後端同樣只放行 /api/auth/**）。 -->
-      <p class="alert force-change-notice" role="alert">
+      <p class="notice notice--error profile__force-change-notice" role="alert">
         你的密碼是由管理者設定的，請先修改成只有你知道的新密碼，才能使用系統其他功能。
         「目前密碼」請填入管理者提供的密碼。
       </p>
     }
 
     <section class="panel identity-card" aria-label="帳號資訊">
-      <div class="identity-grid">
+      <div class="identity-card__grid">
         <div>
-          <span class="identity-label">登入帳號</span>
-          <strong class="identity-value">{{ user.username }}</strong>
+          <span class="identity-card__label">登入帳號</span>
+          <strong class="identity-card__value">{{ user.username }}</strong>
         </div>
         <div>
-          <span class="identity-label">角色權限</span>
-          <strong class="identity-value">{{ roleLabel() }}</strong>
+          <span class="identity-card__label">角色權限</span>
+          <strong class="identity-card__value">{{ roleLabel() }}</strong>
         </div>
         <div>
-          <span class="identity-label">目前顯示名稱</span>
-          <strong class="identity-value">{{ user.name }}</strong>
+          <span class="identity-card__label">目前顯示名稱</span>
+          <strong class="identity-card__value">{{ user.name }}</strong>
         </div>
       </div>
     </section>
@@ -51,7 +51,7 @@
       </header>
 
       <div class="form-grid">
-        <label class="wide"
+        <label class="form-grid__full-row"
           >顯示名稱 <em aria-hidden="true">*</em>
           <input
             type="text"
@@ -74,10 +74,10 @@
       </div>
 
       @if (nameError()) {
-        <p class="alert" role="alert">{{ nameError() }}</p>
+        <p class="notice notice--error" role="alert">{{ nameError() }}</p>
       }
       @if (nameMessage()) {
-        <p class="success" role="status">{{ nameMessage() }}</p>
+        <p class="notice notice--success" role="status">{{ nameMessage() }}</p>
       }
 
       <footer>
@@ -88,11 +88,11 @@
             有未儲存的變更
           }
         </p>
-        <div class="footer-actions">
+        <div class="profile__form-actions">
           <button type="button" class="btn" [disabled]="isNameUnchanged() || isSavingName()" (click)="resetName()">
             復原
           </button>
-          <button type="submit" class="btn-primary" [disabled]="!canSubmitName()">
+          <button type="submit" class="btn btn--primary" [disabled]="!canSubmitName()">
             {{ isSavingName() ? '儲存中…' : '儲存名稱' }}
           </button>
         </div>
@@ -109,7 +109,7 @@
       </header>
 
       <div class="form-grid">
-        <label class="wide"
+        <label class="form-grid__full-row"
           >{{ mustChangePassword() ? '目前密碼（管理者提供）' : '目前密碼' }} <em aria-hidden="true">*</em>
           <input
             type="password"
@@ -156,19 +156,19 @@
       </div>
 
       @if (passwordError()) {
-        <p class="alert" role="alert">{{ passwordError() }}</p>
+        <p class="notice notice--error" role="alert">{{ passwordError() }}</p>
       }
       @if (passwordMessage()) {
-        <p class="success" role="status">{{ passwordMessage() }}</p>
+        <p class="notice notice--success" role="status">{{ passwordMessage() }}</p>
       }
 
       <footer>
         <p>密碼變更後，這次登入的工作階段會自動延續，不需要重新登入。</p>
-        <div class="footer-actions">
+        <div class="profile__form-actions">
           <button type="button" class="btn" [disabled]="isSavingPassword()" (click)="clearPasswordFields()">
             清空
           </button>
-          <button type="submit" class="btn-primary" [disabled]="!canSubmitPassword()">
+          <button type="submit" class="btn btn--primary" [disabled]="!canSubmitPassword()">
             {{ isSavingPassword() ? '更新中…' : '更新密碼' }}
           </button>
         </div>

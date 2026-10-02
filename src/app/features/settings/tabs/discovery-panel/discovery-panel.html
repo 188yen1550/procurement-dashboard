@@ -1,11 +1,11 @@
 <!-- 檔案用途：排程作業面板——AI 商品雷達的立即執行、AI 額度與最近執行紀錄。 -->
 <section id="ptt-discovery" class="config-panel" aria-labelledby="discovery-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="discovery-title">排程作業：AI 商品雷達（PTT）</h3>
       <p>{{ status()?.schedule ?? '每天 01:30（早於 02:00 熱度同步）' }}：從 PTT 找出系統裡還沒有的商品。</p>
       <!-- 2026-09-29：長說明改成可收合，預設收合；狀態訊息（執行中、無法執行、額度）在下方，永遠顯示。 -->
-      <details class="config-panel-details">
+      <details class="config-panel__details">
         <summary>運作方式與紀錄欄位說明</summary>
         <p>
           讀取 PTT 近 7 天的文章標題，由 AI 找出系統裡還沒有的商品，放進操作人員的「AI 商品雷達」清單。AI
@@ -18,14 +18,14 @@
         </p>
       </details>
     </div>
-    <div class="config-panel-actions">
-      <button type="button" class="btn-primary" [disabled]="!canRun()" (click)="run()">
+    <div class="config-panel__actions">
+      <button type="button" class="btn btn--primary" [disabled]="!canRun()" (click)="run()">
         {{ running() ? '探索中…' : '立即執行探索' }}
       </button>
     </div>
   </div>
 
-  <p class="sr-only" aria-live="polite">
+  <p class="u-sr-only" aria-live="polite">
     @if (running()) {
       AI 商品雷達執行中。
     }
@@ -34,7 +34,7 @@
   @if (useMockData) {
     <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示執行紀錄。</p>
   } @else if (loadError()) {
-    <p class="alert" role="alert">
+    <p class="notice notice--error" role="alert">
       無法載入探索狀態：{{ loadError() }}
       <button type="button" class="text-action" (click)="load()">重新載入</button>
     </p>
@@ -49,18 +49,18 @@
     @if (s.recentRuns.length === 0) {
       <p class="helper">尚無執行紀錄。每日 01:30 排程或手動執行後會出現在這裡。</p>
     } @else {
-      <div class="config-table-wrap">
-        <table class="config-table discovery-runs">
-          <caption class="sr-only">AI 商品雷達執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
+      <div class="config-panel__table-scroll">
+        <table class="config-table config-table--discovery-runs">
+          <caption class="u-sr-only">AI 商品雷達執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
           <thead>
             <tr>
               <th scope="col">開始時間</th>
               <th scope="col">觸發方式</th>
               <th scope="col">狀態</th>
-              <th scope="col" class="num">文章／標題</th>
-              <th scope="col" class="num">AI 抽出<small>（丟棄／既有／近似已略過）</small></th>
-              <th scope="col" class="num">新增／更新</th>
-              <th scope="col" class="num">適配評分<small>／Google 趨勢</small></th>
+              <th scope="col" class="u-numeric">文章／標題</th>
+              <th scope="col" class="u-numeric">AI 抽出<small>（丟棄／既有／近似已略過）</small></th>
+              <th scope="col" class="u-numeric">新增／更新</th>
+              <th scope="col" class="u-numeric">適配評分<small>／Google 趨勢</small></th>
             </tr>
           </thead>
           <tbody>
@@ -70,20 +70,20 @@
                 <td>{{ triggerLabel(run) }}</td>
                 <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
                 @if (hasCounts(run)) {
-                  <td class="num">{{ run.postCount }}／{{ run.titleCount }}</td>
-                  <td class="num">{{ run.extractedCount }}（{{ run.rejectedCount }}／{{ run.matchedExistingCount }}／{{ run.similarDismissedCount }}）</td>
-                  <td class="num">{{ run.newCount }}／{{ run.updatedCount }}</td>
-                  <td class="num">{{ run.fitCount }}／{{ run.googleCount }}</td>
+                  <td class="u-numeric">{{ run.postCount }}／{{ run.titleCount }}</td>
+                  <td class="u-numeric">{{ run.extractedCount }}（{{ run.rejectedCount }}／{{ run.matchedExistingCount }}／{{ run.similarDismissedCount }}）</td>
+                  <td class="u-numeric">{{ run.newCount }}／{{ run.updatedCount }}</td>
+                  <td class="u-numeric">{{ run.fitCount }}／{{ run.googleCount }}</td>
                 } @else {
-                  <td class="num">—</td>
-                  <td class="num">—</td>
-                  <td class="num">—</td>
-                  <td class="num">—</td>
+                  <td class="u-numeric">—</td>
+                  <td class="u-numeric">—</td>
+                  <td class="u-numeric">—</td>
+                  <td class="u-numeric">—</td>
                 }
               </tr>
               @if (run.message) {
                 <!-- 說明（警告或中斷原因）可能很長，獨立一列跨全部欄位，不把數字欄擠出表格。 -->
-                <tr class="run-message">
+                <tr class="config-table__message-row">
                   <td colspan="7">{{ run.message }}</td>
                 </tr>
               }

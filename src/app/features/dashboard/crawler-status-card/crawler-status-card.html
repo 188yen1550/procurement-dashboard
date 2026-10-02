@@ -1,20 +1,20 @@
 <!-- 檔案用途：儀表板「PTT 熱度同步」狀態摘要卡（僅管理層），操作一律到設定頁。 -->
 <section class="crawler-card" [attr.data-tone]="summary()?.tone ?? 'muted'" aria-labelledby="crawler-card-title">
-  <div class="crawler-card-main">
+  <div class="crawler-card__main">
     <h2 id="crawler-card-title">
       PTT 熱度同步
       @if (summary(); as s) {
-        <span class="crawler-badge">{{ s.label }}</span>
+        <span class="crawler-card__badge">{{ s.label }}</span>
       }
     </h2>
 
     @if (loadError()) {
-      <p class="crawler-line" role="alert">
+      <p class="crawler-card__line" role="alert">
         無法取得同步狀態：{{ loadError() }}
         <button type="button" class="text-action" (click)="load()">重新載入</button>
       </p>
     } @else if (summary(); as s) {
-      <p class="crawler-line">
+      <p class="crawler-card__line">
         @if (s.lastRun; as run) {
           最後同步：{{ (run.finishedAt ?? run.startedAt) | date: 'MM/dd HH:mm' }}
           <span aria-hidden="true">・</span>
@@ -26,18 +26,18 @@
         排程：{{ status()?.schedule }}
       </p>
       @if (s.warnings.length > 0) {
-        <ul class="crawler-warnings">
+        <ul class="crawler-card__warnings">
           @for (warning of s.warnings; track warning) {
             <li>{{ warning }}</li>
           }
         </ul>
       }
     } @else {
-      <p class="crawler-line" role="status">正在讀取同步狀態…</p>
+      <p class="crawler-card__line" role="status">正在讀取同步狀態…</p>
     }
   </div>
 
-  <a class="crawler-manage" routerLink="/settings/system" [queryParams]="{ tab: 'jobs' }"
+  <a class="crawler-card__manage-link" routerLink="/settings/system" [queryParams]="{ tab: 'jobs' }"
     fragment="trend-crawler" aria-label="PTT 熱度同步：前往設定頁管理">
     前往管理
   </a>

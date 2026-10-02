@@ -39,7 +39,7 @@ describe('ProductManagement', () => {
   // 2026-09-29：取代熱度建議清單——最近 3 次熱度同步都上升的商品，名稱下方顯示「連續上升」
   it('marks products whose last three heat syncs all rose', () => {
     fixture.detectChanges();
-    const badges = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.product-cell .badge-rise'));
+    const badges = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.product-cell .badge--rise'));
     // Mock：只有 102 輕量智慧溫控電熱杯 consecutiveRise 為 true
     expect(badges).toHaveLength(1);
     expect(badges[0].textContent).toContain('連續上升');
@@ -74,7 +74,7 @@ describe('ProductManagement', () => {
     assertSort('supplierName', [2, 1, 3], [1, 2, 3]);
     assertSort('pricingType', [2, 1, 3], [1, 3, 2]);
     assertSort('dataCompleteness', [2, 1, 3], [1, 2, 3]);
-    const mobileSort = root.querySelector('.mobile-table-sort')!;
+    const mobileSort = root.querySelector('.list-sort--mobile-only')!;
     const mobileCompleteness = Array.from(mobileSort.querySelectorAll('button'))
       .find(button => button.textContent?.includes('資料完整度'))!;
     mobileCompleteness.click();
@@ -136,13 +136,13 @@ describe('ProductManagement', () => {
   });
 
   it('keeps an accessible sticky action column for every product row', () => {
-    const header = fixture.nativeElement.querySelector('thead .actions-column');
+    const header = fixture.nativeElement.querySelector('thead .list-panel__actions-col');
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
-    const actionCells = fixture.nativeElement.querySelectorAll('tbody .actions-column');
+    const actionCells = fixture.nativeElement.querySelectorAll('tbody .list-panel__actions-col');
     expect(header).toBeTruthy();
     expect(actionCells.length).toBe(rows.length);
     actionCells.forEach((cell: HTMLElement) => {
-      expect(cell.querySelector('.action-group')).toBeTruthy();
+      expect(cell.querySelector('.list-panel__action-group')).toBeTruthy();
       expect(cell.querySelector('a, button')).toBeTruthy();
     });
   });
@@ -150,7 +150,7 @@ describe('ProductManagement', () => {
   it('preserves action availability for pending, approved and rejected rows', () => {
     const eligible = fixture.nativeElement.querySelector('button[aria-label^="刪除輕量智慧"]');
     const approved = fixture.nativeElement.querySelector('button[aria-label^="無法刪除中秋"]');
-    const rejectedAction = fixture.nativeElement.querySelector('a.resubmit');
+    const rejectedAction = fixture.nativeElement.querySelector('a.text-action--resubmit');
     expect(eligible.disabled).toBe(false);
     expect(approved.disabled).toBe(true);
     expect(rejectedAction.textContent).toContain('重審');
@@ -161,7 +161,7 @@ describe('ProductManagement', () => {
     expect(fixture.nativeElement.textContent).toContain('正在載入品項資料');
     component.setPageState('error'); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('無法載入品項資料');
-    expect(fixture.nativeElement.querySelector('.error-notice button').textContent).toContain('重試');
+    expect(fixture.nativeElement.querySelector('.notice--error button').textContent).toContain('重試');
   });
 
   it('deletes only eligible products locally', () => {
@@ -305,9 +305,9 @@ describe('ProductManagement (formal API mode)', () => {
     component.updateNeverExported(true);
     component.toggleAdvancedFilters();
     fixture.detectChanges();
-    const chips = Array.from(root.querySelectorAll('.filter-chips li span')).map((el) => el.textContent?.trim());
+    const chips = Array.from(root.querySelectorAll('.filter-panel__chips li span')).map((el) => el.textContent?.trim());
     expect(chips).toEqual(['審核日期：2026-09-01 ～ 不限', '只看未曾匯出']);
-    expect(root.querySelector('.advanced-count')?.textContent?.trim()).toBe('2');
+    expect(root.querySelector('.filter-panel__advanced-count')?.textContent?.trim()).toBe('2');
 
     const callsBefore = api.list.mock.calls.length;
     component.clearAdvancedFilter('reviewed');

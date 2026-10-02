@@ -91,12 +91,12 @@ describe('Review（Mock）篩選與排序', () => {
   });
 
   it('pending toolbar renders two-row grid fields with short labels', () => {
-    const toolbar: HTMLElement = fixture.nativeElement.querySelector('.pending-filters');
-    const labels = Array.from(toolbar.querySelectorAll('.field-label')).map((el) =>
+    const toolbar: HTMLElement = fixture.nativeElement.querySelector('.filter-toolbar--pending');
+    const labels = Array.from(toolbar.querySelectorAll('.field__label')).map((el) =>
       el.textContent?.trim(),
     );
     expect(labels).toEqual(['搜尋', '審核狀態', '品項狀態', '分類', '送審日期']);
-    expect(toolbar.querySelector('.toolbar-actions button')?.textContent).toContain('恢復預設');
+    expect(toolbar.querySelector('.filter-toolbar__actions button')?.textContent).toContain('恢復預設');
   });
 
   it('records default to newest review first', () => {
@@ -130,7 +130,7 @@ describe('Review（Mock）篩選與排序', () => {
     component.view.set('records');
     fixture.detectChanges();
     const sortable = Array.from(
-      fixture.nativeElement.querySelectorAll('.records th .list-sort-header'),
+      fixture.nativeElement.querySelectorAll('.review__records th .list-sort-header'),
     ).map((el) => (el as HTMLElement).textContent?.replace(/[↕↑↓]/g, '').trim());
     expect(sortable).toEqual(['送審次數', '最終分數']);
   });
@@ -327,14 +327,14 @@ describe('Review（真實模式）待審清單後端篩選', () => {
 
   it('shows category options from the full product type list', () => {
     const options = Array.from(
-      fixture.nativeElement.querySelectorAll('.field-category option') as NodeListOf<HTMLOptionElement>,
+      fixture.nativeElement.querySelectorAll('.field--category option') as NodeListOf<HTMLOptionElement>,
     ).map((o) => o.textContent?.trim());
     expect(options).toEqual(['全部', '生鮮']);
     // 2026-09-26：真實模式只有三個條件，篩選列採單行版面。
-    expect(fixture.nativeElement.querySelector('.pending-filters')?.classList).toContain('pending-filters--single-row');
+    expect(fixture.nativeElement.querySelector('.filter-toolbar--pending')?.classList).toContain('filter-toolbar--single-row');
     // 真實模式不顯示審核狀態／品項狀態下拉（後端固定未審核＋使用中）。
-    expect(fixture.nativeElement.querySelector('.field-review')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.field-item')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.field--review')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.field--item')).toBeNull();
   });
 });
 

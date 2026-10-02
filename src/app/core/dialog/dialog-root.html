@@ -7,10 +7,10 @@
   <dialog appModal [modalTrigger]="state.trigger ?? null" class="app-dialog-backdrop" aria-labelledby="app-dialog-title" [attr.role]="state.variant === 'confirm' ? 'alertdialog' : 'dialog'" (dismissed)="dialog.handleCancel()">
     <section
       class="app-dialog"
-      [class]="'variant-' + state.variant"
+      [class]="'app-dialog--' + state.variant"
       (click)="$event.stopPropagation()"
     >
-      <span class="app-dialog-icon" aria-hidden="true">
+      <span class="app-dialog__icon" aria-hidden="true">
         @if (state.variant === 'success') {
           <app-icon name="check-circle" />
         } @else if (state.variant === 'error') {
@@ -31,13 +31,13 @@
       } @else {
         <p>{{ state.messages[0] }}</p>
       }
-      <div class="app-dialog-actions">
+      <div class="app-dialog__actions">
         @if (state.variant === 'confirm') {
-          <button type="button" class="app-dialog-cancel" (click)="dialog.handleCancel()">
+          <button type="button" class="app-dialog__cancel" (click)="dialog.handleCancel()">
             {{ state.cancelLabel }}
           </button>
         }
-        <button type="button" class="app-dialog-confirm" (click)="dialog.handleConfirm()">
+        <button type="button" class="app-dialog__confirm" (click)="dialog.handleConfirm()">
           {{ state.confirmLabel }}
         </button>
       </div>

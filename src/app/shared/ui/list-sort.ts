@@ -176,8 +176,9 @@ export class SortHeader {
 
 @Component({
   selector: 'app-list-sort',
+  host: { class: 'list-sort' },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="list-sort-controls" role="group" [attr.aria-label]="label() + '排序'">
+  template: `<div class="list-sort__controls" role="group" [attr.aria-label]="label() + '排序'">
     <span>排序：</span>
     @for (choice of choices(); track choice.key) {
       <button
@@ -206,9 +207,9 @@ export class SortHeader {
         display: block;
         margin: 0.75rem 0;
       }
-      :host(.mobile-table-sort) { display: none; padding: 0 .75rem; }
-      @media (max-width: 700px) { :host(.mobile-table-sort) { display: block; } }
-      .list-sort-controls {
+      :host(.list-sort--mobile-only) { display: none; padding: 0 .75rem; }
+      @media (max-width: 700px) { :host(.list-sort--mobile-only) { display: block; } }
+      .list-sort__controls {
         display: flex;
         flex-wrap: wrap;
         align-items: center;

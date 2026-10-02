@@ -69,6 +69,7 @@ interface ProductTypeFilterGroup {
 
 @Component({
   selector: 'app-group-buy',
+  host: { class: 'group-buy' },
   imports: [SortHeader, SortRowsPipe, FormsModule],
   templateUrl: './group-buy.html',
   styleUrl: './group-buy.scss',
@@ -261,7 +262,7 @@ export class GroupBuy implements OnInit, OnDestroy {
           {
             label: '成團率 (%)',
             data: byType.map((t) => t.rate),
-            backgroundColor: brandColor('--c-brand'),
+            backgroundColor: brandColor('--color-brand'),
             borderRadius: 4,
           },
         ],

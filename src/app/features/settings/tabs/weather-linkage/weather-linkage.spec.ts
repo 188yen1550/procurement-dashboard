@@ -89,13 +89,13 @@ describe('WeatherLinkage', () => {
     expect(settingsApi.getRegionWeights).toHaveBeenCalled();
     expect(component.weatherSignalTagMappings()).toHaveLength(1);
     // 天氣類型顯示中文，不露出 RAINY 代碼。
-    expect(fixture.nativeElement.querySelector('.weather-mapping-table tbody').textContent).not.toContain('RAINY');
+    expect(fixture.nativeElement.querySelector('.config-table--weather-mapping tbody').textContent).not.toContain('RAINY');
   });
 
   it('shows the data update time and flags regions with too little history', () => {
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.weather-updated-at')?.textContent).toContain('2026-09-25 05:00');
-    const rows = root.querySelectorAll('.weather-status-table tbody tr');
+    expect(root.querySelector('.weather-linkage__updated-at')?.textContent).toContain('2026-09-25 05:00');
+    const rows = root.querySelectorAll('.config-table--weather-status tbody tr');
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).not.toContain('資料不足');
     expect(rows[1].textContent).toContain('資料不足');
@@ -178,10 +178,10 @@ describe('WeatherLinkage', () => {
   it('shows a visible error state when region weights do not add up to 100', () => {
     component.updateRegionWeightDraft('NORTH', '40');
     fixture.detectChanges();
-    const sum = fixture.nativeElement.querySelector('.region-weight-footer .config-sum');
+    const sum = fixture.nativeElement.querySelector('.weather-linkage__region-weight-footer .config-sum');
     expect(sum.getAttribute('data-state')).toBe('error');
     expect(sum.textContent).toContain('須為 100');
-    const saveButton = fixture.nativeElement.querySelector('.region-weight-footer .btn-primary');
+    const saveButton = fixture.nativeElement.querySelector('.weather-linkage__region-weight-footer .btn--primary');
     expect(saveButton.disabled).toBe(true);
   });
 
@@ -194,7 +194,7 @@ describe('WeatherLinkage', () => {
     expect(component.regionWeightSumState()).toBe('ok');
     // 占比 0 的區域不畫進比例條。
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.region-bar-segment')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelectorAll('.region-bar__segment')).toHaveLength(3);
   });
 
   it('marks a single region input as invalid when it is out of 0~100', () => {
@@ -207,7 +207,7 @@ describe('WeatherLinkage', () => {
   });
 
   it('tags each match tier select with its tier for the colour cue', () => {
-    const select = fixture.nativeElement.querySelector('.weather-mapping-table .tier-select');
+    const select = fixture.nativeElement.querySelector('.config-table--weather-mapping .tier-select');
     expect(select.getAttribute('data-tier')).toBe('CORE');
   });
 });

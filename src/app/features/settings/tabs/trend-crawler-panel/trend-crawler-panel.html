@@ -1,18 +1,18 @@
 <!-- 檔案用途：排程作業面板——PTT 熱度同步的來源開關、立即同步全部商品、最近執行紀錄。 -->
 <section id="trend-crawler" class="config-panel" aria-labelledby="trend-crawler-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="trend-crawler-title">
         排程作業：PTT 熱度同步
         @if (status(); as s) {
-          <span class="badge" [class.badge-success]="s.enabled" [class.badge-muted]="!s.enabled">
+          <span class="badge" [class.badge--success]="s.enabled" [class.badge--neutral]="!s.enabled">
             {{ s.enabled ? '來源啟用中' : '來源已停用' }}
           </span>
         }
       </h3>
       <p>{{ status()?.schedule ?? '每天 02:00' }}：更新所有未封存商品的 PTT 熱度分數。</p>
       <!-- 2026-09-29：長說明改成可收合，預設收合；狀態訊息（執行中、已停用、錯誤）在下方，永遠顯示。 -->
-      <details class="config-panel-details">
+      <details class="config-panel__details">
         <summary>運作方式與紀錄欄位說明</summary>
         <p>
           自動搜尋 PTT 公開看板，更新所有未封存商品的熱度分數；熱度會用在評分、儀表板熱度排行，以及品項清單的「連續上升」標記
@@ -28,17 +28,17 @@
         </p>
       </details>
     </div>
-    <div class="config-panel-actions">
+    <div class="config-panel__actions">
       <button type="button" class="btn" [disabled]="!status() || isSubmitting() || running()" (click)="toggleEnabled()">
         {{ enabled() ? '停用 PTT 來源' : '啟用 PTT 來源' }}
       </button>
-      <button type="button" class="btn-primary" [disabled]="!canSyncAll()" (click)="syncAll()">
+      <button type="button" class="btn btn--primary" [disabled]="!canSyncAll()" (click)="syncAll()">
         {{ running() ? '同步中…' : '立即同步全部商品' }}
       </button>
     </div>
   </div>
 
-  <p class="sr-only" aria-live="polite">
+  <p class="u-sr-only" aria-live="polite">
     @if (running()) {
       PTT 熱度同步執行中，{{ progressText() }}。
     }
@@ -47,7 +47,7 @@
   @if (useMockData) {
     <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示執行紀錄。</p>
   } @else if (loadError()) {
-    <p class="alert" role="alert">
+    <p class="notice notice--error" role="alert">
       無法載入同步狀態：{{ loadError() }}
       <button type="button" class="text-action" (click)="load()">重新載入</button>
     </p>
@@ -63,18 +63,18 @@
     @if (s.recentRuns.length === 0) {
       <p class="helper">尚無執行紀錄。每日 02:00 排程或手動同步後會出現在這裡。</p>
     } @else {
-      <div class="config-table-wrap">
+      <div class="config-panel__table-scroll">
         <table class="config-table">
-          <caption class="sr-only">PTT 熱度同步執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
+          <caption class="u-sr-only">PTT 熱度同步執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
           <thead>
             <tr>
               <th scope="col">開始時間</th>
               <th scope="col">觸發方式</th>
               <th scope="col">狀態</th>
-              <th scope="col" class="num">商品數</th>
-              <th scope="col" class="num">PTT 資料</th>
-              <th scope="col" class="num">模擬資料</th>
-              <th scope="col" class="num">失敗</th>
+              <th scope="col" class="u-numeric">商品數</th>
+              <th scope="col" class="u-numeric">PTT 資料</th>
+              <th scope="col" class="u-numeric">模擬資料</th>
+              <th scope="col" class="u-numeric">失敗</th>
               <th scope="col">耗時</th>
               <th scope="col">說明</th>
             </tr>
@@ -85,10 +85,10 @@
                 <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
                 <td>{{ triggerLabel(run) }}</td>
                 <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.realCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.fallbackCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.realCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.fallbackCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
                 <td>{{ duration(run) }}</td>
                 <td>{{ run.message ?? '' }}</td>
               </tr>

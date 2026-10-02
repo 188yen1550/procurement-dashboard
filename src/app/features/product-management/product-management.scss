@@ -6,15 +6,15 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
 
-.product-page {
+.product-list {
   width: 100%;
   min-width: 0;
 }
 
 .page-header,
 .state-preview,
-.filter-heading,
-.list-header,
+.filter-panel__heading,
+.list-panel__header,
 .notice {
   display: flex;
   align-items: center;
@@ -24,27 +24,16 @@
 
 .page-header {
   margin-bottom: 1.25rem;
+
+  h1 {
+    margin: .15rem 0 .35rem;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+  }
 }
 
-.page-header h1 {
-  margin: .15rem 0 .35rem;
-  font-size: clamp(1.55rem, 3vw, 2rem);
-}
-
-.page-header p,
-.filter-heading p,
-.list-header p {
+.list-panel__header p {
   margin: 0;
   color: #6c7a89;
-}
-
-.eyebrow {
-  margin: 0 !important;
-  color: #39735c !important;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
 }
 
 button,
@@ -64,51 +53,53 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-.primary-action {
-  flex: 0 0 auto;
-  padding: .72rem 1rem;
-  color: #fff;
-  background: var(--c-brand);
-  border: 1px solid var(--c-brand);
-  border-radius: .55rem;
-  font-size: var(--t-sm);
-  font-weight: 800;
-  text-decoration: none;
-  text-align: center;
-}
+.product-list {
+  &__primary-action {
+    flex: 0 0 auto;
+    padding: .72rem 1rem;
+    color: #fff;
+    background: var(--color-brand);
+    border: 1px solid var(--color-brand);
+    border-radius: .55rem;
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-decoration: none;
+    text-align: center;
+  }
 
-.primary-action:hover {
-  background: #153e66;
-}
+  &__primary-action:hover {
+    background: #153e66;
+  }
 
-/* 頁首右側的動作組：批次新增（次要）＋ 新增品項（主要），兩顆並排、
+  /* 頁首右側的動作組：批次新增（次要）＋ 新增品項（主要），兩顆並排、
    窄螢幕改直式堆疊，手機不會擠成一團。 */
-.header-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: .6rem;
-}
+  &__header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .6rem;
+  }
 
-.secondary-action {
-  flex: 0 0 auto;
-  padding: .72rem 1rem;
-  color: var(--c-brand);
-  background: #fff;
-  border: 1px solid #cbd9e3;
-  border-radius: .55rem;
-  font-size: var(--t-sm);
-  font-weight: 800;
-  text-decoration: none;
-  text-align: center;
-}
+  &__secondary-action {
+    flex: 0 0 auto;
+    padding: .72rem 1rem;
+    color: var(--color-brand);
+    background: #fff;
+    border: 1px solid #cbd9e3;
+    border-radius: .55rem;
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-decoration: none;
+    text-align: center;
+  }
 
-.secondary-action:hover {
-  background: #eef4f8;
+  &__secondary-action:hover {
+    background: #eef4f8;
+  }
 }
 
 @media (max-width: 700px) {
-  .header-actions {
+  .product-list__header-actions {
     flex-direction: column;
     align-items: stretch;
     width: 100%;
@@ -121,76 +112,78 @@ select:focus-visible {
   background: #eef4f8;
   border: 1px solid #dce6ed;
   border-radius: .75rem;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  span {
+    margin-top: .15rem;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
 }
 
-.state-preview strong,
-.state-preview span {
-  display: block;
-}
-
-.state-preview span {
-  margin-top: .15rem;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-
-.state-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem;
-}
-
-.state-actions button,
-.clear-button,
+.state-preview__actions button,
+.filter-panel__clear,
 .empty-state button,
 .notice button,
 .text-action,
-.secondary-action,
-.confirm-action {
+.product-list__secondary-action,
+.alert-dialog__confirm {
   padding: .48rem .7rem;
   color: #38536a;
   background: #fff;
   border: 1px solid #cbd9e3;
   border-radius: .45rem;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 
-.state-actions button.active {
+.state-preview__actions button.is-active {
   color: #fff;
-  background: var(--c-brand);
-  border-color: var(--c-brand);
+  background: var(--color-brand);
+  border-color: var(--color-brand);
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .9rem;
-  padding: .9rem 0 .2rem;
-}
+.list-panel {
+  &__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .9rem;
+    padding: .9rem 0 .2rem;
+  }
 
-.pagination button {
-  padding: .48rem .9rem;
-  color: #38536a;
-  background: #fff;
-  border: 1px solid #cbd9e3;
-  border-radius: .45rem;
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
+  &__pagination button {
+    padding: .48rem .9rem;
+    color: #38536a;
+    background: #fff;
+    border: 1px solid #cbd9e3;
+    border-radius: .45rem;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 
-.pagination button:disabled {
-  color: #a9b7c2;
-  background: #f4f7f9;
-  border-color: #e0e8ee;
-  cursor: not-allowed;
-}
+  &__pagination button:disabled {
+    color: #a9b7c2;
+    background: #f4f7f9;
+    border-color: #e0e8ee;
+    cursor: not-allowed;
+  }
 
-.pagination span {
-  color: #6c7a89;
-  font-size: var(--t-xs);
-  font-weight: 600;
+  &__pagination span {
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+  }
 }
 
 button:disabled {
@@ -198,8 +191,8 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.sr-status,
-.visually-hidden {
+.u-sr-only,
+.u-sr-only {
   position: absolute !important;
   width: 1px !important;
   height: 1px !important;
@@ -223,27 +216,20 @@ button:disabled {
 .filter-panel {
   margin-bottom: 1rem;
   padding: 1rem;
+
+  &__heading {
+    align-items: flex-end;
+    margin-bottom: .9rem;
+  }
 }
 
-.filter-heading {
-  align-items: flex-end;
-  margin-bottom: .9rem;
-}
-
-.filter-heading h2,
-.list-header h2 {
+.filter-panel__heading h2,
+.list-panel__header h2 {
   margin: .15rem 0 0;
-  font-size: var(--t-base);
+  font-size: var(--font-size-base);
 }
 
-.filter-heading>p {
-  padding: .3rem .55rem;
-  background: #eef6f2;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-}
-
-.filter-grid {
+.filter-panel__grid {
   display: grid;
   grid-template-columns: minmax(180px, 1.25fr) repeat(5, minmax(120px, 1fr)) auto;
   gap: .75rem;
@@ -252,95 +238,87 @@ button:disabled {
 
 .field {
   min-width: 0;
+
+  label {
+    display: block;
+    margin-bottom: .35rem;
+    color: #455b6e;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
+
+  input,
+  select {
+    width: 100%;
+    min-width: 0;
+    height: 2.55rem;
+    padding: .55rem .65rem;
+    color: #243447;
+    background: #f8fafc;
+    border: 1px solid #d4dee6;
+    border-radius: .5rem;
+  }
+
+  input::placeholder {
+    color: #8795a1;
+  }
+
+  input:focus,
+  select:focus {
+    background: #fff;
+    border-color: var(--color-brand);
+  }
 }
 
-.field label {
-  display: block;
-  margin-bottom: .35rem;
-  color: #455b6e;
-  font-size: var(--t-xs);
-  font-weight: 800;
+.filter-panel {
+  &__clear {
+    height: 2.55rem;
+    white-space: nowrap;
+  }
+
+  /* 2026-09-26：第二列篩選（送審與匯出）改收進「進階篩選」，樣式見 product-management-filters.scss。 */
+  &__checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    height: 2.55rem;
+    color: #455b6e;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  &__hint {
+    margin: .5rem 0 0;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 }
 
-.field input,
-.field select {
-  width: 100%;
-  min-width: 0;
-  height: 2.55rem;
-  padding: .55rem .65rem;
-  color: #243447;
-  background: #f8fafc;
-  border: 1px solid #d4dee6;
-  border-radius: .5rem;
-}
-
-.field input::placeholder {
-  color: #8795a1;
-}
-
-.field input:focus,
-.field select:focus {
-  background: #fff;
-  border-color: var(--c-brand);
-}
-
-.clear-button {
-  height: 2.55rem;
-  white-space: nowrap;
-}
-
-/* 2026-09-26：第二列篩選（送審與匯出）改收進「進階篩選」，樣式見 product-management-filters.scss。 */
-
-.field-checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  height: 2.55rem;
-  color: #455b6e;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.filter-hint {
-  margin: .5rem 0 0;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-
-.secondary-action:disabled {
+.product-list__secondary-action:disabled {
   opacity: .55;
   cursor: not-allowed;
 }
 
 .list-panel {
   overflow: hidden;
-}
 
-.list-header {
-  padding: 1rem 1.1rem;
-  border-bottom: 1px solid #e8eef2;
-}
+  &__header {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid #e8eef2;
+  }
 
-.list-header p {
-  margin-top: .2rem;
-  font-size: var(--t-xs);
-}
+  &__header p {
+    margin-top: .2rem;
+    font-size: var(--font-size-xs);
+  }
 
-.candidate-badge {
-  padding: .3rem .55rem;
-  color: #276850;
-  background: #e5f5ee;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
-
-.table-wrap {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
+  &__table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
 }
 
 table {
@@ -368,12 +346,12 @@ th {
   line-height: 1.45;
   color: #6c7a89;
   background: #f8fafc;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   letter-spacing: .03em;
 }
 
 td {
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   line-height: 1.45;
 }
 
@@ -389,55 +367,57 @@ td {
  * ellipsis 規則改為正常換行處理，而不是裁切看不到完整資訊。
  * 各欄比例是從原本 px 寬度等比例換算過來，維持原設計的相對比重。
  * 最後一欄（操作）不在這裡設定，寬度由 product-management-actions.scss
- * 的 .actions-column 決定（它是 position: sticky 的欄位，原本 th:nth-child(8)
- * 又重複設了一次 170px，跟 .actions-column 的 190px 互相打架，
+ * 的 .list-panel__actions-col 決定（它是 position: sticky 的欄位，原本 th:nth-child(8)
+ * 又重複設了一次 170px，跟 .list-panel__actions-col 的 190px 互相打架，
  * 實際生效哪一個要看選擇器優先權，是隱藏的衝突——一併移除重複宣告。
  */
-.col-name {
-  width: 18%;
-}
+.list-panel {
+  &__col--name {
+    width: 18%;
+  }
 
-/* ⚠️ 修正：實際分類／訂價分流拆成兩欄後，這裡原本還是沿用舊的合併欄寬
-   （12%），新拆出來的 .col-pricing 完全沒有寬度規則——table-layout:fixed
+  /* ⚠️ 修正：實際分類／訂價分流拆成兩欄後，這裡原本還是沿用舊的合併欄寬
+   （12%），新拆出來的 .list-panel__col--pricing 完全沒有寬度規則——table-layout:fixed
    下沒有寬度規則的欄位會被壓到接近 0，導致「新品」「再販售」這種短文字
    的徽章被擠到直排換行、表頭文字也被 sort 箭頭圖示重疊蓋住。這裡把原本
    12% 拆成兩欄各自的寬度，而不是在總和之外硬加，避免其他欄位被連帶
    壓縮；同時把供應商／完整度／狀態各自收窄一點點，維持總比例跟排版
-   彈性一致（表格仍搭配 .table-wrap 的 overflow-x:auto + min-width:1300px
+   彈性一致（表格仍搭配 .list-panel__table-wrap 的 overflow-x:auto + min-width:1300px
    因應更窄的視窗，兩欄合計的寬度足夠讓短徽章與分類文字都不需要換行）。 */
-.col-type {
-  width: 8%;
-}
+  &__col--type {
+    width: 8%;
+  }
 
-.col-pricing {
-  width: 9%;
-}
+  &__col--pricing {
+    width: 9%;
+  }
 
-.col-supplier {
-  width: 12%;
-}
+  &__col--supplier {
+    width: 12%;
+  }
 
-.col-score {
-  width: 9%;
-}
+  &__col--score {
+    width: 9%;
+  }
 
-.col-completeness {
-  width: 11%;
-}
+  &__col--completeness {
+    width: 11%;
+  }
 
-.col-status {
-  width: 11%;
-}
+  &__col--status {
+    width: 11%;
+  }
 
-.col-updated {
-  width: 9%;
+  &__col--updated {
+    width: 9%;
+  }
 }
 
 .product-cell strong,
 .product-cell>span,
 .product-cell small,
-.date-cell span,
-.score-note,
+.list-panel__date-cell span,
+.list-panel__score-note,
 .pricing-badge {
   display: block;
 }
@@ -447,21 +427,23 @@ td {
 }
 
 .product-cell>span,
-.date-cell span {
+.list-panel__date-cell span {
   color: #84919c;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
 }
 
-.rise-note {
-  margin-top: .35rem;
-}
+.product-cell {
+  &__rise-note {
+    margin-top: .35rem;
+  }
 
-.lock-note {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-top: .35rem;
-  color: #81631d;
+  &__lock-note {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: .35rem;
+    color: #81631d;
+  }
 }
 
 .pricing-badge {
@@ -469,137 +451,136 @@ td {
   max-width: 100%;
   padding: .2rem .42rem;
   color: #375c78;
-  background: var(--c-brand-tint);
+  background: var(--color-brand-tint);
   border-radius: .35rem;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 800;
+
+  &[data-type='NEW'] {
+    color: #6a4b87;
+    background: #f2eafa;
+  }
 }
 
-.pricing-badge[data-type='NEW'] {
-  color: #6a4b87;
-  background: #f2eafa;
+.list-panel {
+  &__score {
+    display: block;
+    color: var(--color-brand);
+    font-size: 1.55rem;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  &__score.is-unavailable {
+    color: #8795a1;
+  }
+
+  &__score-note {
+    margin-top: .2rem;
+    color: #8a6a29;
+  }
 }
 
-.score {
-  display: block;
-  color: var(--c-brand);
-  font-size: 1.55rem;
-  font-weight: 800;
-  text-align: center;
+.completeness-cell {
+  >div:first-child {
+    display: flex;
+    justify-content: space-between;
+    gap: .4rem;
+  }
+
+  >div:first-child span {
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
+
+  &__track {
+    height: 6px;
+    margin: .35rem 0;
+    overflow: hidden;
+    background: #e7edf1;
+    border-radius: 999px;
+  }
+
+  &__track span {
+    display: block;
+    height: 100%;
+    background: #379773;
+    border-radius: inherit;
+  }
+
+  &.is-incomplete {
+    color: #a14a32;
+  }
+
+  &.is-incomplete .completeness-cell__track span {
+    background: #d28c3d;
+  }
+
+  small {
+    display: block;
+    color: #9b5934;
+    font-size: var(--font-size-xs);
+  }
 }
 
-.score.unavailable {
-  color: #8795a1;
-}
-
-.score-note {
-  margin-top: .2rem;
-  color: #8a6a29;
-}
-
-.completeness-cell>div:first-child {
-  display: flex;
-  justify-content: space-between;
-  gap: .4rem;
-}
-
-.completeness-cell>div:first-child span {
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-
-.progress-track {
-  height: 6px;
-  margin: .35rem 0;
-  overflow: hidden;
-  background: #e7edf1;
-  border-radius: 999px;
-}
-
-.progress-track span {
-  display: block;
-  height: 100%;
-  background: #379773;
-  border-radius: inherit;
-}
-
-.completeness-cell.incomplete {
-  color: #a14a32;
-}
-
-.completeness-cell.incomplete .progress-track span {
-  background: #d28c3d;
-}
-
-.completeness-cell small {
-  display: block;
-  color: #9b5934;
-  font-size: var(--t-xs);
-}
-
-.status-stack {
+.list-panel__status-stack {
   display: grid;
   justify-items: start;
   gap: .3rem;
 }
 
-.status {
+.review-status {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
   padding: .26rem .45rem;
   border-radius: 999px;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 800;
   white-space: nowrap;
-}
 
-.status i {
-  width: 6px;
-  height: 6px;
-  background: currentColor;
-  border-radius: 50%;
-}
+  i {
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    border-radius: 50%;
+  }
 
-.status[data-status='PENDING'] {
-  color: #835f15;
-  background: #fff4ce;
-}
+  &[data-status='PENDING'] {
+    color: #835f15;
+    background: #fff4ce;
+  }
 
-.status[data-status='APPROVED'] {
-  color: #21694f;
-  background: #e5f5ee;
-}
+  &[data-status='APPROVED'] {
+    color: #21694f;
+    background: #e5f5ee;
+  }
 
-.status[data-status='REJECTED'] {
-  color: #8d3733;
-  background: #fce8e6;
+  &[data-status='REJECTED'] {
+    color: #8d3733;
+    background: #fce8e6;
+  }
 }
 
 .item-status {
   color: #5d6c78;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 
-.status-stack small {
-  color: #6f6252;
-  font-size: var(--t-xs);
-}
-
-.locked-row {
+.is-locked {
   background: #fffdf7;
 }
 
-.archived-row {
+.is-archived {
   background: #f7f8f9;
+
+  td {
+    color: #687681;
+  }
 }
 
-.archived-row td {
-  color: #687681;
-}
-
-.action-group {
+.list-panel__action-group {
   display: flex;
   flex-wrap: wrap;
   gap: .3rem;
@@ -607,93 +588,95 @@ td {
 
 .text-action {
   padding: .32rem .46rem;
-  color: var(--c-brand);
+  color: var(--color-brand);
   text-decoration: none;
   background: #fff;
   border: 1px solid #cbd9e3;
   border-radius: .45rem;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700;
+
+  /* 雙 class 寫法與全域 .text-action.text-action--danger 一致，維持原本權重。 */
+  &.text-action--resubmit {
+    color: #8c453d;
+    border-color: #dfb4b0;
+  }
+
+  &.text-action--danger {
+    color: #a43d36;
+  }
 }
 
-.text-action.resubmit {
-  color: #8c453d;
-  border-color: #dfb4b0;
-}
+.list-panel {
+  &__disabled-reason {
+    flex-basis: 100%;
+    color: #7d8992;
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+  }
 
-.text-action.danger {
-  color: #a43d36;
-}
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: 1rem;
+    color: #526677;
+    font-size: var(--font-size-xs);
+  }
 
-.disabled-reason {
-  flex-basis: 100%;
-  color: #7d8992;
-  font-size: var(--t-xs);
-  line-height: 1.35;
-}
+  &__spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #cbd9e3;
+    border-top-color: var(--color-brand);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
 
-.loading-status {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: 1rem;
-  color: #526677;
-  font-size: var(--t-xs);
-}
+  &__skeleton {
+    min-height: 360px;
+    padding: 0 1rem 1rem;
+  }
 
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #cbd9e3;
-  border-top-color: var(--c-brand);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-}
+  &__skeleton-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr .6fr 1.2fr 1.1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #edf1f4;
+  }
 
-.skeleton-table {
-  min-height: 360px;
-  padding: 0 1rem 1rem;
-}
-
-.skeleton-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr .6fr 1.2fr 1.1fr;
-  gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #edf1f4;
-}
-
-.skeleton-row span {
-  height: .8rem;
-  background: linear-gradient(90deg, #edf1f4 25%, #f8fafb 50%, #edf1f4 75%);
-  background-size: 200% 100%;
-  border-radius: .3rem;
-  animation: shimmer 1.4s infinite;
+  &__skeleton-row span {
+    height: .8rem;
+    background: linear-gradient(90deg, #edf1f4 25%, #f8fafb 50%, #edf1f4 75%);
+    background-size: 200% 100%;
+    border-radius: .3rem;
+    animation: shimmer 1.4s infinite;
+  }
 }
 
 .empty-state {
   padding: 4rem 1rem;
   text-align: center;
-}
 
-.empty-state>span,
-.empty-state>app-icon {
-  display: inline-grid;
-  margin: 0 auto;
-  --icon-size-override: 2.6rem;
-  color: #6d89a0;
-}
+  >app-icon {
+    display: inline-grid;
+    margin: 0 auto;
+    --icon-size-override: 2.6rem;
+    color: #6d89a0;
+  }
 
-.empty-state h3 {
-  margin: .65rem 0 .3rem;
-  font-size: var(--t-base);
-}
+  h3 {
+    margin: .65rem 0 .3rem;
+    font-size: var(--font-size-base);
+  }
 
-.empty-state p {
-  margin: 0 auto 1rem;
-  max-width: 480px;
-  color: #6c7a89;
-  font-size: var(--t-xs);
+  p {
+    margin: 0 auto 1rem;
+    max-width: 480px;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
 }
 
 .notice {
@@ -703,16 +686,16 @@ td {
   background: #fff0ef;
   border: 1px solid #efc1be;
   border-radius: .65rem;
-}
 
-.notice strong,
-.notice span {
-  display: block;
-}
+  strong,
+  span {
+    display: block;
+  }
 
-.notice span {
-  margin-top: .2rem;
-  font-size: var(--t-xs);
+  span {
+    margin-top: .2rem;
+    font-size: var(--font-size-xs);
+  }
 }
 
 .dialog-backdrop {
@@ -732,42 +715,42 @@ td {
   background: #fff;
   border-radius: .8rem;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
-}
 
-.dialog-icon {
-  display: grid;
-  width: 2.6rem;
-  height: 2.6rem;
-  margin: 0 auto;
-  place-items: center;
-  color: #fff;
-  background: var(--c-brand);
-  border-radius: 50%;
-  font-size: var(--t-xl);
-  font-weight: 900;
-}
+  &__icon {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    margin: 0 auto;
+    place-items: center;
+    color: #fff;
+    background: var(--color-brand);
+    border-radius: 50%;
+    font-size: var(--font-size-xl);
+    font-weight: 900;
+  }
 
-.alert-dialog h2 {
-  margin: .7rem 0 0;
-  font-size: var(--t-base);
-}
+  h2 {
+    margin: .7rem 0 0;
+    font-size: var(--font-size-base);
+  }
 
-.alert-dialog p {
-  color: #637483;
-  font-size: var(--t-sm);
-  line-height: 1.6;
-}
+  p {
+    color: #637483;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+  }
 
-.dialog-actions {
-  display: flex;
-  justify-content: center;
-  gap: .5rem;
-}
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: .5rem;
+  }
 
-.confirm-action {
-  color: #fff;
-  background: var(--c-brand);
-  border-color: var(--c-brand);
+  &__confirm {
+    color: #fff;
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+  }
 }
 
 @keyframes spin {
@@ -792,86 +775,47 @@ td {
   }
 }
 
-.status-chart-panel .panel-header {
-  margin-bottom: 0.3rem;
-}
-
-.status-chart-panel .panel-header h2 {
-  margin: 0.2rem 0 0;
-  font-size: var(--t-base);
-  color: #243447;
-}
-
-/* ===== 商品名稱欄位排序箭頭 ===== */
-.sort-header-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.3rem;
-  color: inherit;
-  background: none;
-  border: none;
-  font: inherit;
-  font-weight: inherit;
-  cursor: pointer;
-  border-radius: 0.3rem;
-}
-
-.sort-header-btn:hover {
-  background: rgba(28, 82, 134, 0.08);
-}
-
-.sort-header-btn:focus-visible {
-  outline: 2px solid var(--c-brand);
-  outline-offset: 1px;
-}
-
-.sort-arrow {
-  display: inline-flex;
-  align-items: center;
-  color: #6c7a89;
-}
-
 /* ===== 品類名稱懸停說明（#23）===== */
-.type-hover {
+.type-hint {
   position: relative;
-}
 
-.type-hover.has-tooltip {
-  cursor: help;
-  border-bottom: 1px dashed #9db3c4;
-}
+  &.has-tooltip {
+    cursor: help;
+    border-bottom: 1px dashed #9db3c4;
+  }
 
-.type-tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  z-index: 50;
-  width: max-content;
-  max-width: 16rem;
-  margin-bottom: 0.4rem;
-  padding: 0.5rem 0.7rem;
-  color: #fff;
-  background: #243447;
-  border-radius: 0.4rem;
-  font-size: var(--t-xs);
-  font-weight: 400;
-  line-height: 1.4;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  /*
+  &__tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    z-index: 50;
+    width: max-content;
+    max-width: 16rem;
+    margin-bottom: 0.4rem;
+    padding: 0.5rem 0.7rem;
+    color: #fff;
+    background: #243447;
+    border-radius: 0.4rem;
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    line-height: 1.4;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    /*
    * 關鍵在這裡：預設（隱藏方向）沒有 transition-delay，滑鼠一離開就
    * 立刻消失；只有在 :hover / :focus-visible（顯示方向）才加上 1 秒
    * 延遲，這樣才會是「懸停超過 1 秒才跳出」而不是「滑過去就馬上跳出」。
    * 純 CSS 實現，不需要額外的 JS 計時器跟事件監聽。
    */
-  transition: opacity 0.15s ease, visibility 0s 0.15s;
-}
+    transition: opacity 0.15s ease, visibility 0s 0.15s;
+  }
 
-.type-hover.has-tooltip:hover .type-tooltip,
-.type-hover.has-tooltip:focus-visible .type-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 0.15s ease 1s, visibility 0s 1s;
+  &.has-tooltip:hover .type-hint__tooltip,
+  &.has-tooltip:focus-visible .type-hint__tooltip {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.15s ease 1s, visibility 0s 1s;
+  }
 }

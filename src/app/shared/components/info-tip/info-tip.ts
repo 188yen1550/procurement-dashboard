@@ -52,6 +52,7 @@ let nextInfoTipId = 0;
   selector: 'app-info-tip',
   imports: [Icon],
   host: {
+    class: 'info-tip',
     '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'hide()',
   },
@@ -59,7 +60,7 @@ let nextInfoTipId = 0;
     <button
       #trigger
       type="button"
-      class="info-tip"
+      class="info-tip__trigger"
       [attr.aria-label]="'說明：' + text()"
       [attr.aria-describedby]="open() ? tipId : null"
       [attr.aria-expanded]="open()"
@@ -74,7 +75,7 @@ let nextInfoTipId = 0;
     @if (open()) {
       <span
         #bubble
-        class="info-tip-bubble"
+        class="info-tip__bubble"
         role="tooltip"
         [id]="tipId"
         [style.top.px]="position().top"
@@ -90,47 +91,47 @@ let nextInfoTipId = 0;
       :host {
         display: inline-flex;
         vertical-align: middle;
-        margin-left: var(--s-1);
+        margin-left: var(--spacing-1);
       }
-      .info-tip {
+      .info-tip__trigger {
         display: inline-flex;
         align-items: center;
         padding: 0;
         border: 0;
         border-radius: 50%;
-        color: var(--c-ink-faint);
+        color: var(--color-ink-faint);
         background: none;
         font: inherit;
         cursor: help;
       }
-      .info-tip:hover,
-      .info-tip:focus-visible,
-      .info-tip[aria-expanded='true'] {
-        color: var(--c-brand);
+      .info-tip__trigger:hover,
+      .info-tip__trigger:focus-visible,
+      .info-tip__trigger[aria-expanded='true'] {
+        color: var(--color-brand);
       }
-      .info-tip:focus-visible {
-        outline: 2px solid var(--c-brand);
+      .info-tip__trigger:focus-visible {
+        outline: 2px solid var(--color-brand);
         outline-offset: 2px;
       }
-      .info-tip-bubble {
+      .info-tip__bubble {
         position: fixed;
         z-index: 1000;
         width: max-content;
         max-width: min(24rem, calc(100vw - 1rem));
-        padding: var(--s-2-5) var(--s-3);
-        border-radius: var(--r-md);
+        padding: var(--spacing-2-5) var(--spacing-3);
+        border-radius: var(--radius-md);
         color: #fff;
-        background: var(--c-ink);
-        box-shadow: var(--sh-modal);
-        font-size: var(--t-sm);
+        background: var(--color-ink);
+        box-shadow: var(--shadow-modal);
+        font-size: var(--font-size-sm);
         font-weight: 400;
-        line-height: var(--lh-base);
+        line-height: var(--line-height-base);
         text-align: left;
         white-space: normal;
         overflow-wrap: anywhere;
       }
       @media (prefers-reduced-motion: no-preference) {
-        .info-tip-bubble {
+        .info-tip__bubble {
           animation: info-tip-in var(--motion-fast);
         }
       }

@@ -5,11 +5,11 @@
 :host {
   display: block;
 }
-.dashboard-page {
+.dashboard {
   color: #243447;
 }
 .page-header,
-.panel-header,
+.panel__header,
 .state-preview,
 .notice,
 .incomplete-card,
@@ -21,35 +21,30 @@
 }
 .page-header {
   margin-bottom: 1.25rem;
+
+  h1 {
+    margin: 0.15rem 0 0.35rem;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+  }
 }
-.page-header h1 {
-  margin: 0.15rem 0 0.35rem;
-  font-size: clamp(1.55rem, 3vw, 2rem);
-}
-.page-header > div > p:last-child,
 .conversion-panel p {
   margin: 0;
   color: #6c7a89;
 }
-.eyebrow {
-  margin: 0;
-  color: #39735c;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.data-time {
-  padding: 0.55rem 0.8rem;
-  color: #53697b;
-  background: #fff;
-  border: 1px solid #dfe7ee;
-  border-radius: 0.6rem;
-  font-size: var(--t-xs);
-  white-space: nowrap;
-}
-.data-time span {
-  color: #2aa884;
+.dashboard {
+  &__data-time {
+    padding: 0.55rem 0.8rem;
+    color: #53697b;
+    background: #fff;
+    border: 1px solid #dfe7ee;
+    border-radius: 0.6rem;
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+
+  &__data-time span {
+    color: #2aa884;
+  }
 }
 
 .state-preview {
@@ -58,40 +53,43 @@
   background: #eef4f8;
   border: 1px solid #dce6ed;
   border-radius: 0.75rem;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  span {
+    margin-top: 0.15rem;
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
 }
-.state-preview strong,
-.state-preview span {
-  display: block;
-}
-.state-preview span {
-  margin-top: 0.15rem;
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-.state-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-.state-actions button,
+.state-preview__actions button,
 .notice button,
 .incomplete-card button,
 .alert-dialog button,
-.table-action {
+.rankings-panel__action {
   padding: 0.48rem 0.7rem;
   color: #38536a;
   background: #fff;
   border: 1px solid #cbd9e3;
   border-radius: 0.45rem;
   font: inherit;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
 }
-.state-actions button.active {
+.state-preview__actions button.is-active {
   color: #fff;
-  background: var(--c-brand);
-  border-color: var(--c-brand);
+  background: var(--color-brand);
+  border-color: var(--color-brand);
 }
 button:focus-visible {
   outline: 3px solid rgba(28, 82, 134, 0.25);
@@ -102,39 +100,45 @@ button:focus-visible {
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
   border-radius: 0.65rem;
-  font-size: var(--t-sm);
-}
-.notice strong {
-  display: block;
-  margin-bottom: 0.15rem;
-}
-.locked-notice {
-  color: #725510;
-  background: #fff8dc;
-  border: 1px solid #ead895;
-}
-.error-notice {
-  color: #7a2927;
-  background: #fff0ef;
-  border: 1px solid #efc1be;
-}
-.error-notice button {
-  color: #8a302d;
-  border-color: #dcaaa6;
+  font-size: var(--font-size-sm);
+
+  strong {
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+
+  &--locked {
+    color: #725510;
+    background: #fff8dc;
+    border: 1px solid #ead895;
+  }
+
+  &--error {
+    color: #7a2927;
+    background: #fff0ef;
+    border: 1px solid #efc1be;
+  }
+
+  &--error button {
+    color: #8a302d;
+    border-color: #dcaaa6;
+  }
 }
 
 /* 2026-09-29：操作層統計卡個人口徑的說明文字。 */
-.stats-scope-note {
-  margin: 0 0 0.5rem;
-  color: #526677;
-  font-size: var(--t-xs);
-}
+.dashboard {
+  &__stats-note {
+    margin: 0 0 0.5rem;
+    color: #526677;
+    font-size: var(--font-size-xs);
+  }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
 }
 .stat-card,
 .skeleton-card {
@@ -148,79 +152,79 @@ button:focus-visible {
   border-radius: 0.8rem;
   box-shadow: 0 8px 24px rgba(29, 54, 78, 0.05);
 }
-.stat-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: #5689b2;
-}
-.stat-card.pending::before {
-  background: #d19a32;
-}
-.stat-card.approved::before {
-  background: #379773;
-}
-.stat-card.rejected::before {
-  background: #c76661;
+.stat-card {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: #5689b2;
+  }
+
+  &--pending::before {
+    background: #d19a32;
+  }
+
+  &--approved::before {
+    background: #379773;
+  }
+
+  &--rejected::before {
+    background: #c76661;
+  }
 }
 .stat-card {
   padding: 0;
-}
-/* 整張卡片都可點擊跳轉，不是只有底部一小行文字才能點——
-   card 本身的 padding 移到 .stat-card-link 上，讓可點擊區域涵蓋整張卡片。 */
-.stat-card-link {
-  box-sizing: border-box;
-  display: block;
-  height: 100%;
-  padding: 1.1rem 1.1rem 1.3rem;
-  color: inherit;
-  text-decoration: none;
-  border-radius: inherit;
-  transition: background-color 0.15s ease;
-}
-.stat-card-link:hover,
-.stat-card-link:focus-visible {
-  background-color: #f7f4fd;
-}
-.stat-card-link:focus-visible {
-  outline: 3px solid rgba(138, 99, 210, 0.35);
-  outline-offset: -3px;
+
+  /* 整張卡片都可點擊跳轉，不是只有底部一小行文字才能點——
+   card 本身的 padding 移到 .stat-card__link 上，讓可點擊區域涵蓋整張卡片。 */
+  &__link {
+    box-sizing: border-box;
+    display: block;
+    height: 100%;
+    padding: 1.1rem 1.1rem 1.3rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: inherit;
+    transition: background-color 0.15s ease;
+  }
+
+  &__link:hover,
+  &__link:focus-visible {
+    background-color: #f7f4fd;
+  }
+
+  &__link:focus-visible {
+    outline: 3px solid rgba(138, 99, 210, 0.35);
+    outline-offset: -3px;
+  }
 }
 /* 管理層的「候選商品總數」沒有單一對應頁面，用同樣版面但不可點，也不給 hover 回饋。 */
-div.stat-card-link:hover {
+div.stat-card__link:hover {
   background-color: transparent;
 }
-.stat-card-cta {
-  display: inline-block;
-  margin-top: 0.4rem;
-  color: #5689b2;
-  font-size: var(--t-xs);
-  font-weight: 600;
-  text-decoration: underline;
-}
-.stat-card span,
-.stat-card small {
-  display: block;
-  color: #6c7a89;
-}
-.stat-card span {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-.stat-card strong {
-  display: block;
-  margin: 0.6rem 0 0.25rem;
-  color: #1e3448;
-  font-size: 2.75rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-.stat-card small {
-  font-size: var(--t-xs);
+.stat-card {
+  span {
+    display: block;
+    color: #6c7a89;
+  }
+
+  span {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  strong {
+    display: block;
+    margin: 0.6rem 0 0.25rem;
+    color: #1e3448;
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
 }
 
-.content-grid {
+.dashboard__content {
   /* ⚠️ 2026-09-17三修：前兩次分別用「CSS Grid + align-items:stretch」和
      「CSS Grid + position:absolute/inset:0」都沒有穩定做到等高，改用
      flexbox——這是「兩欄並排、等高、其中一欄內部捲動」這個需求最直接、
@@ -238,7 +242,7 @@ div.stat-card-link:hover {
   box-shadow: 0 8px 24px rgba(29, 54, 78, 0.05);
 }
 .recommendations-panel,
-.side-column {
+.dashboard__aside {
   min-width: 0;
 }
 .recommendations-panel {
@@ -247,32 +251,25 @@ div.stat-card-link:hover {
      取代原本 grid-template-columns 的 2.1fr，維持同樣的寬度比例。 */
   flex: 2.1 1 0;
 }
-.panel-header {
+.panel__header {
   padding: 1rem 1.1rem;
   border-bottom: 1px solid #e8eef2;
 }
-.panel-header h2,
+.panel__header h2,
 .conversion-panel h2,
 .incomplete-card h2,
 .alert-dialog h2 {
   margin: 0.2rem 0 0;
-  font-size: var(--t-base);
+  font-size: var(--font-size-base);
 }
 /* Top 10 說明副標（2026-09-23 分支整併）：提醒推薦理由是最近一次 AI 分析的快照。 */
-.panel-subtitle {
+.panel__subtitle {
   margin: 0.35rem 0 0;
   color: #6b7d8a;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
-.helper-text {
-  padding: 0.35rem 0.55rem;
-  color: #735d1d;
-  background: #fff8dc;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-}
-.table-wrap {
+.rankings-panel__table-wrap {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
@@ -294,20 +291,26 @@ table {
    最終分數都是短內容，欄寬給少一點；操作欄固定放一個「查看評估」
    連結，不需要太寬。加總留一點餘裕給 min-width:850px 的水平捲動空間，
    不用剛好湊滿 100%。 */
-.col-rank {
-  width: 8%;
-}
-.col-reason {
-  width: 42%;
-}
-.col-completeness {
-  width: 15%;
-}
-.col-score {
-  width: 13%;
-}
-.col-actions {
-  width: 12%;
+.rankings-panel {
+  &__col--rank {
+    width: 8%;
+  }
+
+  &__col--reason {
+    width: 42%;
+  }
+
+  &__col--completeness {
+    width: 15%;
+  }
+
+  &__col--score {
+    width: 13%;
+  }
+
+  &__col--actions {
+    width: 12%;
+  }
 }
 th,
 td {
@@ -319,98 +322,85 @@ td {
 th {
   color: #6c7a89;
   background: #f8fafc;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   letter-spacing: 0.04em;
 }
 td {
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
 }
-.rank {
+.rankings-panel__rank {
   display: grid;
   width: 1.8rem;
   height: 1.8rem;
   place-items: center;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
+  color: var(--color-brand);
+  background: var(--color-brand-tint);
   border-radius: 50%;
   font-weight: 800;
 }
 .product-cell {
   min-width: 260px;
+
+  > strong,
+  > span,
+  small {
+    display: block;
+  }
+
+  > span {
+    margin-top: 0.15rem;
+    color: #7b8a96;
+    font-size: var(--font-size-xs);
+  }
+
+  p {
+    margin: 0.35rem 0;
+    color: #526677;
+    line-height: 1.45;
+  }
+
+  .product-cell__resubmission {
+    display: inline-block;
+    padding: 0.18rem 0.4rem;
+    color: #934640;
+    background: #fff0ef;
+    border-radius: 0.3rem;
+    font-weight: 700;
+  }
+
+  small {
+    margin-top: 0.25rem;
+    color: #8a6864;
+  }
 }
-.product-cell > strong,
-.product-cell > span,
-.product-cell small {
-  display: block;
-}
-.product-cell > span {
-  margin-top: 0.15rem;
-  color: #7b8a96;
-  font-size: var(--t-xs);
-}
-.product-cell p {
-  margin: 0.35rem 0;
-  color: #526677;
-  line-height: 1.45;
-}
-.product-cell .resubmission {
-  display: inline-block;
-  padding: 0.18rem 0.4rem;
-  color: #934640;
-  background: #fff0ef;
-  border-radius: 0.3rem;
-  font-weight: 700;
-}
-.product-cell small {
-  margin-top: 0.25rem;
-  color: #8a6864;
-}
-.score {
-  color: var(--c-brand);
-  font-size: var(--t-base);
-}
-/* ⚠️ 2026-09-25 新增：熱度排行榜的模擬資料要看得出來，不能跟真實 PTT
+.rankings-panel {
+  &__score {
+    color: var(--color-brand);
+    font-size: var(--font-size-base);
+  }
+
+  /* ⚠️ 2026-09-25 新增：熱度排行榜的模擬資料要看得出來，不能跟真實 PTT
    資料長得一樣，跟品項詳情頁 product-detail.scss 用同一個橘色色碼。 */
-.score.is-simulated {
-  color: #b45309;
+  &__score.is-simulated {
+    color: #b45309;
+  }
+
+  &__action {
+    color: var(--color-brand);
+  }
+
+  &__action:disabled {
+    color: #8a969f;
+    background: #eef1f3;
+    cursor: not-allowed;
+  }
 }
-.status {
-  display: inline-block;
-  padding: 0.28rem 0.45rem;
-  border-radius: 999px;
-  font-size: var(--t-xs);
-  font-weight: 800;
-  white-space: nowrap;
-}
-.status[data-status='PENDING'] {
-  color: #835f15;
-  background: #fff4ce;
-}
-.status[data-status='APPROVED'] {
-  color: #21694f;
-  background: #e5f5ee;
-}
-.status[data-status='REJECTED'] {
-  color: #8d3733;
-  background: #fce8e6;
-}
-.table-action {
-  color: var(--c-brand);
-}
-.table-action:disabled {
-  color: #8a969f;
-  background: #eef1f3;
-  cursor: not-allowed;
-}
-.locked-row {
-  background: #fafbfc;
-}
-.incomplete {
+.is-incomplete {
   color: #b23a2e;
   font-weight: 800;
 }
 
-.side-column {
+.dashboard__aside {
   /* 原本是 display:grid，但這一欄現在只有 .risk-panel 一個子項目，用
      flex column 就夠了。position:relative 是給下面 .risk-panel 的
      position:absolute 當定位基準。 */
@@ -425,41 +415,47 @@ td {
 .conversion-panel {
   justify-content: flex-start;
   padding: 1rem;
-}
-.conversion-ring {
-  --rate: 0%;
-  display: grid;
-  flex: 0 0 auto;
-  width: 132px;
-  height: 132px;
-  place-content: center;
-  text-align: center;
-  background:
+
+  &__ring {
+    --conversion-rate: 0%;
+    display: grid;
+    flex: 0 0 auto;
+    width: 132px;
+    height: 132px;
+    place-content: center;
+    text-align: center;
+    background:
     radial-gradient(circle, #fff 62%, transparent 64%),
-    conic-gradient(#379773 var(--rate), #e6ecef 0);
-  border-radius: 50%;
+    conic-gradient(#379773 var(--conversion-rate), #e6ecef 0);
+    border-radius: 50%;
+  }
+
+  &__ring strong,
+  &__ring span {
+    display: block;
+  }
+
+  &__ring strong {
+    font-size: 1.6rem;
+    font-weight: 800;
+  }
+
+  &__ring span {
+    color: #6c7a89;
+    font-size: var(--font-size-xs);
+  }
+
+  > div:last-child {
+    min-width: 0;
+  }
+
+  p:last-child {
+    margin-top: 0.4rem;
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+  }
 }
-.conversion-ring strong,
-.conversion-ring span {
-  display: block;
-}
-.conversion-ring strong {
-  font-size: 1.6rem;
-  font-weight: 800;
-}
-.conversion-ring span {
-  color: #6c7a89;
-  font-size: var(--t-xs);
-}
-.conversion-panel > div:last-child {
-  min-width: 0;
-}
-.conversion-panel p:last-child {
-  margin-top: 0.4rem;
-  font-size: var(--t-xs);
-  line-height: 1.5;
-}
-.risk-count {
+.risk-panel__count {
   display: grid;
   width: 1.8rem;
   height: 1.8rem;
@@ -467,20 +463,20 @@ td {
   color: #fff;
   background: #b94d47;
   border-radius: 50%;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 800;
 }
-/* .panel-header 跟 <app-list-sort> 維持自然高度，.risk-list 吃掉剩餘
+/* .panel__header 跟 <app-list-sort> 維持自然高度，.risk-panel__list 吃掉剩餘
    空間並在超出時自己捲動。
-   2026-09-17三修：.content-grid／.side-column 已改用 flexbox，但光靠
+   2026-09-17三修：.dashboard__content／.dashboard__aside 已改用 flexbox，但光靠
    flex 的 align-items:stretch 不夠可靠——.risk-panel 若是「正常排列」
-   的 flex 子項目，瀏覽器計算 .content-grid 這個 flex 容器的高度時，
+   的 flex 子項目，瀏覽器計算 .dashboard__content 這個 flex 容器的高度時，
    仍然會把 .risk-panel「還沒被截斷前的天生內容高度」納入考量，項目一多
-   就會反過來把整個 .content-grid（連帶 .recommendations-panel）撐高，
+   就會反過來把整個 .dashboard__content（連帶 .recommendations-panel）撐高，
    跟兩次前的 CSS Grid 版本是同一種問題，換了排版模型但沒解決成因。
    真正可靠的做法是用 position:absolute 把 .risk-panel 整個移出正常
    文件流——絕對定位的元素完全不參與任何祖先容器的高度計算，不管裡面
-   塞多少筆高風險提示都一樣。.side-column（position:relative）先靠
+   塞多少筆高風險提示都一樣。.dashboard__aside（position:relative）先靠
    flex stretch 拿到跟 .recommendations-panel 一致的高度，.risk-panel
    再用 inset:0 精準填滿那個高度，兩者的高度來源在演算法上就是同一個
    值，不是兩個各自估計、剛好湊近的數字。 */
@@ -490,51 +486,51 @@ td {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-.risk-list {
-  padding: 0.4rem 1rem 1rem;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-.risk-panel > app-list-sort {
-  --list-sort-justify: center;
-  padding-inline: 1rem;
-}
-.risk-item {
-  margin-top: 0.7rem;
-  padding: 0.75rem;
-  border-left: 3px solid #d19a32;
-  background: #fffaf0;
-  border-radius: 0.4rem;
-}
-.risk-item strong {
-  display: block;
-  color: #40311a;
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
-.risk-item p {
-  margin: 0.4rem 0;
-  color: #526677;
-  font-size: var(--t-xs);
-  line-height: 1.45;
-}
-/* 高風險提示改為條列（2026-09-23 分支整併），字級與顏色沿用原本 .risk-item p。 */
-.risk-message-list {
-  margin: 0.4rem 0;
-  padding-left: 1.1rem;
-  color: #526677;
-  font-size: var(--t-xs);
-  line-height: 1.45;
 
-  li + li {
-    margin-top: 0.2rem;
+  &__list {
+    padding: 0.4rem 1rem 1rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
-}
-.risk-item small {
-  color: #7b8a96;
-  font-size: var(--t-xs);
+
+  > app-list-sort {
+    --list-sort-justify: center;
+    padding-inline: 1rem;
+  }
+
+  &__item {
+    margin-top: 0.7rem;
+    padding: 0.75rem;
+    border-left: 3px solid #d19a32;
+    background: #fffaf0;
+    border-radius: 0.4rem;
+  }
+
+  &__item strong {
+    display: block;
+    color: #40311a;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
+
+  /* 高風險提示改為條列（2026-09-23 分支整併），字級與顏色沿用原本 .risk-panel__item p。 */
+  &__messages {
+    margin: 0.4rem 0;
+    padding-left: 1.1rem;
+    color: #526677;
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+
+    li + li {
+      margin-top: 0.2rem;
+    }
+  }
+
+  &__item small {
+    color: #7b8a96;
+    font-size: var(--font-size-xs);
+  }
 }
 
 .incomplete-card {
@@ -543,51 +539,58 @@ td {
   background: #fffaf0;
   border: 1px solid #ecdca9;
   border-radius: 0.75rem;
+
+  > div:nth-child(2) {
+    flex: 1;
+  }
+
+  p {
+    margin: 0.3rem 0 0;
+    color: #6c6a5c;
+    font-size: var(--font-size-xs);
+  }
+
+  &__completeness {
+    display: grid;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    color: #a65b24;
+    background: #fff;
+    border: 5px solid #e8b56f;
+    border-radius: 50%;
+    font-weight: 800;
+  }
+
+  &__warning {
+    color: #9c5f18;
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+  }
 }
-.incomplete-card > div:nth-child(2) {
-  flex: 1;
-}
-.incomplete-card p {
-  margin: 0.3rem 0 0;
-  color: #6c6a5c;
-  font-size: var(--t-xs);
-}
-.completeness {
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  color: #a65b24;
-  background: #fff;
-  border: 5px solid #e8b56f;
-  border-radius: 50%;
-  font-weight: 800;
-}
-.warning-badge {
-  color: #9c5f18;
-  font-size: var(--t-xs);
-  font-weight: 800;
-}
-.loading-status {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
-  color: #526677;
-  font-size: var(--t-xs);
-}
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #cbd9e3;
-  border-top-color: var(--c-brand);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.dashboard {
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    color: #526677;
+    font-size: var(--font-size-xs);
+  }
+
+  &__spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #cbd9e3;
+    border-top-color: var(--color-brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
 }
 .skeleton-card span,
 .skeleton-card strong,
 .skeleton-card small,
-.skeleton-panel span {
+.panel--skeleton span {
   display: block;
   height: 0.75rem;
   margin-bottom: 0.75rem;
@@ -596,25 +599,33 @@ td {
   border-radius: 0.3rem;
   animation: shimmer 1.4s infinite;
 }
-.skeleton-card strong {
-  width: 45%;
-  height: 2rem;
+.skeleton-card {
+  strong {
+    width: 45%;
+    height: 2rem;
+  }
+
+  small {
+    width: 65%;
+  }
 }
-.skeleton-card small {
-  width: 65%;
-}
-.skeleton-panel {
-  min-height: 390px;
-  padding: 1rem;
-}
-.skeleton-panel span:nth-child(2) {
-  width: 85%;
-}
-.skeleton-panel span:nth-child(3) {
-  width: 92%;
-}
-.skeleton-panel.short {
-  min-height: 240px;
+.panel {
+  &--skeleton {
+    min-height: 390px;
+    padding: 1rem;
+  }
+
+  &--skeleton span:nth-child(2) {
+    width: 85%;
+  }
+
+  &--skeleton span:nth-child(3) {
+    width: 92%;
+  }
+
+  &--skeleton-aside {
+    min-height: 240px;
+  }
 }
 
 .dialog-backdrop {
@@ -633,28 +644,31 @@ td {
   background: #fff;
   border-radius: 0.8rem;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-}
-.dialog-icon {
-  display: grid;
-  width: 2.6rem;
-  height: 2.6rem;
-  margin: 0 auto;
-  place-items: center;
-  color: #fff;
-  background: #b94d47;
-  border-radius: 50%;
-  font-size: var(--t-xl);
-  font-weight: 900;
-}
-.alert-dialog p {
-  color: #637483;
-  font-size: var(--t-sm);
-  line-height: 1.6;
-}
-.alert-dialog button {
-  color: #fff;
-  background: var(--c-brand);
-  border-color: var(--c-brand);
+
+  &__icon {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    margin: 0 auto;
+    place-items: center;
+    color: #fff;
+    background: #b94d47;
+    border-radius: 50%;
+    font-size: var(--font-size-xl);
+    font-weight: 900;
+  }
+
+  p {
+    color: #637483;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+  }
+
+  button {
+    color: #fff;
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+  }
 }
 
 @keyframes spin {
@@ -668,20 +682,24 @@ td {
   }
 }
 @media (max-width: 1180px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .content-grid {
-    /* 這個斷點把兩欄改成單欄上下堆疊，.recommendations-panel 跟
-       .side-column 不再左右並排，「跟 Top 10 等高」這件事在堆疊版面下
+  .dashboard {
+    &__stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    &__content {
+      /* 這個斷點把兩欄改成單欄上下堆疊，.recommendations-panel 跟
+       .dashboard__aside 不再左右並排，「跟 Top 10 等高」這件事在堆疊版面下
        沒有意義（兩者本來就各自佔一整行）。 */
-    flex-direction: column;
-  }
-  .side-column {
-    /* 堆疊版面下不需要再當 .risk-panel 的定位基準，.risk-panel 改回
+      flex-direction: column;
+    }
+
+    &__aside {
+      /* 堆疊版面下不需要再當 .risk-panel 的定位基準，.risk-panel 改回
        正常排列＋固定的 max-height + 捲動，維持「不要無限撐高」這個
        目的，只是換一種寬度下的做法。 */
-    position: static;
+      position: static;
+    }
   }
   .risk-panel {
     position: static;
@@ -698,24 +716,27 @@ td {
     align-items: flex-start;
     flex-direction: column;
   }
-  .data-time {
-    white-space: normal;
+  .dashboard {
+    &__data-time {
+      white-space: normal;
+    }
+
+    &__stats {
+      grid-template-columns: 1fr;
+    }
   }
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  .state-actions {
-    width: 100%;
-  }
-  .state-actions button {
-    flex: 1;
+  .state-preview {
+    &__actions {
+      width: 100%;
+    }
+
+    &__actions button {
+      flex: 1;
+    }
   }
   .incomplete-card button,
-  .error-notice button {
+  .notice--error button {
     width: 100%;
-  }
-  .helper-text {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -728,183 +749,128 @@ td {
 }
 
 /* ===== 審核狀態分布圖表（chart.js）===== */
-.status-chart-panel {
+.status-chart {
   margin-bottom: 0;
-}
 
-.status-chart-wrap {
-  position: relative;
-  height: 220px;
-  min-width: 0;
-}
-
-.status-overview {
-  display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(230px, 1.15fr);
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-.chart-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  strong { font-size: 2rem; color: #1e3448; }
-  span { color: #6c7a89; font-size: var(--t-xs); }
-}
-.status-breakdown {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto 4rem;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.85rem 0;
-    border-bottom: 1px solid #edf1f4;
-    font-size: var(--t-sm);
+  &__canvas {
+    position: relative;
+    height: 220px;
+    min-width: 0;
   }
-  li:last-child { border-bottom: 0; }
-  small { font-weight: normal; color: #6c7a89; }
-}
-.status-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  i { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex-shrink: 0; }
-}
-.status-percentage { text-align: right; color: #6c7a89; }
-.status-note { margin: 0 1.5rem 1rem; color: #935f16; font-size: var(--t-xs); }
-.chart-row > .conversion-panel {
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-  padding: 1.5rem;
-}
 
-.chart-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
+  &__overview {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(230px, 1.15fr);
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  &__total {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+
+    strong {
+      font-size: 2rem;
+      color: #1e3448;
+    }
+
+    span {
+      color: #6c7a89;
+      font-size: var(--font-size-xs);
+    }
+  }
+
+  &__breakdown {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 4rem;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid #edf1f4;
+      font-size: var(--font-size-sm);
+    }
+
+    li:last-child {
+      border-bottom: 0;
+    }
+
+    small {
+      font-weight: normal;
+      color: #6c7a89;
+    }
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  }
+
+  &__percentage {
+    text-align: right;
+    color: #6c7a89;
+  }
+
+  &__note {
+    margin: 0 1.5rem 1rem;
+    color: #935f16;
+    font-size: var(--font-size-xs);
+  }
+}
+.dashboard {
+  &__charts > .conversion-panel {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: 1.5rem;
+  }
+
+  &__charts {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
 }
 
 @media (max-width: 1100px) {
-  .chart-row {
+  .dashboard__charts {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 600px) {
-  .status-overview { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 1rem; }
+  .status-chart__overview { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 1rem; }
 }
 
 /* 操作層沒有側欄（高風險提示只給管理層），Top 10 獨佔整列寬度。
    2026-09-24：原本這裡把側欄設成 flex: 1 1 260px，但側欄裡沒有任何內容，
    等於保留一塊空白；現在側欄在樣板層級就不渲染，這裡改成讓推薦面板
    佔滿，並把表格的最小寬度放寬到容器寬——整列寬度夠時不需要水平捲動。 */
-.content-grid.operator-view .recommendations-panel {
+.dashboard__content--operator .recommendations-panel {
   flex: 1 1 100%;
 }
 
-.chart-skeleton {
+.panel--chart-skeleton {
   min-height: 260px;
   background: linear-gradient(90deg, #eef1f3 25%, #f6f8fa 37%, #eef1f3 63%);
   background-size: 400% 100%;
   animation: shimmer 1.4s infinite;
-}
-
-/* ===================== 商品排行頁籤（2026-09-29）=====================
-   「推薦 Top 10」與「熱度排行」合併成同一張卡片的兩個頁籤（WAI-ARIA tabs：方向鍵切換、
-   只有目前頁籤在 Tab 順序裡）。頁籤列貼齊標題列底線，選中的頁籤用品牌色底線＋粗體，
-   不只靠顏色區分（色弱使用者也看得出來）。 */
-.rankings-header {
-  padding-bottom: 0;
-}
-.ranking-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: -1px; /* 讓選中頁籤的底線蓋在 .panel-header 的分隔線上 */
-}
-.ranking-tabs [role='tab'] {
-  padding: 0.55rem 0.95rem 0.6rem;
-  color: var(--c-ink-muted);
-  background: none;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  font-size: var(--t-base);
-  font-weight: 700;
-  cursor: pointer;
-}
-.ranking-tabs [role='tab']:hover {
-  color: var(--c-ink);
-}
-.ranking-tabs [role='tab'][aria-selected='true'] {
-  color: var(--c-brand);
-  border-bottom-color: var(--c-brand);
-  font-weight: 800;
-}
-.ranking-tabs [role='tab']:focus-visible {
-  outline: 2px solid var(--c-brand);
-  outline-offset: -2px;
-  border-radius: 0.4rem 0.4rem 0 0;
-}
-/* 兩個頁籤面板疊在同一格：卡片高度＝兩者較高者，切換時不跳動（高風險側欄的高度跟著這張卡片）。
-   未選的面板 visibility:hidden——不顯示、不可聚焦，也不會被螢幕閱讀器讀到，但仍佔位。 */
-.ranking-panels {
-  display: grid;
-}
-.ranking-panel {
-  grid-area: 1 / 1;
-  min-width: 0;
-}
-.ranking-panel.is-inactive {
-  visibility: hidden;
-}
-.ranking-subtitle {
-  margin: 0;
-  padding: 0.75rem 1.1rem 0.5rem;
-}
-
-/* 熱度排行（2026-09-27 起的欄寬沿用）：五欄合計 100%，只有五個短欄位，最小寬度 640px 就夠，
-   不需要跟 Top 10 一樣 850px 才開始水平捲動。 */
-.trend-leaderboard table {
-  min-width: 640px;
-}
-/* 放進排行卡片後表格變窄，「排名」等短表頭不要被擠成兩行。 */
-.trend-leaderboard th {
-  white-space: nowrap;
-}
-.lb-rise {
-  margin-left: 0.35rem;
-  white-space: nowrap;
-}
-/* 2026-09-28：多一欄 Google 趨勢（五欄合計 100%），最小寬度 560 → 640px。 */
-.col-lb-rank {
-  width: 8%;
-}
-.col-lb-product {
-  width: 38%;
-}
-.col-lb-score {
-  width: 16%;
-}
-.col-lb-trend {
-  width: 16%;
-}
-.col-lb-google {
-  width: 22%;
-}
-.lb-google {
-  white-space: nowrap;
-}
-.lb-google .google-up {
-  color: var(--c-ok);
-}
-.lb-google .google-down {
-  color: var(--c-danger);
 }

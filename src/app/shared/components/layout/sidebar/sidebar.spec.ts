@@ -25,16 +25,16 @@ describe('Sidebar', () => {
 
   it('greys out and disables navigation while a password change is required (2026-09-26)', () => {
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('nav.navigation')?.hasAttribute('inert')).toBe(false);
-    expect(root.querySelector('.locked-notice')).toBeNull();
+    expect(root.querySelector('nav.sidebar__nav')?.hasAttribute('inert')).toBe(false);
+    expect(root.querySelector('.sidebar__locked-notice')).toBeNull();
 
     fixture.componentRef.setInput('locked', true);
     fixture.detectChanges();
 
-    const nav = root.querySelector('nav.navigation')!;
+    const nav = root.querySelector('nav.sidebar__nav')!;
     expect(nav.classList).toContain('is-locked');
     expect(nav.hasAttribute('inert')).toBe(true);
     expect(nav.getAttribute('aria-disabled')).toBe('true');
-    expect(root.querySelector('.locked-notice')?.textContent).toContain('請先修改密碼');
+    expect(root.querySelector('.sidebar__locked-notice')?.textContent).toContain('請先修改密碼');
   });
 });

@@ -18,7 +18,7 @@
 /* ===================== 版面容器 ===================== */
 
 .page-shell {
-  max-width: var(--layout-max);
+  max-width: var(--layout-max-width);
   margin: auto;
 }
 
@@ -26,19 +26,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
-}
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
 
-.page-header h1 {
-  margin: 0.15rem 0 0.3rem;
-  font-size: var(--t-display);
-}
+  h1 {
+    margin: 0.15rem 0 0.3rem;
+    font-size: var(--font-size-display);
+  }
 
-.page-header p {
-  margin: 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
+  p {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+  }
 }
 
 /*
@@ -48,8 +48,8 @@
  */
 .eyebrow {
   margin: 0;
-  color: var(--c-ok);
-  font-size: var(--t-xs);
+  color: var(--color-ok);
+  font-size: var(--font-size-xs);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -59,70 +59,70 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
-  padding: var(--s-3) var(--s-4);
-  background: var(--c-surface-alt);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-surface-alt);
   border: 1px solid #dce6ed;
-  border-radius: var(--r-md);
-}
+  border-radius: var(--radius-md);
 
-.state-bar span {
-  display: block;
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
+  span {
+    display: block;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-xs);
+  }
 }
 
 /* ===================== 卡片／面板 ===================== */
 
 .panel {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-card);
-}
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 
-.panel > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-4);
-  padding: var(--s-4) var(--s-5);
-  border-bottom: 1px solid var(--c-border-soft);
-}
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4) var(--spacing-5);
+    border-bottom: 1px solid var(--color-border-soft);
+  }
 
-.panel h2 {
-  margin: 0.15rem 0;
-  font-size: var(--t-lg);
-}
+  h2 {
+    margin: 0.15rem 0;
+    font-size: var(--font-size-lg);
+  }
 
-.panel > header p {
-  margin: 0.2rem 0 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-}
+  > header p {
+    margin: 0.2rem 0 0;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+  }
 
-.panel > footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-4);
-  padding: var(--s-4) var(--s-5);
-  background: var(--c-surface-sunken);
-  border-top: 1px solid var(--c-border-soft);
-}
+  > footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4) var(--spacing-5);
+    background: var(--color-surface-sunken);
+    border-top: 1px solid var(--color-border-soft);
+  }
 
-.panel > footer p {
-  margin: 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
+  > footer p {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-xs);
+  }
 }
 
 /* ===================== 按鈕 ===================== */
 
 /*
  * 三種層級，對應三種後果嚴重度：
- *   .btn-primary  主要動作（送出、儲存、新增）
+ *   .btn--primary  主要動作（送出、儲存、新增）
  *   .btn          一般動作（取消、切換、次要操作）
  *   .btn.danger   破壞性動作（刪除）
  * 沿用站內既有的 .text-action 輕量風格作為 .btn 基礎，
@@ -141,46 +141,53 @@
   display: inline-flex;
   align-items: center;
   padding: 0.2rem 0.35rem;
-  color: var(--c-brand);
+  color: var(--color-brand);
   background: none;
   border: none;
-  border-radius: var(--r-sm);
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
-}
-.text-action:hover {
-  background: var(--c-brand-tint);
-  text-decoration: underline;
-}
-.text-action:focus-visible {
-  outline: 3px solid rgba(28, 82, 134, 0.3);
-  outline-offset: 1px;
-}
-.text-action.danger {
-  color: var(--c-danger);
-}
-.text-action.danger:hover {
-  background: var(--c-danger-tint);
-}
-.text-action.resubmit {
-  color: var(--c-brand);
-  font-weight: 800;
+
+  &:hover {
+    background: var(--color-brand-tint);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(28, 82, 134, 0.3);
+    outline-offset: 1px;
+  }
+
+  /* 刻意保留 .text-action.text-action--danger 雙 class（權重 0,2,0）：多個元件會在自己的 SCSS 重設 .text-action 底色，
+     單 class 的 modifier 權重不足，hover 底色會被元件樣式蓋掉（product-management 已實測）。 */
+  &.text-action--danger {
+    color: var(--color-danger);
+  }
+
+  &.text-action--danger:hover {
+    background: var(--color-danger-tint);
+  }
+
+  &--resubmit {
+    color: var(--color-brand);
+    font-weight: 800;
+  }
 }
 
 .btn,
-.btn-primary {
+.btn--primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--s-1);
+  gap: var(--spacing-1);
   padding: 0.5rem 0.85rem;
-  border-radius: var(--r-sm);
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -188,67 +195,67 @@
 }
 
 .btn {
-  color: var(--c-ink-soft);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-}
+  color: var(--color-ink-soft);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
 
-.btn:hover:not(:disabled) {
-  background: var(--c-surface-hover);
-}
+  &:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
 
-.btn-primary {
-  color: var(--c-surface);
-  background: var(--c-brand);
-  border: 1px solid var(--c-brand);
-}
+  &--primary {
+    color: var(--color-surface);
+    background: var(--color-brand);
+    border: 1px solid var(--color-brand);
+  }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--c-brand-hover);
-  border-color: var(--c-brand-hover);
-}
+  &--primary:hover:not(:disabled) {
+    background: var(--color-brand-hover);
+    border-color: var(--color-brand-hover);
+  }
 
-.btn.danger {
-  color: var(--c-danger);
-}
+  &--danger {
+    color: var(--color-danger);
+  }
 
-.btn.danger:hover:not(:disabled) {
-  background: var(--c-danger-tint);
-  border-color: var(--c-danger-border);
-}
+  &--danger:hover:not(:disabled) {
+    background: var(--color-danger-tint);
+    border-color: var(--color-danger-border);
+  }
 
-/* 復用動作用綠色系，與停用（中性）、刪除（紅）一眼區隔。 */
-.btn.is-restore {
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-  border-color: var(--c-ok-border);
-}
+  /* 復用動作用綠色系，與停用（中性）、刪除（紅）一眼區隔。 */
+  &--restore {
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+    border-color: var(--color-ok-border);
+  }
 
-.btn.is-restore:hover:not(:disabled) {
-  background: #dcf1e6;
-}
+  &--restore:hover:not(:disabled) {
+    background: #dcf1e6;
+  }
 
-.btn:disabled,
-.btn-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+  &:disabled,
+  &--primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 }
 
 /* ===================== 表單 ===================== */
 
 /*
- * 兩欄表單網格。.wide 讓單一欄位橫跨整列（長文字、描述欄用）。
+ * 兩欄表單網格。.form-grid__full-row 讓單一欄位橫跨整列（長文字、描述欄用）。
  * 直接讓 .form-grid 底下的 label 繼承 .field 樣式，樣板不必逐個加 class。
  */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-4);
-  padding: var(--s-5);
-}
+  gap: var(--spacing-4);
+  padding: var(--spacing-5);
 
-.form-grid > .wide {
-  grid-column: 1 / -1;
+  > .form-grid__full-row {
+    grid-column: 1 / -1;
+  }
 }
 
 .field,
@@ -256,8 +263,8 @@
 .modal-card label {
   display: block;
   min-width: 0;
-  color: var(--c-ink-soft);
-  font-size: var(--t-sm);
+  color: var(--color-ink-soft);
+  font-size: var(--font-size-sm);
   font-weight: 700;
 }
 
@@ -273,14 +280,14 @@
   display: block;
   width: 100%;
   min-width: 0;
-  margin-top: var(--s-1);
+  margin-top: var(--spacing-1);
   padding: 0.6rem 0.7rem;
-  color: var(--c-ink);
-  background: var(--c-surface-sunken);
+  color: var(--color-ink);
+  background: var(--color-surface-sunken);
   border: 1px solid #d4dee6;
-  border-radius: var(--r-sm);
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: var(--t-base);
+  font-size: var(--font-size-base);
   font-weight: 400;
 }
 
@@ -320,7 +327,7 @@
 /* 必填標記。既有樣板用 <em> 承載，維持不變。 */
 .field em,
 .form-grid em {
-  color: var(--c-danger);
+  color: var(--color-danger);
   font-style: normal;
 }
 
@@ -328,134 +335,136 @@
 .field small,
 .form-grid small {
   display: block;
-  margin-top: var(--s-1);
-  color: var(--c-danger-strong);
-  font-size: var(--t-xs);
+  margin-top: var(--spacing-1);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-xs);
   font-weight: 400;
 }
 
 /* 欄位下方的中性說明文字。 */
 .helper {
   display: block;
-  margin-top: var(--s-1);
-  color: var(--c-ink-muted);
-  font-size: var(--t-xs);
+  margin-top: var(--spacing-1);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
   font-weight: 400;
 }
 
 /* ===================== 訊息區塊 ===================== */
 
 .notice,
-.success,
-.alert {
+.notice--success,
+.notice--error {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-md);
-  font-size: var(--t-sm);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }
 
 .notice {
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border: 1px solid var(--c-warn-border);
-}
+  color: var(--color-warn);
+  background: var(--color-warn-tint);
+  border: 1px solid var(--color-warn-border);
 
-.success {
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-  border: 1px solid var(--c-ok-border);
-}
+  &--success {
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+    border: 1px solid var(--color-ok-border);
+  }
 
-.alert {
-  color: var(--c-danger-strong);
-  background: var(--c-danger-tint);
-  border: 1px solid var(--c-danger-border);
-}
+  &--error {
+    color: var(--color-danger-strong);
+    background: var(--color-danger-tint);
+    border: 1px solid var(--color-danger-border);
+  }
 
-.notice strong,
-.success strong,
-.alert strong,
-.notice span,
-.success span,
-.alert span {
-  display: block;
+  strong,
+  &--success strong,
+  &--error strong,
+  span,
+  &--success span,
+  &--error span {
+    display: block;
+  }
 }
 
 /* ===================== 空狀態與載入骨架 ===================== */
 
 .empty,
 .skeleton {
-  padding: var(--s-6) var(--s-4);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-card);
+  padding: var(--spacing-6) var(--spacing-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
-.empty p {
-  color: var(--c-ink-muted);
-}
+.empty {
+  p {
+    color: var(--color-ink-muted);
+  }
 
-.empty.error {
-  color: var(--c-danger-strong);
-  background: var(--c-danger-tint);
-  border-color: var(--c-danger-border);
+  &--error {
+    color: var(--color-danger-strong);
+    background: var(--color-danger-tint);
+    border-color: var(--color-danger-border);
+  }
 }
 
 .skeleton {
   min-height: 400px;
   text-align: left;
-}
 
-.skeleton span {
-  display: block;
-  height: 1rem;
-  margin: var(--s-5) var(--s-4);
-  background: #edf1f4;
-  border-radius: var(--r-sm);
+  span {
+    display: block;
+    height: 1rem;
+    margin: var(--spacing-5) var(--spacing-4);
+    background: #edf1f4;
+    border-radius: var(--radius-sm);
+  }
 }
 
 /* ===================== 資料表格 ===================== */
 
 .data-table {
   overflow-x: auto;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-}
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 
-.data-table table {
-  width: 100%;
-  min-width: 720px;
-  border-collapse: collapse;
-}
+  table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+  }
 
-.data-table th,
-.data-table td {
-  padding: var(--s-3) var(--s-4);
-  border-bottom: 1px solid var(--c-border-soft);
-  font-size: var(--t-sm);
-  text-align: left;
-}
+  th,
+  td {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--color-border-soft);
+    font-size: var(--font-size-sm);
+    text-align: left;
+  }
 
-.data-table th {
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  font-weight: 700;
-  white-space: nowrap;
-}
+  th {
+    color: var(--color-ink-soft);
+    background: var(--color-surface-sunken);
+    font-weight: 700;
+    white-space: nowrap;
+  }
 
-.data-table tbody tr:last-child td {
-  border-bottom: 0;
-}
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
 
-.data-table tbody tr:hover {
-  background: var(--c-surface-sunken);
+  tbody tr:hover {
+    background: var(--color-surface-sunken);
+  }
 }
 
 /* 狀態文字與操作按鈕同格時，需要間距才點得準也讀得清楚。 */
@@ -463,14 +472,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-2);
-}
+  gap: var(--spacing-2);
 
-.row-actions .status-text {
-  color: var(--c-ink-soft);
-  font-size: var(--t-sm);
-  font-weight: 700;
-  white-space: nowrap;
+  .row-actions__status {
+    color: var(--color-ink-soft);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    white-space: nowrap;
+  }
 }
 
 /* ===================== 狀態徽章 ===================== */
@@ -478,39 +487,39 @@
 .status-pill {
   display: inline-block;
   padding: 0.2rem 0.55rem;
-  color: var(--c-ink-soft);
-  background: var(--c-surface-alt);
-  border-radius: var(--r-pill);
-  font-size: var(--t-xs);
+  color: var(--color-ink-soft);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
   font-weight: 800;
   white-space: nowrap;
-}
 
-.status-pill[data-status='ACTIVE'],
-.status-pill[data-status='APPROVED'],
-.status-pill[data-status='FULFILLED'] {
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-}
+  &[data-status='ACTIVE'],
+  &[data-status='APPROVED'],
+  &[data-status='FULFILLED'] {
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+  }
 
-.status-pill[data-status='PREPARING'],
-.status-pill[data-status='PENDING'],
-.status-pill[data-status='PENDING_PRICING'] {
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-}
+  &[data-status='PREPARING'],
+  &[data-status='PENDING'],
+  &[data-status='PENDING_PRICING'] {
+    color: var(--color-warn);
+    background: var(--color-warn-tint);
+  }
 
-.status-pill[data-status='REJECTED'],
-.status-pill[data-status='FAILED'],
-.status-pill[data-status='CANCELLED'] {
-  color: var(--c-danger);
-  background: var(--c-danger-tint);
-}
+  &[data-status='REJECTED'],
+  &[data-status='FAILED'],
+  &[data-status='CANCELLED'] {
+    color: var(--color-danger);
+    background: var(--color-danger-tint);
+  }
 
-.status-pill[data-status='ARCHIVED'],
-.status-pill[data-status='EXPIRED'] {
-  color: var(--c-ink-muted);
-  background: var(--c-surface-hover);
+  &[data-status='ARCHIVED'],
+  &[data-status='EXPIRED'] {
+    color: var(--color-ink-muted);
+    background: var(--color-surface-hover);
+  }
 }
 
 /* ===================== Modal ===================== */
@@ -532,7 +541,7 @@
   z-index: 1500;
   display: grid;
   place-items: center;
-  padding: var(--s-4);
+  padding: var(--spacing-4);
   background: rgba(20, 36, 49, 0.55);
 }
 
@@ -540,50 +549,50 @@
   width: min(620px, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  padding: var(--s-5);
-  background: var(--c-surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-modal);
-}
+  padding: var(--spacing-5);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
 
-.modal-card > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  margin-bottom: var(--s-4);
-}
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
+  }
 
-.modal-card h2 {
-  margin: 0;
-  font-size: var(--t-xl);
-}
+  h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+  }
 
-.modal-card > footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s-3);
-  margin-top: var(--s-5);
-}
+  > footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-5);
+  }
 
-/* 關閉鈕：圓形、與內容明確分離，手機上也維持可點面積。 */
-.modal-close {
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  place-items: center;
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  border: 1px solid #d4dee6;
-  border-radius: 50%;
-  font-size: var(--t-lg);
-  line-height: 1;
-  cursor: pointer;
-}
+  /* 關閉鈕：圓形、與內容明確分離，手機上也維持可點面積。 */
+  &__close {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    color: var(--color-ink-soft);
+    background: var(--color-surface-sunken);
+    border: 1px solid #d4dee6;
+    border-radius: 50%;
+    font-size: var(--font-size-lg);
+    line-height: 1;
+    cursor: pointer;
+  }
 
-.modal-close:hover {
-  background: var(--c-surface-hover);
+  &__close:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 /* ===================== 響應式 ===================== */
@@ -594,22 +603,22 @@
   .panel > header,
   .panel > footer,
   .notice,
-  .success,
-  .alert {
+  .notice--success,
+  .notice--error {
     align-items: stretch;
     flex-direction: column;
   }
 
   .form-grid {
     grid-template-columns: 1fr;
-  }
 
-  .form-grid > .wide {
-    grid-column: auto;
+    > .form-grid__full-row {
+      grid-column: auto;
+    }
   }
 
   .panel > footer .btn,
-  .panel > footer .btn-primary {
+  .panel > footer .btn--primary {
     width: 100%;
   }
 }
@@ -619,7 +628,7 @@
  *
  * 修正前：product-form.scss 裡同時存在兩份互相衝突的 .back-link 定義
  * （一份綠色配 !important、一份藍色），綠色那份因為 !important 蓋過另一份，
- * 導致「返回品項管理」按鈕變成跟全站主色（藍色 var(--c-brand)）不一致的綠色——
+ * 導致「返回品項管理」按鈕變成跟全站主色（藍色 var(--color-brand)）不一致的綠色——
  * 這是遺留的樣式衝突，不是刻意設計。另外 product-detail.html／
  * review-detail.html 的返回連結完全沒有套用 .back-link class，只是
  * 沒有樣式的裸連結，導致同一種功能在不同頁面大小、樣式都不一致。
@@ -634,20 +643,22 @@
   min-height: 44px;
   margin-bottom: 0.8rem;
   padding: 0.55rem 0.9rem;
-  color: var(--c-brand);
-  background: var(--c-brand-tint);
+  color: var(--color-brand);
+  background: var(--color-brand-tint);
   border: 1px solid #b7d3ea;
   border-radius: 0.5rem;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   text-decoration: none;
-}
-.back-link:hover {
-  background: #dcebf7;
-}
-.back-link:focus-visible {
-  outline: 3px solid rgba(28, 82, 134, 0.3);
-  outline-offset: 2px;
+
+  &:hover {
+    background: #dcebf7;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(28, 82, 134, 0.3);
+    outline-offset: 2px;
+  }
 }
 @media (max-width: 600px) {
   .back-link {
@@ -668,28 +679,32 @@
   align-items: center;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: var(--t-xs);
+  font-size: var(--font-size-xs);
   font-weight: 800;
-}
-.badge-success {
-  color: #21694f;
-  background: #e5f5ee;
-}
-.badge-error {
-  color: var(--c-danger-strong);
-  background: var(--c-danger-tint);
-}
-.badge-muted {
-  color: var(--c-ink-muted);
-  background: #eef1f3;
-}
-/* 2026-09-29：「連續上升」提醒（最近 3 次熱度同步都上升）。品項管理清單與儀表板熱度排行共用；
+
+  &--success {
+    color: #21694f;
+    background: #e5f5ee;
+  }
+
+  &--error {
+    color: var(--color-danger-strong);
+    background: var(--color-danger-tint);
+  }
+
+  &--neutral {
+    color: var(--color-ink-muted);
+    background: #eef1f3;
+  }
+
+  /* 2026-09-29：「連續上升」提醒（最近 3 次熱度同步都上升）。品項管理清單與儀表板熱度排行共用；
    用琥珀色與「成功／錯誤」區隔——它是值得留意的訊號，不是審核結果。文字本身就寫明意思，不只靠顏色。 */
-.badge-rise {
-  gap: 0.2rem;
-  color: var(--c-warn);
-  background: var(--c-warn-tint);
-  border: 1px solid var(--c-warn-border);
+  &--rise {
+    gap: 0.2rem;
+    color: var(--color-warn);
+    background: var(--color-warn-tint);
+    border: 1px solid var(--color-warn-border);
+  }
 }
 
 /*
@@ -700,10 +715,10 @@
  * class 名稱）。收斂成一組語意中立的「一個設定主題＝一個面板」：
  *
  *   .config-panel            白底卡片，一個設定主題一張
- *   .config-panel-head       標題＋一段說明（說明限寬，長句不會橫跨整個螢幕）
- *   .config-panel-actions    面板層級的動作按鈕列
- *   .config-table-wrap       表格外框，窄螢幕時只讓表格自己水平捲動
- *   .config-table            緊湊資料表格；.num 欄位靠右、等寬數字
+ *   .config-panel__header       標題＋一段說明（說明限寬，長句不會橫跨整個螢幕）
+ *   .config-panel__actions    面板層級的動作按鈕列
+ *   .config-panel__table-scroll       表格外框，窄螢幕時只讓表格自己水平捲動
+ *   .config-table            緊湊資料表格；.u-numeric 欄位靠右、等寬數字
  *   .config-form-row         表格下方「新增一筆」的表單列，每個欄位都有可見 label
  *   .config-sum[data-state]  加總類驗證的即時狀態（ok／error），不只靠按鈕 disabled 暗示
  *
@@ -711,113 +726,117 @@
  * 放在任一元件樣式裡另一個就吃不到；放全域也不佔 anyComponentStyle 預算。
  */
 .config-panel {
-  margin-bottom: var(--s-5);
-  padding: var(--s-4) var(--s-5) var(--s-5);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-}
+  margin-bottom: var(--spacing-5);
+  padding: var(--spacing-4) var(--spacing-5) var(--spacing-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 
-.config-panel-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s-3) var(--s-5);
-}
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-3) var(--spacing-5);
+  }
 
-.config-panel-head h3 {
-  margin: 0 0 var(--s-1);
-  color: var(--c-ink);
-  font-size: var(--t-lg);
-}
+  &__header h3 {
+    margin: 0 0 var(--spacing-1);
+    color: var(--color-ink);
+    font-size: var(--font-size-lg);
+  }
 
-.config-panel-head p {
-  max-width: 62ch;
-  margin: 0;
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-  line-height: var(--lh-base);
-}
+  &__header p {
+    max-width: 62ch;
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-base);
+  }
 
-/* 2026-09-29：排程面板的長說明改成可收合（原生 <details>，鍵盤與螢幕閱讀器都支援），預設收合。
+  /* 2026-09-29：排程面板的長說明改成可收合（原生 <details>，鍵盤與螢幕閱讀器都支援），預設收合。
    標題下只留一行摘要（排程時間＋用途）；狀態訊息（執行中、已停用、錯誤、額度）放在收合區外，永遠看得到。 */
-.config-panel-details {
-  max-width: 62ch;
-  margin-top: var(--s-2);
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-  line-height: var(--lh-base);
-}
-.config-panel-details > summary {
-  width: fit-content;
-  color: var(--c-brand);
-  font-weight: 700;
-  cursor: pointer;
-}
-.config-panel-details > summary:focus-visible {
-  outline: 2px solid var(--c-brand);
-  outline-offset: 2px;
-  border-radius: 0.25rem;
-}
-.config-panel-details[open] > summary {
-  margin-bottom: var(--s-2);
-}
-.config-panel-head .config-panel-details p + p {
-  margin-top: var(--s-2);
-}
+  &__details {
+    max-width: 62ch;
+    margin-top: var(--spacing-2);
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-base);
+  }
 
-.config-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
+  &__details > summary {
+    width: fit-content;
+    color: var(--color-brand);
+    font-weight: 700;
+    cursor: pointer;
+  }
 
-.config-table-wrap {
-  margin-top: var(--s-4);
-  overflow-x: auto;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
+  &__details > summary:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  &__details[open] > summary {
+    margin-bottom: var(--spacing-2);
+  }
+
+  &__header .config-panel__details p + p {
+    margin-top: var(--spacing-2);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+  }
+
+  &__table-scroll {
+    margin-top: var(--spacing-4);
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
 }
 
 .config-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--t-sm);
-}
+  font-size: var(--font-size-sm);
 
-.config-table th,
-.config-table td {
-  padding: var(--s-2-5) var(--s-3);
-  border-bottom: 1px solid var(--c-border-soft);
-  text-align: left;
-  vertical-align: middle;
-}
+  th,
+  td {
+    padding: var(--spacing-2-5) var(--spacing-3);
+    border-bottom: 1px solid var(--color-border-soft);
+    text-align: left;
+    vertical-align: middle;
+  }
 
-.config-table th {
-  color: var(--c-ink-soft);
-  background: var(--c-surface-sunken);
-  font-weight: 700;
-  white-space: nowrap;
-}
+  th {
+    color: var(--color-ink-soft);
+    background: var(--color-surface-sunken);
+    font-weight: 700;
+    white-space: nowrap;
+  }
 
-.config-table tbody tr:last-child td {
-  border-bottom: 0;
-}
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
 
-.config-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+  .u-numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 
-.config-table tr.is-inactive td {
-  color: var(--c-ink-faint);
-}
+  tr.is-inactive td {
+    color: var(--color-ink-faint);
+  }
 
-.config-table .config-table-empty {
-  padding: var(--s-4);
-  color: var(--c-ink-muted);
-  text-align: center;
+  .config-table__empty {
+    padding: var(--spacing-4);
+    color: var(--color-ink-muted);
+    text-align: center;
+  }
 }
 
 /*
@@ -834,13 +853,13 @@
   min-width: 0;
   max-width: 100%;
   height: 2.5rem;
-  padding: 0 var(--s-3);
-  color: var(--c-ink);
-  background-color: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r-sm);
+  padding: 0 var(--spacing-3);
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: var(--t-sm);
+  font-size: var(--font-size-sm);
   font-weight: 400;
   transition: border-color var(--motion-fast), background-color var(--motion-fast);
 }
@@ -849,7 +868,7 @@
 .config-form-row select {
   padding-right: 2rem;
   appearance: none;
-  /* 箭頭色 #5f7382 ≈ --c-ink-muted；data URI 內無法引用 CSS 變數，這裡是唯一例外。 */
+  /* 箭頭色 #5f7382 ≈ --color-ink-muted；data URI 內無法引用 CSS 變數，這裡是唯一例外。 */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f7382' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.7rem center;
@@ -861,103 +880,103 @@
 .config-table input:hover:not(:disabled),
 .config-form-row select:hover:not(:disabled),
 .config-form-row input:hover:not(:disabled) {
-  border-color: var(--c-brand);
+  border-color: var(--color-brand);
 }
 
 .config-table select:disabled,
 .config-table input:disabled,
 .config-form-row select:disabled,
 .config-form-row input:disabled {
-  color: var(--c-ink-faint);
-  background-color: var(--c-surface-sunken);
+  color: var(--color-ink-faint);
+  background-color: var(--color-surface-sunken);
   cursor: not-allowed;
 }
 
 .config-table input[aria-invalid='true'],
 .config-form-row input[aria-invalid='true'] {
-  border-color: var(--c-danger);
-  background-color: var(--c-danger-tint);
+  border-color: var(--color-danger);
+  background-color: var(--color-danger-tint);
 }
 
 .config-form-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--s-3);
-  margin-top: var(--s-4);
-  padding-top: var(--s-4);
-  border-top: 1px dashed var(--c-border-strong);
-}
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px dashed var(--color-border-strong);
 
-.config-form-row label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  color: var(--c-ink-soft);
-  font-size: var(--t-xs);
-  font-weight: 700;
-}
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    color: var(--color-ink-soft);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
 
-.config-form-row .is-grow {
-  flex: 1 1 12rem;
+  .config-form-row__field--grow {
+    flex: 1 1 12rem;
+  }
 }
 
 .config-sum {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-1) var(--s-3);
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-3);
   border: 1px solid transparent;
-  border-radius: var(--r-pill);
-  font-size: var(--t-sm);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
 
-.config-sum[data-state='ok'] {
-  color: var(--c-ok);
-  background: var(--c-ok-tint);
-  border-color: var(--c-ok-border);
-}
+  &[data-state='ok'] {
+    color: var(--color-ok);
+    background: var(--color-ok-tint);
+    border-color: var(--color-ok-border);
+  }
 
-.config-sum[data-state='error'] {
-  color: var(--c-danger);
-  background: var(--c-danger-tint);
-  border-color: var(--c-danger-border);
+  &[data-state='error'] {
+    color: var(--color-danger);
+    background: var(--color-danger-tint);
+    border-color: var(--color-danger-border);
+  }
 }
 
 @media (max-width: 760px) {
   .config-panel {
-    padding: var(--s-4);
+    padding: var(--spacing-4);
   }
 
   .config-form-row {
     flex-direction: column;
     align-items: stretch;
-  }
 
-  .config-form-row .btn-primary {
-    width: 100%;
+    .btn--primary {
+      width: 100%;
+    }
   }
 }
 
 /*
  * 數值單位（分、筆…）：接在大字級數字後面，例如 <strong>49.80<span class="unit">分</span></strong>。
- * 字級比數字小、不搶視覺重點；下限維持全站最小字級 --t-xs（16px）。
+ * 字級比數字小、不搶視覺重點；下限維持全站最小字級 --font-size-xs（16px）。
  * 一般內文或表格中的數字直接寫「N 分」「N 筆」，不需要這個 class。
  *
  * 為什麼用 !important：單位會被放進各頁既有的數字容器（.stat-card、.score-grid、
- * .chart-center…），這些元件樣式普遍寫了「容器 span { display:block; font-size… }」
+ * .status-chart__total…），這些元件樣式普遍寫了「容器 span { display:block; font-size… }」
  * 之類的後代選擇器，加上 Angular 的屬性選擇器後權重（0,3,1）高於任何合理的全域
  * class。這是刻意設計成「不論放在哪裡都長一樣」的 utility class，用 !important
  * 比在每個元件各寫一份覆蓋規則更集中、更不會漏。
  */
-.unit {
+.u-unit {
   display: inline !important;
   margin: 0 0 0 0.15em !important;
   padding: 0 !important;
   color: inherit !important;
-  font-size: max(var(--t-xs), 0.5em) !important;
+  font-size: max(var(--font-size-xs), 0.5em) !important;
   font-weight: 600 !important;
   letter-spacing: 0 !important;
   opacity: 0.72;

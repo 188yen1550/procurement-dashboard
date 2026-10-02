@@ -11,64 +11,66 @@
 
 /* 每張表單卡片之間留白，避免三張卡黏在一起分不出邊界。 */
 .panel + .panel {
-  margin-top: var(--s-5);
+  margin-top: var(--spacing-5);
 }
 
 /* ===================== 帳號資訊 ===================== */
 
 .identity-card {
-  margin-bottom: var(--s-5);
-}
+  margin-bottom: var(--spacing-5);
 
-/*
+  /*
  * auto-fit + minmax 讓三欄在寬螢幕並排、窄螢幕自動掉成一欄，
  * 不需要另外寫 media query。
  */
-.identity-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--s-4);
-  padding: var(--s-5);
-}
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-4);
+    padding: var(--spacing-5);
+  }
 
-.identity-label {
-  display: block;
-  margin-bottom: var(--s-1);
-  color: var(--c-ink-muted);
-  font-size: var(--t-sm);
-}
+  &__label {
+    display: block;
+    margin-bottom: var(--spacing-1);
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-sm);
+  }
 
-/* 帳號與角色是這頁的關鍵識別資訊，字級明顯大於標籤。 */
-.identity-value {
-  display: block;
-  font-size: var(--t-xl);
-  line-height: var(--lh-tight);
-  word-break: break-all;
+  /* 帳號與角色是這頁的關鍵識別資訊，字級明顯大於標籤。 */
+  &__value {
+    display: block;
+    font-size: var(--font-size-xl);
+    line-height: var(--line-height-tight);
+    word-break: break-all;
+  }
 }
 
 /* ===================== 表單頁尾 ===================== */
 
-.footer-actions {
+.profile__form-actions {
   display: flex;
-  gap: var(--s-3);
+  gap: var(--spacing-3);
 }
 
 /*
  * 表單內的訊息區塊預設帶 margin-bottom（給頁面層級用的），
  * 放在卡片內部時改用左右內縮對齊卡片其他內容。
  */
-.panel .alert,
-.panel .success {
-  margin: 0 var(--s-5) var(--s-4);
+.panel .notice--error,
+.panel .notice--success {
+  margin: 0 var(--spacing-5) var(--spacing-4);
 }
 
 @media (max-width: 760px) {
-  .footer-actions {
-    width: 100%;
-  }
+  .profile {
+    &__form-actions {
+      width: 100%;
+    }
 
-  .footer-actions .btn,
-  .footer-actions .btn-primary {
-    flex: 1;
+    &__form-actions .btn,
+    &__form-actions .btn--primary {
+      flex: 1;
+    }
   }
 }

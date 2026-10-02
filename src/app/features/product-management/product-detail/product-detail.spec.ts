@@ -231,7 +231,7 @@ describe('ProductDetail', () => {
     const card = Array.from(root.querySelectorAll('.score-grid article')).find((a) => a.textContent?.includes('天氣分數'));
     expect(card?.textContent).toContain('+3');
     expect(card?.textContent).toContain('涼感');
-    const panel = root.querySelector('.weather-boost');
+    const panel = root.querySelector('.campaign-boost--weather');
     expect(panel?.textContent).toContain('天氣加成明細');
     expect(panel?.textContent).toContain('2026-09-25 05:00');
     expect(component.weatherBoostCaption({ ...component.product()!.weatherDetail!, combinedScore: null })).toBe('尚無天氣資料');
@@ -243,7 +243,7 @@ describe('ProductDetail', () => {
     const root = fixture.nativeElement as HTMLElement;
     const card = Array.from(root.querySelectorAll('.score-grid article')).find((a) => a.textContent?.includes('天氣分數'));
     expect(card?.textContent).toContain('—');
-    expect(root.querySelector('.weather-boost')).toBeNull();
+    expect(root.querySelector('.campaign-boost--weather')).toBeNull();
   });
 
   it('renders a complete product evaluation', () => {
@@ -304,7 +304,7 @@ describe('ProductDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('核心選品資料已鎖定');
   });
   it('allows approved products to enter edit mode for basic fields', () => {
-    const link = fixture.nativeElement.querySelector('.header-actions a');
+    const link = fixture.nativeElement.querySelector('.product-detail__header-actions a');
     expect(link).toBeTruthy();
     expect(link.textContent).toContain('編輯品項');
   });
@@ -328,7 +328,7 @@ describe('ProductDetail', () => {
     expect(api.getTrendHistory).toHaveBeenCalled();
     expect(api.syncTrend).not.toHaveBeenCalled();
     expect(component.trendHistory().length).toBe(2);
-    const canvas = fixture.nativeElement.querySelector('.trend-chart-wrap canvas');
+    const canvas = fixture.nativeElement.querySelector('.evaluation-item__chart canvas');
     expect(canvas).toBeTruthy();
     expect(fixture.nativeElement.textContent).not.toContain('歷史資料筆數還不夠');
   });
@@ -340,16 +340,16 @@ describe('ProductDetail', () => {
   });
   // 2026-09-30：第一行核心客群／歷史銷售／預估購買；第二行 Google 趨勢（左）＋市場趨勢（右），兩者為同層級的獨立卡片
   it('lays out evaluation cards: three in the first row, then Google trend and market trend as sibling cards', () => {
-    const metrics = fixture.nativeElement.querySelector('.evaluation-metrics') as HTMLElement;
+    const metrics = fixture.nativeElement.querySelector('.evaluation-panel__metrics') as HTMLElement;
     const items = Array.from(metrics.children) as HTMLElement[];
     expect(items.every((item) => item.classList.contains('evaluation-item'))).toBe(true);
     expect(items.map((item) => item.querySelector(':scope > header > h2')?.textContent?.trim().slice(0, 4))).toEqual([
       '核心客群', '歷史銷售', '預估購買', 'Goog', '市場趨勢',
     ]);
-    expect(items[3].classList).toContain('google-trend');
-    expect(items[4].classList).toContain('trend');
+    expect(items[3].classList).toContain('evaluation-item--google-trend');
+    expect(items[4].classList).toContain('evaluation-item--trend');
     // Google 趨勢不再嵌在市場趨勢卡片裡
-    expect(items[4].querySelector('.google-trend')).toBeNull();
+    expect(items[4].querySelector('.evaluation-item--google-trend')).toBeNull();
   });
   it('shows a hint instead of a chart when trend history has fewer than 2 points', () => {
     api.getTrendHistory.mockReturnValueOnce(
@@ -357,7 +357,7 @@ describe('ProductDetail', () => {
     );
     component.reload();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.trend-chart-wrap')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.evaluation-item__chart')).toBeFalsy();
     expect(fixture.nativeElement.textContent).toContain('歷史資料筆數還不夠');
   });
 
@@ -403,7 +403,7 @@ describe('ProductDetail', () => {
     component.syncTrend();
     fixture.detectChanges();
     expect(component.syncState()).toBe('error');
-    const section = fixture.nativeElement.querySelector('.evaluation-item.trend') as HTMLElement;
+    const section = fixture.nativeElement.querySelector('.evaluation-item--trend') as HTMLElement;
     expect(section.textContent).toContain('已保留上一筆熱度資料');
   });
 
@@ -412,7 +412,7 @@ describe('ProductDetail', () => {
     component.syncTrend();
     fixture.detectChanges();
     expect(component.syncState()).toBe('error');
-    const section = fixture.nativeElement.querySelector('.evaluation-item.trend') as HTMLElement;
+    const section = fixture.nativeElement.querySelector('.evaluation-item--trend') as HTMLElement;
     expect(section.textContent).toContain('PTT 搜尋超過 60 秒仍未完成');
     expect(section.textContent).not.toContain('TimeoutError');
     // 按鈕沒有被鎖住，文字改成「重試」
@@ -438,7 +438,7 @@ describe('ProductDetail', () => {
     expect(component.aiError()).toContain('AI 分析超過 100 秒仍未回應');
     expect(component.aiError()).toContain('人工審核不受影響');
     const buttons = Array.from(
-      fixture.nativeElement.querySelectorAll('.panel.ai button'),
+      fixture.nativeElement.querySelectorAll('.panel.ai-panel button'),
     ) as HTMLButtonElement[];
     expect(buttons.some((b) => !b.disabled)).toBe(true);
   });
@@ -476,7 +476,7 @@ describe('ProductDetail', () => {
   });
   it('shows fallback content when the product image fails', () => {
     component.handleImageError(); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.image-fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('總分');
+    expect(fixture.nativeElement.textContent).toContain('商品圖片載入失敗'); expect(fixture.nativeElement.querySelector('.product-media__fallback').getAttribute('role')).toBe('alert'); expect(fixture.nativeElement.textContent).toContain('總分');
   });
   it('shows an empty image state when imageUrl is absent', () => {
     component.showIncomplete(); fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('尚無商品圖片');
@@ -509,7 +509,7 @@ describe('ProductDetail', () => {
     // 現在有分析結果時也要能看到「重新產生」按鈕。
     fixture.detectChanges();
     const buttons = Array.from(
-      fixture.nativeElement.querySelectorAll('.panel.ai button'),
+      fixture.nativeElement.querySelectorAll('.panel.ai-panel button'),
     ) as HTMLButtonElement[];
     expect(buttons.some((button) => button.textContent?.includes('重新產生 AI 分析'))).toBe(true);
   });
@@ -537,8 +537,8 @@ describe('ProductDetail', () => {
     managerFixture.detectChanges();
     const root = managerFixture.nativeElement as HTMLElement;
     expect(root.textContent).toContain('唯讀檢視');
-    expect(root.querySelector('.header-actions')).toBeNull();
-    expect(root.querySelector('.lifecycle')).toBeNull();
+    expect(root.querySelector('.product-detail__header-actions')).toBeNull();
+    expect(root.querySelector('.lifecycle-panel')).toBeNull();
     expect(root.querySelector('a[href$="/edit"]')).toBeNull();
     const buttons = Array.from(root.querySelectorAll('button'), (b) => b.textContent ?? '');
     expect(buttons.some((text) => text.includes('AI 分析') || text.includes('立即更新'))).toBe(false);
@@ -564,7 +564,7 @@ describe('ProductDetail', () => {
         }),
       );
       const { root } = await render(false);
-      const block = root.querySelector('.google-trend')!;
+      const block = root.querySelector('.evaluation-item--google-trend')!;
       expect(block.textContent).toContain('下降');
       expect(block.textContent).toContain('近 7 天比前 4 週 -18.2%');
       expect(block.textContent).toContain('搜尋關鍵字「中秋烤肉」');
@@ -573,10 +573,10 @@ describe('ProductDetail', () => {
       expect(headline.textContent?.trim()).toBe('-18.2%');
       expect(headline.getAttribute('data-direction')).toBe('DOWN');
       // 成長率計算依據
-      const metrics = Array.from(block.querySelectorAll('.google-trend-metrics dd'), (dd) => dd.textContent?.trim());
+      const metrics = Array.from(block.querySelectorAll('.evaluation-item__trend-metrics dd'), (dd) => dd.textContent?.trim());
       expect(metrics).toEqual(['30', '36.7', '92 筆']);
       // PTT 上升（fixture）vs Google 下降 → 方向相反，提示人工確認；相差 3 天不加註
-      const compare = block.querySelector('.google-ptt-compare')!;
+      const compare = block.querySelector('.evaluation-item__ptt-compare')!;
       expect(compare.getAttribute('data-state')).toBe('OPPOSITE');
       expect(compare.textContent).toContain('與 PTT 方向相反（Google 下降、PTT 上升），建議人工確認');
       expect(compare.textContent).not.toContain('相差');
@@ -593,10 +593,10 @@ describe('ProductDetail', () => {
         }),
       );
       const { root } = await render(false);
-      expect(root.querySelector('.google-trend')!.textContent).toContain('Google 搜尋量不足，無法判斷趨勢');
-      expect(root.querySelector('.google-trend > header > strong')!.textContent?.trim()).toBe('—');
-      expect(root.querySelector('.google-trend-metrics')).toBeNull();
-      expect(root.querySelector('.google-ptt-compare')).toBeNull();
+      expect(root.querySelector('.evaluation-item--google-trend')!.textContent).toContain('Google 搜尋量不足，無法判斷趨勢');
+      expect(root.querySelector('.evaluation-item--google-trend > header > strong')!.textContent?.trim()).toBe('—');
+      expect(root.querySelector('.evaluation-item__trend-metrics')).toBeNull();
+      expect(root.querySelector('.evaluation-item__ptt-compare')).toBeNull();
     });
 
     // 2026-09-30：與 PTT 方向比對（PTT fixture：上升、2026-09-25 同步）
@@ -611,7 +611,7 @@ describe('ProductDetail', () => {
       it('方向相同顯示一致', async () => {
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
         const { root } = await render(false);
-        const compare = root.querySelector('.google-ptt-compare')!;
+        const compare = root.querySelector('.evaluation-item__ptt-compare')!;
         expect(compare.getAttribute('data-state')).toBe('MATCH');
         expect(compare.textContent?.trim()).toBe('與 PTT 方向一致（皆上升）');
       });
@@ -619,7 +619,7 @@ describe('ProductDetail', () => {
       it('一方持平、一方有升降時顯示方向不同、僅供參考', async () => {
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('STABLE')));
         const { root } = await render(false);
-        const compare = root.querySelector('.google-ptt-compare')!;
+        const compare = root.querySelector('.evaluation-item__ptt-compare')!;
         expect(compare.getAttribute('data-state')).toBe('DIFFERENT');
         expect(compare.textContent).toContain('與 PTT 方向不同（Google 持平、PTT 上升），僅供參考');
       });
@@ -627,20 +627,20 @@ describe('ProductDetail', () => {
       it('兩者資料時間相差超過 7 天時註明天數', async () => {
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP', '2026-10-10T02:00:00')));
         const { root } = await render(false);
-        expect(root.querySelector('.google-ptt-compare')!.textContent).toContain('兩者資料時間相差 15 天');
+        expect(root.querySelector('.evaluation-item__ptt-compare')!.textContent).toContain('兩者資料時間相差 15 天');
       });
 
       it('剛好 7 天不加註', async () => {
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP', '2026-10-02T02:00:00')));
         const { root } = await render(false);
-        expect(root.querySelector('.google-ptt-compare')!.textContent).not.toContain('相差');
+        expect(root.querySelector('.evaluation-item__ptt-compare')!.textContent).not.toContain('相差');
       });
 
       it('PTT 尚無熱度資料時說明無法比對', async () => {
         api.getLatestTrend.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404 })));
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
         const { root } = await render(false);
-        const compare = root.querySelector('.google-ptt-compare')!;
+        const compare = root.querySelector('.evaluation-item__ptt-compare')!;
         expect(compare.getAttribute('data-state')).toBe('UNAVAILABLE');
         expect(compare.textContent).toContain('PTT 尚無熱度資料，無法比對');
       });
@@ -651,7 +651,7 @@ describe('ProductDetail', () => {
         );
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
         const { root } = await render(false);
-        expect(root.querySelector('.google-ptt-compare')!.textContent).toContain('PTT 為舊版模擬資料，無法比對');
+        expect(root.querySelector('.evaluation-item__ptt-compare')!.textContent).toContain('PTT 為舊版模擬資料，無法比對');
       });
 
       // 2026-09-30：熱度 0＝PTT 搜不到討論，後端方向是中性的 STABLE，不能當成「持平」拿來比對
@@ -662,17 +662,17 @@ describe('ProductDetail', () => {
         );
         googleTrendsApi.getLatest.mockReturnValueOnce(of<GoogleTrendSignal | null>(okSignal('UP')));
         const { root } = await render(false);
-        const compare = root.querySelector('.google-ptt-compare')!;
+        const compare = root.querySelector('.evaluation-item__ptt-compare')!;
         expect(compare.getAttribute('data-state')).toBe('UNAVAILABLE');
         expect(compare.textContent).toContain('PTT 近 90 天沒有討論，無法比對');
-        const trendCard = root.querySelector('.evaluation-item.trend')!;
+        const trendCard = root.querySelector('.evaluation-item--trend')!;
         expect(trendCard.textContent).toContain('PTT 近 90 天無討論');
         expect(trendCard.textContent).not.toContain('趨勢持平');
       });
 
       it('Google 尚未查詢時不顯示比對', async () => {
         const { root } = await render(false);
-        expect(root.querySelector('.google-ptt-compare')).toBeNull();
+        expect(root.querySelector('.evaluation-item__ptt-compare')).toBeNull();
       });
     });
 
@@ -685,7 +685,7 @@ describe('ProductDetail', () => {
         }),
       );
       const { root } = await render(true);
-      const hint = root.querySelector('.google-trend [data-coverage]')!;
+      const hint = root.querySelector('.evaluation-item--google-trend [data-coverage]')!;
       expect(hint.getAttribute('data-coverage')).toBe('PTT_ZERO');
       expect(hint.textContent).toContain('PTT 熱度為 0，每週批次不會查詢');
       expect(hint.textContent).toContain('可以按下方按鈕單獨查詢');
@@ -707,21 +707,21 @@ describe('ProductDetail', () => {
     it('批次涵蓋說明讀取失敗時退回通用說明（待審優先）', async () => {
       googleTrendsApi.getCoverage.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
       const { root } = await render(false);
-      expect(root.querySelector('.google-trend')!.textContent).toContain('尚未查詢。每週一 04:00 會自動查詢，待審商品優先');
+      expect(root.querySelector('.evaluation-item--google-trend')!.textContent).toContain('尚未查詢。每週一 04:00 會自動查詢，待審商品優先');
     });
 
     it('讀取失敗只讓這一區顯示尚未查詢，不影響整頁', async () => {
       googleTrendsApi.getLatest.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
       const { root } = await render(false);
       expect(root.textContent).toContain('總分');
-      expect(root.querySelector('.google-trend')!.textContent).toContain('尚未查詢');
-      expect(root.querySelector('.google-trend > header > strong')!.textContent?.trim()).toBe('—');
+      expect(root.querySelector('.evaluation-item--google-trend')!.textContent).toContain('尚未查詢');
+      expect(root.querySelector('.evaluation-item--google-trend > header > strong')!.textContent?.trim()).toBe('—');
     });
 
     it('管理層按「查詢 Google 趨勢」會先確認會用掉額度，確認後顯示新結果', async () => {
       const { root, instance, fixture: f } = await render(true);
       const confirm = vi.spyOn(TestBed.inject(DialogService), 'confirm').mockReturnValue(of(true));
-      const button = Array.from(root.querySelectorAll('.google-trend button')).find((b) =>
+      const button = Array.from(root.querySelectorAll('.evaluation-item--google-trend button')).find((b) =>
         b.textContent?.includes('查詢 Google 趨勢'),
       ) as HTMLButtonElement;
 
@@ -731,7 +731,7 @@ describe('ProductDetail', () => {
       expect(confirm.mock.calls[0][1].join('')).toContain('SerpApi 額度');
       expect(googleTrendsApi.sync).toHaveBeenCalledOnce();
       expect(instance.googleTrend()?.direction).toBe('UP');
-      expect(root.querySelector('.google-trend')!.textContent).toContain('近 7 天比前 4 週 +23.5%');
+      expect(root.querySelector('.evaluation-item--google-trend')!.textContent).toContain('近 7 天比前 4 週 +23.5%');
     });
 
     it('查詢失敗（例如額度用完）只在這一區顯示後端訊息', async () => {
@@ -744,7 +744,7 @@ describe('ProductDetail', () => {
       instance.syncGoogleTrend();
       f.detectChanges();
 
-      expect(root.querySelector('.google-trend [role="alert"]')?.textContent).toContain('已達上限');
+      expect(root.querySelector('.evaluation-item--google-trend [role="alert"]')?.textContent).toContain('已達上限');
     });
   });
 });

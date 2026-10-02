@@ -1,5 +1,5 @@
 <!-- 檔案用途：AI 商品雷達清單（操作層）。每張卡片是一個「PTT 上被討論、系統裡還沒有」的商品線索。 -->
-<main class="discovery-page" aria-labelledby="discovery-title">
+<main class="discoveries" aria-labelledby="discovery-title">
   <header class="page-header">
     <div>
       <h1 id="discovery-title">AI 商品雷達</h1>
@@ -7,7 +7,7 @@
     </div>
   </header>
 
-  <details class="discovery-guide">
+  <details class="discoveries__guide">
     <summary>這份清單怎麼來的？</summary>
     <ol>
       <li><strong>掃描：</strong>每天 01:30 讀取 PTT 7 個看板近 7 天的文章標題（不讀內文、不登入）。</li>
@@ -24,19 +24,19 @@
     </ol>
   </details>
 
-  <div class="list-toolbar">
+  <div class="discoveries__toolbar">
     <div class="status-tabs" role="tablist" aria-label="處理狀態">
       @for (tab of tabs; track tab.status) {
-        <button type="button" role="tab" [attr.aria-selected]="status() === tab.status" [class.active]="status() === tab.status"
+        <button type="button" role="tab" [attr.aria-selected]="status() === tab.status" [class.is-active]="status() === tab.status"
           (click)="selectTab(tab.status)">
           {{ tab.label }}
           @if (status() === tab.status && pageState() === 'ready') {
-            <span class="tab-count">{{ totalElements() }}</span>
+            <span class="status-tabs__count">{{ totalElements() }}</span>
           }
         </button>
       }
     </div>
-    <label class="sort-select">
+    <label class="discoveries__sort">
       排序
       <select [value]="sort()" (change)="selectSort($any($event.target).value)">
         @for (option of sortOptions; track option.value) {
@@ -49,46 +49,46 @@
   @if (pageState() === 'loading') {
     <p class="helper" role="status">正在載入探索結果…</p>
   } @else if (pageState() === 'error') {
-    <p class="alert" role="alert">
+    <p class="notice notice--error" role="alert">
       無法載入探索結果：{{ loadError() }}
       <button type="button" class="text-action" (click)="load()">重新載入</button>
     </p>
   } @else if (items().length === 0) {
-    <section class="empty discovery-empty">
+    <section class="empty discoveries__empty">
       <app-icon name="inbox" size="md" />
       <p>{{ useMockData ? 'Mock 模式沒有探索資料（探索結果來自每日排程）。' : emptyText() }}</p>
     </section>
   } @else {
-    <ul class="discovery-list" aria-label="探索結果">
+    <ul class="discoveries__list" aria-label="探索結果">
       @for (item of items(); track item.id) {
         <li class="panel discovery-card">
           <header>
             <div>
               <h2>{{ item.displayName }}</h2>
-              <p class="category">
+              <p class="discovery-card__category">
                 <span>{{ item.categoryHint ?? '品類未判定' }}</span>
                 @if (temperatureBadge(item); as temp) {
-                  <span class="temp-badge" [attr.data-tone]="temp.tone" [title]="temp.title">{{ temp.text }}</span>
+                  <span class="discovery-card__temp-badge" [attr.data-tone]="temp.tone" [title]="temp.title">{{ temp.text }}</span>
                 }
               </p>
             </div>
             @if (item.fitScore !== null) {
-              <div class="fit" title="AI 依核心客群與團購通路條件評估的適配度（0～100），是意見不是事實，請看下方理由">
-                <strong>{{ item.fitScore }}<span class="unit">分</span></strong>
+              <div class="discovery-card__fit" title="AI 依核心客群與團購通路條件評估的適配度（0～100），是意見不是事實，請看下方理由">
+                <strong>{{ item.fitScore }}<span class="u-unit">分</span></strong>
                 <span>適配度</span>
               </div>
             } @else {
-              <div class="fit fit-unchecked"><span>未評適配度</span></div>
+              <div class="discovery-card__fit discovery-card__fit--unchecked"><span>未評適配度</span></div>
             }
           </header>
 
           @if (item.fitScore !== null && (item.fitReason || item.fitConcerns.length > 0)) {
-            <div class="fit-detail">
+            <div class="discovery-card__fit-detail">
               @if (item.fitReason) {
-                <p><span class="ai-tag">AI 評估</span>{{ item.fitReason }}</p>
+                <p><span class="discovery-card__ai-tag">AI 評估</span>{{ item.fitReason }}</p>
               }
               @if (item.fitConcerns.length > 0) {
-                <ul class="concerns" aria-label="AI 列出的疑慮">
+                <ul class="discovery-card__concerns" aria-label="AI 列出的疑慮">
                   @for (concern of item.fitConcerns; track $index) {
                     <li>{{ concern }}</li>
                   }
@@ -97,7 +97,7 @@
             </div>
           }
 
-          <dl class="metrics">
+          <dl class="discovery-card__metrics">
             <div><dt>近 7 天提及</dt><dd>{{ item.mentionCount }} 篇</dd></div>
             <div><dt>淨推文</dt><dd>{{ item.pushVolume }} 則</dd></div>
             <div>
@@ -105,7 +105,7 @@
               @if (item.popularityScore !== null) {
                 <dd [attr.data-direction]="item.trendDirection">{{ item.popularityScore }} 分・{{ directionLabel(item.trendDirection) }}</dd>
               } @else {
-                <dd class="unchecked">未查</dd>
+                <dd class="is-unchecked">未查</dd>
               }
             </div>
             @if (item.windowVolume !== null) {
@@ -113,20 +113,20 @@
             }
             <div>
               <dt>Google 趨勢</dt>
-              <dd [attr.data-direction]="item.googleDirection" [class.unchecked]="item.googleStatus !== 'OK'">{{ googleText(item) }}</dd>
+              <dd [attr.data-direction]="item.googleDirection" [class.is-unchecked]="item.googleStatus !== 'OK'">{{ googleText(item) }}</dd>
             </div>
             <div><dt>最後出現</dt><dd>{{ item.lastSeenAt | date: 'MM/dd' }}</dd></div>
           </dl>
 
           @if (item.evidence.length > 0) {
-            <div class="evidence">
+            <div class="discovery-card__evidence">
               <h3>PTT 原文</h3>
               <ul>
                 @for (post of item.evidence; track post.url) {
                   <li>
-                    <span class="board">{{ post.board }}</span>
+                    <span class="discovery-card__board">{{ post.board }}</span>
                     <a [href]="post.url" target="_blank" rel="noopener noreferrer">{{ post.title }}</a>
-                    <span class="post-meta">{{ post.postedAt | date: 'MM/dd' }}@if (post.pushVolume > 0) { · 推 {{ post.pushVolume }} }</span>
+                    <span class="discovery-card__post-meta">{{ post.postedAt | date: 'MM/dd' }}@if (post.pushVolume > 0) { · 推 {{ post.pushVolume }} }</span>
                   </li>
                 }
               </ul>
@@ -156,18 +156,18 @@
                       <input type="text" [value]="dismissNote()" [maxLength]="dismissNoteMaxLength"
                         (input)="updateDismissNote($any($event.target).value)" />
                     </label>
-                    <div class="actions">
+                    <div class="discovery-card__actions">
                       <button type="button" class="btn" [disabled]="busyId() !== null" (click)="cancelDismiss()">取消</button>
-                      <button type="submit" class="btn-primary" [disabled]="!canSubmitDismiss()">
+                      <button type="submit" class="btn btn--primary" [disabled]="!canSubmitDismiss()">
                         {{ busyId() === item.id ? '略過中…' : '確認略過' }}
                       </button>
                     </div>
                   </form>
                 } @else {
                   <p>第一次出現：{{ item.firstSeenAt | date: 'yyyy/MM/dd' }}</p>
-                  <div class="actions">
+                  <div class="discovery-card__actions">
                     <button type="button" class="btn" [disabled]="busyId() !== null" (click)="startDismiss(item)">略過</button>
-                    <a class="btn-primary" routerLink="/products/new" [queryParams]="createQueryParams(item)">建立商品</a>
+                    <a class="btn btn--primary" routerLink="/products/new" [queryParams]="createQueryParams(item)">建立商品</a>
                   </div>
                 }
               }
@@ -175,14 +175,14 @@
                 <p>
                   {{ item.handledByName ?? '—' }} 於 {{ item.handledAt | date: 'yyyy/MM/dd' }} 略過@if (dismissedReasonText(item); as reasonText) {：{{ reasonText }}}
                 </p>
-                <div class="actions">
+                <div class="discovery-card__actions">
                   <button type="button" class="btn" [disabled]="busyId() !== null" (click)="restore(item)">移回待處理</button>
                 </div>
               }
               @case ('CONVERTED') {
                 <p>{{ item.handledByName ?? '—' }} 於 {{ item.handledAt | date: 'yyyy/MM/dd' }} 建立商品</p>
                 @if (item.convertedProductId !== null) {
-                  <div class="actions">
+                  <div class="discovery-card__actions">
                     <a class="btn" [routerLink]="['/products', item.convertedProductId]">查看商品</a>
                   </div>
                 } @else {
@@ -196,7 +196,7 @@
     </ul>
 
     @if (totalPages() > 1) {
-      <nav class="pager" aria-label="分頁">
+      <nav class="discoveries__pager" aria-label="分頁">
         <button type="button" class="btn" [disabled]="!hasPrevious()" (click)="goToPage(pageNumber() - 1)">上一頁</button>
         <span>第 {{ pageNumber() + 1 }} / {{ totalPages() }} 頁，共 {{ totalElements() }} 筆</span>
         <button type="button" class="btn" [disabled]="!hasNext()" (click)="goToPage(pageNumber() + 1)">下一頁</button>

@@ -207,6 +207,7 @@ export function toCampaignRow(payload: FestiveCampaignResponsePayload): Campaign
 
 @Component({
   selector: 'app-festive-campaigns',
+  host: { class: 'festive-campaigns' },
   imports: [FormsModule, Icon, InfoTip, SortHeader, SortRowsPipe],
   templateUrl: './festive-campaigns.html',
   styleUrl: './festive-campaigns.scss',

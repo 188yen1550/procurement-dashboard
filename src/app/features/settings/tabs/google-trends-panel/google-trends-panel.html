@@ -1,18 +1,18 @@
 <!-- 檔案用途：排程作業面板——Google 趨勢參考（SerpApi）的來源開關、本月用量、立即查詢、最近執行紀錄。 -->
 <section id="google-trends" class="config-panel" aria-labelledby="google-trends-title">
-  <div class="config-panel-head">
+  <div class="config-panel__header">
     <div>
       <h3 id="google-trends-title">
         排程作業：Google 趨勢參考
         @if (status(); as s) {
-          <span class="badge" [class.badge-success]="s.enabled" [class.badge-muted]="!s.enabled">
+          <span class="badge" [class.badge--success]="s.enabled" [class.badge--neutral]="!s.enabled">
             {{ s.enabled ? '來源啟用中' : '來源已停用' }}
           </span>
         }
       </h3>
       <p>{{ status()?.schedule ?? '每週一 04:00' }}：查詢最多 {{ status()?.batchSize ?? 40 }} 個商品的 Google 搜尋趨勢（待審商品優先），<strong>只作參考</strong>。</p>
       <!-- 2026-09-29：長說明改成可收合，預設收合；用量、金鑰、執行中、停用等狀態在下方，永遠顯示。 -->
-      <details class="config-panel-details">
+      <details class="config-panel__details">
         <summary>運作方式與紀錄欄位說明</summary>
         <p>
           每次最多查詢 {{ status()?.batchSize ?? 40 }} 個商品：<strong>待審商品優先</strong>（送審較早的先查，不看 PTT 熱度），
@@ -26,17 +26,17 @@
         <p>紀錄欄位：商品數＝本次查詢的商品；取得趨勢／查無資料／失敗＝各自的商品數。「查無資料」也會用掉 1 次額度。</p>
       </details>
     </div>
-    <div class="config-panel-actions">
+    <div class="config-panel__actions">
       <button type="button" class="btn" [disabled]="!status() || isSubmitting() || running()" (click)="toggleEnabled()">
         {{ enabled() ? '停用 Google 來源' : '啟用 Google 來源' }}
       </button>
-      <button type="button" class="btn-primary" [disabled]="!canSyncTop()" (click)="syncTop()">
+      <button type="button" class="btn btn--primary" [disabled]="!canSyncTop()" (click)="syncTop()">
         {{ running() ? '查詢中…' : '立即查詢（最多 ' + (status()?.batchSize ?? 40) + ' 個）' }}
       </button>
     </div>
   </div>
 
-  <p class="sr-only" aria-live="polite">
+  <p class="u-sr-only" aria-live="polite">
     @if (running()) {
       Google 趨勢查詢執行中，{{ progressText() }}。
     }
@@ -45,7 +45,7 @@
   @if (useMockData) {
     <p class="helper">Mock 模式不會呼叫後端，這裡不會顯示用量與執行紀錄。</p>
   } @else if (loadError()) {
-    <p class="alert" role="alert">
+    <p class="notice notice--error" role="alert">
       無法載入 Google 趨勢狀態：{{ loadError() }}
       <button type="button" class="text-action" (click)="load()">重新載入</button>
     </p>
@@ -69,18 +69,18 @@
     @if (s.recentRuns.length === 0) {
       <p class="helper">尚無執行紀錄。每週一 04:00 排程或手動查詢後會出現在這裡。</p>
     } @else {
-      <div class="config-table-wrap">
+      <div class="config-panel__table-scroll">
         <table class="config-table">
-          <caption class="sr-only">Google 趨勢查詢執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
+          <caption class="u-sr-only">Google 趨勢查詢執行紀錄，第 {{ history.pageNumber() + 1 }} 頁（新到舊）</caption>
           <thead>
             <tr>
               <th scope="col">開始時間</th>
               <th scope="col">觸發方式</th>
               <th scope="col">狀態</th>
-              <th scope="col" class="num">商品數</th>
-              <th scope="col" class="num">取得趨勢</th>
-              <th scope="col" class="num">查無資料</th>
-              <th scope="col" class="num">失敗</th>
+              <th scope="col" class="u-numeric">商品數</th>
+              <th scope="col" class="u-numeric">取得趨勢</th>
+              <th scope="col" class="u-numeric">查無資料</th>
+              <th scope="col" class="u-numeric">失敗</th>
               <th scope="col">說明</th>
             </tr>
           </thead>
@@ -90,10 +90,10 @@
                 <td>{{ run.startedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
                 <td>{{ triggerLabel(run) }}</td>
                 <td><span [class]="'badge ' + statusBadge(run.status)">{{ statusLabel(run.status) }}</span></td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.okCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.noDataCount }}</td>
-                <td class="num">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.totalCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.okCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.noDataCount }}</td>
+                <td class="u-numeric">{{ run.status === 'SKIPPED' ? '—' : run.failedCount }}</td>
                 <td>{{ run.message ?? '' }}</td>
               </tr>
             }

@@ -3,7 +3,7 @@
   真實模式呼叫 ReviewApiService，風險清單改用後端回傳的 availableRiskOptions
   （只含目前啟用中的選項），送出前套用 validateReviewForm 的三條規則。
 -->
-<main class="detail" aria-labelledby="title">
+<main class="review-detail" aria-labelledby="title">
   <header class="page-header">
     <div>
       <a routerLink="/review" class="back-link"><app-icon name="chevron-left" size="sm" /> 返回待審核清單</a>
@@ -11,7 +11,7 @@
       <h1 id="title">{{ product()?.productName ?? '審核詳情' }}</h1>
     </div>
     @if (useMockData) {
-    <button type="button" class="conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
+    <button type="button" class="review-detail__simulate-conflict" (click)="simulateConflict()">模擬 409 Conflict</button>
     }
   </header>
 
@@ -20,20 +20,20 @@
     <div><strong>UI 狀態</strong></div>
     <div>
       @for (state of stateOptions; track state) {
-      <button type="button" [class.active]="pageState() === state" (click)="setState(state)">
+      <button type="button" [class.is-active]="pageState() === state" (click)="setState(state)">
         {{ state }}
       </button>
       }
     </div>
   </section>
   }
-  <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  <p class="u-sr-only" aria-live="polite">{{ statusMessage() }}</p>
   @if (statusMessage()) {
-  <p class="notice status-toast" role="status">{{ statusMessage() }}</p>
+  <p class="notice review-detail__toast" role="status">{{ statusMessage() }}</p>
   }
 
   @if (pageState() === 'error') {
-  <section class="empty error" role="alert">
+  <section class="empty empty--error" role="alert">
     <h2>無法載入審核資料</h2>
     @if (errorMessage()) {
     <p>{{ errorMessage() }}</p>
@@ -49,7 +49,7 @@
   </section>
   } @else if (product(); as p) {
   @if (p.isResubmission) {
-  <section class="resubmit">
+  <section class="review-detail__resubmit">
     <strong>曾被拒絕 · 第 {{ p.submissionCount }} 次送審</strong>
     @if (useMockData) {
     <span>上次留言：{{ previousComment }}</span>
@@ -57,7 +57,7 @@
   </section>
   }
 
-  <section class="summary panel">
+  <section class="score-summary panel">
     <header>
       <div>
         <span>{{ p.productTypeName }}</span>
@@ -72,76 +72,76 @@
     -->
     @let s = p.scores;
     <div class="formula" role="group" aria-label="最終分數計算方式">
-      <div class="term">
+      <div class="formula__term">
         <span>基本分數</span>
-        <strong>{{ s.totalScore === null ? '—' : (s.totalScore | number: '1.2-2') }}@if (s.totalScore !== null) {<span class="unit">分</span>}</strong>
+        <strong>{{ s.totalScore === null ? '—' : (s.totalScore | number: '1.2-2') }}@if (s.totalScore !== null) {<span class="u-unit">分</span>}</strong>
         <small>因子依權重加權平均</small>
       </div>
-      <span class="op" aria-label="加">＋</span>
-      <div class="term boost">
+      <span class="formula__op" aria-label="加">＋</span>
+      <div class="formula__term formula__term--boost">
         <span>節慶加成</span>
-        <strong>+{{ (s.festivalBoost ?? 0) | number: '1.2-2' }}<span class="unit">分</span></strong>
+        <strong>+{{ (s.festivalBoost ?? 0) | number: '1.2-2' }}<span class="u-unit">分</span></strong>
         <small>{{ p.matchedCampaign ? '命中：' + p.matchedCampaign.campaignName : '未命中檔期' }}</small>
       </div>
-      <span class="op" aria-label="加">＋</span>
-      <div class="term boost">
+      <span class="formula__op" aria-label="加">＋</span>
+      <div class="formula__term formula__term--boost">
         <span>天氣加成</span>
-        <strong>{{ s.weatherBoost === null ? '—' : '+' + (s.weatherBoost | number: '1.2-2') }}@if (s.weatherBoost !== null) {<span class="unit">分</span>}</strong>
+        <strong>{{ s.weatherBoost === null ? '—' : '+' + (s.weatherBoost | number: '1.2-2') }}@if (s.weatherBoost !== null) {<span class="u-unit">分</span>}</strong>
         <small>{{ s.weatherBoost === null ? '尚未計算'
           : (p.weatherDetail && p.weatherDetail.matchedTags.length > 0 ? '命中：' + p.weatherDetail.matchedTags.join('、') : '未命中天氣標籤') }}</small>
       </div>
-      <span class="op" aria-label="等於">＝</span>
-      <div class="term final">
+      <span class="formula__op" aria-label="等於">＝</span>
+      <div class="formula__term formula__term--final">
         <span>最終分數</span>
-        <strong>{{ s.finalScore === null ? '—' : (s.finalScore | number: '1.2-2') }}@if (s.finalScore !== null) {<span class="unit">分</span>}</strong>
+        <strong>{{ s.finalScore === null ? '—' : (s.finalScore | number: '1.2-2') }}@if (s.finalScore !== null) {<span class="u-unit">分</span>}</strong>
         <small>用於排序與 Top10</small>
       </div>
     </div>
 
     @let passed = s.dataCompleteness !== null && s.dataCompleteness >= completenessThreshold;
-    <p class="gate" [class.gate-warn]="!passed">
-      <span class="gate-badge">{{ passed ? '✓ 可評分' : '⚠ 資料待補' }}</span>
+    <p class="gate" [class.gate--warn]="!passed">
+      <span class="gate__badge">{{ passed ? '✓ 可評分' : '⚠ 資料待補' }}</span>
       資料完整度 <strong>{{ s.dataCompleteness === null ? '—' : (s.dataCompleteness | number: '1.0-0') + '%' }}</strong>
       （評分門檻 {{ completenessThreshold }}%{{ passed ? '，已達標' : (s.totalScore === null ? '，未達標不計分' : '，未達標不重算，以下為上次有效分數') }}）
-      <span class="gate-mode">評估模式：{{ s.evaluationModeName }} · v{{ s.evaluationModeVersion ?? '—' }}</span>
+      <span class="gate__mode">評估模式：{{ s.evaluationModeName }} · v{{ s.evaluationModeVersion ?? '—' }}</span>
     </p>
 
-    <div class="factor-block">
+    <div class="score-summary__factors">
       <h3>因子明細 <small>權重與分數為審核快照唯讀資訊</small></h3>
       <!-- 2026-09-30：四大分組改為 2×2 卡片；因子內容與算法說明收進 ? 提示泡泡（同設定頁目標區間／折扣深度的做法）。 -->
-      <div class="factor-cards">
+      <div class="score-summary__factor-cards">
         @for (g of scoreGroups(); track g.key) {
         @let single = g.rows.length === 1 && g.key !== 'CUSTOM';
-        <article class="factor-card" [class.excluded]="!g.counted" [class.custom]="g.key === 'CUSTOM'"
+        <article class="factor-card" [class.factor-card--excluded]="!g.counted" [class.factor-card--custom]="g.key === 'CUSTOM'"
           [attr.aria-label]="g.label + '分組'">
           <header>
             <h4>{{ g.label }}<app-info-tip [text]="g.hint" /></h4>
-            <span class="card-weight">權重 {{ g.weight === null ? '—' : (g.weight | number: '1.0-2') + '%' }}</span>
+            <span class="factor-card__weight">權重 {{ g.weight === null ? '—' : (g.weight | number: '1.0-2') + '%' }}</span>
           </header>
 
-          <div class="card-score">
+          <div class="factor-card__score">
             @if (g.score === undefined) {
-            <span class="muted">分數見品項詳情</span>
+            <span class="factor-card__no-score">分數見品項詳情</span>
             } @else if (g.score === null) {
-            <span class="tag tag-muted">無資料・不計入</span>
+            <span class="tag tag--no-data">無資料・不計入</span>
             } @else {
-            <strong>{{ g.score | number: '1.2-2' }}<span class="unit">分</span></strong>
+            <strong>{{ g.score | number: '1.2-2' }}<span class="u-unit">分</span></strong>
             <small>{{ single ? '因子分數' : '組內加權（參考）' }}</small>
             }
           </div>
 
-          <ul class="factor-list">
+          <ul class="factor-card__list">
             @for (r of g.rows; track r.code) {
-            <li [class.excluded]="r.score === null">
-              <span class="factor-name">{{ r.name }}<app-info-tip [text]="r.hint" /></span>
+            <li [class.is-excluded]="r.score === null">
+              <span class="factor-card__item-name">{{ r.name }}<app-info-tip [text]="r.hint" /></span>
               <span class="tag" [attr.data-source]="r.source">{{ r.source }}</span>
               @if (!single) {
-              <span class="factor-weight">{{ r.weight === null ? '—' : (r.weight | number: '1.0-2') + '%' }}</span>
-              <span class="factor-score">
+              <span class="factor-card__item-weight">{{ r.weight === null ? '—' : (r.weight | number: '1.0-2') + '%' }}</span>
+              <span class="factor-card__item-score">
                 @if (r.score === undefined) {
-                <span class="muted">{{ g.key === 'CUSTOM' ? '見詳情' : '併入組分' }}</span>
+                <span class="factor-card__no-score">{{ g.key === 'CUSTOM' ? '見詳情' : '併入組分' }}</span>
                 } @else if (r.score === null) {
-                <span class="muted">無資料</span>
+                <span class="factor-card__no-score">無資料</span>
                 } @else {
                 {{ r.score | number: '1.2-2' }} 分
                 }
@@ -153,15 +153,15 @@
         </article>
         }
       </div>
-      <p class="factor-note">
+      <p class="score-summary__factor-note">
         基本分數＝有資料的因子依權重加權平均；<strong>無資料的因子不計入</strong>，其權重依比例分配給其他因子，不以 0 分計算。
         分組分數為參考用的組內彙總，不另外加總。
       </p>
     </div>
 
-    <div class="external-block">
+    <div class="score-summary__external">
       <h3>加成與外部數據</h3>
-      <ul class="external-list">
+      <ul class="score-summary__external-list">
         <li>
           <span class="tag" data-source="系統計算">節慶檔期</span>
           @if (p.matchedCampaign) {
@@ -197,7 +197,7 @@
     </div>
   </section>
 
-  <section class="panel ai">
+  <section class="panel ai-panel">
     <header>
       <div>
         <h2>AI 推薦摘要</h2>
@@ -206,10 +206,10 @@
     @if (p.ai.hasAnalysis) {
     <p>{{ p.ai.summary }}</p>
     @if (p.ai.recommendation) {
-    <p class="ai-recommendation">建議：{{ p.ai.recommendation }}</p>
+    <p class="ai-panel__recommendation">建議：{{ p.ai.recommendation }}</p>
     }
     @if (p.ai.reasons) {
-    <ul class="ai-reasons">
+    <ul class="ai-panel__reasons">
       @for (line of aiReasonLines(); track line) {
       <li>{{ line }}</li>
       }
@@ -220,10 +220,10 @@
     }
   </section>
 
-  <form class="panel form" (ngSubmit)="submit()">
+  <form class="panel review-form" (ngSubmit)="submit()">
     <fieldset [disabled]="pageState() === 'disabled' || submitted()">
       <legend>1. 人工風險評估（可複選）</legend>
-      <div class="risk-grid">
+      <div class="review-form__risks">
         @for (risk of p.availableRiskOptions; track risk.id) {
         <label>
           <input type="checkbox" [checked]="selectedRiskIds().includes(risk.id)" (change)="toggleRisk(risk.id)" />{{
@@ -232,7 +232,7 @@
         }
       </div>
       @if (hasOtherSelected()) {
-      <label class="other">
+      <label class="review-form__other">
         其他風險備註 <em>*</em>
         <textarea rows="2" [ngModel]="otherNote()" (ngModelChange)="otherNote.set($event)" name="otherNote"></textarea>
       </label>
@@ -241,7 +241,7 @@
 
     <fieldset [disabled]="pageState() === 'disabled' || submitted()">
       <legend>2. 核准結果 <em>*</em></legend>
-      <div class="decision">
+      <div class="review-form__decision">
         <label>
           <input type="radio" name="decision" value="APPROVED" [ngModel]="decision()"
             (ngModelChange)="decision.set($event)" />審核通過
@@ -272,7 +272,7 @@
 
   @if (conflictOpen()) {
   <div class="dialog-backdrop">
-    <section class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+    <section class="alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
       <span aria-hidden="true">!</span>
       <h2 id="conflict-title">審核狀態已變更</h2>
       <p>此品項已被其他管理人員完成審核（409 Conflict）。請返回清單重新載入。</p>
